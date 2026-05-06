@@ -22,7 +22,7 @@ export default function SignInPage() {
       setError(error.message ?? "Sign in failed");
       return;
     }
-    router.push("/dashboard");
+    router.push("/");
   }
 
   return (
