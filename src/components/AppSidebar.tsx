@@ -30,6 +30,7 @@ import {
   IconSun,
   IconMoon,
   IconChevronRight,
+  IconRouter,
 } from '@tabler/icons-react'
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
@@ -50,6 +51,11 @@ const NAV: { group: string; items: NavItem[] }[] = [
   {
     group: 'Fabric',
     items: [
+      {
+        href: '/apic-hosts',
+        label: 'APIC Hosts',
+        icon: <IconRouter size={15} stroke={1.75} />,
+      },
       {
         href: '/static-ports',
         label: 'Static Ports',

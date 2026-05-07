@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import { Inter, Lora } from "next/font/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
@@ -26,7 +27,10 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${lora.variable} h-full`}>
       <body className="h-full font-sans antialiased">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          {children}
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

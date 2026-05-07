@@ -21,6 +21,7 @@ model User {
   displayUsername String?
   sessions        Session[]
   accounts        Account[]
+  apicHosts       ApicHost[]
 
   @@unique([email])
   @@unique([username])
@@ -73,4 +74,17 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+model ApicHost {
+  id        String   @id @default(cuid())
+  name      String
+  host      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("apic_host")
 }
