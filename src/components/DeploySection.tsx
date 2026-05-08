@@ -5,7 +5,17 @@ import { useEffect, useState } from 'react'
 import type { DeployResult } from '@/lib/apic/types'
 
 type Mode = 'deploy' | 'rollback'
-type Feature = 'static-ports' | 'interface-selectors'
+type Feature =
+  | 'static-ports'
+  | 'interface-selectors'
+  | 'bridge-domains-l2'
+  | 'bridge-domains-l3'
+  | 'epg'
+  | 'epg-consumer'
+  | 'epg-provider'
+  | 'epg-contract'
+  | 'epg-consumer-contract'
+  | 'epg-provider-contract'
 
 interface DeploySectionProps<TRow extends { rowIndex: number }> {
   rows: TRow[]
@@ -18,7 +28,7 @@ interface DeploySectionProps<TRow extends { rowIndex: number }> {
   onReconnect: () => void
 }
 
-const ENDPOINTS: Record<Feature, Record<Mode, string>> = {
+const ENDPOINTS: Record<Feature, Partial<Record<Mode, string>>> = {
   'static-ports': {
     deploy: '/api/apic/deploy',
     rollback: '/api/apic/rollback',
@@ -27,11 +37,46 @@ const ENDPOINTS: Record<Feature, Record<Mode, string>> = {
     deploy: '/api/apic/interface-selectors/deploy',
     rollback: '/api/apic/interface-selectors/rollback',
   },
+  'bridge-domains-l2': {
+    deploy: '/api/apic/bridge-domains/l2/deploy',
+    rollback: '/api/apic/bridge-domains/l2/rollback',
+  },
+  'bridge-domains-l3': {
+    deploy: '/api/apic/bridge-domains/l3/deploy',
+    rollback: '/api/apic/bridge-domains/l3/rollback',
+  },
+  'epg': {
+    deploy: '/api/apic/bridge-domains/epgs/deploy',
+    rollback: '/api/apic/bridge-domains/epgs/rollback',
+  },
+  'epg-consumer': {
+    deploy: '/api/apic/bridge-domains/epgs/consumer/deploy',
+  },
+  'epg-provider': {
+    deploy: '/api/apic/bridge-domains/epgs/provider/deploy',
+  },
+  'epg-contract': {
+    rollback: '/api/apic/bridge-domains/epgs/rollback',
+  },
+  'epg-consumer-contract': {
+    rollback: '/api/apic/bridge-domains/epgs/consumer/rollback',
+  },
+  'epg-provider-contract': {
+    rollback: '/api/apic/bridge-domains/epgs/provider/rollback',
+  },
 }
 
 const DEFAULT_NOUN: Record<Feature, string> = {
   'static-ports': 'static port',
   'interface-selectors': 'selector',
+  'bridge-domains-l2': 'bridge domain',
+  'bridge-domains-l3': 'bridge domain',
+  'epg': 'EPG',
+  'epg-consumer': 'EPG',
+  'epg-provider': 'EPG',
+  'epg-contract': 'EPG',
+  'epg-consumer-contract': 'contract relation',
+  'epg-provider-contract': 'contract relation',
 }
 
 const MODE_CONFIG: Record<Mode, {
@@ -71,22 +116,37 @@ export function DeploySection<TRow extends { rowIndex: number }>({
 
   useEffect(() => {
     if (rows.length === 0) return
-    setLoading(true)
-    setFetchError(null)
+    if (!endpoint) return
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => {
+      setLoading(true)
+      setFetchError(null)
 
-    fetch(endpoint, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ rows, apicHost, apicToken }),
-    })
-      .then(r => r.json() as Promise<{ results?: DeployResult[]; error?: string }>)
-      .then(data => {
-        if (data.error) { setFetchError(data.error); return }
-        setResults(data.results ?? [])
+      fetch(endpoint, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ rows, apicHost, apicToken }),
+        signal:  controller.signal,
       })
-      .catch(() => setFetchError(`${cfg.title} request failed`))
-      .finally(() => setLoading(false))
-  }, [rows, apicHost, apicToken, endpoint, cfg.title])
+        .then(r => r.json() as Promise<{ results?: DeployResult[]; error?: string }>)
+        .then(data => {
+          if (controller.signal.aborted) return
+          if (data.error) { setFetchError(data.error); return }
+          setResults(data.results ?? [])
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setFetchError(`${cfg.title} request failed`)
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setLoading(false)
+        })
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+      controller.abort()
+    }
+  }, [rows, apicHost, apicToken, endpoint, cfg.title, feature, mode])
 
   const successCount   = results?.filter(r => r.success).length ?? 0
   const failCount      = results?.filter(r => !r.success).length ?? 0

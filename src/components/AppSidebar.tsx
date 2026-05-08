@@ -36,8 +36,9 @@ import {
 // ─── Nav structure ────────────────────────────────────────────────────────────
 
 type NavChild = {
-  href: string
+  href?: string
   label: string
+  children?: NavChild[]
 }
 
 type NavItem = {
@@ -55,6 +56,52 @@ const NAV: { group: string; items: NavItem[] }[] = [
         href: '/apic-hosts',
         label: 'APIC Hosts',
         icon: <IconRouter size={15} stroke={1.75} />,
+      },
+      {
+        href: '/bridge-domains',
+        label: 'Bridge Domains',
+        icon: <IconDatabase size={15} stroke={1.75} />,
+        children: [
+          {
+            href: '/bridge-domains/l2',
+            label: 'L2 Only',
+            children: [
+              { href: '/bridge-domains/l2/deploy', label: 'Deploy' },
+              { href: '/bridge-domains/l2/rollback', label: 'Rollback' },
+            ],
+          },
+          {
+            href: '/bridge-domains/l3',
+            label: 'L3',
+            children: [
+              { href: '/bridge-domains/l3/deploy', label: 'Deploy' },
+              { href: '/bridge-domains/l3/rollback', label: 'Rollback' },
+            ],
+          },
+        ],
+      },
+      {
+        href: '/bridge-domains/epgs',
+        label: 'EPG',
+        icon: <IconAffiliate size={15} stroke={1.75} />,
+        children: [
+          {
+            label: 'Deploy',
+            children: [
+              { href: '/bridge-domains/epgs/deploy', label: 'EPG' },
+              { href: '/bridge-domains/epgs/consumer/deploy', label: 'Consumed EPG' },
+              { href: '/bridge-domains/epgs/provider/deploy', label: 'Provided EPG' },
+            ],
+          },
+          {
+            label: 'Rollback',
+            children: [
+              { href: '/bridge-domains/epgs/rollback', label: 'EPG' },
+              { href: '/bridge-domains/epgs/consumer/rollback', label: 'Consumed Contract' },
+              { href: '/bridge-domains/epgs/provider/rollback', label: 'Provided Contract' },
+            ],
+          },
+        ],
       },
       {
         href: '/static-ports',
@@ -80,7 +127,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     group: 'Policy',
     items: [
       {
-        href: '/bridge-domains',
+        href: '/policy/bridge-domains',
         label: 'Bridge Domains',
         icon: <IconDatabase size={15} stroke={1.75} />,
       },
@@ -101,6 +148,78 @@ export function AppSidebar() {
 
   function isActive(href: string) {
     return href === '/' ? pathname === '/' : pathname.startsWith(href)
+  }
+
+  function isNodeActive(node: NavChild): boolean {
+    return Boolean(
+      (node.href && isActive(node.href)) ||
+      node.children?.some(child => isNodeActive(child))
+    )
+  }
+
+  function renderSubNode(node: NavChild, depth = 0): React.ReactNode {
+    const active = isNodeActive(node)
+
+    if (node.children && node.children.length > 0) {
+      return (
+        <Collapsible
+          key={node.href ?? node.label}
+          asChild
+          defaultOpen={active}
+          className="group/subcollapsible"
+        >
+          <SidebarMenuSubItem>
+            <CollapsibleTrigger asChild>
+              <SidebarMenuSubButton
+                asChild
+                size="sm"
+                isActive={active}
+                className="font-semibold"
+              >
+                <button type="button">
+                  <span>{node.label}</span>
+                  <IconChevronRight
+                    size={12}
+                    stroke={1.75}
+                    className="ml-auto transition-transform duration-200 group-data-[state=open]/subcollapsible:rotate-90"
+                  />
+                </button>
+              </SidebarMenuSubButton>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarMenuSub
+                className={[
+                  'mx-2 gap-0.5 py-0',
+                  depth === 0 ? 'ml-3' : 'ml-4',
+                ].join(' ')}
+              >
+                {node.children.map(child => renderSubNode(child, depth + 1))}
+              </SidebarMenuSub>
+            </CollapsibleContent>
+          </SidebarMenuSubItem>
+        </Collapsible>
+      )
+    }
+
+    return (
+      <SidebarMenuSubItem key={node.href ?? node.label}>
+        {node.href ? (
+          <SidebarMenuSubButton
+            asChild
+            size="sm"
+            isActive={pathname === node.href || pathname.startsWith(node.href + '/')}
+          >
+            <Link href={node.href}>
+              <span>{node.label}</span>
+            </Link>
+          </SidebarMenuSubButton>
+        ) : (
+          <span className="flex h-7 min-w-0 items-center px-2 text-xs text-[var(--text-muted)]">
+            {node.label}
+          </span>
+        )}
+      </SidebarMenuSubItem>
+    )
   }
 
   return (
@@ -135,7 +254,9 @@ export function AppSidebar() {
             <SidebarGroupLabel>{section.group}</SidebarGroupLabel>
             <SidebarMenu>
               {section.items.map((item) => {
-                const groupActive = isActive(item.href)
+                const groupActive = item.children && item.children.length > 0
+                  ? pathname === item.href || item.children.some(child => isNodeActive(child))
+                  : isActive(item.href)
 
                 if (item.children && item.children.length > 0) {
                   return (
@@ -159,18 +280,7 @@ export function AppSidebar() {
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                           <SidebarMenuSub>
-                            {item.children.map((child) => (
-                              <SidebarMenuSubItem key={child.href}>
-                                <SidebarMenuSubButton
-                                  asChild
-                                  isActive={pathname === child.href || pathname.startsWith(child.href + '/')}
-                                >
-                                  <Link href={child.href}>
-                                    <span>{child.label}</span>
-                                  </Link>
-                                </SidebarMenuSubButton>
-                              </SidebarMenuSubItem>
-                            ))}
+                            {item.children.map(child => renderSubNode(child))}
                           </SidebarMenuSub>
                         </CollapsibleContent>
                       </SidebarMenuItem>

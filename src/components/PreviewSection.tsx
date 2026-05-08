@@ -1,11 +1,21 @@
 // src/components/PreviewSection.tsx
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ParsedRow, ValidationResult, RowStatus } from '@/lib/apic/types'
 
 type Mode = 'deploy' | 'rollback'
-type Feature = 'static-ports' | 'interface-selectors'
+type Feature =
+  | 'static-ports'
+  | 'interface-selectors'
+  | 'bridge-domains-l2'
+  | 'bridge-domains-l3'
+  | 'epg'
+  | 'epg-consumer'
+  | 'epg-provider'
+  | 'epg-contract'
+  | 'epg-consumer-contract'
+  | 'epg-provider-contract'
 
 export interface PreviewColumn<TRow> {
   header: string
@@ -26,7 +36,7 @@ interface PreviewSectionProps<TRow extends { rowIndex: number }> {
   onReconnect: () => void
 }
 
-const ENDPOINTS: Record<Feature, Record<Mode, string>> = {
+const ENDPOINTS: Record<Feature, Partial<Record<Mode, string>>> = {
   'static-ports': {
     deploy: '/api/apic/validate',
     rollback: '/api/apic/validate-rollback',
@@ -34,6 +44,33 @@ const ENDPOINTS: Record<Feature, Record<Mode, string>> = {
   'interface-selectors': {
     deploy: '/api/apic/interface-selectors/validate',
     rollback: '/api/apic/interface-selectors/validate-rollback',
+  },
+  'bridge-domains-l2': {
+    deploy: '/api/apic/bridge-domains/l2/validate',
+    rollback: '/api/apic/bridge-domains/l2/validate-rollback',
+  },
+  'bridge-domains-l3': {
+    deploy: '/api/apic/bridge-domains/l3/validate',
+    rollback: '/api/apic/bridge-domains/l3/validate-rollback',
+  },
+  'epg': {
+    deploy: '/api/apic/bridge-domains/epgs/validate',
+    rollback: '/api/apic/bridge-domains/epgs/rollback/validate',
+  },
+  'epg-consumer': {
+    deploy: '/api/apic/bridge-domains/epgs/consumer/validate',
+  },
+  'epg-provider': {
+    deploy: '/api/apic/bridge-domains/epgs/provider/validate',
+  },
+  'epg-contract': {
+    rollback: '/api/apic/bridge-domains/epgs/rollback/validate',
+  },
+  'epg-consumer-contract': {
+    rollback: '/api/apic/bridge-domains/epgs/consumer/validate-rollback',
+  },
+  'epg-provider-contract': {
+    rollback: '/api/apic/bridge-domains/epgs/provider/validate-rollback',
   },
 }
 
@@ -140,27 +177,41 @@ export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
   const [loading, setLoading]     = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [issuesOpen, setIssuesOpen] = useState(false)
-  const contentRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (rows.length === 0) return
-    setLoading(true)
-    setFetchError(null)
-    setIssuesOpen(false)
+    if (!endpoint) return
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => {
+      setLoading(true)
+      setFetchError(null)
+      setIssuesOpen(false)
 
-    fetch(endpoint, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ rows, apicHost, apicToken }),
-    })
-      .then(r => r.json() as Promise<{ results?: ValidationResult[]; error?: string }>)
-      .then(data => {
-        if (data.error) { setFetchError(data.error); return }
-        setResults(data.results ?? [])
+      fetch(endpoint, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ rows, apicHost, apicToken }),
+        signal:  controller.signal,
       })
-      .catch(() => setFetchError('Validation request failed'))
-      .finally(() => setLoading(false))
-  }, [rows, apicHost, apicToken, endpoint])
+        .then(r => r.json() as Promise<{ results?: ValidationResult[]; error?: string }>)
+        .then(data => {
+          if (controller.signal.aborted) return
+          if (data.error) { setFetchError(data.error); return }
+          setResults(data.results ?? [])
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setFetchError('Validation request failed')
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setLoading(false)
+        })
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+      controller.abort()
+    }
+  }, [rows, apicHost, apicToken, endpoint, feature, mode])
 
   const statusMap  = new Map(results?.map(r => [r.rowIndex, r]) ?? [])
   const actionableRows = rows.filter(r => statusMap.get(r.rowIndex)?.status === cfg.actionableStatus)
@@ -330,9 +381,8 @@ export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
                   </button>
 
                   <div
-                    ref={contentRef}
                     style={{
-                      maxHeight: issuesOpen ? (contentRef.current?.scrollHeight ?? 9999) : 0,
+                      maxHeight: issuesOpen ? 9999 : 0,
                       overflow: 'hidden',
                       transition: 'max-height 220ms ease',
                     }}

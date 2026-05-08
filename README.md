@@ -96,6 +96,61 @@ leaf102-intf-prof,eth1-1,1/1,leaf101-leaf102-vpc-ipg,vpc,
 
 ---
 
+## Bridge Domains
+
+Bulk deploy and rollback bridge domains from CSV. L2-only rows create or delete an `fvBD` with fixed L2 behavior. L3 rows create/delete the bridge domain; APIC removes child subnet and L3Out relations when the parent BD is deleted.
+
+### L2 Only Defaults
+
+| Attribute | Value |
+|---|---|
+| `unkMacUcastAct` | `flood` |
+| `arpFlood` | `true` |
+| `unicastRoute` | `no` |
+| `mac` | `00:22:BD:F8:19:FF` |
+
+### L2 Only CSV Format
+
+| Column | Description | Example |
+|---|---|---|
+| `tenant` | Existing tenant name | `TenantA` |
+| `bd` | Bridge Domain name | `VLAN1411-BD` |
+| `vrf` | Existing VRF name | `TenantA-VRF` |
+| `bd_desc` | Optional description | `L2 bridge domain` |
+
+```csv
+tenant,bd,vrf,bd_desc
+TenantA,VLAN1411-BD,TenantA-VRF,L2 bridge domain
+```
+
+### L3 Defaults
+
+| Attribute | Value |
+|---|---|
+| `unkMacUcastAct` | `proxy` |
+| `arpFlood` | `false` |
+| `unicastRoute` | `yes` |
+| `mac` | `00:22:BD:F8:19:FF` |
+| Subnet `scope` | `public` |
+
+### L3 CSV Format
+
+| Column | Description | Example |
+|---|---|---|
+| `tenant` | Existing tenant name | `TenantA` |
+| `bd` | Bridge Domain name | `VLAN1411-BD` |
+| `vrf` | Existing VRF name | `TenantA-VRF` |
+| `subnet` | Bridge Domain gateway subnet in IPv4 CIDR form | `10.14.11.1/24` |
+| `l3out` | Existing L3Out name in the same tenant | `WAN-L3OUT` |
+| `bd_desc` | Optional description | `L3 bridge domain` |
+
+```csv
+tenant,bd,vrf,subnet,l3out,bd_desc
+TenantA,VLAN1411-BD,TenantA-VRF,10.14.11.1/24,WAN-L3OUT,L3 bridge domain
+```
+
+---
+
 ## Architecture
 
 ```
@@ -115,6 +170,14 @@ All APIC traffic is proxied through Next.js route handlers to avoid CORS. The AP
 | `POST /api/apic/interface-selectors/deploy` | Deploy interface selectors |
 | `POST /api/apic/interface-selectors/validate-rollback` | Check which selectors exist |
 | `POST /api/apic/interface-selectors/rollback` | Remove interface selectors |
+| `POST /api/apic/bridge-domains/l2/validate` | Validate L2-only Bridge Domain rows |
+| `POST /api/apic/bridge-domains/l2/deploy` | Deploy L2-only Bridge Domains |
+| `POST /api/apic/bridge-domains/l2/validate-rollback` | Check which L2-only Bridge Domains exist and match rollback intent |
+| `POST /api/apic/bridge-domains/l2/rollback` | Remove L2-only Bridge Domains |
+| `POST /api/apic/bridge-domains/l3/validate` | Validate L3 Bridge Domain rows |
+| `POST /api/apic/bridge-domains/l3/deploy` | Deploy L3 Bridge Domains, subnets, and L3Out attachment |
+| `POST /api/apic/bridge-domains/l3/validate-rollback` | Check which L3 Bridge Domains exist and match rollback intent |
+| `POST /api/apic/bridge-domains/l3/rollback` | Remove L3 Bridge Domains |
 
 ## Running Tests
 
