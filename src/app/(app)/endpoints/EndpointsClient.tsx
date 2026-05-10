@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { IconRefresh, IconSearch, IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
 import type { SafeApicHost } from '@/actions/apic-hosts'
 import type { Endpoint } from '@prisma/client'
+import { SEARCH_INPUT_CLS } from '@/lib/ui-classes'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -20,7 +21,7 @@ function Badge({ active }: { active: boolean }) {
       className={[
         'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold',
         active
-          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+          ? 'bg-[var(--success-bg)] text-[var(--success-text)]'
           : 'bg-[var(--surface-alt)] text-[var(--text-faint)]',
       ].join(' ')}
     >
@@ -203,18 +204,13 @@ export function EndpointsClient({
                   defaultValue={query}
                   onChange={e => handleSearchChange(e.target.value)}
                   placeholder="Search MAC, IP, VLAN, node…"
-                  className={[
-                    'w-full pl-8 pr-3 py-2 text-xs rounded-lg',
-                    'bg-[var(--surface-alt)] border border-[var(--border)]',
-                    'text-[var(--text)] placeholder-[var(--text-faint)]',
-                    'outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10',
-                  ].join(' ')}
+                  className={SEARCH_INPUT_CLS}
                 />
               </div>
 
               <div className="flex items-center gap-3 shrink-0 text-xs text-[var(--text-subtle)]">
                 <span>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                  <span className="font-semibold text-[var(--success-text)]">
                     {endpoints.filter(e => e.isActive).length}
                   </span>{' '}
                   active

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { INPUT_CLS, LABEL_CLS } from '@/lib/ui-classes'
 
 type Step = 1 | 2 | 3
 
@@ -39,13 +40,6 @@ interface WorkflowShellProps<TRow> {
   renderDeploy: (ctx: WorkflowDeployCtx<TRow>) => React.ReactNode
 }
 
-const INPUT_CLS =
-  'w-full bg-[var(--surface-alt)] border border-[var(--border)] rounded-lg px-3.5 py-2.5 ' +
-  'text-sm text-[var(--text)] placeholder-[var(--text-faint)] outline-none ' +
-  'focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 transition-all'
-
-const LABEL_CLS =
-  'block text-[11px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1.5'
 
 export function WorkflowShell<TRow>({
   title,

@@ -1,7 +1,7 @@
-// src/app/epgs/page.tsx
 'use client'
 
 import { useState } from 'react'
+import { INPUT_CLS, SELECT_CLS } from '@/lib/ui-classes'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -41,15 +41,6 @@ const BDS: Record<string, string[]> = {
   TenantA:    ['MGMT-BD', 'Storage-BD'],
   TenantB:    ['Web-BD'],
 }
-
-// ─── Shared styles ───────────────────────────────────────────────────────────
-
-const INPUT_CLS =
-  'w-full text-sm px-3 py-2 bg-[var(--surface-alt)] border border-[var(--border)] rounded-lg ' +
-  'focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 focus:border-[var(--accent)] ' +
-  'text-[var(--text)] placeholder-[var(--text-faint)] transition-colors'
-
-const SELECT_CLS = `${INPUT_CLS} cursor-pointer`
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
@@ -201,7 +192,7 @@ export default function EPGsPage() {
               </svg>
               <input type="text" placeholder="Search name, tenant, AP, BD…"
                 value={search} onChange={e => setSearch(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-[var(--surface-alt)] border border-[var(--border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 focus:border-[var(--accent)] text-[var(--text)] placeholder-[var(--text-faint)] transition-colors"
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-[var(--surface-alt)] border border-[var(--border)] rounded-lg outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15 text-[var(--text)] placeholder:text-[var(--text-faint)] transition-colors"
               />
             </div>
             <span className="text-xs text-[var(--text-subtle)] shrink-0 ml-auto">
@@ -237,7 +228,7 @@ export default function EPGsPage() {
                       <div className="flex items-center gap-2">
                         <span className="font-mono font-medium text-[var(--text)]">{epg.name}</span>
                         {epg.isolation && (
-                          <span title="Intra-EPG isolation" className="text-[#f59e0b]">
+                          <span title="Intra-EPG isolation" className="text-[var(--warning-text)]">
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                               <rect x="3" y="11" width="18" height="11" rx="2" />
                               <path d="M7 11V7a5 5 0 0 1 10 0v4" />

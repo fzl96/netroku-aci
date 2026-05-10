@@ -47,13 +47,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-
-// ─── Shared input style ───────────────────────────────────────────────────────
-
-const INPUT_CLS =
-  'border-[var(--border)] bg-[var(--surface-alt)] text-[var(--text)] text-sm ' +
-  'placeholder:text-[var(--text-faint)] ' +
-  'focus-visible:border-[var(--accent)] focus-visible:ring-[var(--accent)]/15'
+import { INPUT_OVERRIDE_CLS } from '@/lib/ui-classes'
 
 // ─── Shared form ─────────────────────────────────────────────────────────────
 
@@ -85,7 +79,7 @@ function ApicHostForm({
                 <Input
                   placeholder="Production APIC"
                   autoFocus
-                  className={INPUT_CLS}
+                  className={INPUT_OVERRIDE_CLS}
                   {...field}
                 />
               </FormControl>
@@ -104,7 +98,7 @@ function ApicHostForm({
               <FormControl>
                 <Input
                   placeholder="10.0.0.1 or apic.example.com"
-                  className={`${INPUT_CLS} font-mono`}
+                  className={`${INPUT_OVERRIDE_CLS} font-mono`}
                   {...field}
                 />
               </FormControl>
@@ -127,7 +121,7 @@ function ApicHostForm({
                 <FormControl>
                   <Input
                     placeholder="admin"
-                    className={INPUT_CLS}
+                    className={INPUT_OVERRIDE_CLS}
                     {...field}
                   />
                 </FormControl>
@@ -147,7 +141,7 @@ function ApicHostForm({
                   <Input
                     type="password"
                     placeholder={isEdit ? '••••••••' : 'password'}
-                    className={INPUT_CLS}
+                    className={INPUT_OVERRIDE_CLS}
                     {...field}
                   />
                 </FormControl>
