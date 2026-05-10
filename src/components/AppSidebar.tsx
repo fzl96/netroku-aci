@@ -51,7 +51,7 @@ type NavItem = {
 
 const NAV: { group: string; items: NavItem[] }[] = [
   {
-    group: 'Fabric',
+    group: 'Infrastructure',
     items: [
       {
         href: '/apic-hosts',
@@ -63,6 +63,11 @@ const NAV: { group: string; items: NavItem[] }[] = [
         label: 'Endpoints',
         icon: <IconDeviceDesktopSearch size={15} stroke={1.75} />,
       },
+    ],
+  },
+  {
+    group: 'Workflows',
+    items: [
       {
         href: '/bridge-domains',
         label: 'Bridge Domains',
@@ -126,21 +131,6 @@ const NAV: { group: string; items: NavItem[] }[] = [
           { href: '/interface-selectors/deploy', label: 'Deploy' },
           { href: '/interface-selectors/rollback', label: 'Rollback' },
         ],
-      },
-    ],
-  },
-  {
-    group: 'Policy',
-    items: [
-      {
-        href: '/policy/bridge-domains',
-        label: 'Bridge Domains',
-        icon: <IconDatabase size={15} stroke={1.75} />,
-      },
-      {
-        href: '/epgs',
-        label: 'EPGs',
-        icon: <IconAffiliate size={15} stroke={1.75} />,
       },
     ],
   },
