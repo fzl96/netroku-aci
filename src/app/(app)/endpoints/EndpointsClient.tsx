@@ -19,27 +19,33 @@ function Badge({ active }: { active: boolean }) {
   return (
     <span
       className={[
-        'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold',
-        active
-          ? 'bg-[var(--success-bg)] text-[var(--success-text)]'
-          : 'bg-[var(--surface-alt)] text-[var(--text-faint)]',
+        'flex items-center gap-1.5 text-[10px] font-medium',
+        active ? 'text-[var(--success-text)]' : 'text-[var(--text-faint)]',
       ].join(' ')}
     >
+      <span
+        className={[
+          'w-1.5 h-1.5 rounded-full shrink-0',
+          active ? 'bg-[var(--success-dot)]' : 'bg-[var(--border)]',
+        ].join(' ')}
+      />
       {active ? 'Active' : 'Historical'}
     </span>
   )
 }
+
+const SKELETON_WIDTHS = [52, 68, 30, 42, 58, 75, 62, 62, 40]
 
 function TableSkeleton() {
   return (
     <tbody>
       {Array.from({ length: 8 }).map((_, i) => (
         <tr key={i} className="border-b border-[var(--border-lighter)] last:border-0">
-          {Array.from({ length: 9 }).map((_, j) => (
-            <td key={j} className="px-4 py-3">
+          {SKELETON_WIDTHS.map((w, j) => (
+            <td key={j} className={['px-4 py-2.5', j === 0 ? 'border-l-2 border-l-transparent' : ''].join(' ')}>
               <div
-                className="h-3 rounded bg-[var(--surface-alt)] animate-pulse"
-                style={{ width: `${40 + ((i * 3 + j * 7) % 5) * 12}%`, opacity: 0.6 }}
+                className="h-2.5 rounded-sm bg-[var(--surface-alt)] animate-pulse"
+                style={{ width: `${w + ((i * 11 + j * 7) % 20) - 10}%` }}
               />
             </td>
           ))}
@@ -253,11 +259,11 @@ export function EndpointsClient({
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="border-b border-[var(--border-light)] bg-[var(--surface-alt)]">
+                      <tr>
                         {['MAC', 'IP', 'VLAN', 'Node', 'Interface', 'EPG Description', 'First Seen', 'Last Seen', 'Status'].map(h => (
                           <th
                             key={h}
-                            className="text-left px-4 py-2.5 text-[10px] uppercase tracking-wide font-semibold text-[var(--text-subtle)] whitespace-nowrap"
+                            className="text-left px-4 pt-3 pb-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--text-faint)] whitespace-nowrap border-b border-[var(--border)]"
                           >
                             {h}
                           </th>
@@ -268,20 +274,21 @@ export function EndpointsClient({
                       <TableSkeleton />
                     ) : (
                       <tbody>
-                        {endpoints.map(ep => (
+                        {endpoints.map((ep, index) => (
                           <tr
                             key={ep.id}
-                            className="border-b border-[var(--border-lighter)] last:border-0 hover:bg-[var(--surface-alt)] transition-colors"
+                            className="group border-b border-[var(--border-lighter)] last:border-0 hover:bg-[var(--surface-alt)] transition-colors duration-100 animate-fade-up"
+                            style={{ animationDelay: `${Math.min(index * 20, 200)}ms` }}
                           >
-                            <td className="px-4 py-3 font-mono text-[var(--text)]">{ep.mac}</td>
-                            <td className="px-4 py-3 font-mono text-[var(--text-muted)]">{ep.ip || '—'}</td>
-                            <td className="px-4 py-3 text-[var(--text-muted)]">{ep.vlan}</td>
-                            <td className="px-4 py-3 text-[var(--text-muted)]">{ep.node || '—'}</td>
-                            <td className="px-4 py-3 font-mono text-[var(--text-muted)]">{ep.interface || '—'}</td>
-                            <td className="px-4 py-3 text-[var(--text-subtle)] max-w-[200px] truncate" title={ep.epgDescr}>{ep.epgDescr || '—'}</td>
-                            <td className="px-4 py-3 text-[var(--text-faint)] whitespace-nowrap">{fmt(ep.firstSeenAt)}</td>
-                            <td className="px-4 py-3 text-[var(--text-faint)] whitespace-nowrap">{fmt(ep.lastSeenAt)}</td>
-                            <td className="px-4 py-3"><Badge active={ep.isActive} /></td>
+                            <td className="px-4 py-2.5 font-mono text-[var(--text)] border-l-2 border-l-transparent group-hover:border-l-[var(--accent)] transition-colors duration-100">{ep.mac}</td>
+                            <td className="px-4 py-2.5 font-mono text-[var(--text-muted)]">{ep.ip || '—'}</td>
+                            <td className="px-4 py-2.5 tabular-nums text-[var(--text-muted)]">{ep.vlan}</td>
+                            <td className="px-4 py-2.5 tabular-nums text-[var(--text-muted)]">{ep.node || '—'}</td>
+                            <td className="px-4 py-2.5 font-mono text-[var(--text-muted)]">{ep.interface || '—'}</td>
+                            <td className="px-4 py-2.5 text-[var(--text-subtle)] max-w-[200px] truncate" title={ep.epgDescr}>{ep.epgDescr || '—'}</td>
+                            <td className="px-4 py-2.5 tabular-nums text-[var(--text-faint)] whitespace-nowrap">{fmt(ep.firstSeenAt)}</td>
+                            <td className="px-4 py-2.5 tabular-nums text-[var(--text-faint)] whitespace-nowrap">{fmt(ep.lastSeenAt)}</td>
+                            <td className="px-4 py-2.5"><Badge active={ep.isActive} /></td>
                           </tr>
                         ))}
                       </tbody>

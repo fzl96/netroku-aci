@@ -363,11 +363,11 @@ export function ApicHostsClient({ initialHosts }: { initialHosts: SafeApicHost[]
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-[var(--border-light)] bg-[var(--surface-alt)]">
+                <tr>
                   {['Name', 'Host', 'Added', ''].map(h => (
                     <th
                       key={h}
-                      className="text-left px-4 py-2.5 text-[10px] uppercase tracking-wide font-semibold text-[var(--text-subtle)] whitespace-nowrap"
+                      className="text-left px-4 pt-3 pb-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--text-faint)] whitespace-nowrap border-b border-[var(--border)]"
                     >
                       {h}
                     </th>
@@ -385,17 +385,22 @@ export function ApicHostsClient({ initialHosts }: { initialHosts: SafeApicHost[]
                     </td>
                   </tr>
                 ) : (
-                  hosts.map(host => (
+                  hosts.map((host, index) => (
                     <tr
                       key={host.id}
-                      className="border-b border-[var(--border-lighter)] last:border-0 hover:bg-[var(--surface-alt)] transition-colors group"
+                      className="group border-b border-[var(--border-lighter)] last:border-0 hover:bg-[var(--surface-alt)] transition-colors duration-100 animate-fade-up"
+                      style={{ animationDelay: `${Math.min(index * 35, 180)}ms` }}
                     >
-                      <td className="px-4 py-3 font-medium text-[var(--text)]">{host.name}</td>
-                      <td className="px-4 py-3 font-mono text-[var(--text-muted)]">{host.host}</td>
-                      <td className="px-4 py-3 text-[var(--text-subtle)]">
+                      <td className="px-4 py-2.5 border-l-2 border-l-transparent group-hover:border-l-[var(--accent)] transition-colors duration-100">
+                        <span className="font-medium text-[var(--text)]">{host.name}</span>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className="font-mono text-[var(--text-muted)]">{host.host}</span>
+                      </td>
+                      <td className="px-4 py-2.5 tabular-nums text-[var(--text-subtle)]">
                         {new Date(host.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-2.5">
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
                           <Button
                             variant="ghost"
