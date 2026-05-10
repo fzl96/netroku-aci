@@ -1,4 +1,5 @@
 import type { CsvValidationError, ParsedEpgContractRow, ParsedEpgRow } from './types'
+import { deduplicateRows } from '@/lib/apic/csv-utils'
 
 const EPG_REQUIRED_HEADERS = ['tenant', 'epg', 'bd'] as const
 const CONTRACT_REQUIRED_HEADERS = ['tenant', 'epg', 'bd', 'contract'] as const
@@ -99,23 +100,13 @@ function validateEpgRows(
     )
   })
 
-  const seen = new Map<string, number>()
-  for (const row of rows) {
-    const key = requireContract
-      ? `${row.tenant}|${row.anp}|${row.epg}|${row.bd}|${'contract' in row ? row.contract : ''}`
-      : `${row.tenant}|${row.anp}|${row.epg}|${row.bd}`
-    const firstIndex = seen.get(key)
-    if (firstIndex !== undefined) {
-      errors.push({
-        rowIndex: row.rowIndex,
-        field: 'duplicate',
-        message: `Duplicate EPG${requireContract ? ' contract' : ''} row (first at row ${firstIndex})`,
-      })
-    } else {
-      seen.set(key, row.rowIndex)
-    }
+  return {
+    rows: deduplicateRows(rows, errors, [{
+      key: r => requireContract
+        ? `${r.tenant}|${r.anp}|${r.epg}|${r.bd}|${'contract' in r ? r.contract : ''}`
+        : `${r.tenant}|${r.anp}|${r.epg}|${r.bd}`,
+      message: (_, first) => `Duplicate EPG${requireContract ? ' contract' : ''} row (first at row ${first})`,
+    }]),
+    errors,
   }
-
-  const duplicateIndexes = new Set(errors.filter(e => e.field === 'duplicate').map(e => e.rowIndex))
-  return { rows: rows.filter(r => !duplicateIndexes.has(r.rowIndex)), errors }
 }

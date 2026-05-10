@@ -1,8 +1,6 @@
 import type { EpgContractRole, ParsedAnyEpgRow, ParsedEpgContractRow } from './types'
 
-export function buildTenantPath(tenant: string): string {
-  return `/api/node/mo/uni/tn-${tenant}.json`
-}
+export { buildTenantPath } from '@/lib/apic/common-paths'
 
 export function buildAppProfilePath(tenant: string, anp: string): string {
   return `/api/node/mo/uni/tn-${tenant}/ap-${anp}.json`

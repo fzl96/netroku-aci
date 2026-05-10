@@ -1,0 +1,20 @@
+export function withApicRoute<TRow, TResult>(
+  handler: (rows: TRow[], apicHost: string, apicToken: string) => Promise<TResult[]>,
+): (request: Request) => Promise<Response> {
+  return async (request: Request): Promise<Response> => {
+    let rows: TRow[], apicHost: string, apicToken: string
+    try {
+      ;({ rows, apicHost, apicToken } = await request.json())
+    } catch {
+      return Response.json({ error: 'Invalid request body' }, { status: 400 })
+    }
+    if (!Array.isArray(rows)) {
+      return Response.json({ error: 'rows is required' }, { status: 400 })
+    }
+    if (!apicHost || !apicToken) {
+      return Response.json({ error: 'apicHost and apicToken are required' }, { status: 400 })
+    }
+    const results = await handler(rows, apicHost, apicToken)
+    return Response.json({ results })
+  }
+}

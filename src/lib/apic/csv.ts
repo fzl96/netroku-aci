@@ -1,4 +1,5 @@
 import type { ParsedRow, CsvValidationError, PortType, Mode, Immediacy } from './types'
+import { checkHeaders, deduplicateRows } from './csv-utils'
 
 const REQUIRED_HEADERS = ['tenant','ap','epg','vlan','node1','node2','port_type','interface_or_ipg','mode','immediacy'] as const
 const PORT_TYPES: PortType[] = ['vpc', 'pc', 'port']
@@ -9,18 +10,8 @@ export function validateCsvRows(
   rawRows: Record<string, string>[],
   headers: string[]
 ): { rows: ParsedRow[]; errors: CsvValidationError[] } {
-  // Check headers first
-  const missingHeaders = REQUIRED_HEADERS.filter(h => !headers.includes(h))
-  if (missingHeaders.length > 0) {
-    return {
-      rows: [],
-      errors: [{
-        rowIndex: 0,
-        field: 'headers',
-        message: `Missing required columns: ${missingHeaders.join(', ')}`,
-      }],
-    }
-  }
+  const headerError = checkHeaders(REQUIRED_HEADERS, headers)
+  if (headerError) return { rows: [], errors: [headerError] }
 
   const rows: ParsedRow[] = []
   const errors: CsvValidationError[] = []
@@ -101,20 +92,10 @@ export function validateCsvRows(
     }
   })
 
-  // Duplicate row detection (same tenant/ap/epg/vlan/node1/node2/port/interface)
-  const seen = new Map<string, number>()
-  for (const row of rows) {
-    const key = `${row.tenant}|${row.ap}|${row.epg}|${row.vlan}|${row.node1}|${row.node2 ?? ''}|${row.port_type}|${row.interface_or_ipg}`
-    const firstIndex = seen.get(key)
-    if (firstIndex !== undefined) {
-      errors.push({ rowIndex: row.rowIndex, field: 'duplicate', message: `Duplicate of row ${firstIndex}` })
-    } else {
-      seen.set(key, row.rowIndex)
-    }
-  }
-  // Remove duplicate rows so they don't reach validate/deploy
-  const duplicateIndexes = new Set(errors.filter(e => e.field === 'duplicate').map(e => e.rowIndex))
-  const dedupedRows = rows.filter(r => !duplicateIndexes.has(r.rowIndex))
+  const dedupedRows = deduplicateRows(rows, errors, [{
+    key: r => `${r.tenant}|${r.ap}|${r.epg}|${r.vlan}|${r.node1}|${r.node2 ?? ''}|${r.port_type}|${r.interface_or_ipg}`,
+    message: (_, first) => `Duplicate of row ${first}`,
+  }])
 
   return { rows: dedupedRows, errors }
 }

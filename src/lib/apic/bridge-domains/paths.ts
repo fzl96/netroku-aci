@@ -3,17 +3,15 @@ import type {
   ParsedBridgeDomainL3Row,
 } from './types'
 
-const BD_MAC = '00:22:BD:F8:19:FF'
+export { buildTenantPath } from '@/lib/apic/common-paths'
 
-export function buildTenantPath(tenant: string): string {
-  return `/api/node/mo/uni/tn-${tenant}.json`
-}
+const BD_MAC = '00:22:BD:F8:19:FF'
 
 export function buildVrfPath(tenant: string, vrf: string): string {
   return `/api/node/mo/uni/tn-${tenant}/ctx-${vrf}.json`
 }
 
-export function buildBridgeDomainDn(tenant: string, bd: string): string {
+function buildBridgeDomainDn(tenant: string, bd: string): string {
   return `uni/tn-${tenant}/BD-${bd}`
 }
 
@@ -25,7 +23,7 @@ export function buildBridgeDomainChildrenPath(tenant: string, bd: string): strin
   return `/api/node/mo/${buildBridgeDomainDn(tenant, bd)}.json?query-target=children`
 }
 
-export function buildSubnetDn(tenant: string, bd: string, subnet: string): string {
+function buildSubnetDn(tenant: string, bd: string, subnet: string): string {
   return `${buildBridgeDomainDn(tenant, bd)}/subnet-[${subnet}]`
 }
 

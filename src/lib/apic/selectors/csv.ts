@@ -1,4 +1,5 @@
 import type { ParsedSelectorRow, IpgType, CsvValidationError } from './types'
+import { checkHeaders, deduplicateRows } from '@/lib/apic/csv-utils'
 
 const REQUIRED_HEADERS = ['interface_profile', 'selector_name', 'port', 'ipg_name', 'ipg_type'] as const
 const IPG_TYPES: IpgType[] = ['port', 'pc', 'vpc']
@@ -12,17 +13,8 @@ export function validateSelectorCsv(
   rawRows: Record<string, string>[],
   headers: string[]
 ): { rows: ParsedSelectorRow[]; errors: CsvValidationError[] } {
-  const missingHeaders = REQUIRED_HEADERS.filter(h => !headers.includes(h))
-  if (missingHeaders.length > 0) {
-    return {
-      rows: [],
-      errors: [{
-        rowIndex: 0,
-        field: 'headers',
-        message: `Missing required columns: ${missingHeaders.join(', ')}`,
-      }],
-    }
-  }
+  const headerError = checkHeaders(REQUIRED_HEADERS, headers)
+  if (headerError) return { rows: [], errors: [headerError] }
 
   const rows: ParsedSelectorRow[] = []
   const errors: CsvValidationError[] = []
@@ -77,29 +69,16 @@ export function validateSelectorCsv(
     }
   })
 
-  // Duplicate detection — two rows targeting the same selector on the same profile
-  // would conflict at APIC; catch here before sending anything.
-  const seenSelector = new Map<string, number>()
-  const seenPort = new Map<string, number>()
-  for (const row of rows) {
-    const selKey = `${row.interface_profile}|${row.selector_name}`
-    const firstSel = seenSelector.get(selKey)
-    if (firstSel !== undefined) {
-      errors.push({ rowIndex: row.rowIndex, field: 'duplicate', message: `Duplicate selector ${row.selector_name} on profile ${row.interface_profile} (first at row ${firstSel})` })
-    } else {
-      seenSelector.set(selKey, row.rowIndex)
-    }
-
-    const portKey = `${row.interface_profile}|${row.card}/${row.port_num}`
-    const firstPort = seenPort.get(portKey)
-    if (firstPort !== undefined) {
-      errors.push({ rowIndex: row.rowIndex, field: 'duplicate', message: `Port ${row.port} already targeted by row ${firstPort} on profile ${row.interface_profile}` })
-    } else {
-      seenPort.set(portKey, row.rowIndex)
-    }
-  }
-  const duplicateIndexes = new Set(errors.filter(e => e.field === 'duplicate').map(e => e.rowIndex))
-  const dedupedRows = rows.filter(r => !duplicateIndexes.has(r.rowIndex))
+  const dedupedRows = deduplicateRows(rows, errors, [
+    {
+      key: r => `${r.interface_profile}|${r.selector_name}`,
+      message: (r, first) => `Duplicate selector ${r.selector_name} on profile ${r.interface_profile} (first at row ${first})`,
+    },
+    {
+      key: r => `${r.interface_profile}|${r.card}/${r.port_num}`,
+      message: (r, first) => `Port ${r.port} already targeted by row ${first} on profile ${r.interface_profile}`,
+    },
+  ])
 
   return { rows: dedupedRows, errors }
 }
