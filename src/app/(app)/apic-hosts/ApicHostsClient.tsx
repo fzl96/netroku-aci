@@ -9,14 +9,14 @@ import {
   IconPencil,
   IconTrash,
 } from '@tabler/icons-react'
-import type { ApicHost } from '@prisma/client'
 
 import {
   createApicHost,
   updateApicHost,
   deleteApicHost,
+  type SafeApicHost,
 } from '@/actions/apic-hosts'
-import { apicHostSchema, type ApicHostFormValues } from '@/lib/schemas/apic-host'
+import { apicHostSchema, apicHostUpdateSchema, type ApicHostFormValues, type ApicHostUpdateFormValues } from '@/lib/schemas/apic-host'
 
 import {
   Form,
@@ -61,10 +61,14 @@ function ApicHostForm({
   form,
   onSubmit,
   formId,
+  isEdit = false,
 }: {
-  form: ReturnType<typeof useForm<ApicHostFormValues>>
-  onSubmit: (data: ApicHostFormValues) => void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  form: ReturnType<typeof useForm<any>>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onSubmit: (data: any) => void
   formId: string
+  isEdit?: boolean
 }) {
   return (
     <Form {...form}>
@@ -111,12 +115,66 @@ function ApicHostForm({
             </FormItem>
           )}
         />
+        <div className="grid grid-cols-2 gap-3">
+          <FormField
+            control={form.control}
+            name="username"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-xs font-medium text-[var(--text)]">
+                  APIC Username
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="admin"
+                    className={INPUT_CLS}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage className="text-xs" />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-xs font-medium text-[var(--text)]">
+                  APIC Password{isEdit && <span className="text-[var(--text-faint)] font-normal"> (leave blank to keep)</span>}
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    type="password"
+                    placeholder={isEdit ? '••••••••' : 'password'}
+                    className={INPUT_CLS}
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage className="text-xs" />
+              </FormItem>
+            )}
+          />
+        </div>
       </form>
     </Form>
   )
 }
 
 // ─── Dialog footer buttons ────────────────────────────────────────────────────
+
+function FooterTest({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="text-sm text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] transition-colors px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {disabled ? 'Testing…' : 'Test Connection'}
+    </button>
+  )
+}
 
 function FooterCancel({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
   return (
@@ -152,34 +210,35 @@ function FooterSubmit({ form, onClick, disabled, label }: {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export function ApicHostsClient({ initialHosts }: { initialHosts: ApicHost[] }) {
-  const [hosts, setHosts] = useState<ApicHost[]>(initialHosts)
+export function ApicHostsClient({ initialHosts }: { initialHosts: SafeApicHost[] }) {
+  const [hosts, setHosts] = useState<SafeApicHost[]>(initialHosts)
   const [isPending, setIsPending] = useState(false)
+  const [testing, setTesting] = useState(false)
 
   const [createOpen, setCreateOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
 
-  const [editingHost, setEditingHost] = useState<ApicHost | null>(null)
-  const [deletingHost, setDeletingHost] = useState<ApicHost | null>(null)
+  const [editingHost, setEditingHost] = useState<SafeApicHost | null>(null)
+  const [deletingHost, setDeletingHost] = useState<SafeApicHost | null>(null)
 
   const createForm = useForm<ApicHostFormValues>({
     resolver: zodResolver(apicHostSchema),
-    defaultValues: { name: '', host: '' },
+    defaultValues: { name: '', host: '', username: '', password: '' },
   })
 
-  const editForm = useForm<ApicHostFormValues>({
-    resolver: zodResolver(apicHostSchema),
-    defaultValues: { name: '', host: '' },
+  const editForm = useForm<ApicHostUpdateFormValues>({
+    resolver: zodResolver(apicHostUpdateSchema),
+    defaultValues: { name: '', host: '', username: '', password: '' },
   })
 
-  function openEdit(host: ApicHost) {
+  function openEdit(host: SafeApicHost) {
     setEditingHost(host)
-    editForm.reset({ name: host.name, host: host.host })
+    editForm.reset({ name: host.name, host: host.host, username: host.username, password: '' })
     setEditOpen(true)
   }
 
-  function openDelete(host: ApicHost) {
+  function openDelete(host: SafeApicHost) {
     setDeletingHost(host)
     setDeleteOpen(true)
   }
@@ -197,7 +256,7 @@ export function ApicHostsClient({ initialHosts }: { initialHosts: ApicHost[] }) 
     }
   }
 
-  async function handleUpdate(data: ApicHostFormValues) {
+  async function handleUpdate(data: ApicHostUpdateFormValues) {
     if (!editingHost) return
     setIsPending(true)
     const result = await updateApicHost(editingHost.id, data)
@@ -208,6 +267,52 @@ export function ApicHostsClient({ initialHosts }: { initialHosts: ApicHost[] }) 
       setEditingHost(null)
     } else {
       toast.error(result.error)
+    }
+  }
+
+  async function handleTestCreate() {
+    const { host, username, password } = createForm.getValues()
+    if (!host || !username || !password) {
+      toast.error('Fill in host, username and password before testing')
+      return
+    }
+    setTesting(true)
+    try {
+      const res = await fetch('/api/apic/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ host, username, password }),
+      })
+      const data = await res.json() as { ok: boolean; error?: string }
+      if (data.ok) toast.success('Connection successful')
+      else toast.error(data.error ?? 'Connection failed')
+    } catch {
+      toast.error('Network error — could not reach the server')
+    } finally {
+      setTesting(false)
+    }
+  }
+
+  async function handleTestEdit() {
+    if (!editingHost) return
+    const { host, username, password } = editForm.getValues()
+    setTesting(true)
+    try {
+      const body = password
+        ? { host, username, password }
+        : { apicHostId: editingHost.id }
+      const res = await fetch('/api/apic/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json() as { ok: boolean; error?: string }
+      if (data.ok) toast.success('Connection successful')
+      else toast.error(data.error ?? 'Connection failed')
+    } catch {
+      toast.error('Network error — could not reach the server')
+    } finally {
+      setTesting(false)
     }
   }
 
@@ -342,11 +447,12 @@ export function ApicHostsClient({ initialHosts }: { initialHosts: ApicHost[] }) 
           </DialogHeader>
           <ApicHostForm form={createForm} onSubmit={handleCreate} formId="create-host-form" />
           <DialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end rounded-b-xl border-t border-[var(--border-light)] bg-[var(--surface-alt)] px-4 py-3 gap-1">
-            <FooterCancel onClick={() => setCreateOpen(false)} disabled={isPending} />
+            <FooterCancel onClick={() => setCreateOpen(false)} disabled={isPending || testing} />
+            <FooterTest onClick={handleTestCreate} disabled={testing || isPending} />
             <FooterSubmit
               form="create-host-form"
               onClick={createForm.handleSubmit(handleCreate)}
-              disabled={isPending}
+              disabled={isPending || testing}
               label={isPending ? 'Adding…' : 'Add Host'}
             />
           </DialogFooter>
@@ -367,12 +473,13 @@ export function ApicHostsClient({ initialHosts }: { initialHosts: ApicHost[] }) 
               Update the controller endpoint details.
             </DialogDescription>
           </DialogHeader>
-          <ApicHostForm form={editForm} onSubmit={handleUpdate} formId="edit-host-form" />
+          <ApicHostForm form={editForm} onSubmit={handleUpdate} formId="edit-host-form" isEdit />
           <DialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end rounded-b-xl border-t border-[var(--border-light)] bg-[var(--surface-alt)] px-4 py-3 gap-1">
-            <FooterCancel onClick={() => setEditOpen(false)} disabled={isPending} />
+            <FooterCancel onClick={() => setEditOpen(false)} disabled={isPending || testing} />
+            <FooterTest onClick={handleTestEdit} disabled={testing || isPending} />
             <FooterSubmit
               onClick={editForm.handleSubmit(handleUpdate)}
-              disabled={isPending}
+              disabled={isPending || testing}
               label={isPending ? 'Saving…' : 'Save Changes'}
             />
           </DialogFooter>

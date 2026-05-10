@@ -77,14 +77,37 @@ model Verification {
 }
 
 model ApicHost {
-  id        String   @id @default(cuid())
+  id        String     @id @default(cuid())
   name      String
   host      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  username  String     @default("")
+  password  String     @default("")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoints Endpoint[]
 
   @@index([userId])
   @@map("apic_host")
+}
+
+model Endpoint {
+  id          String   @id @default(cuid())
+  apicHostId  String
+  apicHost    ApicHost @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  mac         String
+  ip          String
+  vlan        String
+  dn          String
+  node        String
+  interface   String
+  epgDescr    String   @default("")
+  isActive    Boolean  @default(true)
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  @@unique([apicHostId, mac, ip])
+  @@index([apicHostId])
+  @@map("endpoint")
 }

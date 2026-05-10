@@ -31,6 +31,7 @@ import {
   IconMoon,
   IconChevronRight,
   IconRouter,
+  IconDeviceDesktopSearch,
 } from '@tabler/icons-react'
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
@@ -56,6 +57,11 @@ const NAV: { group: string; items: NavItem[] }[] = [
         href: '/apic-hosts',
         label: 'APIC Hosts',
         icon: <IconRouter size={15} stroke={1.75} />,
+      },
+      {
+        href: '/endpoints',
+        label: 'Endpoints',
+        icon: <IconDeviceDesktopSearch size={15} stroke={1.75} />,
       },
       {
         href: '/bridge-domains',
