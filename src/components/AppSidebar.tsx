@@ -180,7 +180,7 @@ export function AppSidebar() {
                 asChild
                 size="sm"
                 isActive={active}
-                className="font-semibold"
+                className="font-normal"
               >
                 <button type="button">
                   <span>{node.label}</span>
