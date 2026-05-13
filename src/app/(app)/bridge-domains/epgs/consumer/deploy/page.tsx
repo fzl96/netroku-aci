@@ -1,5 +1,5 @@
-import { EpgContractWorkflow } from '@/components/EpgContractWorkflow'
+import { redirect } from 'next/navigation'
 
 export default function EpgConsumerDeployPage() {
-  return <EpgContractWorkflow mode="deploy" role="consumer" />
+  redirect('/bridge-domains/epgs/deploy')
 }

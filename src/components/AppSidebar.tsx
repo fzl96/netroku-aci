@@ -96,22 +96,8 @@ const NAV: { group: string; items: NavItem[] }[] = [
         label: 'EPG',
         icon: <IconAffiliate size={15} stroke={1.75} />,
         children: [
-          {
-            label: 'Deploy',
-            children: [
-              { href: '/bridge-domains/epgs/deploy', label: 'EPG' },
-              { href: '/bridge-domains/epgs/consumer/deploy', label: 'Consumed EPG' },
-              { href: '/bridge-domains/epgs/provider/deploy', label: 'Provided EPG' },
-            ],
-          },
-          {
-            label: 'Rollback',
-            children: [
-              { href: '/bridge-domains/epgs/rollback', label: 'EPG' },
-              { href: '/bridge-domains/epgs/consumer/rollback', label: 'Consumed Contract' },
-              { href: '/bridge-domains/epgs/provider/rollback', label: 'Provided Contract' },
-            ],
-          },
+          { href: '/bridge-domains/epgs/deploy', label: 'Deploy' },
+          { href: '/bridge-domains/epgs/rollback', label: 'Rollback' },
         ],
       },
       {

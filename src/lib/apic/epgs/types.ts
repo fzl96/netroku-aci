@@ -7,11 +7,15 @@ export interface EpgRow {
   anp: string
   epg: string
   bd: string
+  consContracts: string[]
+  provContracts: string[]
   epg_desc?: string
 }
 
-export interface EpgContractRow extends EpgRow {
+export interface EpgContractRow extends Omit<EpgRow, 'consContracts' | 'provContracts'> {
   contract: string
+  consContracts?: string[]
+  provContracts?: string[]
 }
 
 export interface ParsedEpgRow extends EpgRow {

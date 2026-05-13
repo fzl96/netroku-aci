@@ -1,4 +1,4 @@
-import type { EpgContractRole, ParsedAnyEpgRow, ParsedEpgContractRow } from './types'
+import type { EpgContractRole, ParsedAnyEpgRow } from './types'
 
 export { buildTenantPath } from '@/lib/apic/common-paths'
 
@@ -53,12 +53,16 @@ export function epgPayload(row: ParsedAnyEpgRow): string {
   })
 }
 
-export function contractAttachmentPayload(row: ParsedEpgContractRow, role: EpgContractRole): string {
+export function contractAttachmentPayload(
+  row: Pick<ParsedAnyEpgRow, 'tenant' | 'anp' | 'epg'>,
+  role: EpgContractRole,
+  contract: string,
+): string {
   const relation = role === 'consumer' ? 'fvRsCons' : 'fvRsProv'
   return JSON.stringify({
     [relation]: {
       attributes: {
-        tnVzBrCPName: row.contract,
+        tnVzBrCPName: contract,
         status: 'created,modified',
       },
       children: [],
@@ -66,20 +70,32 @@ export function contractAttachmentPayload(row: ParsedEpgContractRow, role: EpgCo
   })
 }
 
-export function buildContractRelationDn(row: ParsedEpgContractRow, role: EpgContractRole): string {
-  return `${buildEpgDn(row)}/${role === 'consumer' ? 'rscons' : 'rsprov'}-${row.contract}`
+export function buildContractRelationDn(
+  row: Pick<ParsedAnyEpgRow, 'tenant' | 'anp' | 'epg'>,
+  role: EpgContractRole,
+  contract: string,
+): string {
+  return `${buildEpgDn(row)}/${role === 'consumer' ? 'rscons' : 'rsprov'}-${contract}`
 }
 
-export function buildContractRelationPath(row: ParsedEpgContractRow, role: EpgContractRole): string {
-  return `/api/node/mo/${buildContractRelationDn(row, role)}.json`
+export function buildContractRelationPath(
+  row: Pick<ParsedAnyEpgRow, 'tenant' | 'anp' | 'epg'>,
+  role: EpgContractRole,
+  contract: string,
+): string {
+  return `/api/node/mo/${buildContractRelationDn(row, role, contract)}.json`
 }
 
-export function contractRelationDeletePayload(row: ParsedEpgContractRow, role: EpgContractRole): string {
+export function contractRelationDeletePayload(
+  row: Pick<ParsedAnyEpgRow, 'tenant' | 'anp' | 'epg'>,
+  role: EpgContractRole,
+  contract: string,
+): string {
   const relation = role === 'consumer' ? 'fvRsCons' : 'fvRsProv'
   return JSON.stringify({
     [relation]: {
       attributes: {
-        dn: buildContractRelationDn(row, role),
+        dn: buildContractRelationDn(row, role, contract),
         status: 'deleted',
       },
       children: [],

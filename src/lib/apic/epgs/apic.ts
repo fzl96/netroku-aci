@@ -66,8 +66,32 @@ async function postApic(
   return `${stage} failed (APIC ${res.status}): ${text.slice(0, 200)}`
 }
 
-function epgGroupKey(row: ParsedEpgContractRow): string {
+function epgGroupKey(row: ParsedEpgRow): string {
   return `${row.tenant}|${row.anp}|${row.epg}|${row.bd}`
+}
+
+function legacyContractRowsToEpgRows(rows: ParsedEpgContractRow[], role: EpgContractRole): ParsedEpgRow[] {
+  return rows.map(row => ({
+    rowIndex: row.rowIndex,
+    tenant: row.tenant,
+    anp: row.anp,
+    epg: row.epg,
+    bd: row.bd,
+    epg_desc: row.epg_desc,
+    consContracts: role === 'consumer' ? [row.contract] : [],
+    provContracts: role === 'provider' ? [row.contract] : [],
+  }))
+}
+
+function requestedContracts(row: ParsedEpgRow): { role: EpgContractRole; contract: string }[] {
+  return [
+    ...row.consContracts.map(contract => ({ role: 'consumer' as const, contract })),
+    ...row.provContracts.map(contract => ({ role: 'provider' as const, contract })),
+  ]
+}
+
+function uniqueContracts(row: ParsedEpgRow): string[] {
+  return Array.from(new Set([...row.consContracts, ...row.provContracts]))
 }
 
 export async function validateEpgOnlyDeployRows(
@@ -110,12 +134,11 @@ export async function validateEpgOnlyDeployRows(
 }
 
 export async function validateEpgDeployRows(
-  rows: ParsedEpgContractRow[],
+  rows: ParsedEpgRow[],
   apicHost: string,
   apicToken: string,
-  role: EpgContractRole,
 ): Promise<EpgValidationResult[]> {
-  return runParallel<ParsedEpgContractRow, EpgValidationResult>(rows, 10, async (row) => {
+  return runParallel<ParsedEpgRow, EpgValidationResult>(rows, 10, async (row) => {
     try {
       const tenant = await moExists(apicHost, buildTenantPath(row.tenant), apicToken)
       if (tenant.error) return { rowIndex: row.rowIndex, status: 'error', message: `Tenant check failed: ${tenant.error}` }
@@ -129,9 +152,11 @@ export async function validateEpgDeployRows(
       if (bd.error) return { rowIndex: row.rowIndex, status: 'error', message: `Bridge domain check failed: ${bd.error}` }
       if (!bd.exists) return { rowIndex: row.rowIndex, status: 'error', message: `Bridge domain not found: ${row.tenant}/${row.bd}` }
 
-      const contract = await moExists(apicHost, buildContractPath(row.tenant, row.contract), apicToken)
-      if (contract.error) return { rowIndex: row.rowIndex, status: 'error', message: `Contract check failed: ${contract.error}` }
-      if (!contract.exists) return { rowIndex: row.rowIndex, status: 'error', message: `Contract not found: ${row.tenant}/${row.contract}` }
+      for (const contractName of uniqueContracts(row)) {
+        const contract = await moExists(apicHost, buildContractPath(row.tenant, contractName), apicToken)
+        if (contract.error) return { rowIndex: row.rowIndex, status: 'error', message: `Contract check failed: ${contract.error}` }
+        if (!contract.exists) return { rowIndex: row.rowIndex, status: 'error', message: `Contract not found: ${row.tenant}/${contractName}` }
+      }
 
       const epg = await moExists(apicHost, buildEpgPath(row), apicToken)
       if (epg.error) return { rowIndex: row.rowIndex, status: 'error', message: `EPG check failed: ${epg.error}` }
@@ -149,13 +174,15 @@ export async function validateEpgDeployRows(
         }
       }
 
-      const contractAttached = hasRoleContract(children, row.contract, role)
+      const missingContracts = requestedContracts(row).filter(item =>
+        !hasRoleContract(children, item.contract, item.role)
+      )
       return {
         rowIndex: row.rowIndex,
-        status: existingBd === row.bd && contractAttached ? 'exists' : 'deploy',
-        message: existingBd === row.bd && contractAttached
+        status: existingBd === row.bd && missingContracts.length === 0 ? 'exists' : 'deploy',
+        message: existingBd === row.bd && missingContracts.length === 0
           ? undefined
-          : `EPG exists; missing BD and/or ${role === 'consumer' ? 'consumed' : 'provided'} contract will be updated`,
+          : 'EPG exists; missing contract relations will be updated',
       }
     } catch (err) {
       return {
@@ -189,10 +216,9 @@ export async function deployEpgOnlyRows(
 }
 
 export async function deployEpgRows(
-  rows: ParsedEpgContractRow[],
+  rows: ParsedEpgRow[],
   apicHost: string,
   apicToken: string,
-  role: EpgContractRole,
 ): Promise<EpgDeployResult[]> {
   const groups = Array.from(
     rows.reduce((map, row) => {
@@ -204,10 +230,10 @@ export async function deployEpgRows(
         map.set(key, [row])
       }
       return map
-    }, new Map<string, ParsedEpgContractRow[]>()).values()
+    }, new Map<string, ParsedEpgRow[]>()).values()
   )
 
-  const groupedResults = await runParallel<ParsedEpgContractRow[], EpgDeployResult[]>(groups, 5, async (group) => {
+  const groupedResults = await runParallel<ParsedEpgRow[], EpgDeployResult[]>(groups, 5, async (group) => {
     const [firstRow] = group
     try {
       const epgPath = buildEpgPath(firstRow)
@@ -218,15 +244,19 @@ export async function deployEpgRows(
 
       const results: EpgDeployResult[] = []
       for (const row of group) {
-        const relationError = await postApic(
-          apicHost,
-          epgPath,
-          contractAttachmentPayload(row, role),
-          apicToken,
-          role === 'consumer' ? 'Consumed contract attachment' : 'Provided contract attachment',
-        )
-        results.push(relationError
-          ? { rowIndex: row.rowIndex, success: false, message: relationError }
+        const errors: string[] = []
+        for (const { role, contract } of requestedContracts(row)) {
+          const relationError = await postApic(
+            apicHost,
+            epgPath,
+            contractAttachmentPayload(row, role, contract),
+            apicToken,
+            role === 'consumer' ? 'Consumed contract attachment' : 'Provided contract attachment',
+          )
+          if (relationError) errors.push(relationError)
+        }
+        results.push(errors.length > 0
+          ? { rowIndex: row.rowIndex, success: false, message: errors.join('; ') }
           : { rowIndex: row.rowIndex, success: true }
         )
       }
@@ -249,6 +279,24 @@ export async function deployEpgRows(
   })
 }
 
+export async function validateLegacyEpgContractDeployRows(
+  rows: ParsedEpgContractRow[],
+  apicHost: string,
+  apicToken: string,
+  role: EpgContractRole,
+): Promise<EpgValidationResult[]> {
+  return validateEpgDeployRows(legacyContractRowsToEpgRows(rows, role), apicHost, apicToken)
+}
+
+export async function deployLegacyEpgContractRows(
+  rows: ParsedEpgContractRow[],
+  apicHost: string,
+  apicToken: string,
+  role: EpgContractRole,
+): Promise<EpgDeployResult[]> {
+  return deployEpgRows(legacyContractRowsToEpgRows(rows, role), apicHost, apicToken)
+}
+
 export async function validateEpgRollbackRows(
   rows: ParsedEpgRow[],
   apicHost: string,
@@ -263,8 +311,17 @@ export async function validateEpgRollbackRows(
       const childrenState = await readEpgChildren(apicHost, apicToken, row)
       if (childrenState.error) return { rowIndex: row.rowIndex, status: 'error', message: childrenState.error }
 
-      const mismatch = validateEpgState(row, childrenState.children ?? [])
+      const children = childrenState.children ?? []
+      const mismatch = validateEpgState(row, children)
       if (mismatch) return { rowIndex: row.rowIndex, status: 'error', message: mismatch }
+
+      const contracts = requestedContracts(row)
+      if (contracts.length > 0) {
+        const existingContracts = contracts.filter(item =>
+          hasRoleContract(children, item.contract, item.role)
+        )
+        return { rowIndex: row.rowIndex, status: existingContracts.length > 0 ? 'rollback' : 'missing' }
+      }
 
       return { rowIndex: row.rowIndex, status: 'rollback' }
     } catch (err) {
@@ -284,6 +341,33 @@ export async function rollbackEpgRows(
 ): Promise<EpgDeployResult[]> {
   return runParallel<ParsedEpgRow, EpgDeployResult>(rows, 5, async (row) => {
     try {
+      const contracts = requestedContracts(row)
+      if (contracts.length > 0) {
+        const childrenState = await readEpgChildren(apicHost, apicToken, row)
+        if (childrenState.error) return { rowIndex: row.rowIndex, success: false, message: childrenState.error }
+        const children = childrenState.children ?? []
+        const mismatch = validateEpgState(row, children)
+        if (mismatch) return { rowIndex: row.rowIndex, success: false, message: mismatch }
+
+        const errors: string[] = []
+        for (const { role, contract } of contracts) {
+          if (!hasRoleContract(children, contract, role)) continue
+          const res = await apicFetch(apicHost, buildContractRelationPath(row, role, contract), {
+            method: 'POST',
+            body: contractRelationDeletePayload(row, role, contract),
+            token: apicToken,
+          })
+          if (!res.ok) {
+            const text = await res.text()
+            errors.push(`${role} contract ${contract} failed (APIC ${res.status}): ${text.slice(0, 200)}`)
+          }
+        }
+
+        return errors.length > 0
+          ? { rowIndex: row.rowIndex, success: false, message: errors.join('; ') }
+          : { rowIndex: row.rowIndex, success: true }
+      }
+
       const res = await apicFetch(apicHost, buildEpgPath(row), {
         method: 'POST',
         body: epgDeletePayload(row),
@@ -310,32 +394,7 @@ export async function validateEpgContractRollbackRows(
   apicToken: string,
   role: EpgContractRole,
 ): Promise<EpgValidationResult[]> {
-  return runParallel<ParsedEpgContractRow, EpgValidationResult>(rows, 10, async (row) => {
-    try {
-      const epg = await moExists(apicHost, buildEpgPath(row), apicToken)
-      if (epg.error) return { rowIndex: row.rowIndex, status: 'error', message: `EPG check failed: ${epg.error}` }
-      if (!epg.exists) return { rowIndex: row.rowIndex, status: 'missing' }
-
-      const childrenState = await readEpgChildren(apicHost, apicToken, row)
-      if (childrenState.error) return { rowIndex: row.rowIndex, status: 'error', message: childrenState.error }
-      const children = childrenState.children ?? []
-
-      const stateError = validateEpgState(row, children)
-      if (stateError) return { rowIndex: row.rowIndex, status: 'error', message: stateError }
-
-      if (!hasRoleContract(children, row.contract, role)) {
-        return { rowIndex: row.rowIndex, status: 'missing' }
-      }
-
-      return { rowIndex: row.rowIndex, status: 'rollback' }
-    } catch (err) {
-      return {
-        rowIndex: row.rowIndex,
-        status: 'error',
-        message: err instanceof Error ? err.message : 'Network error',
-      }
-    }
-  })
+  return validateEpgRollbackRows(legacyContractRowsToEpgRows(rows, role), apicHost, apicToken)
 }
 
 export async function rollbackEpgContractRows(
@@ -344,24 +403,5 @@ export async function rollbackEpgContractRows(
   apicToken: string,
   role: EpgContractRole,
 ): Promise<EpgDeployResult[]> {
-  return runParallel<ParsedEpgContractRow, EpgDeployResult>(rows, 5, async (row) => {
-    try {
-      const res = await apicFetch(apicHost, buildContractRelationPath(row, role), {
-        method: 'POST',
-        body: contractRelationDeletePayload(row, role),
-        token: apicToken,
-      })
-      if (!res.ok) {
-        const text = await res.text()
-        return { rowIndex: row.rowIndex, success: false, message: `APIC ${res.status}: ${text.slice(0, 200)}` }
-      }
-      return { rowIndex: row.rowIndex, success: true }
-    } catch (err) {
-      return {
-        rowIndex: row.rowIndex,
-        success: false,
-        message: err instanceof Error ? err.message : 'Network error',
-      }
-    }
-  })
+  return rollbackEpgRows(legacyContractRowsToEpgRows(rows, role), apicHost, apicToken)
 }

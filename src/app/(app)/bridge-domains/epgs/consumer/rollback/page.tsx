@@ -1,5 +1,5 @@
-import { EpgContractWorkflow } from '@/components/EpgContractWorkflow'
+import { redirect } from 'next/navigation'
 
 export default function EpgConsumedContractRollbackPage() {
-  return <EpgContractWorkflow mode="rollback" role="consumer" />
+  redirect('/bridge-domains/epgs/rollback')
 }

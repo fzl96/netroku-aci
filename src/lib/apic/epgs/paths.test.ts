@@ -45,8 +45,8 @@ describe('EPG payloads', () => {
   })
 
   it('builds consumed and provided contract payloads', () => {
-    const consumed = JSON.parse(contractAttachmentPayload(row, 'consumer'))
-    const provided = JSON.parse(contractAttachmentPayload(row, 'provider'))
+    const consumed = JSON.parse(contractAttachmentPayload(row, 'consumer', 'WEB-CONTRACT'))
+    const provided = JSON.parse(contractAttachmentPayload(row, 'provider', 'WEB-CONTRACT'))
 
     expect(consumed.fvRsCons.attributes).toMatchObject({
       tnVzBrCPName: 'WEB-CONTRACT',
@@ -59,10 +59,10 @@ describe('EPG payloads', () => {
   })
 
   it('builds consumed and provided contract delete payloads', () => {
-    const consumed = JSON.parse(contractRelationDeletePayload(row, 'consumer'))
-    const provided = JSON.parse(contractRelationDeletePayload(row, 'provider'))
+    const consumed = JSON.parse(contractRelationDeletePayload(row, 'consumer', 'WEB-CONTRACT'))
+    const provided = JSON.parse(contractRelationDeletePayload(row, 'provider', 'WEB-CONTRACT'))
 
-    expect(buildContractRelationPath(row, 'consumer')).toBe('/api/node/mo/uni/tn-TenantA/ap-APP-A/epg-WEB-EPG/rscons-WEB-CONTRACT.json')
+    expect(buildContractRelationPath(row, 'consumer', 'WEB-CONTRACT')).toBe('/api/node/mo/uni/tn-TenantA/ap-APP-A/epg-WEB-EPG/rscons-WEB-CONTRACT.json')
     expect(consumed.fvRsCons.attributes).toEqual({
       dn: 'uni/tn-TenantA/ap-APP-A/epg-WEB-EPG/rscons-WEB-CONTRACT',
       status: 'deleted',

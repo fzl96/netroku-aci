@@ -6,6 +6,7 @@ A Next.js web app for bulk provisioning Cisco ACI access policy and fabric bindi
 
 - **CSV drag-and-drop** — upload a spreadsheet, get instant validation feedback before anything is sent to APIC
 - **Deploy + Rollback** — every feature includes a rollback flow using the same CSV
+- **EPG + contract workflows** — create EPGs, bind them to bridge domains, and attach consumed/provided contracts
 - **Parallel execution** — 10 concurrent checks during validate, 5 during deploy
 - **Session-aware** — detects expired APIC tokens and prompts reconnect
 - **TLS bypass** — works with self-signed APIC certificates out of the box
@@ -151,6 +152,43 @@ TenantA,VLAN1411-BD,TenantA-VRF,10.14.11.1/24,WAN-L3OUT,L3 bridge domain
 
 ---
 
+## EPGs
+
+Bulk deploy and rollback `fvAEPg` objects under existing tenants and application profiles. Each row creates or updates one EPG, binds it to an existing bridge domain, and can attach multiple consumed (`fvRsCons`) and provided (`fvRsProv`) contracts.
+
+### Validation checks (per row)
+
+1. Tenant exists in APIC
+2. Application Profile / ANP exists in the tenant
+3. Bridge Domain exists in the tenant
+4. Optional consumed/provided contracts exist in the tenant
+5. Existing EPG is either reusable with the same Bridge Domain, or rejected if it points to a different Bridge Domain
+6. Existing contract relations are treated as idempotent; missing relations are queued for deploy
+
+For rollback, rows with contract columns remove only the selected consumed/provided contract relations. Rows without contract columns delete the EPG itself.
+
+### CSV Format
+
+| Column | Description | Example |
+|---|---|---|
+| `tenant` | Existing tenant name | `TenantA` |
+| `anp` | Existing Application Profile / ANP name (`ap` is also accepted) | `APP-A` |
+| `epg` | EPG name to create, update, or remove | `WEB-EPG` |
+| `bd` | Existing Bridge Domain name to bind | `WEB-BD` |
+| `cons_contract` | Optional comma-separated consumed contracts | `WEB-CONTRACT,API-CONTRACT` |
+| `prov_contract` | Optional comma-separated provided contracts | `DB-CONTRACT` |
+| `epg_desc` | Optional EPG description | `Web frontend EPG` |
+
+### Example
+
+```csv
+tenant,anp,epg,bd,cons_contract,prov_contract,epg_desc
+TenantA,APP-A,WEB-EPG,WEB-BD,"WEB-CONTRACT,API-CONTRACT",,Web frontend EPG
+TenantA,APP-A,DB-EPG,DB-BD,,DB-CONTRACT,Database EPG
+```
+
+---
+
 ## Architecture
 
 ```
@@ -178,6 +216,10 @@ All APIC traffic is proxied through Next.js route handlers to avoid CORS. The AP
 | `POST /api/apic/bridge-domains/l3/deploy` | Deploy L3 Bridge Domains, subnets, and L3Out attachment |
 | `POST /api/apic/bridge-domains/l3/validate-rollback` | Check which L3 Bridge Domains exist and match rollback intent |
 | `POST /api/apic/bridge-domains/l3/rollback` | Remove L3 Bridge Domains |
+| `POST /api/apic/bridge-domains/epgs/validate` | Validate EPG rows, Bridge Domain binding, and optional contracts |
+| `POST /api/apic/bridge-domains/epgs/deploy` | Deploy EPGs and attach consumed/provided contracts |
+| `POST /api/apic/bridge-domains/epgs/rollback/validate` | Check which EPGs or contract relations can be removed |
+| `POST /api/apic/bridge-domains/epgs/rollback` | Delete EPGs or remove selected consumed/provided contract relations |
 
 ## Running Tests
 
@@ -189,6 +231,7 @@ Tests cover path construction, CSV validation, and the parallel runner.
 
 ## Notes
 
-- The app **does not create tenants, APs, EPGs, or interface profiles** — these must already exist in APIC
+- The app **does not create tenants, APs/ANPs, VRFs, contracts, L3Outs, or interface profiles** — these must already exist in APIC
+- The EPG workflow creates EPGs and binds them to existing Bridge Domains; static port binding still expects the target EPG to exist first
 - For static ports, the EPG must have a **physical domain attached** with the target VLANs in its VLAN pool
 - APIC session tokens expire after **600 seconds** (10 minutes) by default — reconnect if validation or deploy starts returning 401 errors
