@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { IconRefresh, IconSearch, IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
@@ -57,6 +57,15 @@ function TableSkeleton() {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+type PageSizeValue = 10 | 50 | 100 | 1000 | 'all'
+const PAGE_SIZE_OPTIONS: { label: string; value: PageSizeValue }[] = [
+  { label: '10', value: 10 },
+  { label: '50', value: 50 },
+  { label: '100', value: 100 },
+  { label: '1000', value: 1000 },
+  { label: 'All', value: 'all' },
+]
+
 interface Props {
   apicHosts: SafeApicHost[]
   endpoints: Endpoint[]
@@ -64,7 +73,9 @@ interface Props {
   query: string
   page: number
   total: number
-  pageSize: number
+  pageSize: PageSizeValue
+  activeTotal: number
+  historicalTotal: number
 }
 
 export function EndpointsClient({
@@ -75,26 +86,36 @@ export function EndpointsClient({
   page,
   total,
   pageSize,
+  activeTotal,
+  historicalTotal,
 }: Props) {
   const router = useRouter()
   const [syncing, setSyncing] = useState(false)
   const [isPending, startTransition] = useTransition()
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [searchValue, setSearchValue] = useState(query)
+  const [jumpValue, setJumpValue] = useState('')
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1
-  const rangeEnd = Math.min(page * pageSize, total)
+  // Sync input when query changes via back/forward navigation
+  useEffect(() => { setSearchValue(query) }, [query])
+
+  const effectivePageSize = pageSize === 'all' ? Math.max(total, 1) : pageSize
+  const totalPages = Math.max(1, Math.ceil(total / effectivePageSize))
+  const rangeStart = total === 0 ? 0 : (page - 1) * effectivePageSize + 1
+  const rangeEnd = pageSize === 'all' ? total : Math.min(page * effectivePageSize, total)
   const loading = isPending || syncing
 
-  function buildUrl(overrides: { apic?: string; query?: string; page?: number }) {
+  function buildUrl(overrides: { apic?: string; query?: string; page?: number; pageSize?: PageSizeValue }) {
     const params = new URLSearchParams()
     const apic = overrides.apic ?? selectedHostId
     const q = overrides.query !== undefined ? overrides.query : query
     const p = overrides.page ?? page
+    const ps = overrides.pageSize !== undefined ? overrides.pageSize : pageSize
 
     if (apic) params.set('apic', apic)
     if (q.trim()) params.set('query', q.trim())
     if (p > 1) params.set('page', String(p))
+    if (ps !== 50) params.set('pageSize', String(ps))
     const qs = params.toString()
     return `/endpoints${qs ? `?${qs}` : ''}`
   }
@@ -106,6 +127,7 @@ export function EndpointsClient({
   }
 
   function handleSearchChange(value: string) {
+    setSearchValue(value)
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
       startTransition(() => {
@@ -118,6 +140,21 @@ export function EndpointsClient({
     startTransition(() => {
       router.replace(buildUrl({ page: next }))
     })
+  }
+
+  function handlePageSizeChange(ps: PageSizeValue) {
+    startTransition(() => {
+      router.replace(buildUrl({ pageSize: ps, page: 1 }))
+    })
+  }
+
+  function handleJump(e: React.FormEvent) {
+    e.preventDefault()
+    const p = parseInt(jumpValue, 10)
+    if (p >= 1 && p <= totalPages) {
+      handlePage(p)
+    }
+    setJumpValue('')
   }
 
   async function handleResync() {
@@ -203,11 +240,9 @@ export function EndpointsClient({
                   stroke={1.75}
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-faint)] pointer-events-none"
                 />
-                {/* key=query resets the uncontrolled input when navigating back/forward */}
                 <input
-                  key={query}
                   type="text"
-                  defaultValue={query}
+                  value={searchValue}
                   onChange={e => handleSearchChange(e.target.value)}
                   placeholder="Search MAC, IP, VLAN, node…"
                   className={SEARCH_INPUT_CLS}
@@ -217,14 +252,14 @@ export function EndpointsClient({
               <div className="flex items-center gap-3 shrink-0 text-xs text-[var(--text-subtle)]">
                 <span>
                   <span className="font-semibold text-[var(--success-text)]">
-                    {endpoints.filter(e => e.isActive).length}
+                    {activeTotal}
                   </span>{' '}
                   active
                 </span>
                 <span className="text-[var(--border)]">·</span>
                 <span>
                   <span className="font-semibold text-[var(--text)]">
-                    {endpoints.filter(e => !e.isActive).length}
+                    {historicalTotal}
                   </span>{' '}
                   historical
                 </span>
@@ -299,31 +334,80 @@ export function EndpointsClient({
             </div>
 
             {/* Pagination */}
-            {total > pageSize && (
-              <div className="flex items-center justify-between pt-1">
-                <p className="text-xs text-[var(--text-subtle)]">
-                  Showing {rangeStart}–{rangeEnd} of {total} endpoints
+            {total > 0 && (
+              <div className="flex items-center justify-between pt-1 gap-4">
+                <p className="text-xs text-[var(--text-subtle)] shrink-0">
+                  {pageSize === 'all'
+                    ? `Showing all ${total} endpoints`
+                    : `Showing ${rangeStart}–${rangeEnd} of ${total} endpoints`}
                 </p>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => handlePage(page - 1)}
-                    disabled={page <= 1 || isPending}
-                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-alt)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <IconChevronLeft size={12} stroke={1.75} />
-                    Prev
-                  </button>
-                  <span className="px-3 py-1.5 text-xs text-[var(--text-subtle)]">
-                    {page} / {totalPages}
-                  </span>
-                  <button
-                    onClick={() => handlePage(page + 1)}
-                    disabled={page >= totalPages || isPending}
-                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-alt)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Next
-                    <IconChevronRight size={12} stroke={1.75} />
-                  </button>
+
+                <div className="flex items-center gap-2">
+                  {/* Page size selector */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-[var(--text-faint)]">Per page</span>
+                    <select
+                      value={String(pageSize)}
+                      onChange={e => handlePageSizeChange(e.target.value === 'all' ? 'all' : Number(e.target.value) as PageSizeValue)}
+                      disabled={isPending}
+                      className="text-xs bg-[var(--surface-alt)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-[var(--text)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 disabled:opacity-40"
+                    >
+                      {PAGE_SIZE_OPTIONS.map(o => (
+                        <option key={String(o.value)} value={String(o.value)}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Prev / page indicator / jump / next */}
+                  {pageSize !== 'all' && totalPages > 1 && (
+                    <>
+                      <div className="w-px h-4 bg-[var(--border)]" />
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handlePage(page - 1)}
+                          disabled={page <= 1 || isPending}
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-alt)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <IconChevronLeft size={12} stroke={1.75} />
+                          Prev
+                        </button>
+
+                        <span className="px-2 py-1.5 text-xs text-[var(--text-subtle)] tabular-nums">
+                          {page} / {totalPages}
+                        </span>
+
+                        <button
+                          onClick={() => handlePage(page + 1)}
+                          disabled={page >= totalPages || isPending}
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-alt)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Next
+                          <IconChevronRight size={12} stroke={1.75} />
+                        </button>
+
+                        <div className="w-px h-4 bg-[var(--border)]" />
+
+                        <form onSubmit={handleJump} className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min={1}
+                            max={totalPages}
+                            value={jumpValue}
+                            onChange={e => setJumpValue(e.target.value)}
+                            placeholder="Go to…"
+                            className="w-20 text-xs bg-[var(--surface-alt)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-[var(--text)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                          <button
+                            type="submit"
+                            disabled={!jumpValue || isPending}
+                            className="px-2.5 py-1.5 text-xs rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-alt)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            Go
+                          </button>
+                        </form>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}
