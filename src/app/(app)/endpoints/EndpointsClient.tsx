@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { IconRefresh, IconSearch, IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
+import { IconRefresh, IconSearch, IconChevronLeft, IconChevronRight, IconChevronDown, IconX } from '@tabler/icons-react'
 import type { SafeApicHost } from '@/actions/apic-hosts'
 import type { Endpoint } from '@prisma/client'
 import { SEARCH_INPUT_CLS } from '@/lib/ui-classes'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -55,6 +57,85 @@ function TableSkeleton() {
   )
 }
 
+// ─── Filter combobox ──────────────────────────────────────────────────────────
+
+function FilterCombobox({
+  label,
+  value,
+  options,
+  onChange,
+  disabled,
+}: {
+  label: string
+  value: string[]
+  options: string[]
+  onChange: (value: string[]) => void
+  disabled?: boolean
+}) {
+  const [open, setOpen] = useState(false)
+
+  function toggle(opt: string) {
+    onChange(value.includes(opt) ? value.filter(v => v !== opt) : [...value, opt])
+  }
+
+  const displayLabel = value.length === 0
+    ? label
+    : value.length === 1
+      ? value[0]
+      : `${label} (${value.length})`
+
+  const active = value.length > 0
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          disabled={disabled || options.length === 0}
+          className={[
+            'flex items-center gap-1.5 text-xs rounded-lg px-2.5 py-2 border transition-colors outline-none shrink-0',
+            'focus-visible:ring-2 focus-visible:ring-[var(--accent)]/20 disabled:opacity-40 disabled:cursor-not-allowed',
+            active
+              ? 'border-[var(--accent)] bg-[var(--accent)]/8 text-[var(--text)]'
+              : 'border-[var(--border)] bg-[var(--surface-alt)] text-[var(--text-muted)]',
+          ].join(' ')}
+        >
+          <span className="max-w-[100px] truncate">{displayLabel}</span>
+          {active ? (
+            <span
+              className="flex items-center"
+              onClick={e => { e.stopPropagation(); onChange([]) }}
+            >
+              <IconX size={11} stroke={2} className="text-[var(--text-faint)] hover:text-[var(--text)]" />
+            </span>
+          ) : (
+            <IconChevronDown size={11} stroke={2} className="text-[var(--text-faint)]" />
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-52 p-0" align="start">
+        <Command>
+          <CommandInput placeholder={`Search ${label.toLowerCase()}…`} />
+          <CommandList>
+            <CommandEmpty>No results</CommandEmpty>
+            <CommandGroup>
+              {options.map(opt => (
+                <CommandItem
+                  key={opt}
+                  value={opt}
+                  data-checked={String(value.includes(opt))}
+                  onSelect={() => toggle(opt)}
+                >
+                  {opt}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 type PageSizeValue = 10 | 50 | 100 | 1000 | 'all'
@@ -71,6 +152,13 @@ interface Props {
   endpoints: Endpoint[]
   selectedHostId: string
   query: string
+  filterVlan: string[]
+  filterNode: string[]
+  filterIface: string[]
+  filterStatus: string[]
+  vlans: string[]
+  nodes: string[]
+  ifaces: string[]
   page: number
   total: number
   pageSize: PageSizeValue
@@ -83,6 +171,13 @@ export function EndpointsClient({
   endpoints,
   selectedHostId,
   query,
+  filterVlan,
+  filterNode,
+  filterIface,
+  filterStatus,
+  vlans,
+  nodes,
+  ifaces,
   page,
   total,
   pageSize,
@@ -105,17 +200,25 @@ export function EndpointsClient({
   const rangeEnd = pageSize === 'all' ? total : Math.min(page * effectivePageSize, total)
   const loading = isPending || syncing
 
-  function buildUrl(overrides: { apic?: string; query?: string; page?: number; pageSize?: PageSizeValue }) {
+  function buildUrl(overrides: { apic?: string; query?: string; page?: number; pageSize?: PageSizeValue; vlan?: string[]; node?: string[]; iface?: string[]; status?: string[] }) {
     const params = new URLSearchParams()
     const apic = overrides.apic ?? selectedHostId
     const q = overrides.query !== undefined ? overrides.query : query
     const p = overrides.page ?? page
     const ps = overrides.pageSize !== undefined ? overrides.pageSize : pageSize
+    const fv = overrides.vlan !== undefined ? overrides.vlan : filterVlan
+    const fn = overrides.node !== undefined ? overrides.node : filterNode
+    const fi = overrides.iface !== undefined ? overrides.iface : filterIface
+    const fs = overrides.status !== undefined ? overrides.status : filterStatus
 
     if (apic) params.set('apic', apic)
     if (q.trim()) params.set('query', q.trim())
     if (p > 1) params.set('page', String(p))
     if (ps !== 50) params.set('pageSize', String(ps))
+    if (fv.length > 0) params.set('vlan', fv.join(','))
+    if (fn.length > 0) params.set('node', fn.join(','))
+    if (fi.length > 0) params.set('iface', fi.join(','))
+    if (fs.length > 0 && fs.length < 2) params.set('status', fs[0])
     const qs = params.toString()
     return `/endpoints${qs ? `?${qs}` : ''}`
   }
@@ -139,6 +242,12 @@ export function EndpointsClient({
   function handlePage(next: number) {
     startTransition(() => {
       router.replace(buildUrl({ page: next }))
+    })
+  }
+
+  function handleFilterChange(key: 'vlan' | 'node' | 'iface' | 'status', value: string[]) {
+    startTransition(() => {
+      router.replace(buildUrl({ [key]: value, page: 1 }))
     })
   }
 
@@ -232,21 +341,30 @@ export function EndpointsClient({
           </div>
         ) : (
           <>
-            {/* Search + stats row */}
+            {/* Search + filters + stats row */}
             <div className="flex items-center justify-between gap-4">
-              <div className="relative max-w-xs w-full">
-                <IconSearch
-                  size={13}
-                  stroke={1.75}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-faint)] pointer-events-none"
-                />
-                <input
-                  type="text"
-                  value={searchValue}
-                  onChange={e => handleSearchChange(e.target.value)}
-                  placeholder="Search MAC, IP, VLAN, node…"
-                  className={SEARCH_INPUT_CLS}
-                />
+              <div className="flex items-center gap-2 min-w-0">
+                {/* Search */}
+                <div className="relative w-56 shrink-0">
+                  <IconSearch
+                    size={13}
+                    stroke={1.75}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-faint)] pointer-events-none"
+                  />
+                  <input
+                    type="text"
+                    value={searchValue}
+                    onChange={e => handleSearchChange(e.target.value)}
+                    placeholder="Search MAC, IP, VLAN…"
+                    className={SEARCH_INPUT_CLS}
+                  />
+                </div>
+
+                {/* Filter comboboxes */}
+                <FilterCombobox label="VLAN" value={filterVlan} options={vlans} onChange={v => handleFilterChange('vlan', v)} disabled={isPending} />
+                <FilterCombobox label="Node" value={filterNode} options={nodes} onChange={v => handleFilterChange('node', v)} disabled={isPending} />
+                <FilterCombobox label="Interface" value={filterIface} options={ifaces} onChange={v => handleFilterChange('iface', v)} disabled={isPending} />
+                <FilterCombobox label="Status" value={filterStatus} options={['active', 'historical']} onChange={v => handleFilterChange('status', v)} disabled={isPending} />
               </div>
 
               <div className="flex items-center gap-3 shrink-0 text-xs text-[var(--text-subtle)]">
@@ -276,10 +394,10 @@ export function EndpointsClient({
             >
               {endpoints.length === 0 && !isPending ? (
                 <div className="px-4 py-14 text-center">
-                  {query ? (
+                  {query || filterVlan.length > 0 || filterNode.length > 0 || filterIface.length > 0 || filterStatus.length > 0 ? (
                     <>
-                      <p className="text-sm text-[var(--text-subtle)]">No endpoints match &ldquo;{query}&rdquo;</p>
-                      <p className="text-xs text-[var(--text-faint)] mt-1">Try a different search term</p>
+                      <p className="text-sm text-[var(--text-subtle)]">No endpoints match the current filters</p>
+                      <p className="text-xs text-[var(--text-faint)] mt-1">Try adjusting the search or filter values</p>
                     </>
                   ) : (
                     <>
