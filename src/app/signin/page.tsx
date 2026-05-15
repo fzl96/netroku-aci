@@ -28,9 +28,9 @@ export default function SignInPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 p-6">
-      <h1 className="text-2xl font-semibold text-[var(--text)]">Sign in</h1>
+      <h1 className="text-2xl font-semibold text-foreground">Sign in</h1>
       <form onSubmit={onSubmit} className="flex flex-col gap-3">
-        <label className="flex flex-col gap-1 text-sm text-[var(--text)]">
+        <label className="flex flex-col gap-1 text-sm text-foreground">
           Username
           <input
             className={INPUT_CLS}
@@ -40,7 +40,7 @@ export default function SignInPage() {
             autoComplete="username"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm text-[var(--text)]">
+        <label className="flex flex-col gap-1 text-sm text-foreground">
           Password
           <input
             type="password"
@@ -51,18 +51,18 @@ export default function SignInPage() {
             autoComplete="current-password"
           />
         </label>
-        {error && <p className="text-sm text-[var(--error-text)]">{error}</p>}
+        {error && <p className="text-sm text-error">{error}</p>}
         <button
           type="submit"
           disabled={loading}
-          className="rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-white hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? "Signing in…" : "Sign in"}
         </button>
       </form>
-      <p className="text-sm text-[var(--text-subtle)]">
+      <p className="text-sm text-subtle">
         Need an account?{" "}
-        <Link href="/signup" className="underline text-[var(--text)]">
+        <Link href="/signup" className="underline text-foreground">
           Sign up
         </Link>
       </p>

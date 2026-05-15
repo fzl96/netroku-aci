@@ -18,14 +18,14 @@ type EpgValidator = (
 ) => { rows: ParsedEpgRow[]; errors: CsvValidationError[] }
 
 const EPG_COLUMNS: PreviewColumn<ParsedEpgRow>[] = [
-  { header: '#', cell: (_r, i) => i + 1, className: 'font-mono text-[var(--text-faint)] tabular-nums select-none' },
-  { header: 'Tenant', cell: r => r.tenant, className: 'text-[var(--text)]' },
-  { header: 'ANP', cell: r => r.anp, className: 'font-mono text-[var(--text)]' },
-  { header: 'EPG', cell: r => r.epg, className: 'font-mono text-[var(--text)]' },
-  { header: 'Bridge Domain', cell: r => r.bd, className: 'font-mono text-[var(--text)]' },
-  { header: 'Consumed Contracts', cell: r => r.consContracts.join(', '), className: 'font-mono text-[var(--text)]' },
-  { header: 'Provided Contracts', cell: r => r.provContracts.join(', '), className: 'font-mono text-[var(--text)]' },
-  { header: 'Description', cell: r => r.epg_desc ?? '', className: 'text-[var(--text-subtle)]' },
+  { header: '#', cell: (_r, i) => i + 1, className: 'font-mono text-faint tabular-nums select-none' },
+  { header: 'Tenant', cell: r => r.tenant, className: 'text-foreground' },
+  { header: 'ANP', cell: r => r.anp, className: 'font-mono text-foreground' },
+  { header: 'EPG', cell: r => r.epg, className: 'font-mono text-foreground' },
+  { header: 'Bridge Domain', cell: r => r.bd, className: 'font-mono text-foreground' },
+  { header: 'Consumed Contracts', cell: r => r.consContracts.join(', '), className: 'font-mono text-foreground' },
+  { header: 'Provided Contracts', cell: r => r.provContracts.join(', '), className: 'font-mono text-foreground' },
+  { header: 'Description', cell: r => r.epg_desc ?? '', className: 'text-subtle' },
 ]
 
 function rowLabel(row: ParsedEpgRow): string {

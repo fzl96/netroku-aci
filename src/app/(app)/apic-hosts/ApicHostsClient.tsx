@@ -72,7 +72,7 @@ function ApicHostForm({
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-xs font-medium text-[var(--text)]">
+              <FormLabel className="text-xs font-medium text-foreground">
                 Display Name
               </FormLabel>
               <FormControl>
@@ -92,7 +92,7 @@ function ApicHostForm({
           name="host"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-xs font-medium text-[var(--text)]">
+              <FormLabel className="text-xs font-medium text-foreground">
                 Host / IP Address
               </FormLabel>
               <FormControl>
@@ -102,7 +102,7 @@ function ApicHostForm({
                   {...field}
                 />
               </FormControl>
-              <FormDescription className="text-[11px] text-[var(--text-subtle)]">
+              <FormDescription className="text-[11px] text-subtle">
                 IP address or fully qualified hostname of the APIC controller
               </FormDescription>
               <FormMessage className="text-xs" />
@@ -115,7 +115,7 @@ function ApicHostForm({
             name="username"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-xs font-medium text-[var(--text)]">
+                <FormLabel className="text-xs font-medium text-foreground">
                   APIC Username
                 </FormLabel>
                 <FormControl>
@@ -134,8 +134,8 @@ function ApicHostForm({
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-xs font-medium text-[var(--text)]">
-                  APIC Password{isEdit && <span className="text-[var(--text-faint)] font-normal"> (leave blank to keep)</span>}
+                <FormLabel className="text-xs font-medium text-foreground">
+                  APIC Password{isEdit && <span className="text-faint font-normal"> (leave blank to keep)</span>}
                 </FormLabel>
                 <FormControl>
                   <Input
@@ -163,7 +163,7 @@ function FooterTest({ onClick, disabled }: { onClick: () => void; disabled?: boo
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="text-sm text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] transition-colors px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+      className="text-sm text-muted-foreground hover:text-foreground border border-border transition-colors px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {disabled ? 'Testing…' : 'Test Connection'}
     </button>
@@ -176,7 +176,7 @@ function FooterCancel({ onClick, disabled }: { onClick: () => void; disabled?: b
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors px-4 py-2 disabled:opacity-50"
+      className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2 disabled:opacity-50"
     >
       Cancel
     </button>
@@ -195,7 +195,7 @@ function FooterSubmit({ form, onClick, disabled, label }: {
       form={form}
       onClick={onClick}
       disabled={disabled}
-      className="bg-[var(--accent)] text-white text-sm font-semibold px-5 py-2 rounded-lg hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+      className="bg-primary text-primary-foreground text-sm font-semibold px-5 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
     >
       {label}
     </button>
@@ -325,20 +325,20 @@ export function ApicHostsClient({ initialHosts }: { initialHosts: SafeApicHost[]
   }
 
   return (
-    <div className="min-h-full bg-[var(--bg)]">
+    <div className="min-h-full bg-background">
       {/* Page header */}
-      <div className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--bg)]/90 backdrop-blur-sm">
+      <div className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur-sm">
         <div className="px-8 py-4 flex items-center justify-between">
           <div>
-            <h1 className="font-serif text-[18px] font-semibold text-[var(--text)]">APIC Hosts</h1>
-            <p className="text-xs text-[var(--text-subtle)] mt-0.5">Manage APIC controller endpoints</p>
+            <h1 className="font-serif text-[18px] font-semibold text-foreground">APIC Hosts</h1>
+            <p className="text-xs text-subtle mt-0.5">Manage APIC controller endpoints</p>
           </div>
           <button
             onClick={() => {
               createForm.reset()
               setCreateOpen(true)
             }}
-            className="flex items-center gap-1.5 bg-[var(--accent)] text-white text-xs font-semibold px-3.5 py-2 rounded-lg hover:bg-[var(--accent-hover)] transition-colors shadow-sm"
+            className="flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3.5 py-2 rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
           >
             <IconPlus size={11} stroke={1.75} />
             Add Host
@@ -349,17 +349,17 @@ export function ApicHostsClient({ initialHosts }: { initialHosts: SafeApicHost[]
       <div className="px-8 py-6 space-y-6">
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4">
-          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl px-5 py-4 animate-fade-up">
-            <p className="text-[11px] text-[var(--text-subtle)]">Total Hosts</p>
-            <p className="text-[28px] font-semibold text-[var(--text)] leading-none mt-2 font-serif tabular-nums">
+          <div className="bg-card border border-border rounded-xl px-5 py-4 animate-fade-up">
+            <p className="text-[11px] text-subtle">Total Hosts</p>
+            <p className="text-[28px] font-semibold text-foreground leading-none mt-2 font-serif tabular-nums">
               {hosts.length}
             </p>
-            <p className="text-[11px] text-[var(--text-faint)] mt-1.5">registered controllers</p>
+            <p className="text-[11px] text-faint mt-1.5">registered controllers</p>
           </div>
         </div>
 
         {/* Table card */}
-        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-sm animate-fade-up">
+        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm animate-fade-up">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
@@ -367,7 +367,7 @@ export function ApicHostsClient({ initialHosts }: { initialHosts: SafeApicHost[]
                   {['Name', 'Host', 'Added', ''].map(h => (
                     <th
                       key={h}
-                      className="text-left px-4 pt-3 pb-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--text-faint)] whitespace-nowrap border-b border-[var(--border)]"
+                      className="text-left px-4 pt-3 pb-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-faint whitespace-nowrap border-b border-border"
                     >
                       {h}
                     </th>
@@ -378,8 +378,8 @@ export function ApicHostsClient({ initialHosts }: { initialHosts: SafeApicHost[]
                 {hosts.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-4 py-14 text-center">
-                      <p className="text-sm text-[var(--text-subtle)]">No APIC hosts yet</p>
-                      <p className="text-xs text-[var(--text-faint)] mt-1">
+                      <p className="text-sm text-subtle">No APIC hosts yet</p>
+                      <p className="text-xs text-faint mt-1">
                         Add your first controller endpoint to get started
                       </p>
                     </td>
@@ -388,16 +388,16 @@ export function ApicHostsClient({ initialHosts }: { initialHosts: SafeApicHost[]
                   hosts.map((host, index) => (
                     <tr
                       key={host.id}
-                      className="group border-b border-[var(--border-lighter)] last:border-0 hover:bg-[var(--surface-alt)] transition-colors duration-100 animate-fade-up"
+                      className="group border-b border-border-faint last:border-0 hover:bg-muted transition-colors duration-100 animate-fade-up"
                       style={{ animationDelay: `${Math.min(index * 35, 180)}ms` }}
                     >
-                      <td className="px-4 py-2.5 border-l-2 border-l-transparent group-hover:border-l-[var(--accent)] transition-colors duration-100">
-                        <span className="font-medium text-[var(--text)]">{host.name}</span>
+                      <td className="px-4 py-2.5 border-l-2 border-l-transparent group-hover:border-l-primary transition-colors duration-100">
+                        <span className="font-medium text-foreground">{host.name}</span>
                       </td>
                       <td className="px-4 py-2.5">
-                        <span className="font-mono text-[var(--text-muted)]">{host.host}</span>
+                        <span className="font-mono text-muted-foreground">{host.host}</span>
                       </td>
-                      <td className="px-4 py-2.5 tabular-nums text-[var(--text-subtle)]">
+                      <td className="px-4 py-2.5 tabular-nums text-subtle">
                         {new Date(host.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-2.5">
@@ -415,7 +415,7 @@ export function ApicHostsClient({ initialHosts }: { initialHosts: SafeApicHost[]
                             size="icon-sm"
                             onClick={() => openDelete(host)}
                             title="Delete"
-                            className="text-[var(--text-faint)] hover:text-destructive"
+                            className="text-faint hover:text-destructive"
                           >
                             <IconTrash size={13} stroke={1.75} />
                           </Button>
@@ -435,17 +435,17 @@ export function ApicHostsClient({ initialHosts }: { initialHosts: SafeApicHost[]
         if (!open) createForm.reset()
         setCreateOpen(open)
       }}>
-        <DialogContent className="bg-[var(--surface)] border-[var(--border)] text-[var(--text)]">
+        <DialogContent className="bg-card border-border text-foreground">
           <DialogHeader>
-            <DialogTitle className="font-serif text-base font-semibold text-[var(--text)]">
+            <DialogTitle className="font-serif text-base font-semibold text-foreground">
               Add APIC Host
             </DialogTitle>
-            <DialogDescription className="text-xs text-[var(--text-subtle)]">
+            <DialogDescription className="text-xs text-subtle">
               Register a new APIC controller endpoint.
             </DialogDescription>
           </DialogHeader>
           <ApicHostForm form={createForm} onSubmit={handleCreate} formId="create-host-form" />
-          <DialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end rounded-b-xl border-t border-[var(--border-light)] bg-[var(--surface-alt)] px-4 py-3 gap-1">
+          <DialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end rounded-b-xl border-t border-subtle bg-muted px-4 py-3 gap-1">
             <FooterCancel onClick={() => setCreateOpen(false)} disabled={isPending || testing} />
             <FooterTest onClick={handleTestCreate} disabled={testing || isPending} />
             <FooterSubmit
@@ -463,17 +463,17 @@ export function ApicHostsClient({ initialHosts }: { initialHosts: SafeApicHost[]
         if (!open) setEditingHost(null)
         setEditOpen(open)
       }}>
-        <DialogContent className="bg-[var(--surface)] border-[var(--border)] text-[var(--text)]">
+        <DialogContent className="bg-card border-border text-foreground">
           <DialogHeader>
-            <DialogTitle className="font-serif text-base font-semibold text-[var(--text)]">
+            <DialogTitle className="font-serif text-base font-semibold text-foreground">
               Edit APIC Host
             </DialogTitle>
-            <DialogDescription className="text-xs text-[var(--text-subtle)]">
+            <DialogDescription className="text-xs text-subtle">
               Update the controller endpoint details.
             </DialogDescription>
           </DialogHeader>
           <ApicHostForm form={editForm} onSubmit={handleUpdate} formId="edit-host-form" isEdit />
-          <DialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end rounded-b-xl border-t border-[var(--border-light)] bg-[var(--surface-alt)] px-4 py-3 gap-1">
+          <DialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end rounded-b-xl border-t border-subtle bg-muted px-4 py-3 gap-1">
             <FooterCancel onClick={() => setEditOpen(false)} disabled={isPending || testing} />
             <FooterTest onClick={handleTestEdit} disabled={testing || isPending} />
             <FooterSubmit
@@ -490,19 +490,19 @@ export function ApicHostsClient({ initialHosts }: { initialHosts: SafeApicHost[]
         if (!open) setDeletingHost(null)
         setDeleteOpen(open)
       }}>
-        <AlertDialogContent className="bg-[var(--surface)] border-[var(--border)]">
+        <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-base font-semibold text-[var(--text)]">
+            <AlertDialogTitle className="font-serif text-base font-semibold text-foreground">
               Delete &ldquo;{deletingHost?.name}&rdquo;?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-[var(--text-subtle)]">
+            <AlertDialogDescription className="text-xs text-subtle">
               This will permanently remove the APIC host. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end rounded-b-xl border-t border-[var(--border-light)] bg-[var(--surface-alt)] px-4 py-3 gap-1">
+          <AlertDialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end rounded-b-xl border-t border-subtle bg-muted px-4 py-3 gap-1">
             <AlertDialogCancel
               disabled={isPending}
-              className="text-sm text-[var(--text-muted)] hover:text-[var(--text)] transition-colors px-4 py-2 border-0 bg-transparent shadow-none hover:bg-transparent"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2 border-0 bg-transparent shadow-none hover:bg-transparent"
             >
               Cancel
             </AlertDialogCancel>
@@ -510,7 +510,7 @@ export function ApicHostsClient({ initialHosts }: { initialHosts: SafeApicHost[]
               variant="destructive"
               onClick={handleDelete}
               disabled={isPending}
-              className="bg-[var(--error-text)] text-white text-sm font-semibold px-5 py-2 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-60"
+              className="bg-error text-error-foreground text-sm font-semibold px-5 py-2 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-60"
             >
               {isPending ? 'Deleting…' : 'Delete'}
             </AlertDialogAction>

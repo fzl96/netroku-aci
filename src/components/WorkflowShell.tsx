@@ -122,59 +122,49 @@ export function WorkflowShell<TRow>({
   }
 
   return (
-    <div className="min-h-full bg-[var(--bg)]">
+    <div className="min-h-full bg-background">
       {/* ─── Sticky page header ─────────────────────────────────────────── */}
-      <div className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--bg)]/90 backdrop-blur-sm">
+      <div className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur-sm">
         <div className="px-8 py-4 flex items-center justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="font-serif text-[18px] font-semibold text-[var(--text)] leading-tight">
+              <h1 className="font-serif text-[18px] font-semibold text-foreground leading-tight">
                 {title}
               </h1>
-              <span className="hidden sm:inline-block text-[10px] font-mono uppercase tracking-[0.14em] text-[var(--text-faint)] px-2 py-0.5 rounded border border-[var(--border-light)]">
+              <span className="hidden sm:inline-block text-[10px] font-mono uppercase tracking-[0.14em] text-faint px-2 py-0.5 rounded border border-subtle">
                 {badge}
               </span>
             </div>
-            <p className="text-xs text-[var(--text-subtle)] mt-0.5">{subtitle}</p>
+            <p className="text-xs text-subtle mt-0.5">{subtitle}</p>
           </div>
 
           {selectedApic ? (
-            <div className="flex items-center gap-2 shrink-0">
-              <div
-                style={{ background: 'var(--success-bg)', borderColor: 'var(--success-border)' }}
-                className="flex items-center gap-2.5 border rounded-lg px-3 py-1.5"
-              >
+            <div className="flex shrink-0 items-center gap-2">
+              <div className="flex items-center gap-2.5 rounded-lg border border-success-border bg-success-bg px-3 py-1.5">
                 <span className="relative flex shrink-0">
-                  <span
-                    style={{ background: 'var(--success-dot)' }}
-                    className="absolute inline-flex w-2 h-2 rounded-full opacity-60 animate-ping"
-                  />
-                  <span
-                    style={{ background: 'var(--success-dot)' }}
-                    className="relative inline-flex w-2 h-2 rounded-full"
-                  />
+                  <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-success-dot opacity-60" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-success-dot" />
                 </span>
                 <div className="flex flex-col leading-tight">
-                  <span style={{ color: 'var(--success-text)' }} className="text-[10px] font-semibold uppercase tracking-wider opacity-75">
+                  <span className="text-[10px] font-semibold tracking-wider uppercase text-success opacity-75">
                     Connected
                   </span>
-                  <span style={{ color: 'var(--success-text)' }} className="text-[11px] font-mono">
-                    {selectedApic.host}
-                  </span>
+                  <span className="font-mono text-[11px] text-success">{selectedApic.host}</span>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={handleReconnect}
-                className="text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text)] transition-colors px-2.5 py-2 rounded-md hover:bg-[var(--surface-alt)]"
+                className="rounded-md px-2.5 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 title="Disconnect and reconnect to a different APIC"
               >
                 Disconnect
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border-light)] bg-[var(--surface)] shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-faint)]" />
-              <span className="text-xs text-[var(--text-muted)]">Disconnected</span>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-subtle bg-card shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-faint" />
+              <span className="text-xs text-muted-foreground">Disconnected</span>
             </div>
           )}
         </div>
@@ -185,9 +175,9 @@ export function WorkflowShell<TRow>({
         <div className="px-8 py-12 sm:py-16">
           <div className="max-w-md mx-auto animate-fade-up">
             <div className="text-center mb-8">
-              <div className="relative inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[var(--surface)] border border-[var(--border)] mb-5 shadow-sm">
-                <div aria-hidden className="absolute -inset-1.5 rounded-[18px] border border-dashed border-[var(--border)] opacity-60" />
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-[var(--text-muted)]">
+              <div className="relative inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-card border border-border mb-5 shadow-sm">
+                <div aria-hidden className="absolute -inset-1.5 rounded-[18px] border border-dashed border-border opacity-60" />
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-muted-foreground">
                   <rect x="3" y="4" width="18" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
                   <rect x="3" y="13" width="18" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
                   <circle cx="6.5" cy="7.5" r="0.85" fill="currentColor"/>
@@ -195,15 +185,15 @@ export function WorkflowShell<TRow>({
                   <path d="M10 7.5h8M10 16.5h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                 </svg>
               </div>
-              <h2 className="font-serif text-[22px] font-semibold text-[var(--text)] tracking-tight">
+              <h2 className="font-serif text-[22px] font-semibold text-foreground tracking-tight">
                 Connect to a fabric
               </h2>
-              <p className="text-sm text-[var(--text-subtle)] mt-2 max-w-sm mx-auto">
+              <p className="text-sm text-subtle mt-2 max-w-sm mx-auto">
                 {connectDescription}
               </p>
             </div>
 
-            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-sm overflow-hidden">
+            <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
               <form onSubmit={handleConnect} className="px-6 py-6 space-y-4">
                 <div>
                   <label className={LABEL_CLS}>Host</label>
@@ -245,10 +235,7 @@ export function WorkflowShell<TRow>({
                 </div>
 
                 {apicError && (
-                  <div
-                    style={{ background: 'var(--error-bg)', borderColor: 'var(--error-border)', color: 'var(--error-text)' }}
-                    className="border rounded-lg px-3.5 py-2.5 text-xs"
-                  >
+                  <div className="rounded-lg border border-error-border bg-error-bg px-3.5 py-2.5 text-xs text-error">
                     {apicError}
                   </div>
                 )}
@@ -256,11 +243,11 @@ export function WorkflowShell<TRow>({
                 <button
                   type="submit"
                   disabled={apicLoading || !host.trim() || !username.trim() || !password}
-                  className="w-full bg-[var(--accent)] text-white text-sm font-semibold px-6 py-2.5 rounded-lg disabled:opacity-50 hover:bg-[var(--accent-hover)] transition-colors flex items-center justify-center gap-2"
+                  className="w-full bg-primary text-primary-foreground text-sm font-semibold px-6 py-2.5 rounded-lg disabled:opacity-50 hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
                 >
                   {apicLoading ? (
                     <>
-                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
                       Connecting…
                     </>
                   ) : (
@@ -277,7 +264,7 @@ export function WorkflowShell<TRow>({
       {selectedApic && (
         <div className="px-8 py-6 space-y-5">
           {/* Stepper */}
-          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-5 sm:px-7 py-5 shadow-sm animate-fade-up">
+          <div className="bg-card border border-border rounded-2xl px-5 sm:px-7 py-5 shadow-sm animate-fade-up">
             <div className="flex items-center overflow-x-auto">
               {steps.map((s, i) => {
                 const isDone     = step > s.n
@@ -299,9 +286,9 @@ export function WorkflowShell<TRow>({
                       <div
                         className={[
                           'w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0 transition-all duration-200',
-                          isActive   ? 'bg-[var(--accent)] text-white shadow-sm ring-4 ring-[var(--accent)]/10' : '',
-                          isDone     ? 'bg-[var(--success-text)] text-white' : '',
-                          isInactive ? 'bg-[var(--surface-alt)] border border-[var(--border)] text-[var(--text-faint)]' : '',
+                          isActive   ? 'bg-primary text-primary-foreground shadow-sm ring-4 ring-primary/10' : '',
+                          isDone     ? 'bg-success text-success-foreground' : '',
+                          isInactive ? 'bg-muted border border-border text-faint' : '',
                         ].join(' ')}
                       >
                         {isDone ? (
@@ -316,19 +303,19 @@ export function WorkflowShell<TRow>({
                         <div className="flex items-baseline gap-1.5 whitespace-nowrap">
                           <p className={[
                             'text-sm font-semibold transition-colors',
-                            isActive   ? 'text-[var(--text)]' : '',
-                            isDone     ? `text-[var(--text)] ${clickable ? 'group-hover:text-[var(--accent)]' : ''}` : '',
-                            isInactive ? 'text-[var(--text-faint)]' : '',
+                            isActive   ? 'text-foreground' : '',
+                            isDone     ? `text-foreground ${clickable ? 'group-hover:text-primary' : ''}` : '',
+                            isInactive ? 'text-faint' : '',
                           ].join(' ')}>
                             {s.label}
                           </p>
                           {summary && isDone && (
-                            <span className="text-[10.5px] font-mono text-[var(--text-subtle)] tabular-nums">
+                            <span className="text-[10.5px] font-mono text-subtle tabular-nums">
                               · {summary}
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-[var(--text-subtle)] mt-0.5 whitespace-nowrap hidden sm:block">
+                        <p className="text-[11px] text-subtle mt-0.5 whitespace-nowrap hidden sm:block">
                           {s.sub}
                         </p>
                       </div>
@@ -338,7 +325,7 @@ export function WorkflowShell<TRow>({
                         aria-hidden
                         className={[
                           'flex-1 h-px mx-3 sm:mx-5 min-w-[20px] transition-colors',
-                          isDone ? 'bg-[var(--success-text)]/30' : 'bg-[var(--border)]',
+                          isDone ? 'bg-success/30' : 'bg-border',
                         ].join(' ')}
                       />
                     )}
@@ -351,7 +338,7 @@ export function WorkflowShell<TRow>({
           {/* Step content */}
           <div
             key={step}
-            className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-sm animate-step-in"
+            className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm animate-step-in"
           >
             {step === 1 && renderUpload(handleUploaded)}
             {step === 2 && renderPreview({

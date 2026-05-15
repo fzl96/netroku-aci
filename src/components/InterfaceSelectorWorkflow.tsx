@@ -33,13 +33,13 @@ const MODE_CONFIG: Record<Mode, {
 }
 
 const SELECTOR_COLUMNS: PreviewColumn<ParsedSelectorRow>[] = [
-  { header: '#', cell: (_r, i) => i + 1, className: 'font-mono text-[var(--text-faint)] tabular-nums select-none' },
-  { header: 'Profile', cell: r => r.interface_profile, className: 'font-mono text-[var(--text)]' },
-  { header: 'Selector', cell: r => r.selector_name, className: 'text-[var(--text)]' },
-  { header: 'Port', cell: r => r.port, className: 'font-mono text-[var(--text)]' },
-  { header: 'IPG Type', cell: r => r.ipg_type, className: 'text-[var(--text)]' },
-  { header: 'IPG', cell: r => r.ipg_name, className: 'font-mono text-[var(--text)]' },
-  { header: 'Description', cell: r => r.description ?? '', className: 'text-[var(--text-subtle)]' },
+  { header: '#', cell: (_r, i) => i + 1, className: 'font-mono text-faint tabular-nums select-none' },
+  { header: 'Profile', cell: r => r.interface_profile, className: 'font-mono text-foreground' },
+  { header: 'Selector', cell: r => r.selector_name, className: 'text-foreground' },
+  { header: 'Port', cell: r => r.port, className: 'font-mono text-foreground' },
+  { header: 'IPG Type', cell: r => r.ipg_type, className: 'text-foreground' },
+  { header: 'IPG', cell: r => r.ipg_name, className: 'font-mono text-foreground' },
+  { header: 'Description', cell: r => r.description ?? '', className: 'text-subtle' },
 ]
 
 function selectorRowLabel(r: ParsedSelectorRow): string {

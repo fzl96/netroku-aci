@@ -7,7 +7,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <TooltipProvider>
       <SidebarProvider>
         <AppSidebar />
-        <main className="flex-1 overflow-y-auto bg-[var(--bg)]">
+        <main className="flex-1 overflow-y-auto bg-background">
           {children}
         </main>
       </SidebarProvider>

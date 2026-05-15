@@ -22,13 +22,13 @@ function Badge({ active }: { active: boolean }) {
     <span
       className={[
         'flex items-center gap-1.5 text-[10px] font-medium',
-        active ? 'text-[var(--success-text)]' : 'text-[var(--text-faint)]',
+        active ? 'text-success' : 'text-faint',
       ].join(' ')}
     >
       <span
         className={[
           'w-1.5 h-1.5 rounded-full shrink-0',
-          active ? 'bg-[var(--success-dot)]' : 'bg-[var(--border)]',
+          active ? 'bg-success-dot' : 'bg-border',
         ].join(' ')}
       />
       {active ? 'Active' : 'Historical'}
@@ -42,11 +42,11 @@ function TableSkeleton() {
   return (
     <tbody>
       {Array.from({ length: 8 }).map((_, i) => (
-        <tr key={i} className="border-b border-[var(--border-lighter)] last:border-0">
+        <tr key={i} className="border-b border-border-faint last:border-0">
           {SKELETON_WIDTHS.map((w, j) => (
             <td key={j} className={['px-4 py-2.5', j === 0 ? 'border-l-2 border-l-transparent' : ''].join(' ')}>
               <div
-                className="h-2.5 rounded-sm bg-[var(--surface-alt)] animate-pulse"
+                className="h-2.5 rounded-sm bg-muted animate-pulse"
                 style={{ width: `${w + ((i * 11 + j * 7) % 20) - 10}%` }}
               />
             </td>
@@ -93,10 +93,10 @@ function FilterCombobox({
           disabled={disabled || options.length === 0}
           className={[
             'flex items-center gap-1.5 text-xs rounded-lg px-2.5 py-2 border transition-colors outline-none shrink-0',
-            'focus-visible:ring-2 focus-visible:ring-[var(--accent)]/20 disabled:opacity-40 disabled:cursor-not-allowed',
+            'focus-visible:ring-2 focus-visible:ring-primary/20 disabled:opacity-40 disabled:cursor-not-allowed',
             active
-              ? 'border-[var(--accent)] bg-[var(--accent)]/8 text-[var(--text)]'
-              : 'border-[var(--border)] bg-[var(--surface-alt)] text-[var(--text-muted)]',
+              ? 'border-primary bg-primary/8 text-foreground'
+              : 'border-border bg-muted text-muted-foreground',
           ].join(' ')}
         >
           <span className="max-w-[100px] truncate">{displayLabel}</span>
@@ -105,10 +105,10 @@ function FilterCombobox({
               className="flex items-center"
               onClick={e => { e.stopPropagation(); onChange([]) }}
             >
-              <IconX size={11} stroke={2} className="text-[var(--text-faint)] hover:text-[var(--text)]" />
+              <IconX size={11} stroke={2} className="text-faint hover:text-foreground" />
             </span>
           ) : (
-            <IconChevronDown size={11} stroke={2} className="text-[var(--text-faint)]" />
+            <IconChevronDown size={11} stroke={2} className="text-faint" />
           )}
         </button>
       </PopoverTrigger>
@@ -287,13 +287,13 @@ export function EndpointsClient({
   }
 
   return (
-    <div className="min-h-full bg-[var(--bg)]">
+    <div className="min-h-full bg-background">
       {/* Page header */}
-      <div className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--bg)]/90 backdrop-blur-sm">
+      <div className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur-sm">
         <div className="px-8 py-4 flex items-center justify-between gap-4">
           <div>
-            <h1 className="font-serif text-[18px] font-semibold text-[var(--text)]">Endpoints</h1>
-            <p className="text-xs text-[var(--text-subtle)] mt-0.5">ACI fabric endpoint inventory</p>
+            <h1 className="font-serif text-[18px] font-semibold text-foreground">Endpoints</h1>
+            <p className="text-xs text-subtle mt-0.5">ACI fabric endpoint inventory</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -301,9 +301,9 @@ export function EndpointsClient({
               value={selectedHostId}
               onChange={e => handleHostChange(e.target.value)}
               className={[
-                'text-xs bg-[var(--surface-alt)] border border-[var(--border)] rounded-lg',
-                'px-3 py-2 text-[var(--text)] outline-none',
-                'focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10',
+                'text-xs bg-muted border border-border rounded-lg',
+                'px-3 py-2 text-foreground outline-none',
+                'focus:border-primary focus:ring-2 focus:ring-primary/10',
                 'min-w-[180px]',
               ].join(' ')}
             >
@@ -320,8 +320,8 @@ export function EndpointsClient({
               className={[
                 'flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg transition-colors shadow-sm',
                 selectedHostId && !syncing
-                  ? 'bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)]'
-                  : 'bg-[var(--surface-alt)] text-[var(--text-faint)] cursor-not-allowed',
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  : 'bg-muted text-faint cursor-not-allowed',
               ].join(' ')}
             >
               <IconRefresh size={12} stroke={1.75} className={loading ? 'animate-spin' : ''} />
@@ -335,16 +335,16 @@ export function EndpointsClient({
         {!selectedHostId ? (
           <div className="flex flex-col items-center justify-center py-28 text-center">
             <div className="relative mb-6">
-              <div className="w-14 h-14 rounded-2xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shadow-sm">
-                <IconServer size={24} stroke={1.25} className="text-[var(--text-faint)]" />
+              <div className="w-14 h-14 rounded-2xl bg-card border border-border flex items-center justify-center shadow-sm">
+                <IconServer size={24} stroke={1.25} className="text-faint" />
               </div>
-              <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[var(--border)] border-2 border-[var(--bg)]" />
+              <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-border border-2 border-background" />
             </div>
 
-            <h2 className="font-serif text-base font-semibold text-[var(--text)] mb-1">
+            <h2 className="font-serif text-base font-semibold text-foreground mb-1">
               No APIC host selected
             </h2>
-            <p className="text-xs text-[var(--text-subtle)] mb-6 max-w-[260px] leading-relaxed">
+            <p className="text-xs text-subtle mb-6 max-w-[260px] leading-relaxed">
               {apicHosts.length === 0
                 ? 'No APIC hosts configured yet. Add one in Settings to get started.'
                 : 'Choose a host to view its endpoint inventory.'}
@@ -355,9 +355,9 @@ export function EndpointsClient({
                 value={selectedHostId}
                 onChange={e => handleHostChange(e.target.value)}
                 className={[
-                  'text-xs bg-[var(--surface-alt)] border border-[var(--border)] rounded-lg',
-                  'px-3 py-2 text-[var(--text)] outline-none cursor-pointer',
-                  'focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10',
+                  'text-xs bg-muted border border-border rounded-lg',
+                  'px-3 py-2 text-foreground outline-none cursor-pointer',
+                  'focus:border-primary focus:ring-2 focus:ring-primary/10',
                   'min-w-[220px] transition-colors',
                 ].join(' ')}
               >
@@ -378,7 +378,7 @@ export function EndpointsClient({
                   <IconSearch
                     size={13}
                     stroke={1.75}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-faint)] pointer-events-none"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none"
                   />
                   <input
                     type="text"
@@ -396,16 +396,16 @@ export function EndpointsClient({
                 <FilterCombobox label="Status" value={filterStatus} options={['active', 'historical']} onChange={v => handleFilterChange('status', v)} disabled={isPending} />
               </div>
 
-              <div className="flex items-center gap-3 shrink-0 text-xs text-[var(--text-subtle)]">
+              <div className="flex items-center gap-3 shrink-0 text-xs text-subtle">
                 <span>
-                  <span className="font-semibold text-[var(--success-text)]">
+                  <span className="font-semibold text-success">
                     {activeTotal}
                   </span>{' '}
                   active
                 </span>
-                <span className="text-[var(--border)]">·</span>
+                <span className="text-border">·</span>
                 <span>
-                  <span className="font-semibold text-[var(--text)]">
+                  <span className="font-semibold text-foreground">
                     {historicalTotal}
                   </span>{' '}
                   historical
@@ -416,7 +416,7 @@ export function EndpointsClient({
             {/* Table */}
             <div
               className={[
-                'bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-sm',
+                'bg-card border border-border rounded-2xl overflow-hidden shadow-sm',
                 'transition-opacity duration-150',
                 isPending ? 'opacity-60 pointer-events-none' : 'opacity-100',
               ].join(' ')}
@@ -425,13 +425,13 @@ export function EndpointsClient({
                 <div className="px-4 py-14 text-center">
                   {query || filterVlan.length > 0 || filterNode.length > 0 || filterIface.length > 0 || filterStatus.length > 0 ? (
                     <>
-                      <p className="text-sm text-[var(--text-subtle)]">No endpoints match the current filters</p>
-                      <p className="text-xs text-[var(--text-faint)] mt-1">Try adjusting the search or filter values</p>
+                      <p className="text-sm text-subtle">No endpoints match the current filters</p>
+                      <p className="text-xs text-faint mt-1">Try adjusting the search or filter values</p>
                     </>
                   ) : (
                     <>
-                      <p className="text-sm text-[var(--text-subtle)]">No endpoints found</p>
-                      <p className="text-xs text-[var(--text-faint)] mt-1">
+                      <p className="text-sm text-subtle">No endpoints found</p>
+                      <p className="text-xs text-faint mt-1">
                         Click <strong>Resync</strong> to pull the latest data from the APIC
                       </p>
                     </>
@@ -445,7 +445,7 @@ export function EndpointsClient({
                         {['MAC', 'IP', 'VLAN', 'Node', 'Interface', 'EPG Description', 'First Seen', 'Last Seen', 'Status'].map(h => (
                           <th
                             key={h}
-                            className="text-left px-4 pt-3 pb-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[var(--text-faint)] whitespace-nowrap border-b border-[var(--border)]"
+                            className="text-left px-4 pt-3 pb-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-faint whitespace-nowrap border-b border-border"
                           >
                             {h}
                           </th>
@@ -459,17 +459,17 @@ export function EndpointsClient({
                         {endpoints.map((ep, index) => (
                           <tr
                             key={ep.id}
-                            className="group border-b border-[var(--border-lighter)] last:border-0 hover:bg-[var(--surface-alt)] transition-colors duration-100 animate-fade-up"
+                            className="group border-b border-border-faint last:border-0 hover:bg-muted transition-colors duration-100 animate-fade-up"
                             style={{ animationDelay: `${Math.min(index * 20, 200)}ms` }}
                           >
-                            <td className="px-4 py-2.5 font-mono text-[var(--text)] border-l-2 border-l-transparent group-hover:border-l-[var(--accent)] transition-colors duration-100">{ep.mac}</td>
-                            <td className="px-4 py-2.5 font-mono text-[var(--text-muted)]">{ep.ip || '—'}</td>
-                            <td className="px-4 py-2.5 tabular-nums text-[var(--text-muted)]">{ep.vlan}</td>
-                            <td className="px-4 py-2.5 tabular-nums text-[var(--text-muted)]">{ep.node || '—'}</td>
-                            <td className="px-4 py-2.5 font-mono text-[var(--text-muted)]">{ep.interface || '—'}</td>
-                            <td className="px-4 py-2.5 text-[var(--text-subtle)] max-w-[200px] truncate" title={ep.epgDescr}>{ep.epgDescr || '—'}</td>
-                            <td className="px-4 py-2.5 tabular-nums text-[var(--text-faint)] whitespace-nowrap">{fmt(ep.firstSeenAt)}</td>
-                            <td className="px-4 py-2.5 tabular-nums text-[var(--text-faint)] whitespace-nowrap">{fmt(ep.lastSeenAt)}</td>
+                            <td className="px-4 py-2.5 font-mono text-foreground border-l-2 border-l-transparent group-hover:border-l-primary transition-colors duration-100">{ep.mac}</td>
+                            <td className="px-4 py-2.5 font-mono text-muted-foreground">{ep.ip || '—'}</td>
+                            <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{ep.vlan}</td>
+                            <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{ep.node || '—'}</td>
+                            <td className="px-4 py-2.5 font-mono text-muted-foreground">{ep.interface || '—'}</td>
+                            <td className="px-4 py-2.5 text-subtle max-w-[200px] truncate" title={ep.epgDescr}>{ep.epgDescr || '—'}</td>
+                            <td className="px-4 py-2.5 tabular-nums text-faint whitespace-nowrap">{fmt(ep.firstSeenAt)}</td>
+                            <td className="px-4 py-2.5 tabular-nums text-faint whitespace-nowrap">{fmt(ep.lastSeenAt)}</td>
                             <td className="px-4 py-2.5"><Badge active={ep.isActive} /></td>
                           </tr>
                         ))}
@@ -483,7 +483,7 @@ export function EndpointsClient({
             {/* Pagination */}
             {total > 0 && (
               <div className="flex items-center justify-between pt-1 gap-4">
-                <p className="text-xs text-[var(--text-subtle)] shrink-0">
+                <p className="text-xs text-subtle shrink-0">
                   {pageSize === 'all'
                     ? `Showing all ${total} endpoints`
                     : `Showing ${rangeStart}–${rangeEnd} of ${total} endpoints`}
@@ -492,12 +492,12 @@ export function EndpointsClient({
                 <div className="flex items-center gap-2">
                   {/* Page size selector */}
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-[var(--text-faint)]">Per page</span>
+                    <span className="text-xs text-faint">Per page</span>
                     <select
                       value={String(pageSize)}
                       onChange={e => handlePageSizeChange(e.target.value === 'all' ? 'all' : Number(e.target.value) as PageSizeValue)}
                       disabled={isPending}
-                      className="text-xs bg-[var(--surface-alt)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-[var(--text)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 disabled:opacity-40"
+                      className="text-xs bg-muted border border-border rounded-lg px-2 py-1.5 text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-40"
                     >
                       {PAGE_SIZE_OPTIONS.map(o => (
                         <option key={String(o.value)} value={String(o.value)}>{o.label}</option>
@@ -508,31 +508,31 @@ export function EndpointsClient({
                   {/* Prev / page indicator / jump / next */}
                   {pageSize !== 'all' && totalPages > 1 && (
                     <>
-                      <div className="w-px h-4 bg-[var(--border)]" />
+                      <div className="w-px h-4 bg-border" />
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => handlePage(page - 1)}
                           disabled={page <= 1 || isPending}
-                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-alt)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <IconChevronLeft size={12} stroke={1.75} />
                           Prev
                         </button>
 
-                        <span className="px-2 py-1.5 text-xs text-[var(--text-subtle)] tabular-nums">
+                        <span className="px-2 py-1.5 text-xs text-subtle tabular-nums">
                           {page} / {totalPages}
                         </span>
 
                         <button
                           onClick={() => handlePage(page + 1)}
                           disabled={page >= totalPages || isPending}
-                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-alt)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           Next
                           <IconChevronRight size={12} stroke={1.75} />
                         </button>
 
-                        <div className="w-px h-4 bg-[var(--border)]" />
+                        <div className="w-px h-4 bg-border" />
 
                         <form onSubmit={handleJump} className="flex items-center gap-1">
                           <input
@@ -542,12 +542,12 @@ export function EndpointsClient({
                             value={jumpValue}
                             onChange={e => setJumpValue(e.target.value)}
                             placeholder="Go to…"
-                            className="w-20 text-xs bg-[var(--surface-alt)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-[var(--text)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className="w-20 text-xs bg-muted border border-border rounded-lg px-2 py-1.5 text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                           <button
                             type="submit"
                             disabled={!jumpValue || isPending}
-                            className="px-2.5 py-1.5 text-xs rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-alt)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="px-2.5 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             Go
                           </button>

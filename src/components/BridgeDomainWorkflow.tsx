@@ -25,28 +25,28 @@ type BridgeDomainValidator = (
 ) => { rows: ParsedBridgeDomainRow[]; errors: CsvValidationError[] }
 
 const L2_COLUMNS: PreviewColumn<ParsedBridgeDomainL2Row>[] = [
-  { header: '#', cell: (_r, i) => i + 1, className: 'font-mono text-[var(--text-faint)] tabular-nums select-none' },
-  { header: 'Tenant', cell: r => r.tenant, className: 'text-[var(--text)]' },
-  { header: 'Bridge Domain', cell: r => r.bd, className: 'font-mono text-[var(--text)]' },
-  { header: 'VRF', cell: r => r.vrf, className: 'font-mono text-[var(--text)]' },
-  { header: 'Mode', cell: () => 'L2 Only', className: 'text-[var(--text)]' },
-  { header: 'Unknown MAC', cell: () => 'flood', className: 'font-mono text-[var(--text)]' },
-  { header: 'ARP Flood', cell: () => 'true', className: 'font-mono text-[var(--text)]' },
-  { header: 'Unicast Route', cell: () => 'no', className: 'font-mono text-[var(--text)]' },
-  { header: 'Description', cell: r => r.bd_desc ?? '', className: 'text-[var(--text-subtle)]' },
+  { header: '#', cell: (_r, i) => i + 1, className: 'font-mono text-faint tabular-nums select-none' },
+  { header: 'Tenant', cell: r => r.tenant, className: 'text-foreground' },
+  { header: 'Bridge Domain', cell: r => r.bd, className: 'font-mono text-foreground' },
+  { header: 'VRF', cell: r => r.vrf, className: 'font-mono text-foreground' },
+  { header: 'Mode', cell: () => 'L2 Only', className: 'text-foreground' },
+  { header: 'Unknown MAC', cell: () => 'flood', className: 'font-mono text-foreground' },
+  { header: 'ARP Flood', cell: () => 'true', className: 'font-mono text-foreground' },
+  { header: 'Unicast Route', cell: () => 'no', className: 'font-mono text-foreground' },
+  { header: 'Description', cell: r => r.bd_desc ?? '', className: 'text-subtle' },
 ]
 
 const L3_COLUMNS: PreviewColumn<ParsedBridgeDomainL3Row>[] = [
-  { header: '#', cell: (_r, i) => i + 1, className: 'font-mono text-[var(--text-faint)] tabular-nums select-none' },
-  { header: 'Tenant', cell: r => r.tenant, className: 'text-[var(--text)]' },
-  { header: 'Bridge Domain', cell: r => r.bd, className: 'font-mono text-[var(--text)]' },
-  { header: 'VRF', cell: r => r.vrf, className: 'font-mono text-[var(--text)]' },
-  { header: 'Subnet', cell: r => r.subnet, className: 'font-mono text-[var(--text)]' },
-  { header: 'L3Out', cell: r => r.l3out, className: 'font-mono text-[var(--text)]' },
-  { header: 'Unknown MAC', cell: () => 'proxy', className: 'font-mono text-[var(--text)]' },
-  { header: 'ARP Flood', cell: () => 'false', className: 'font-mono text-[var(--text)]' },
-  { header: 'Unicast Route', cell: () => 'yes', className: 'font-mono text-[var(--text)]' },
-  { header: 'Description', cell: r => r.bd_desc ?? '', className: 'text-[var(--text-subtle)]' },
+  { header: '#', cell: (_r, i) => i + 1, className: 'font-mono text-faint tabular-nums select-none' },
+  { header: 'Tenant', cell: r => r.tenant, className: 'text-foreground' },
+  { header: 'Bridge Domain', cell: r => r.bd, className: 'font-mono text-foreground' },
+  { header: 'VRF', cell: r => r.vrf, className: 'font-mono text-foreground' },
+  { header: 'Subnet', cell: r => r.subnet, className: 'font-mono text-foreground' },
+  { header: 'L3Out', cell: r => r.l3out, className: 'font-mono text-foreground' },
+  { header: 'Unknown MAC', cell: () => 'proxy', className: 'font-mono text-foreground' },
+  { header: 'ARP Flood', cell: () => 'false', className: 'font-mono text-foreground' },
+  { header: 'Unicast Route', cell: () => 'yes', className: 'font-mono text-foreground' },
+  { header: 'Description', cell: r => r.bd_desc ?? '', className: 'text-subtle' },
 ]
 
 const CONFIG: Record<Variant, {

@@ -157,15 +157,15 @@ export function DeploySection<TRow extends { rowIndex: number }>({
   if (loading) {
     return (
       <div>
-        <div className="px-6 pt-6 pb-5 border-b border-[var(--border-light)]">
-          <h2 className="font-serif text-base font-semibold text-[var(--text)]">{cfg.title}</h2>
-          <p className="text-xs text-[var(--text-subtle)] mt-0.5">
+        <div className="px-6 pt-6 pb-5 border-b border-subtle">
+          <h2 className="font-serif text-base font-semibold text-foreground">{cfg.title}</h2>
+          <p className="text-xs text-subtle mt-0.5">
             {cfg.loadingVerb} {rows.length} {noun}{rows.length !== 1 ? 's' : ''}…
           </p>
         </div>
         <div className="p-6 flex items-center gap-3">
-          <div className="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm text-[var(--text-muted)]">This may take a moment…</span>
+          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm text-muted-foreground">This may take a moment…</span>
         </div>
       </div>
     )
@@ -174,13 +174,16 @@ export function DeploySection<TRow extends { rowIndex: number }>({
   if (fetchError) {
     return (
       <div>
-        <div className="px-6 pt-6 pb-5 border-b border-[var(--border-light)]">
-          <h2 className="font-serif text-base font-semibold text-[var(--text)]">{cfg.title}</h2>
+        <div className="px-6 pt-6 pb-5 border-b border-subtle">
+          <h2 className="font-serif text-base font-semibold text-foreground">{cfg.title}</h2>
         </div>
-        <div className="px-6 py-5 space-y-3">
-          <p style={{ color: 'var(--error-text)' }} className="text-sm">{fetchError}</p>
-          <button onClick={onUploadAnother}
-            className="text-xs text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors underline">
+        <div className="space-y-3 px-6 py-5">
+          <p className="text-sm text-error">{fetchError}</p>
+          <button
+            type="button"
+            onClick={onUploadAnother}
+            className="text-xs text-primary underline transition-colors hover:text-primary/90"
+          >
             Upload another CSV
           </button>
         </div>
@@ -191,10 +194,10 @@ export function DeploySection<TRow extends { rowIndex: number }>({
   return (
     <div>
       {/* Card header */}
-      <div className="px-6 pt-6 pb-5 border-b border-[var(--border-light)]">
-        <h2 className="font-serif text-base font-semibold text-[var(--text)]">{cfg.title}</h2>
+      <div className="px-6 pt-6 pb-5 border-b border-subtle">
+        <h2 className="font-serif text-base font-semibold text-foreground">{cfg.title}</h2>
         {results && !sessionExpired && (
-          <p className="text-xs text-[var(--text-subtle)] mt-0.5">
+          <p className="text-xs text-subtle mt-0.5">
             {successCount} {cfg.successVerb}{failCount > 0 ? `, ${failCount} failed` : ''}
           </p>
         )}
@@ -204,15 +207,15 @@ export function DeploySection<TRow extends { rowIndex: number }>({
         {results ? (
           <div className="space-y-4">
             {sessionExpired ? (
-              <div
-                style={{ background: 'var(--error-bg)', borderColor: 'var(--error-border)' }}
-                className="flex items-start gap-3 p-3.5 border rounded-lg"
-              >
-                <p style={{ color: 'var(--error-text)' }} className="text-xs flex-1">
+              <div className="flex items-start gap-3 rounded-lg border border-error-border bg-error-bg p-3.5">
+                <p className="flex-1 text-xs text-error">
                   Your APIC session expired during {cfg.title.toLowerCase()}. Please reconnect and try again.
                 </p>
-                <button onClick={onReconnect}
-                  className="text-xs font-semibold text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors shrink-0">
+                <button
+                  type="button"
+                  onClick={onReconnect}
+                  className="shrink-0 text-xs font-semibold text-primary transition-colors hover:text-primary/90"
+                >
                   Reconnect →
                 </button>
               </div>
@@ -221,50 +224,56 @@ export function DeploySection<TRow extends { rowIndex: number }>({
                 {/* All success */}
                 {successCount > 0 && failCount === 0 && (
                   <div className="flex items-center gap-3">
-                    <div
-                      style={{ background: 'var(--success-bg)' }}
-                      className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
-                        style={{ color: 'var(--success-text)' }}>
-                        <path d="M3 8l3.5 3.5L13 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-success-bg text-success">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+                        <path
+                          d="M3 8l3.5 3.5L13 5"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
                       </svg>
                     </div>
-                    <p className="text-sm font-medium text-[var(--text)]">
-                      {successCount} {noun}{successCount !== 1 ? 's' : ''} {cfg.successVerb} successfully
+                    <p className="text-sm font-medium text-foreground">
+                      {successCount} {noun}
+                      {successCount !== 1 ? 's' : ''} {cfg.successVerb} successfully
                     </p>
                   </div>
                 )}
 
                 {/* Partial success */}
                 {failCount > 0 && (
-                  <p className="text-sm font-medium text-[var(--text)]">
+                  <p className="text-sm font-medium text-foreground">
                     {successCount} {cfg.successVerb}, {failCount} failed
                   </p>
                 )}
 
                 {/* Failed rows */}
-                {results.filter(r => !r.success).map(r => (
-                  <div key={r.rowIndex} className="border-l-2 border-l-[var(--error-text)] pl-3">
-                    <p className="text-xs font-mono text-[var(--text)]">Row {r.rowIndex}</p>
-                    <p style={{ color: 'var(--error-text)' }} className="text-xs mt-0.5">{r.message}</p>
-                  </div>
-                ))}
+                {results
+                  .filter((r) => !r.success)
+                  .map((r) => (
+                    <div key={r.rowIndex} className="border-l-2 border-l-error pl-3">
+                      <p className="font-mono text-xs text-foreground">Row {r.rowIndex}</p>
+                      <p className="mt-0.5 text-xs text-error">{r.message}</p>
+                    </div>
+                  ))}
               </>
             )}
 
             {/* Upload another */}
             <div className="pt-1">
               <button
+                type="button"
                 onClick={onUploadAnother}
-                className="text-xs font-medium text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors"
+                className="text-xs font-medium text-primary transition-colors hover:text-primary/90"
               >
                 Upload another CSV →
               </button>
             </div>
           </div>
         ) : (
-          <p className="text-sm text-[var(--text-subtle)]">Waiting…</p>
+          <p className="text-sm text-subtle">Waiting…</p>
         )}
       </div>
     </div>
