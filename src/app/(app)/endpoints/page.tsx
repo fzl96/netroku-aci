@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
@@ -5,6 +6,11 @@ import { prisma } from '@/lib/prisma'
 import { getApicHosts } from '@/actions/apic-hosts'
 import { EndpointsClient } from './EndpointsClient'
 import type { Endpoint } from '@prisma/client'
+
+export const metadata: Metadata = {
+  title: 'Endpoints',
+  description: 'Browse active and historical endpoints learned by the APIC fabric.',
+}
 
 const VALID_PAGE_SIZES = [10, 50, 100, 1000] as const
 type PageSizeValue = typeof VALID_PAGE_SIZES[number] | 'all'

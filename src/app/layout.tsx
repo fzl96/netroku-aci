@@ -13,8 +13,15 @@ const lora = Lora({
 });
 
 export const metadata: Metadata = {
-  title: "ACI Toolkit",
-  description: "Cisco APIC management toolkit",
+  title: {
+    default: "Netroku ACI",
+    template: "%s · Netroku ACI",
+  },
+  description:
+    "Cisco ACI fabric management — endpoints, EPGs, bridge domains, static ports, and interface selectors.",
+  applicationName: "Netroku ACI",
+  authors: [{ name: "Furina" }],
+  icons: { icon: "/favicon.ico" },
 };
 
 /** Inline script that runs before first paint — prevents theme flash. */
