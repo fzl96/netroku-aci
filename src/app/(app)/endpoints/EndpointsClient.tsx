@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { IconRefresh, IconSearch, IconChevronLeft, IconChevronRight, IconChevronDown, IconX } from '@tabler/icons-react'
+import { IconRefresh, IconSearch, IconChevronLeft, IconChevronRight, IconChevronDown, IconX, IconServer } from '@tabler/icons-react'
 import type { SafeApicHost } from '@/actions/apic-hosts'
 import type { Endpoint } from '@prisma/client'
 import { SEARCH_INPUT_CLS } from '@/lib/ui-classes'
@@ -333,11 +333,40 @@ export function EndpointsClient({
 
       <div className="px-8 py-6 space-y-4">
         {!selectedHostId ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <p className="text-sm text-[var(--text-subtle)]">No APIC host selected</p>
-            <p className="text-xs text-[var(--text-faint)] mt-1">
-              Select an APIC host from the dropdown above to view endpoints
+          <div className="flex flex-col items-center justify-center py-28 text-center">
+            <div className="relative mb-6">
+              <div className="w-14 h-14 rounded-2xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shadow-sm">
+                <IconServer size={24} stroke={1.25} className="text-[var(--text-faint)]" />
+              </div>
+              <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[var(--border)] border-2 border-[var(--bg)]" />
+            </div>
+
+            <h2 className="font-serif text-base font-semibold text-[var(--text)] mb-1">
+              No APIC host selected
+            </h2>
+            <p className="text-xs text-[var(--text-subtle)] mb-6 max-w-[260px] leading-relaxed">
+              {apicHosts.length === 0
+                ? 'No APIC hosts configured yet. Add one in Settings to get started.'
+                : 'Choose a host to view its endpoint inventory.'}
             </p>
+
+            {apicHosts.length > 0 && (
+              <select
+                value={selectedHostId}
+                onChange={e => handleHostChange(e.target.value)}
+                className={[
+                  'text-xs bg-[var(--surface-alt)] border border-[var(--border)] rounded-lg',
+                  'px-3 py-2 text-[var(--text)] outline-none cursor-pointer',
+                  'focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10',
+                  'min-w-[220px] transition-colors',
+                ].join(' ')}
+              >
+                <option value="">Select APIC host…</option>
+                {apicHosts.map(h => (
+                  <option key={h.id} value={h.id}>{h.name} ({h.host})</option>
+                ))}
+              </select>
+            )}
           </div>
         ) : (
           <>
