@@ -4,6 +4,7 @@ import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getApicHosts } from '@/actions/apic-hosts'
+import { buildEndpointWhere, type EndpointStatusFilter } from '@/lib/endpoints/query'
 import { EndpointsClient } from './EndpointsClient'
 import type { Endpoint } from '@prisma/client'
 
@@ -38,7 +39,9 @@ export default async function EndpointsPage({
   const filterVlan = vlan ? vlan.split(',').map(s => s.trim()).filter(Boolean) : []
   const filterNode = node ? node.split(',').map(s => s.trim()).filter(Boolean) : []
   const filterIface = iface ? iface.split(',').map(s => s.trim()).filter(Boolean) : []
-  const filterStatus = status ? status.split(',').map(s => s.trim()).filter(s => s === 'active' || s === 'historical') : []
+  const filterStatus = status
+    ? status.split(',').map(s => s.trim()).filter((s): s is EndpointStatusFilter => s === 'active' || s === 'historical')
+    : []
 
   let endpoints: Endpoint[] = []
   let total = 0
@@ -49,26 +52,13 @@ export default async function EndpointsPage({
   let ifaces: string[] = []
 
   if (apic && apicHosts.some(h => h.id === apic)) {
-    const where = {
-      apicHostId: apic,
-      ...(filterVlan.length > 0 ? { vlan: { in: filterVlan } } : {}),
-      ...(filterNode.length > 0 ? { node: { in: filterNode } } : {}),
-      ...(filterIface.length > 0 ? { interface: { in: filterIface } } : {}),
-      ...(filterStatus.length === 1 ? { isActive: filterStatus[0] === 'active' } : {}),
-      ...(query?.trim()
-        ? {
-            OR: [
-              { mac: { contains: query } },
-              { ip: { contains: query } },
-              { vlan: { contains: query } },
-              { node: { contains: query } },
-              { interface: { contains: query } },
-              { epgDescr: { contains: query } },
-              { dn: { contains: query } },
-            ],
-          }
-        : {}),
-    }
+    const where = buildEndpointWhere(apic, {
+      query,
+      vlan: filterVlan,
+      node: filterNode,
+      iface: filterIface,
+      status: filterStatus,
+    })
 
     const skip = pageSize === 'all' ? 0 : (page - 1) * pageSize
     const take = pageSize === 'all' ? undefined : pageSize

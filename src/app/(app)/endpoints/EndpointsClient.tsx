@@ -6,9 +6,11 @@ import { toast } from 'sonner'
 import { IconRefresh, IconSearch, IconChevronLeft, IconChevronRight, IconChevronDown, IconX, IconServer } from '@tabler/icons-react'
 import type { SafeApicHost } from '@/actions/apic-hosts'
 import type { Endpoint } from '@prisma/client'
+import type { EndpointStatusFilter } from '@/lib/endpoints/query'
 import { SEARCH_INPUT_CLS } from '@/lib/ui-classes'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { ExportEndpointsDialog } from './ExportEndpointsDialog'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -155,7 +157,7 @@ interface Props {
   filterVlan: string[]
   filterNode: string[]
   filterIface: string[]
-  filterStatus: string[]
+  filterStatus: EndpointStatusFilter[]
   vlans: string[]
   nodes: string[]
   ifaces: string[]
@@ -327,6 +329,19 @@ export function EndpointsClient({
               <IconRefresh size={12} stroke={1.75} className={loading ? 'animate-spin' : ''} />
               {syncing ? 'Syncing…' : isPending ? 'Loading…' : 'Resync'}
             </button>
+
+            <ExportEndpointsDialog
+              apicHostId={selectedHostId}
+              hostTotal={activeTotal + historicalTotal}
+              filteredTotal={total}
+              filters={{
+                query,
+                vlan: filterVlan,
+                node: filterNode,
+                iface: filterIface,
+                status: filterStatus,
+              }}
+            />
           </div>
         </div>
       </div>
