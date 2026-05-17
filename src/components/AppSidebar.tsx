@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useTheme } from "./ThemeProvider";
 import {
@@ -222,23 +223,14 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="h-16 flex-row items-center border-b border-sidebar-border/60 px-3 py-0">
         <div className="flex items-center gap-3">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 16 16"
-              fill="none"
-              aria-hidden
-            >
-              <path
-                d="M8 1.5L13.5 4.75v6.5L8 14.5 2.5 11.25v-6.5L8 1.5z"
-                stroke="currentColor"
-                strokeWidth="1.2"
-                strokeLinejoin="round"
-              />
-              <circle cx="8" cy="8" r="1.75" fill="currentColor" />
-            </svg>
-          </div>
+          <Image
+            src="/apple-icon.png"
+            alt=""
+            width={36}
+            height={36}
+            aria-hidden
+            className="h-9 w-9 shrink-0"
+          />
           <div className="min-w-0">
             <p className="text-[12.5px] font-semibold leading-none tracking-tight text-sidebar-foreground">
               Netroku ACI
