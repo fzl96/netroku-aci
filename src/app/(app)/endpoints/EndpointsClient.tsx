@@ -122,23 +122,25 @@ function FilterSubmenu({
             />
           </div>
         )}
-        {options.length === 0 ? (
-          <DropdownMenuItem disabled>No values available</DropdownMenuItem>
-        ) : visibleOptions.length === 0 ? (
-          <DropdownMenuItem disabled>No matching values</DropdownMenuItem>
-        ) : (
-          visibleOptions.map(opt => (
-            <DropdownMenuCheckboxItem
-              key={opt}
-              checked={value.includes(opt)}
-              disabled={disabled}
-              onCheckedChange={() => toggle(opt)}
-              onSelect={event => event.preventDefault()}
-            >
-              {opt}
-            </DropdownMenuCheckboxItem>
-          ))
-        )}
+        <div className={searchable ? 'max-h-56 overflow-y-auto pr-1' : undefined}>
+          {options.length === 0 ? (
+            <DropdownMenuItem disabled>No values available</DropdownMenuItem>
+          ) : visibleOptions.length === 0 ? (
+            <DropdownMenuItem disabled>No matching values</DropdownMenuItem>
+          ) : (
+            visibleOptions.map(opt => (
+              <DropdownMenuCheckboxItem
+                key={opt}
+                checked={value.includes(opt)}
+                disabled={disabled}
+                onCheckedChange={() => toggle(opt)}
+                onSelect={event => event.preventDefault()}
+              >
+                {opt}
+              </DropdownMenuCheckboxItem>
+            ))
+          )}
+        </div>
         {value.length > 0 && (
           <>
             <DropdownMenuSeparator />
