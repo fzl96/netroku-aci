@@ -57,7 +57,7 @@
   --sidebar-foreground:       var(--foreground);
   --sidebar-primary:          var(--primary);
   --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent:           oklch(0.945 0.006 65);
+  --sidebar-accent:           oklch(0.945 0.022 58);
   --sidebar-accent-foreground: var(--foreground);
   --sidebar-border:           var(--border);
   --sidebar-ring:             var(--ring);
