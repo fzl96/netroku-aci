@@ -26,7 +26,7 @@ export default async function InterfaceHealthPage({
   searchParams: Promise<{
     apic?: string
     query?: string
-    usage?: string
+    node?: string
     page?: string
     pageSize?: string
   }>
@@ -34,12 +34,12 @@ export default async function InterfaceHealthPage({
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) redirect('/signin')
 
-  const { apic, query, usage, page: pageParam, pageSize: pageSizeParam } = await searchParams
+  const { apic, query, node, page: pageParam, pageSize: pageSizeParam } = await searchParams
   const apicHosts = await getApicHosts()
 
-  // Empty / missing usage param = show all roles. Comma-separated list otherwise.
-  const usageFilter = usage
-    ? usage.split(',').map(s => s.trim()).filter(Boolean)
+  // Empty / missing node param = show all nodes. Comma-separated list otherwise.
+  const nodeFilter = node
+    ? node.split(',').map(s => s.trim()).filter(Boolean)
     : []
 
   const page = Math.max(1, parseInt(pageParam ?? '1', 10) || 1)
@@ -48,7 +48,7 @@ export default async function InterfaceHealthPage({
   let rows: InterfaceRowProps[] = []
   let total = 0
   let lastSyncedAt: Date | null = null
-  let availableUsages: string[] = []
+  let availableNodes: string[] = []
 
   if (apic && apicHosts.some(h => h.id === apic)) {
     const host = await prisma.apicHost.findUnique({
@@ -59,7 +59,7 @@ export default async function InterfaceHealthPage({
 
     const where = {
       apicHostId: apic,
-      ...(usageFilter.length > 0 ? { usage: { in: usageFilter } } : {}),
+      ...(nodeFilter.length > 0 ? { node: { in: nodeFilter } } : {}),
       ...(query?.trim()
         ? {
             OR: [
@@ -75,7 +75,7 @@ export default async function InterfaceHealthPage({
     const skip = pageSize === 'all' ? 0 : (page - 1) * pageSize
     const take = pageSize === 'all' ? undefined : pageSize
 
-    const [snapshots, snapshotTotal, usages] = await Promise.all([
+    const [snapshots, snapshotTotal, nodes] = await Promise.all([
       prisma.interfaceSnapshot.findMany({
         where,
         orderBy: [{ node: 'asc' }, { ifName: 'asc' }],
@@ -100,8 +100,8 @@ export default async function InterfaceHealthPage({
       prisma.interfaceSnapshot.count({ where }),
       prisma.interfaceSnapshot.findMany({
         where: { apicHostId: apic },
-        select: { usage: true },
-        distinct: ['usage'],
+        select: { node: true },
+        distinct: ['node'],
       }),
     ])
 
@@ -138,7 +138,7 @@ export default async function InterfaceHealthPage({
       }
     })
 
-    availableUsages = usages.map(u => u.usage).filter(u => u !== '').sort()
+    availableNodes = nodes.map(n => n.node).filter(n => n !== '').sort()
   }
 
   return (
@@ -147,8 +147,8 @@ export default async function InterfaceHealthPage({
       rows={rows}
       selectedHostId={apic ?? ''}
       query={query ?? ''}
-      filterUsage={usageFilter}
-      availableUsages={availableUsages}
+      filterNode={nodeFilter}
+      availableNodes={availableNodes}
       lastSyncedAt={lastSyncedAt?.toISOString() ?? null}
       page={page}
       total={total}

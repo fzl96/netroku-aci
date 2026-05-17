@@ -7,8 +7,8 @@ const exportSchema = z.object({
   apicHostId: z.string().min(1),
   from: z.string().datetime().optional(),
   to: z.string().datetime().optional(),
-  // Optional usage filter so users can scope an export to access ports etc.
-  usage: z.array(z.string()).optional(),
+  // Optional node filter so users can scope an export to selected switches.
+  node: z.array(z.string()).optional(),
 })
 
 function csvEscape(value: string | number | null | undefined): string {
@@ -57,9 +57,9 @@ export async function POST(request: Request) {
   const from = parsed.data.from ? new Date(parsed.data.from) : null
   const to = parsed.data.to ? new Date(parsed.data.to) : null
 
-  const usageFilter
-    = parsed.data.usage && parsed.data.usage.length > 0
-      ? { usage: { in: parsed.data.usage } }
+  const nodeFilter
+    = parsed.data.node && parsed.data.node.length > 0
+      ? { node: { in: parsed.data.node } }
       : {}
 
   const samples = await prisma.interfaceSample.findMany({
@@ -73,8 +73,8 @@ export async function POST(request: Request) {
             },
           }
         : {}),
-      ...(parsed.data.usage && parsed.data.usage.length > 0
-        ? { interface: usageFilter }
+      ...(parsed.data.node && parsed.data.node.length > 0
+        ? { interface: nodeFilter }
         : {}),
     },
     orderBy: [{ sampledAt: 'asc' }, { interfaceId: 'asc' }],

@@ -62,8 +62,8 @@ interface Props {
   rows: InterfaceRowProps[]
   selectedHostId: string
   query: string
-  filterUsage: string[]
-  availableUsages: string[]
+  filterNode: string[]
+  availableNodes: string[]
   lastSyncedAt: string | null
   page: number
   total: number
@@ -142,15 +142,6 @@ function OperStBadge({ st }: { st: string }) {
   )
 }
 
-function UsageLabel({ usage }: { usage: string }) {
-  const text = usage || '—'
-  return (
-    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-      {text}
-    </span>
-  )
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function InterfaceHealthClient({
@@ -158,8 +149,8 @@ export function InterfaceHealthClient({
   rows,
   selectedHostId,
   query,
-  filterUsage,
-  availableUsages,
+  filterNode,
+  availableNodes,
   lastSyncedAt,
   page,
   total,
@@ -188,20 +179,20 @@ export function InterfaceHealthClient({
   function buildUrl(overrides: {
     apic?: string
     query?: string
-    usage?: string[]
+    node?: string[]
     page?: number
     pageSize?: PageSizeValue
   }) {
     const params = new URLSearchParams()
     const apic = overrides.apic ?? selectedHostId
     const q = overrides.query !== undefined ? overrides.query : query
-    const u = overrides.usage !== undefined ? overrides.usage : filterUsage
+    const n = overrides.node !== undefined ? overrides.node : filterNode
     const p = overrides.page ?? page
     const ps = overrides.pageSize !== undefined ? overrides.pageSize : pageSize
 
     if (apic) params.set('apic', apic)
     if (q.trim()) params.set('query', q.trim())
-    if (u.length > 0) params.set('usage', u.join(','))
+    if (n.length > 0) params.set('node', n.join(','))
     if (p > 1) params.set('page', String(p))
     if (ps !== 50) params.set('pageSize', String(ps))
     const qs = params.toString()
@@ -224,12 +215,12 @@ export function InterfaceHealthClient({
     }, 300)
   }
 
-  function handleUsageToggle(value: string) {
-    const next = filterUsage.includes(value)
-      ? filterUsage.filter(v => v !== value)
-      : [...filterUsage, value]
+  function handleNodeToggle(value: string) {
+    const next = filterNode.includes(value)
+      ? filterNode.filter(v => v !== value)
+      : [...filterNode, value]
     startTransition(() => {
-      router.replace(buildUrl({ usage: next, page: 1 }))
+      router.replace(buildUrl({ node: next, page: 1 }))
     })
   }
 
@@ -281,7 +272,7 @@ export function InterfaceHealthClient({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           apicHostId: selectedHostId,
-          usage: filterUsage.length > 0 ? filterUsage : undefined,
+          node: filterNode.length > 0 ? filterNode : undefined,
         }),
       })
       if (!res.ok) {
@@ -304,7 +295,7 @@ export function InterfaceHealthClient({
     }
   }
 
-  const activeFilterCount = filterUsage.length > 0 ? 1 : 0
+  const activeFilterCount = filterNode.length > 0 ? 1 : 0
   const loading = isPending || syncing
 
   return (
@@ -434,19 +425,19 @@ export function InterfaceHealthClient({
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-44" align="start">
-                    <DropdownMenuLabel>Usage</DropdownMenuLabel>
+                    <DropdownMenuLabel>Node</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {availableUsages.length === 0 ? (
+                    {availableNodes.length === 0 ? (
                       <DropdownMenuItem disabled>No values available</DropdownMenuItem>
                     ) : (
-                      availableUsages.map(u => (
+                      availableNodes.map(n => (
                         <DropdownMenuCheckboxItem
-                          key={u || '(blank)'}
-                          checked={filterUsage.includes(u)}
-                          onCheckedChange={() => handleUsageToggle(u)}
+                          key={n || '(blank)'}
+                          checked={filterNode.includes(n)}
+                          onCheckedChange={() => handleNodeToggle(n)}
                           onSelect={event => event.preventDefault()}
                         >
-                          {u || '(blank)'}
+                          {n || '(blank)'}
                         </DropdownMenuCheckboxItem>
                       ))
                     )}
@@ -510,7 +501,7 @@ export function InterfaceHealthClient({
                     <thead>
                       <tr>
                         {[
-                          'Node', 'Interface', 'Usage', 'Admin', 'Oper', 'Speed',
+                          'Node', 'Interface', 'Description', 'Admin', 'Oper', 'Speed',
                           counterMode === 'delta' ? 'Rx err Δ' : 'Rx err',
                           counterMode === 'delta' ? 'Tx err Δ' : 'Tx err',
                           counterMode === 'delta' ? 'CRC Δ' : 'CRC',
@@ -542,7 +533,7 @@ export function InterfaceHealthClient({
                               {r.node || '—'}
                             </td>
                             <td className="px-4 py-2.5 font-mono text-foreground">{r.ifName}</td>
-                            <td className="px-4 py-2.5"><UsageLabel usage={r.usage} /></td>
+                            <td className="px-4 py-2.5 text-muted-foreground">{r.description || '—'}</td>
                             <td className="px-4 py-2.5 text-muted-foreground">{r.adminSt || '—'}</td>
                             <td className="px-4 py-2.5"><OperStBadge st={r.operSt} /></td>
                             <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{r.operSpeed || '—'}</td>
