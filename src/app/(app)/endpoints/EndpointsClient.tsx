@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { IconRefresh, IconSearch, IconChevronLeft, IconChevronRight, IconServer, IconFilter } from '@tabler/icons-react'
+import { IconRefresh, IconSearch, IconChevronLeft, IconChevronRight, IconServer, IconFilter2 } from '@tabler/icons-react'
 import type { SafeApicHost } from '@/actions/apic-hosts'
 import type { Endpoint } from '@prisma/client'
 import { countActiveEndpointFilterGroups, type EndpointStatusFilter } from '@/lib/endpoints/query'
@@ -449,7 +449,7 @@ export function EndpointsClient({
                           : 'border-border bg-muted text-muted-foreground hover:text-foreground',
                       ].join(' ')}
                     >
-                      <IconFilter size={15} stroke={1.75} />
+                      <IconFilter2 size={15} stroke={1.75} />
                       {activeFilterGroupCount > 0 && (
                         <span className="absolute -right-1.5 -top-1.5 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground shadow-sm">
                           {activeFilterGroupCount}
