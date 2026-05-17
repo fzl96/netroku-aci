@@ -148,7 +148,7 @@ export default function PolicyBridgeDomainsPage() {
   return (
     <div className="min-h-full bg-background">
       <div className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur-sm">
-        <div className="px-8 py-4">
+        <div className="px-8 h-16 flex flex-col justify-center">
           <h1 className="font-serif text-[18px] font-semibold text-foreground">
             Bridge Domains
           </h1>

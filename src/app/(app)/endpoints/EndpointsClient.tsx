@@ -321,7 +321,7 @@ export function EndpointsClient({
     <div className="min-h-full bg-background">
       {/* Page header */}
       <div className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur-sm">
-        <div className="px-8 py-4 flex items-center justify-between gap-4">
+        <div className="px-8 h-16 flex items-center justify-between gap-4">
           <div>
             <h1 className="font-serif text-[18px] font-semibold text-foreground">Endpoints</h1>
             <p className="text-xs text-subtle mt-0.5">ACI fabric endpoint inventory</p>

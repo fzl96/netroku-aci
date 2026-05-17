@@ -125,7 +125,7 @@ export function WorkflowShell<TRow>({
     <div className="min-h-full bg-background">
       {/* ─── Sticky page header ─────────────────────────────────────────── */}
       <div className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur-sm">
-        <div className="px-8 py-4 flex items-center justify-between gap-4">
+        <div className="px-8 h-16 flex items-center justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="font-serif text-[18px] font-semibold text-foreground leading-tight">

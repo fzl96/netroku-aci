@@ -213,10 +213,10 @@ export function AppSidebar() {
   }
 
   return (
-    <Sidebar variant="floating">
-      <SidebarHeader>
-        <div className="flex items-center gap-3 px-1 py-2">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">
+    <Sidebar>
+      <SidebarHeader className="h-16 flex-row items-center border-b border-sidebar-border/60 px-3 py-0">
+        <div className="flex items-center gap-3">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
             <svg
               width="15"
               height="15"
@@ -305,8 +305,8 @@ export function AppSidebar() {
         ))}
       </SidebarContent>
 
-      <SidebarFooter>
-        <div className="flex items-center justify-between px-2 py-1">
+      <SidebarFooter className="border-t border-sidebar-border/60 px-3 py-2">
+        <div className="flex items-center justify-between">
           <p className="text-[10px] text-sidebar-foreground/50">v0.1.0</p>
           <button
             type="button"

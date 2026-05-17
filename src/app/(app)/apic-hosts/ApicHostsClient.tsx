@@ -328,7 +328,7 @@ export function ApicHostsClient({ initialHosts }: { initialHosts: SafeApicHost[]
     <div className="min-h-full bg-background">
       {/* Page header */}
       <div className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur-sm">
-        <div className="px-8 py-4 flex items-center justify-between">
+        <div className="px-8 h-16 flex items-center justify-between">
           <div>
             <h1 className="font-serif text-[18px] font-semibold text-foreground">APIC Hosts</h1>
             <p className="text-xs text-subtle mt-0.5">Manage APIC controller endpoints</p>
