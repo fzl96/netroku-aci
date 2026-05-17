@@ -77,16 +77,18 @@ model Verification {
 }
 
 model ApicHost {
-  id        String     @id @default(cuid())
-  name      String
-  host      String
-  username  String     @default("")
-  password  String     @default("")
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  userId    String
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  endpoints Endpoint[]
+  id                  String              @id @default(cuid())
+  name                String
+  host                String
+  username            String              @default("")
+  password            String              @default("")
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  lastInterfaceSyncAt DateTime?
+  userId              String
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoints           Endpoint[]
+  interfaces          InterfaceSnapshot[]
 
   @@index([userId])
   @@map("apic_host")
@@ -110,4 +112,64 @@ model Endpoint {
   @@unique([apicHostId, mac, ip])
   @@index([apicHostId])
   @@map("endpoint")
+}
+
+model InterfaceSnapshot {
+  id            String   @id @default(cuid())
+  apicHostId    String
+  apicHost      ApicHost @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  dn            String
+  node          String
+  ifName        String
+  usage         String   @default("")
+  adminSt       String   @default("")
+  operSt        String   @default("")
+  operSpeed     String   @default("")
+  description   String   @default("")
+  lastLinkStChg DateTime?
+  firstSeenAt   DateTime @default(now())
+  lastSeenAt    DateTime @default(now())
+
+  samples InterfaceSample[]
+
+  @@unique([apicHostId, dn])
+  @@index([apicHostId])
+  @@map("interface_snapshot")
+}
+
+model InterfaceSample {
+  id          String            @id @default(cuid())
+  apicHostId  String
+  interfaceId String
+  interface   InterfaceSnapshot @relation(fields: [interfaceId], references: [id], onDelete: Cascade)
+  sampledAt   DateTime          @default(now())
+
+  adminSt   String
+  operSt    String
+  operSpeed String
+
+  rxBytes       BigInt
+  rxPkts        BigInt
+  rxErrors      BigInt
+  rxDiscards    BigInt
+  rxCrcErrors   BigInt
+  rxAlignErrors BigInt
+
+  txBytes    BigInt
+  txPkts     BigInt
+  txErrors   BigInt
+  txDiscards BigInt
+
+  dRxBytes       BigInt?
+  dRxErrors      BigInt?
+  dRxDiscards    BigInt?
+  dRxCrcErrors   BigInt?
+  dRxAlignErrors BigInt?
+  dTxBytes       BigInt?
+  dTxErrors      BigInt?
+  dTxDiscards    BigInt?
+
+  @@index([interfaceId, sampledAt])
+  @@index([apicHostId, sampledAt])
+  @@map("interface_sample")
 }

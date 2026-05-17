@@ -38,6 +38,7 @@ import {
   IconChevronRight,
   IconRouter,
   IconDeviceDesktopSearch,
+  IconActivity,
 } from "@tabler/icons-react";
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
@@ -68,6 +69,11 @@ const NAV: { group: string; items: NavItem[] }[] = [
         href: "/endpoints",
         label: "Endpoints",
         icon: <IconDeviceDesktopSearch size={15} stroke={1.75} />,
+      },
+      {
+        href: "/interface-health",
+        label: "Interface Health",
+        icon: <IconActivity size={15} stroke={1.75} />,
       },
     ],
   },
