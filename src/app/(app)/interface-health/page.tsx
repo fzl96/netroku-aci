@@ -11,27 +11,44 @@ export const metadata: Metadata = {
   description: 'Per-interface status, error, and utilisation counters resynced from APIC.',
 }
 
-const USAGES_OF_INTEREST = ['epg', 'infra', 'discovery', '']
+const VALID_PAGE_SIZES = [10, 50, 100, 1000] as const
+type PageSizeValue = typeof VALID_PAGE_SIZES[number] | 'all'
+
+function parsePageSize(param: string | undefined): PageSizeValue {
+  if (param === 'all') return 'all'
+  const n = parseInt(param ?? '50', 10)
+  return (VALID_PAGE_SIZES as readonly number[]).includes(n) ? (n as PageSizeValue) : 50
+}
 
 export default async function InterfaceHealthPage({
   searchParams,
 }: {
-  searchParams: Promise<{ apic?: string; query?: string; usage?: string }>
+  searchParams: Promise<{
+    apic?: string
+    query?: string
+    usage?: string
+    page?: string
+    pageSize?: string
+  }>
 }) {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) redirect('/signin')
 
-  const { apic, query, usage } = await searchParams
+  const { apic, query, usage, page: pageParam, pageSize: pageSizeParam } = await searchParams
   const apicHosts = await getApicHosts()
 
-  // Filter: comma-separated usage list, default to "epg" (access ports) when not specified.
+  // Empty / missing usage param = show all roles. Comma-separated list otherwise.
   const usageFilter = usage
     ? usage.split(',').map(s => s.trim()).filter(Boolean)
-    : ['epg']
+    : []
+
+  const page = Math.max(1, parseInt(pageParam ?? '1', 10) || 1)
+  const pageSize = parsePageSize(pageSizeParam)
 
   let rows: InterfaceRowProps[] = []
+  let total = 0
   let lastSyncedAt: Date | null = null
-  let availableUsages: string[] = USAGES_OF_INTEREST
+  let availableUsages: string[] = []
 
   if (apic && apicHosts.some(h => h.id === apic)) {
     const host = await prisma.apicHost.findUnique({
@@ -55,22 +72,37 @@ export default async function InterfaceHealthPage({
         : {}),
     }
 
-    const snapshots = await prisma.interfaceSnapshot.findMany({
-      where,
-      orderBy: [{ node: 'asc' }, { ifName: 'asc' }],
-      include: {
-        samples: {
-          orderBy: { sampledAt: 'desc' },
-          take: 1,
-          select: {
-            sampledAt: true,
-            dRxBytes: true, dRxErrors: true, dRxDiscards: true,
-            dRxCrcErrors: true, dRxAlignErrors: true,
-            dTxBytes: true, dTxErrors: true, dTxDiscards: true,
+    const skip = pageSize === 'all' ? 0 : (page - 1) * pageSize
+    const take = pageSize === 'all' ? undefined : pageSize
+
+    const [snapshots, snapshotTotal, usages] = await Promise.all([
+      prisma.interfaceSnapshot.findMany({
+        where,
+        orderBy: [{ node: 'asc' }, { ifName: 'asc' }],
+        skip,
+        take,
+        include: {
+          samples: {
+            orderBy: { sampledAt: 'desc' },
+            take: 1,
+            select: {
+              sampledAt: true,
+              dRxBytes: true, dRxErrors: true, dRxDiscards: true,
+              dRxCrcErrors: true, dRxAlignErrors: true,
+              dTxBytes: true, dTxErrors: true, dTxDiscards: true,
+            },
           },
         },
-      },
-    })
+      }),
+      prisma.interfaceSnapshot.count({ where }),
+      prisma.interfaceSnapshot.findMany({
+        where: { apicHostId: apic },
+        select: { usage: true },
+        distinct: ['usage'],
+      }),
+    ])
+
+    total = snapshotTotal
 
     rows = snapshots.map((s) => {
       const latest = s.samples[0]
@@ -97,12 +129,6 @@ export default async function InterfaceHealthPage({
       }
     })
 
-    // Available usage values for the filter chip, sourced from current data.
-    const usages = await prisma.interfaceSnapshot.findMany({
-      where: { apicHostId: apic },
-      select: { usage: true },
-      distinct: ['usage'],
-    })
     availableUsages = usages.map(u => u.usage).filter(u => u !== '').sort()
   }
 
@@ -115,6 +141,9 @@ export default async function InterfaceHealthPage({
       filterUsage={usageFilter}
       availableUsages={availableUsages}
       lastSyncedAt={lastSyncedAt?.toISOString() ?? null}
+      page={page}
+      total={total}
+      pageSize={pageSize}
     />
   )
 }

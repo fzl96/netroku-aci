@@ -9,6 +9,8 @@ import {
   IconServer,
   IconFilter2,
   IconDownload,
+  IconChevronLeft,
+  IconChevronRight,
 } from '@tabler/icons-react'
 import type { SafeApicHost } from '@/actions/apic-hosts'
 import { SEARCH_INPUT_CLS } from '@/lib/ui-classes'
@@ -47,6 +49,15 @@ export interface InterfaceRowProps {
   dTxDiscards: string | null
 }
 
+type PageSizeValue = 10 | 50 | 100 | 1000 | 'all'
+const PAGE_SIZE_OPTIONS: { label: string; value: PageSizeValue }[] = [
+  { label: '10', value: 10 },
+  { label: '50', value: 50 },
+  { label: '100', value: 100 },
+  { label: '1000', value: 1000 },
+  { label: 'All', value: 'all' },
+]
+
 interface Props {
   apicHosts: SafeApicHost[]
   rows: InterfaceRowProps[]
@@ -55,6 +66,9 @@ interface Props {
   filterUsage: string[]
   availableUsages: string[]
   lastSyncedAt: string | null
+  page: number
+  total: number
+  pageSize: PageSizeValue
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -148,6 +162,9 @@ export function InterfaceHealthClient({
   filterUsage,
   availableUsages,
   lastSyncedAt,
+  page,
+  total,
+  pageSize,
 }: Props) {
   const router = useRouter()
   const [syncing, setSyncing] = useState(false)
@@ -156,25 +173,37 @@ export function InterfaceHealthClient({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [searchValue, setSearchValue] = useState(query)
   const [previousQuery, setPreviousQuery] = useState(query)
+  const [jumpValue, setJumpValue] = useState('')
 
   if (query !== previousQuery) {
     setPreviousQuery(query)
     setSearchValue(query)
   }
 
-  function buildUrl(overrides: { apic?: string; query?: string; usage?: string[] }) {
+  const effectivePageSize = pageSize === 'all' ? Math.max(total, 1) : pageSize
+  const totalPages = Math.max(1, Math.ceil(total / effectivePageSize))
+  const rangeStart = total === 0 ? 0 : (page - 1) * effectivePageSize + 1
+  const rangeEnd = pageSize === 'all' ? total : Math.min(page * effectivePageSize, total)
+
+  function buildUrl(overrides: {
+    apic?: string
+    query?: string
+    usage?: string[]
+    page?: number
+    pageSize?: PageSizeValue
+  }) {
     const params = new URLSearchParams()
     const apic = overrides.apic ?? selectedHostId
     const q = overrides.query !== undefined ? overrides.query : query
     const u = overrides.usage !== undefined ? overrides.usage : filterUsage
+    const p = overrides.page ?? page
+    const ps = overrides.pageSize !== undefined ? overrides.pageSize : pageSize
 
     if (apic) params.set('apic', apic)
     if (q.trim()) params.set('query', q.trim())
-    // Encode usage filter; omit the param when it matches the default ["epg"] to keep URLs clean.
-    if (!(u.length === 1 && u[0] === 'epg')) {
-      if (u.length > 0) params.set('usage', u.join(','))
-      else params.set('usage', '')
-    }
+    if (u.length > 0) params.set('usage', u.join(','))
+    if (p > 1) params.set('page', String(p))
+    if (ps !== 50) params.set('pageSize', String(ps))
     const qs = params.toString()
     return `/interface-health${qs ? `?${qs}` : ''}`
   }
@@ -190,7 +219,7 @@ export function InterfaceHealthClient({
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
       startTransition(() => {
-        router.replace(buildUrl({ query: value }))
+        router.replace(buildUrl({ query: value, page: 1 }))
       })
     }, 300)
   }
@@ -200,8 +229,27 @@ export function InterfaceHealthClient({
       ? filterUsage.filter(v => v !== value)
       : [...filterUsage, value]
     startTransition(() => {
-      router.replace(buildUrl({ usage: next }))
+      router.replace(buildUrl({ usage: next, page: 1 }))
     })
+  }
+
+  function handlePage(next: number) {
+    startTransition(() => {
+      router.replace(buildUrl({ page: next }))
+    })
+  }
+
+  function handlePageSizeChange(ps: PageSizeValue) {
+    startTransition(() => {
+      router.replace(buildUrl({ pageSize: ps, page: 1 }))
+    })
+  }
+
+  function handleJump(e: React.FormEvent) {
+    e.preventDefault()
+    const p = parseInt(jumpValue, 10)
+    if (p >= 1 && p <= totalPages) handlePage(p)
+    setJumpValue('')
   }
 
   async function handleResync() {
@@ -256,7 +304,7 @@ export function InterfaceHealthClient({
     }
   }
 
-  const activeFilterCount = !(filterUsage.length === 1 && filterUsage[0] === 'epg') ? 1 : 0
+  const activeFilterCount = filterUsage.length > 0 ? 1 : 0
   const loading = isPending || syncing
 
   return (
@@ -408,8 +456,8 @@ export function InterfaceHealthClient({
 
               <div className="flex items-center gap-3 shrink-0 text-xs text-subtle">
                 <span>
-                  <span className="font-semibold text-foreground">{rows.length}</span>{' '}
-                  {rows.length === 1 ? 'interface' : 'interfaces'}
+                  <span className="font-semibold text-foreground">{total}</span>{' '}
+                  {total === 1 ? 'interface' : 'interfaces'}
                 </span>
               </div>
             </div>
@@ -495,6 +543,82 @@ export function InterfaceHealthClient({
                 </div>
               )}
             </div>
+
+            {total > 0 && (
+              <div className="flex items-center justify-between pt-1 gap-4">
+                <p className="text-xs text-subtle shrink-0">
+                  {pageSize === 'all'
+                    ? `Showing all ${total} interfaces`
+                    : `Showing ${rangeStart}–${rangeEnd} of ${total} interfaces`}
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-faint">Per page</span>
+                    <select
+                      value={String(pageSize)}
+                      onChange={e => handlePageSizeChange(e.target.value === 'all' ? 'all' : Number(e.target.value) as PageSizeValue)}
+                      disabled={isPending}
+                      className="text-xs bg-muted border border-border rounded-lg px-2 py-1.5 text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-40"
+                    >
+                      {PAGE_SIZE_OPTIONS.map(o => (
+                        <option key={String(o.value)} value={String(o.value)}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {pageSize !== 'all' && totalPages > 1 && (
+                    <>
+                      <div className="w-px h-4 bg-border" />
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handlePage(page - 1)}
+                          disabled={page <= 1 || isPending}
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <IconChevronLeft size={12} stroke={1.75} />
+                          Prev
+                        </button>
+
+                        <span className="px-2 py-1.5 text-xs text-subtle tabular-nums">
+                          {page} / {totalPages}
+                        </span>
+
+                        <button
+                          onClick={() => handlePage(page + 1)}
+                          disabled={page >= totalPages || isPending}
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Next
+                          <IconChevronRight size={12} stroke={1.75} />
+                        </button>
+
+                        <div className="w-px h-4 bg-border" />
+
+                        <form onSubmit={handleJump} className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min={1}
+                            max={totalPages}
+                            value={jumpValue}
+                            onChange={e => setJumpValue(e.target.value)}
+                            placeholder="Go to…"
+                            className="w-20 text-xs bg-muted border border-border rounded-lg px-2 py-1.5 text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                          <button
+                            type="submit"
+                            disabled={!jumpValue || isPending}
+                            className="px-2.5 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            Go
+                          </button>
+                        </form>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
