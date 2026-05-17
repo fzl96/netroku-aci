@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getApicHosts } from '@/actions/apic-hosts'
 import { InterfaceHealthClient, type InterfaceRowProps } from './InterfaceHealthClient'
+import { sortInterfaceRows } from './sort'
 
 export const metadata: Metadata = {
   title: 'Interface Health',
@@ -79,8 +80,6 @@ export default async function InterfaceHealthPage({
       prisma.interfaceSnapshot.findMany({
         where,
         orderBy: [{ node: 'asc' }, { ifName: 'asc' }],
-        skip,
-        take,
         include: {
           samples: {
             orderBy: { sampledAt: 'desc' },
@@ -107,7 +106,12 @@ export default async function InterfaceHealthPage({
 
     total = snapshotTotal
 
-    rows = snapshots.map((s) => {
+    const sortedSnapshots = sortInterfaceRows(snapshots)
+    const visibleSnapshots = take === undefined
+      ? sortedSnapshots
+      : sortedSnapshots.slice(skip, skip + take)
+
+    rows = visibleSnapshots.map((s) => {
       const latest = s.samples[0]
       return {
         id: s.id,
