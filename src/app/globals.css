@@ -28,13 +28,13 @@
   --primary:                  oklch(0.555 0.135 45);
   --primary-foreground:       oklch(0.992 0.003 80);
 
-  --secondary:                oklch(0.940 0.012 70);
+  --secondary:                oklch(0.940 0.022 58);
   --secondary-foreground:     var(--foreground);
 
-  --muted:                    oklch(0.940 0.012 70);
+  --muted:                    oklch(0.940 0.022 58);
   --muted-foreground:         oklch(0.500 0.015 55);
 
-  --accent:                   oklch(0.940 0.012 70);
+  --accent:                   oklch(0.940 0.022 58);
   --accent-foreground:        var(--foreground);
 
   --destructive:              oklch(0.555 0.180 25);
