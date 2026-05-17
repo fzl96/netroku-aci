@@ -8,8 +8,18 @@ import type { SafeApicHost } from '@/actions/apic-hosts'
 import type { Endpoint } from '@prisma/client'
 import { countActiveEndpointFilterGroups, type EndpointStatusFilter } from '@/lib/endpoints/query'
 import { SEARCH_INPUT_CLS } from '@/lib/ui-classes'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { ExportEndpointsDialog } from './ExportEndpointsDialog'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -59,9 +69,9 @@ function TableSkeleton() {
   )
 }
 
-// ─── Filter panel ─────────────────────────────────────────────────────────────
+// ─── Filter submenu ───────────────────────────────────────────────────────────
 
-function FilterSection({
+function FilterSubmenu({
   label,
   value,
   options,
@@ -79,44 +89,46 @@ function FilterSection({
   }
 
   return (
-    <section className="space-y-2">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-faint">{label}</h3>
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger disabled={disabled}>
+        <span>{label}</span>
         {value.length > 0 && (
-          <button
-            type="button"
-            onClick={() => onChange([])}
-            disabled={disabled}
-            className="text-[11px] text-faint transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Clear
-          </button>
+          <span className="ml-auto mr-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+            {value.length}
+          </span>
         )}
-      </div>
-
-      <Command className="rounded-lg border border-border bg-background">
-        <CommandInput
-          placeholder={options.length === 0 ? 'No values available' : `Search ${label.toLowerCase()}…`}
-          disabled={disabled || options.length === 0}
-        />
-        <CommandList className="max-h-28">
-          <CommandEmpty>{options.length === 0 ? 'No values available' : 'No results'}</CommandEmpty>
-          <CommandGroup>
-            {options.map(opt => (
-              <CommandItem
-                key={opt}
-                value={opt}
-                disabled={disabled}
-                data-checked={String(value.includes(opt))}
-                onSelect={() => toggle(opt)}
-              >
-                {opt}
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        </CommandList>
-      </Command>
-    </section>
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent className="min-w-48">
+        <DropdownMenuLabel>{label}</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {options.length === 0 ? (
+          <DropdownMenuItem disabled>No values available</DropdownMenuItem>
+        ) : (
+          options.map(opt => (
+            <DropdownMenuCheckboxItem
+              key={opt}
+              checked={value.includes(opt)}
+              disabled={disabled}
+              onCheckedChange={() => toggle(opt)}
+              onSelect={event => event.preventDefault()}
+            >
+              {opt}
+            </DropdownMenuCheckboxItem>
+          ))
+        )}
+        {value.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              disabled={disabled}
+              onSelect={() => onChange([])}
+            >
+              Clear {label}
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   )
 }
 
@@ -175,11 +187,6 @@ export function EndpointsClient({
   const [searchValue, setSearchValue] = useState(query)
   const [previousQuery, setPreviousQuery] = useState(query)
   const [jumpValue, setJumpValue] = useState('')
-  const [filtersOpen, setFiltersOpen] = useState(false)
-  const [draftVlan, setDraftVlan] = useState(filterVlan)
-  const [draftNode, setDraftNode] = useState(filterNode)
-  const [draftIface, setDraftIface] = useState(filterIface)
-  const [draftStatus, setDraftStatus] = useState<EndpointStatusFilter[]>(filterStatus)
 
   // Sync input when query changes via back/forward navigation
   if (query !== previousQuery) {
@@ -197,12 +204,6 @@ export function EndpointsClient({
     node: filterNode,
     iface: filterIface,
     status: filterStatus,
-  })
-  const draftFilterGroupCount = countActiveEndpointFilterGroups({
-    vlan: draftVlan,
-    node: draftNode,
-    iface: draftIface,
-    status: draftStatus,
   })
 
   function buildUrl(overrides: { apic?: string; query?: string; page?: number; pageSize?: PageSizeValue; vlan?: string[]; node?: string[]; iface?: string[]; status?: string[] }) {
@@ -250,35 +251,10 @@ export function EndpointsClient({
     })
   }
 
-  function handleFilterPopoverOpenChange(nextOpen: boolean) {
-    setFiltersOpen(nextOpen)
-
-    if (nextOpen) {
-      setDraftVlan(filterVlan)
-      setDraftNode(filterNode)
-      setDraftIface(filterIface)
-      setDraftStatus(filterStatus)
-    }
-  }
-
-  function handleApplyFilters() {
+  function handleFilterChange(key: 'vlan' | 'node' | 'iface' | 'status', value: string[]) {
     startTransition(() => {
-      router.replace(buildUrl({
-        vlan: draftVlan,
-        node: draftNode,
-        iface: draftIface,
-        status: draftStatus,
-        page: 1,
-      }))
+      router.replace(buildUrl({ [key]: value, page: 1 }))
     })
-    setFiltersOpen(false)
-  }
-
-  function handleClearDraftFilters() {
-    setDraftVlan([])
-    setDraftNode([])
-    setDraftIface([])
-    setDraftStatus([])
   }
 
   function handlePageSizeChange(ps: PageSizeValue) {
@@ -432,9 +408,9 @@ export function EndpointsClient({
                   />
                 </div>
 
-                {/* Filter popover */}
-                <Popover open={filtersOpen} onOpenChange={handleFilterPopoverOpenChange}>
-                  <PopoverTrigger asChild>
+                {/* Filter menu */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <button
                       type="button"
                       title="Filter endpoints"
@@ -455,57 +431,16 @@ export function EndpointsClient({
                         </span>
                       )}
                     </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[420px] gap-4 p-4" align="start">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <h2 className="text-sm font-semibold text-foreground">Filters</h2>
-                        <p className="text-xs text-subtle">Stage multiple changes, then apply them together.</p>
-                      </div>
-                      {draftFilterGroupCount > 0 && (
-                        <span className="rounded-full bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">
-                          {draftFilterGroupCount} active
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="space-y-4">
-                      <FilterSection label="VLAN" value={draftVlan} options={vlans} onChange={setDraftVlan} disabled={isPending} />
-                      <FilterSection label="Node" value={draftNode} options={nodes} onChange={setDraftNode} disabled={isPending} />
-                      <FilterSection label="Interface" value={draftIface} options={ifaces} onChange={setDraftIface} disabled={isPending} />
-                      <FilterSection label="Status" value={draftStatus} options={['active', 'historical']} onChange={value => setDraftStatus(value as EndpointStatusFilter[])} disabled={isPending} />
-                    </div>
-
-                    <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
-                      <button
-                        type="button"
-                        onClick={handleClearDraftFilters}
-                        disabled={isPending}
-                        className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        Clear all
-                      </button>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setFiltersOpen(false)}
-                          disabled={isPending}
-                          className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleApplyFilters}
-                          disabled={isPending}
-                          className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          Apply
-                        </button>
-                      </div>
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-44" align="start">
+                    <DropdownMenuLabel>Filters</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <FilterSubmenu label="VLAN" value={filterVlan} options={vlans} onChange={value => handleFilterChange('vlan', value)} disabled={isPending} />
+                    <FilterSubmenu label="Node" value={filterNode} options={nodes} onChange={value => handleFilterChange('node', value)} disabled={isPending} />
+                    <FilterSubmenu label="Interface" value={filterIface} options={ifaces} onChange={value => handleFilterChange('iface', value)} disabled={isPending} />
+                    <FilterSubmenu label="Status" value={filterStatus} options={['active', 'historical']} onChange={value => handleFilterChange('status', value)} disabled={isPending} />
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
               <div className="flex items-center gap-3 shrink-0 text-xs text-subtle">
