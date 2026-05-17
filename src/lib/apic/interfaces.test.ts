@@ -75,7 +75,8 @@ describe('parseInterfaceRows', () => {
                     rmonIfIn: {
                       attributes: {
                         octets: '1234567890',
-                        pkts: '107',
+                        ucastPkts: '100',
+                        nUcastPkts: '7',
                         errors: '7',
                         discards: '3',
                       },
@@ -85,7 +86,8 @@ describe('parseInterfaceRows', () => {
                     rmonIfOut: {
                       attributes: {
                         octets: '987654321',
-                        pkts: '80',
+                        ucastPkts: '80',
+                        nUcastPkts: '0',
                         errors: '0',
                         discards: '1',
                       },
@@ -160,8 +162,8 @@ describe('parseInterfaceRows', () => {
             descr: '',
           },
           children: [
-            { rmonIfIn: { attributes: { octets: '500', pkts: '4', errors: '11', discards: '0' } } },
-            { rmonIfOut: { attributes: { octets: '600', pkts: '5', errors: '0', discards: '0' } } },
+            { rmonIfIn: { attributes: { octets: '500', ucastPkts: '3', nUcastPkts: '1', errors: '11', discards: '0' } } },
+            { rmonIfOut: { attributes: { octets: '600', ucastPkts: '4', nUcastPkts: '1', errors: '0', discards: '0' } } },
           ],
         },
       },

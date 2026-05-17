@@ -38,12 +38,13 @@ interface EthpmPhysIfAttrs {
   lastLinkStChg?: string
 }
 
-// ACI rmonIfIn attribute names (Cisco APIC MIM). The cumulative counters are
-// un-prefixed: `octets`, `pkts`, `errors`, `discards`.
+// ACI rmonIfIn / rmonIfOut attribute names (Cisco APIC MIM). Note: there is
+// no `pkts` field — total packets is ucastPkts + nUcastPkts (nUcastPkts on
+// ACI already aggregates multicast + broadcast).
 interface RmonIfInAttrs {
   octets?: string
-  pkts?: string
   ucastPkts?: string
+  nUcastPkts?: string
   multicastPkts?: string
   broadcastPkts?: string
   errors?: string
@@ -53,8 +54,8 @@ interface RmonIfInAttrs {
 
 interface RmonIfOutAttrs {
   octets?: string
-  pkts?: string
   ucastPkts?: string
+  nUcastPkts?: string
   multicastPkts?: string
   broadcastPkts?: string
   errors?: string
@@ -154,6 +155,11 @@ export function parseInterfaceRows(imdata: PhysIfNode[]): ApicInterfaceRow[] {
     // the combined CRC+align field per RFC 2819 — use it as a fallback only.
     const alignFallback = toBigInt(ether.cRCAlignErrors)
 
+    // ACI's rmonIfIn / rmonIfOut don't expose a single `pkts` total — sum
+    // unicast + non-unicast (nUcastPkts already aggregates mcast + bcast).
+    const rxPkts = toBigInt(rmonIn.ucastPkts) + toBigInt(rmonIn.nUcastPkts)
+    const txPkts = toBigInt(rmonOut.ucastPkts) + toBigInt(rmonOut.nUcastPkts)
+
     rows.push({
       dn,
       node,
@@ -165,7 +171,7 @@ export function parseInterfaceRows(imdata: PhysIfNode[]): ApicInterfaceRow[] {
       description: descr ?? '',
       lastLinkStChg: parseDate(ethpm.lastLinkStChg),
       rxBytes: toBigInt(rmonIn.octets),
-      rxPkts: toBigInt(rmonIn.pkts),
+      rxPkts,
       rxErrors: toBigInt(rmonIn.errors),
       rxDiscards: toBigInt(rmonIn.discards),
       rxCrcErrors: toBigInt(dot3.fCSErrors),
@@ -173,7 +179,7 @@ export function parseInterfaceRows(imdata: PhysIfNode[]): ApicInterfaceRow[] {
         ? toBigInt(dot3.alignmentErrors)
         : alignFallback,
       txBytes: toBigInt(rmonOut.octets),
-      txPkts: toBigInt(rmonOut.pkts),
+      txPkts,
       txErrors: toBigInt(rmonOut.errors),
       txDiscards: toBigInt(rmonOut.discards),
     })
