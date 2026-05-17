@@ -24,15 +24,17 @@ export const metadata: Metadata = {
   icons: { icon: "/favicon.ico" },
 };
 
-/** Inline script that runs before first paint — prevents theme flash. */
-
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${lora.variable} h-full`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${inter.variable} ${lora.variable} h-full`}
+    >
       <body className="h-full font-sans antialiased">
         <ThemeProvider>
           {children}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useTheme } from "./ThemeProvider";
+import { nextBinaryTheme } from "./theme-toggle";
 import {
   Sidebar,
   SidebarContent,
@@ -139,7 +140,8 @@ const NAV: { group: string; items: NavItem[] }[] = [
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { theme, toggle } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
+  const theme = resolvedTheme ?? "light";
 
   function isActive(href: string) {
     return href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -308,7 +310,7 @@ export function AppSidebar() {
           <p className="text-[10px] text-sidebar-foreground/50">v0.1.0</p>
           <button
             type="button"
-            onClick={toggle}
+            onClick={() => setTheme(nextBinaryTheme(theme))}
             className="rounded-md p-1 text-sidebar-foreground/60 transition-colors hover:text-sidebar-foreground hover:bg-sidebar-accent"
             title={
               theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
