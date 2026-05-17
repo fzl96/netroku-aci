@@ -33,48 +33,43 @@ interface L1PhysIfAttrs {
 }
 
 interface EthpmPhysIfAttrs {
-  operSt: string
-  operSpeed: string
-  lastLinkStChg: string
+  operSt?: string
+  operSpeed?: string
+  lastLinkStChg?: string
 }
 
+// ACI rmonIfIn attribute names (Cisco APIC MIM). The cumulative counters are
+// un-prefixed: `octets`, `pkts`, `errors`, `discards`.
 interface RmonIfInAttrs {
-  octetsRate?: string
-  hCInOctets?: string
-  hCInUcastPkts?: string
-  hCInMulticastPkts?: string
-  hCInBroadcastPkts?: string
-  packetsRate?: string
+  octets?: string
+  pkts?: string
   ucastPkts?: string
   multicastPkts?: string
   broadcastPkts?: string
-  inOctets?: string
-  inUcastPkts?: string
-  // Counter fields we use:
   errors?: string
   discards?: string
   unknownProtos?: string
 }
 
 interface RmonIfOutAttrs {
-  hCOutOctets?: string
-  hCOutUcastPkts?: string
-  hCOutMulticastPkts?: string
-  hCOutBroadcastPkts?: string
-  outOctets?: string
-  outUcastPkts?: string
-  // Counter fields we use:
+  octets?: string
+  pkts?: string
+  ucastPkts?: string
+  multicastPkts?: string
+  broadcastPkts?: string
   errors?: string
   discards?: string
 }
 
 interface RmonDot3StatsAttrs {
   fCSErrors?: string
+  alignmentErrors?: string
+  symbolErrors?: string
+  frameTooLongs?: string
 }
 
 interface RmonEtherStatsAttrs {
   cRCAlignErrors?: string
-  alignmentErrors?: string
 }
 
 const DN_RE = /topology\/pod-\d+\/node-(\d+)\/sys\/phys-\[([^\]]+)\]/
@@ -94,51 +89,48 @@ function toBigInt(value: string | undefined): bigint {
   }
 }
 
-function pickBytes(a: RmonIfInAttrs): bigint {
-  // APIC exposes the cumulative byte counter under hCInOctets on modern fabrics
-  // and inOctets / octetsRate on older ones — fall through to whichever is present.
-  return toBigInt(a.hCInOctets ?? a.inOctets ?? a.octetsRate)
-}
-
-function pickInPkts(a: RmonIfInAttrs): bigint {
-  return (
-    toBigInt(a.hCInUcastPkts ?? a.inUcastPkts ?? a.ucastPkts)
-    + toBigInt(a.hCInMulticastPkts ?? a.multicastPkts)
-    + toBigInt(a.hCInBroadcastPkts ?? a.broadcastPkts)
-  )
-}
-
-function pickOutBytes(a: RmonIfOutAttrs): bigint {
-  return toBigInt(a.hCOutOctets ?? a.outOctets)
-}
-
-function pickOutPkts(a: RmonIfOutAttrs): bigint {
-  return (
-    toBigInt(a.hCOutUcastPkts ?? a.outUcastPkts)
-    + toBigInt(a.hCOutMulticastPkts)
-    + toBigInt(a.hCOutBroadcastPkts)
-  )
-}
-
 function parseDate(value: string | undefined): Date | null {
   if (!value) return null
   const d = new Date(value)
   return Number.isNaN(d.getTime()) ? null : d
 }
 
-interface PhysIfChild {
-  ethpmPhysIf?: { attributes: EthpmPhysIfAttrs }
-  rmonIfIn?: { attributes: RmonIfInAttrs }
-  rmonIfOut?: { attributes: RmonIfOutAttrs }
-  rmonDot3Stats?: { attributes: RmonDot3StatsAttrs }
-  rmonEtherStats?: { attributes: RmonEtherStatsAttrs }
+// Any APIC MO node has the shape { <className>: { attributes, children? } }.
+// We walk the full subtree because rmon counters nest under ethpmPhysIf, not
+// directly under l1PhysIf, and we don't want to assume a specific depth.
+interface MoNode {
+  [className: string]: {
+    attributes: Record<string, string>
+    children?: MoNode[]
+  } | undefined
 }
 
 interface PhysIfNode {
   l1PhysIf?: {
     attributes: L1PhysIfAttrs
-    children?: PhysIfChild[]
+    children?: MoNode[]
   }
+}
+
+// Walk an MO subtree and collect the most-recent attributes seen for each named
+// class. We pick the deepest occurrence so an ethpmPhysIf wrapper's children
+// override anything on its parent, but in practice each class appears once per
+// interface anyway.
+function collectByClass(roots: MoNode[]): Map<string, Record<string, string>> {
+  const seen = new Map<string, Record<string, string>>()
+  const stack: MoNode[] = [...roots]
+
+  while (stack.length > 0) {
+    const node = stack.pop()!
+    for (const className of Object.keys(node)) {
+      const mo = node[className]
+      if (!mo) continue
+      seen.set(className, mo.attributes)
+      if (mo.children?.length) stack.push(...mo.children)
+    }
+  }
+
+  return seen
 }
 
 export function parseInterfaceRows(imdata: PhysIfNode[]): ApicInterfaceRow[] {
@@ -151,52 +143,16 @@ export function parseInterfaceRows(imdata: PhysIfNode[]): ApicInterfaceRow[] {
     const { dn, adminSt, usage, descr } = phys.attributes
     const { node, ifName } = parseDn(dn)
 
-    let operSt = ''
-    let operSpeed = ''
-    let lastLinkStChg: Date | null = null
+    const attrsByClass = collectByClass(phys.children ?? [])
+    const ethpm = (attrsByClass.get('ethpmPhysIf') ?? {}) as EthpmPhysIfAttrs
+    const rmonIn = (attrsByClass.get('rmonIfIn') ?? {}) as RmonIfInAttrs
+    const rmonOut = (attrsByClass.get('rmonIfOut') ?? {}) as RmonIfOutAttrs
+    const dot3 = (attrsByClass.get('rmonDot3Stats') ?? {}) as RmonDot3StatsAttrs
+    const ether = (attrsByClass.get('rmonEtherStats') ?? {}) as RmonEtherStatsAttrs
 
-    let rxBytes = BigInt(0)
-    let rxPkts = BigInt(0)
-    let rxErrors = BigInt(0)
-    let rxDiscards = BigInt(0)
-    let rxCrcErrors = BigInt(0)
-    let rxAlignErrors = BigInt(0)
-
-    let txBytes = BigInt(0)
-    let txPkts = BigInt(0)
-    let txErrors = BigInt(0)
-    let txDiscards = BigInt(0)
-
-    for (const child of phys.children ?? []) {
-      if (child.ethpmPhysIf) {
-        const a = child.ethpmPhysIf.attributes
-        operSt = a.operSt ?? ''
-        operSpeed = a.operSpeed ?? ''
-        lastLinkStChg = parseDate(a.lastLinkStChg)
-      }
-      if (child.rmonIfIn) {
-        const a = child.rmonIfIn.attributes
-        rxBytes = pickBytes(a)
-        rxPkts = pickInPkts(a)
-        rxErrors = toBigInt(a.errors)
-        rxDiscards = toBigInt(a.discards)
-      }
-      if (child.rmonIfOut) {
-        const a = child.rmonIfOut.attributes
-        txBytes = pickOutBytes(a)
-        txPkts = pickOutPkts(a)
-        txErrors = toBigInt(a.errors)
-        txDiscards = toBigInt(a.discards)
-      }
-      if (child.rmonDot3Stats) {
-        rxCrcErrors = toBigInt(child.rmonDot3Stats.attributes.fCSErrors)
-      }
-      if (child.rmonEtherStats) {
-        const a = child.rmonEtherStats.attributes
-        // Some platforms expose a single cRCAlignErrors field; alignment errors split out on others.
-        rxAlignErrors = toBigInt(a.alignmentErrors ?? a.cRCAlignErrors)
-      }
-    }
+    // alignmentErrors lives on rmonDot3Stats; rmonEtherStats.cRCAlignErrors is
+    // the combined CRC+align field per RFC 2819 — use it as a fallback only.
+    const alignFallback = toBigInt(ether.cRCAlignErrors)
 
     rows.push({
       dn,
@@ -204,20 +160,22 @@ export function parseInterfaceRows(imdata: PhysIfNode[]): ApicInterfaceRow[] {
       ifName,
       usage: usage ?? '',
       adminSt: adminSt ?? '',
-      operSt,
-      operSpeed,
+      operSt: ethpm.operSt ?? '',
+      operSpeed: ethpm.operSpeed ?? '',
       description: descr ?? '',
-      lastLinkStChg,
-      rxBytes,
-      rxPkts,
-      rxErrors,
-      rxDiscards,
-      rxCrcErrors,
-      rxAlignErrors,
-      txBytes,
-      txPkts,
-      txErrors,
-      txDiscards,
+      lastLinkStChg: parseDate(ethpm.lastLinkStChg),
+      rxBytes: toBigInt(rmonIn.octets),
+      rxPkts: toBigInt(rmonIn.pkts),
+      rxErrors: toBigInt(rmonIn.errors),
+      rxDiscards: toBigInt(rmonIn.discards),
+      rxCrcErrors: toBigInt(dot3.fCSErrors),
+      rxAlignErrors: dot3.alignmentErrors !== undefined
+        ? toBigInt(dot3.alignmentErrors)
+        : alignFallback,
+      txBytes: toBigInt(rmonOut.octets),
+      txPkts: toBigInt(rmonOut.pkts),
+      txErrors: toBigInt(rmonOut.errors),
+      txDiscards: toBigInt(rmonOut.discards),
     })
   }
 

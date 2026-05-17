@@ -51,7 +51,7 @@ describe('parseInterfaceRows', () => {
     expect(rows[0].adminSt).toBe('up')
   })
 
-  it('reads counters from rmon children and CRC from rmonDot3Stats', () => {
+  it('reads counters from rmon classes nested under ethpmPhysIf', () => {
     const rows = parseInterfaceRows([
       {
         l1PhysIf: {
@@ -70,34 +70,31 @@ describe('parseInterfaceRows', () => {
                   operSpeed: '25G',
                   lastLinkStChg: '2026-05-01T00:00:00.000Z',
                 },
+                children: [
+                  {
+                    rmonIfIn: {
+                      attributes: {
+                        octets: '1234567890',
+                        pkts: '107',
+                        errors: '7',
+                        discards: '3',
+                      },
+                    },
+                  },
+                  {
+                    rmonIfOut: {
+                      attributes: {
+                        octets: '987654321',
+                        pkts: '80',
+                        errors: '0',
+                        discards: '1',
+                      },
+                    },
+                  },
+                  { rmonDot3Stats: { attributes: { fCSErrors: '42', alignmentErrors: '6' } } },
+                ],
               },
             },
-            {
-              rmonIfIn: {
-                attributes: {
-                  hCInOctets: '1234567890',
-                  hCInUcastPkts: '100',
-                  hCInMulticastPkts: '5',
-                  hCInBroadcastPkts: '2',
-                  errors: '7',
-                  discards: '3',
-                },
-              },
-            },
-            {
-              rmonIfOut: {
-                attributes: {
-                  hCOutOctets: '987654321',
-                  hCOutUcastPkts: '80',
-                  hCOutMulticastPkts: '0',
-                  hCOutBroadcastPkts: '0',
-                  errors: '0',
-                  discards: '1',
-                },
-              },
-            },
-            { rmonDot3Stats: { attributes: { fCSErrors: '42' } } },
-            { rmonEtherStats: { attributes: { alignmentErrors: '6' } } },
           ],
         },
       },
@@ -120,7 +117,7 @@ describe('parseInterfaceRows', () => {
     expect(row.description).toBe('uplink to host')
   })
 
-  it('falls back to alternate counter field names when modern ones are absent', () => {
+  it('falls back to rmonEtherStats.cRCAlignErrors when rmonDot3Stats.alignmentErrors is missing', () => {
     const rows = parseInterfaceRows([
       {
         l1PhysIf: {
@@ -133,23 +130,46 @@ describe('parseInterfaceRows', () => {
           },
           children: [
             {
-              rmonIfIn: {
-                attributes: {
-                  inOctets: '500',
-                  inUcastPkts: '4',
-                  errors: '0',
-                  discards: '0',
-                },
+              ethpmPhysIf: {
+                attributes: {},
+                children: [
+                  { rmonDot3Stats: { attributes: { fCSErrors: '4' } } },
+                  { rmonEtherStats: { attributes: { cRCAlignErrors: '9' } } },
+                ],
               },
             },
-            { rmonEtherStats: { attributes: { cRCAlignErrors: '9' } } },
+          ],
+        },
+      },
+    ])
+    expect(rows[0].rxCrcErrors).toBe(b(4))
+    expect(rows[0].rxAlignErrors).toBe(b(9))
+  })
+
+  it('also handles rmon children flattened directly under l1PhysIf (defensive)', () => {
+    // Some MIT response shapes — particularly when querying via /api/mo with
+    // certain subtree options — flatten the tree. We should still find them.
+    const rows = parseInterfaceRows([
+      {
+        l1PhysIf: {
+          attributes: {
+            dn: 'topology/pod-1/node-101/sys/phys-[eth1/3]',
+            id: 'eth1/3',
+            adminSt: 'up',
+            usage: 'epg',
+            descr: '',
+          },
+          children: [
+            { rmonIfIn: { attributes: { octets: '500', pkts: '4', errors: '11', discards: '0' } } },
+            { rmonIfOut: { attributes: { octets: '600', pkts: '5', errors: '0', discards: '0' } } },
           ],
         },
       },
     ])
     expect(rows[0].rxBytes).toBe(b(500))
     expect(rows[0].rxPkts).toBe(b(4))
-    expect(rows[0].rxAlignErrors).toBe(b(9))
+    expect(rows[0].rxErrors).toBe(b(11))
+    expect(rows[0].txBytes).toBe(b(600))
   })
 
   it('coerces a malformed lastLinkStChg to null', () => {
@@ -157,8 +177,8 @@ describe('parseInterfaceRows', () => {
       {
         l1PhysIf: {
           attributes: {
-            dn: 'topology/pod-1/node-101/sys/phys-[eth1/3]',
-            id: 'eth1/3',
+            dn: 'topology/pod-1/node-101/sys/phys-[eth1/9]',
+            id: 'eth1/9',
             adminSt: 'up',
             usage: '',
             descr: '',
