@@ -3,9 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useSyncExternalStore } from "react";
 import { useTheme } from "./ThemeProvider";
-import { themeTogglePresentation } from "./theme-toggle";
+import { nextBinaryTheme } from "./theme-toggle";
 import {
   Sidebar,
   SidebarContent,
@@ -141,13 +140,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { resolvedTheme, setTheme } = useTheme();
-  const mounted = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false,
-  );
-  const themeToggle = themeTogglePresentation(resolvedTheme, mounted);
+  const { setTheme } = useTheme();
 
   function isActive(href: string) {
     return href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -316,21 +309,13 @@ export function AppSidebar() {
           <p className="text-[10px] text-sidebar-foreground/50">v0.1.0</p>
           <button
             type="button"
-            onClick={() => {
-              if (themeToggle) setTheme(themeToggle.nextTheme);
-            }}
+            onClick={() => setTheme((theme) => nextBinaryTheme(theme))}
             className="rounded-md p-1 text-sidebar-foreground/60 transition-colors hover:text-sidebar-foreground hover:bg-sidebar-accent"
-            title={themeToggle?.label}
-            aria-label={themeToggle?.label}
-            disabled={!themeToggle}
+            title="Toggle theme"
+            aria-label="Toggle theme"
           >
-            {themeToggle?.icon === "sun" ? (
-              <IconSun size={13} stroke={2} />
-            ) : themeToggle?.icon === "moon" ? (
-              <IconMoon size={13} stroke={2} />
-            ) : (
-              <span aria-hidden className="block size-[13px]" />
-            )}
+            <IconMoon size={13} stroke={2} className="block dark:hidden" />
+            <IconSun size={13} stroke={2} className="hidden dark:block" />
           </button>
         </div>
       </SidebarFooter>
