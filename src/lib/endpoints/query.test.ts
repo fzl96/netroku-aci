@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { buildEndpointWhere, hasActiveEndpointFilters } from './query'
+import { buildEndpointWhere, countActiveEndpointFilterGroups, hasActiveEndpointFilters } from './query'
 
 describe('buildEndpointWhere', () => {
   it('scopes unfiltered queries to the selected APIC host', () => {
@@ -61,5 +61,17 @@ describe('hasActiveEndpointFilters', () => {
     expect(hasActiveEndpointFilters({ node: ['101'] })).toBe(true)
     expect(hasActiveEndpointFilters({ iface: ['eth1/1'] })).toBe(true)
     expect(hasActiveEndpointFilters({ status: ['historical'] })).toBe(true)
+  })
+})
+
+describe('countActiveEndpointFilterGroups', () => {
+  it('counts populated non-search filter groups instead of selected values', () => {
+    expect(countActiveEndpointFilterGroups({
+      query: 'aa',
+      vlan: ['vlan-100', 'vlan-200'],
+      node: ['101'],
+      iface: [],
+      status: ['active', 'historical'],
+    })).toBe(3)
   })
 })

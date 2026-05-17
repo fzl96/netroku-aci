@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { IconRefresh, IconSearch, IconChevronLeft, IconChevronRight, IconChevronDown, IconX, IconServer } from '@tabler/icons-react'
+import { IconRefresh, IconSearch, IconChevronLeft, IconChevronRight, IconServer, IconFilter } from '@tabler/icons-react'
 import type { SafeApicHost } from '@/actions/apic-hosts'
 import type { Endpoint } from '@prisma/client'
-import type { EndpointStatusFilter } from '@/lib/endpoints/query'
+import { countActiveEndpointFilterGroups, type EndpointStatusFilter } from '@/lib/endpoints/query'
 import { SEARCH_INPUT_CLS } from '@/lib/ui-classes'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
@@ -59,9 +59,9 @@ function TableSkeleton() {
   )
 }
 
-// ─── Filter combobox ──────────────────────────────────────────────────────────
+// ─── Filter panel ─────────────────────────────────────────────────────────────
 
-function FilterCombobox({
+function FilterSection({
   label,
   value,
   options,
@@ -74,67 +74,49 @@ function FilterCombobox({
   onChange: (value: string[]) => void
   disabled?: boolean
 }) {
-  const [open, setOpen] = useState(false)
-
   function toggle(opt: string) {
     onChange(value.includes(opt) ? value.filter(v => v !== opt) : [...value, opt])
   }
 
-  const displayLabel = value.length === 0
-    ? label
-    : value.length === 1
-      ? value[0]
-      : `${label} (${value.length})`
-
-  const active = value.length > 0
-
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
+    <section className="space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-faint">{label}</h3>
+        {value.length > 0 && (
+          <button
+            type="button"
+            onClick={() => onChange([])}
+            disabled={disabled}
+            className="text-[11px] text-faint transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
+      <Command className="rounded-lg border border-border bg-background">
+        <CommandInput
+          placeholder={options.length === 0 ? 'No values available' : `Search ${label.toLowerCase()}…`}
           disabled={disabled || options.length === 0}
-          className={[
-            'flex items-center gap-1.5 text-xs rounded-lg px-2.5 py-2 border transition-colors outline-none shrink-0',
-            'focus-visible:ring-2 focus-visible:ring-primary/20 disabled:opacity-40 disabled:cursor-not-allowed',
-            active
-              ? 'border-primary bg-primary/8 text-foreground'
-              : 'border-border bg-muted text-muted-foreground',
-          ].join(' ')}
-        >
-          <span className="max-w-[100px] truncate">{displayLabel}</span>
-          {active ? (
-            <span
-              className="flex items-center"
-              onClick={e => { e.stopPropagation(); onChange([]) }}
-            >
-              <IconX size={11} stroke={2} className="text-faint hover:text-foreground" />
-            </span>
-          ) : (
-            <IconChevronDown size={11} stroke={2} className="text-faint" />
-          )}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-52 p-0" align="start">
-        <Command>
-          <CommandInput placeholder={`Search ${label.toLowerCase()}…`} />
-          <CommandList>
-            <CommandEmpty>No results</CommandEmpty>
-            <CommandGroup>
-              {options.map(opt => (
-                <CommandItem
-                  key={opt}
-                  value={opt}
-                  data-checked={String(value.includes(opt))}
-                  onSelect={() => toggle(opt)}
-                >
-                  {opt}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+        />
+        <CommandList className="max-h-28">
+          <CommandEmpty>{options.length === 0 ? 'No values available' : 'No results'}</CommandEmpty>
+          <CommandGroup>
+            {options.map(opt => (
+              <CommandItem
+                key={opt}
+                value={opt}
+                disabled={disabled}
+                data-checked={String(value.includes(opt))}
+                onSelect={() => toggle(opt)}
+              >
+                {opt}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </CommandList>
+      </Command>
+    </section>
   )
 }
 
@@ -191,16 +173,37 @@ export function EndpointsClient({
   const [isPending, startTransition] = useTransition()
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [searchValue, setSearchValue] = useState(query)
+  const [previousQuery, setPreviousQuery] = useState(query)
   const [jumpValue, setJumpValue] = useState('')
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [draftVlan, setDraftVlan] = useState(filterVlan)
+  const [draftNode, setDraftNode] = useState(filterNode)
+  const [draftIface, setDraftIface] = useState(filterIface)
+  const [draftStatus, setDraftStatus] = useState<EndpointStatusFilter[]>(filterStatus)
 
   // Sync input when query changes via back/forward navigation
-  useEffect(() => { setSearchValue(query) }, [query])
+  if (query !== previousQuery) {
+    setPreviousQuery(query)
+    setSearchValue(query)
+  }
 
   const effectivePageSize = pageSize === 'all' ? Math.max(total, 1) : pageSize
   const totalPages = Math.max(1, Math.ceil(total / effectivePageSize))
   const rangeStart = total === 0 ? 0 : (page - 1) * effectivePageSize + 1
   const rangeEnd = pageSize === 'all' ? total : Math.min(page * effectivePageSize, total)
   const loading = isPending || syncing
+  const activeFilterGroupCount = countActiveEndpointFilterGroups({
+    vlan: filterVlan,
+    node: filterNode,
+    iface: filterIface,
+    status: filterStatus,
+  })
+  const draftFilterGroupCount = countActiveEndpointFilterGroups({
+    vlan: draftVlan,
+    node: draftNode,
+    iface: draftIface,
+    status: draftStatus,
+  })
 
   function buildUrl(overrides: { apic?: string; query?: string; page?: number; pageSize?: PageSizeValue; vlan?: string[]; node?: string[]; iface?: string[]; status?: string[] }) {
     const params = new URLSearchParams()
@@ -247,10 +250,35 @@ export function EndpointsClient({
     })
   }
 
-  function handleFilterChange(key: 'vlan' | 'node' | 'iface' | 'status', value: string[]) {
+  function handleFilterPopoverOpenChange(nextOpen: boolean) {
+    setFiltersOpen(nextOpen)
+
+    if (nextOpen) {
+      setDraftVlan(filterVlan)
+      setDraftNode(filterNode)
+      setDraftIface(filterIface)
+      setDraftStatus(filterStatus)
+    }
+  }
+
+  function handleApplyFilters() {
     startTransition(() => {
-      router.replace(buildUrl({ [key]: value, page: 1 }))
+      router.replace(buildUrl({
+        vlan: draftVlan,
+        node: draftNode,
+        iface: draftIface,
+        status: draftStatus,
+        page: 1,
+      }))
     })
+    setFiltersOpen(false)
+  }
+
+  function handleClearDraftFilters() {
+    setDraftVlan([])
+    setDraftNode([])
+    setDraftIface([])
+    setDraftStatus([])
   }
 
   function handlePageSizeChange(ps: PageSizeValue) {
@@ -404,11 +432,80 @@ export function EndpointsClient({
                   />
                 </div>
 
-                {/* Filter comboboxes */}
-                <FilterCombobox label="VLAN" value={filterVlan} options={vlans} onChange={v => handleFilterChange('vlan', v)} disabled={isPending} />
-                <FilterCombobox label="Node" value={filterNode} options={nodes} onChange={v => handleFilterChange('node', v)} disabled={isPending} />
-                <FilterCombobox label="Interface" value={filterIface} options={ifaces} onChange={v => handleFilterChange('iface', v)} disabled={isPending} />
-                <FilterCombobox label="Status" value={filterStatus} options={['active', 'historical']} onChange={v => handleFilterChange('status', v)} disabled={isPending} />
+                {/* Filter popover */}
+                <Popover open={filtersOpen} onOpenChange={handleFilterPopoverOpenChange}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      title="Filter endpoints"
+                      aria-label="Filter endpoints"
+                      disabled={isPending}
+                      className={[
+                        'relative flex size-9 shrink-0 items-center justify-center rounded-lg border transition-colors outline-none',
+                        'focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-40',
+                        activeFilterGroupCount > 0
+                          ? 'border-primary bg-primary/8 text-foreground'
+                          : 'border-border bg-muted text-muted-foreground hover:text-foreground',
+                      ].join(' ')}
+                    >
+                      <IconFilter size={15} stroke={1.75} />
+                      {activeFilterGroupCount > 0 && (
+                        <span className="absolute -right-1.5 -top-1.5 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground shadow-sm">
+                          {activeFilterGroupCount}
+                        </span>
+                      )}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[420px] gap-4 p-4" align="start">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h2 className="text-sm font-semibold text-foreground">Filters</h2>
+                        <p className="text-xs text-subtle">Stage multiple changes, then apply them together.</p>
+                      </div>
+                      {draftFilterGroupCount > 0 && (
+                        <span className="rounded-full bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">
+                          {draftFilterGroupCount} active
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-4">
+                      <FilterSection label="VLAN" value={draftVlan} options={vlans} onChange={setDraftVlan} disabled={isPending} />
+                      <FilterSection label="Node" value={draftNode} options={nodes} onChange={setDraftNode} disabled={isPending} />
+                      <FilterSection label="Interface" value={draftIface} options={ifaces} onChange={setDraftIface} disabled={isPending} />
+                      <FilterSection label="Status" value={draftStatus} options={['active', 'historical']} onChange={value => setDraftStatus(value as EndpointStatusFilter[])} disabled={isPending} />
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+                      <button
+                        type="button"
+                        onClick={handleClearDraftFilters}
+                        disabled={isPending}
+                        className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Clear all
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setFiltersOpen(false)}
+                          disabled={isPending}
+                          className="rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleApplyFilters}
+                          disabled={isPending}
+                          className="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          Apply
+                        </button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="flex items-center gap-3 shrink-0 text-xs text-subtle">

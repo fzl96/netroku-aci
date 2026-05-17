@@ -20,6 +20,12 @@ export function hasActiveEndpointFilters(filters: EndpointFilters): boolean {
   )
 }
 
+export function countActiveEndpointFilterGroups(filters: EndpointFilters): number {
+  return [filters.vlan, filters.node, filters.iface, filters.status]
+    .filter(values => values && values.length > 0)
+    .length
+}
+
 export function buildEndpointWhere(
   apicHostId: string,
   filters: EndpointFilters,
