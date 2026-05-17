@@ -15,6 +15,11 @@ import {
 import type { SafeApicHost } from '@/actions/apic-hosts'
 import { SEARCH_INPUT_CLS } from '@/lib/ui-classes'
 import {
+  selectVisibleCounters,
+  type CounterFields,
+  type CounterMode,
+} from './counter-mode'
+import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -26,7 +31,7 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface InterfaceRowProps {
+export interface InterfaceRowProps extends CounterFields {
   id: string
   node: string
   ifName: string
@@ -38,14 +43,8 @@ export interface InterfaceRowProps {
   description: string
   lastLinkStChg: string | null
   lastSampledAt: string | null
-  // BigInts serialised as decimal strings — see page.tsx
-  dRxBytes: string | null
-  dRxErrors: string | null
+  // BigInts serialised as decimal strings — see page.tsx / counter-mode.ts
   dRxDiscards: string | null
-  dRxCrcErrors: string | null
-  dRxAlignErrors: string | null
-  dTxBytes: string | null
-  dTxErrors: string | null
   dTxDiscards: string | null
 }
 
@@ -174,6 +173,7 @@ export function InterfaceHealthClient({
   const [searchValue, setSearchValue] = useState(query)
   const [previousQuery, setPreviousQuery] = useState(query)
   const [jumpValue, setJumpValue] = useState('')
+  const [counterMode, setCounterMode] = useState<CounterMode>('delta')
 
   if (query !== previousQuery) {
     setPreviousQuery(query)
@@ -452,6 +452,25 @@ export function InterfaceHealthClient({
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
+
+                <div className="inline-flex shrink-0 rounded-lg border border-border bg-muted p-0.5">
+                  {(['delta', 'current'] as const).map(mode => (
+                    <button
+                      key={mode}
+                      type="button"
+                      aria-pressed={counterMode === mode}
+                      onClick={() => setCounterMode(mode)}
+                      className={[
+                        'rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors',
+                        counterMode === mode
+                          ? 'bg-card text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground',
+                      ].join(' ')}
+                    >
+                      {mode === 'delta' ? 'Delta' : 'Current'}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="flex items-center gap-3 shrink-0 text-xs text-subtle">
@@ -492,8 +511,12 @@ export function InterfaceHealthClient({
                       <tr>
                         {[
                           'Node', 'Interface', 'Usage', 'Admin', 'Oper', 'Speed',
-                          'Rx err Δ', 'Tx err Δ', 'CRC Δ', 'Align Δ',
-                          'Rx Δ', 'Tx Δ',
+                          counterMode === 'delta' ? 'Rx err Δ' : 'Rx err',
+                          counterMode === 'delta' ? 'Tx err Δ' : 'Tx err',
+                          counterMode === 'delta' ? 'CRC Δ' : 'CRC',
+                          counterMode === 'delta' ? 'Align Δ' : 'Align',
+                          counterMode === 'delta' ? 'Rx Δ' : 'Rx',
+                          counterMode === 'delta' ? 'Tx Δ' : 'Tx',
                           'Last link change', 'Sampled',
                         ].map(h => (
                           <th
@@ -506,38 +529,42 @@ export function InterfaceHealthClient({
                       </tr>
                     </thead>
                     <tbody>
-                      {rows.map((r, i) => (
-                        <tr
-                          key={r.id}
-                          className="group border-b border-border-faint last:border-0 hover:bg-muted transition-colors duration-100 animate-fade-up"
-                          style={{ animationDelay: `${Math.min(i * 12, 200)}ms` }}
-                        >
-                          <td className="px-4 py-2.5 tabular-nums text-muted-foreground border-l-2 border-l-transparent group-hover:border-l-primary transition-colors duration-100">
-                            {r.node || '—'}
-                          </td>
-                          <td className="px-4 py-2.5 font-mono text-foreground">{r.ifName}</td>
-                          <td className="px-4 py-2.5"><UsageLabel usage={r.usage} /></td>
-                          <td className="px-4 py-2.5 text-muted-foreground">{r.adminSt || '—'}</td>
-                          <td className="px-4 py-2.5"><OperStBadge st={r.operSt} /></td>
-                          <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{r.operSpeed || '—'}</td>
-                          <td className={['px-4 py-2.5 tabular-nums', isNonZero(r.dRxErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
-                            {fmtCount(r.dRxErrors)}
-                          </td>
-                          <td className={['px-4 py-2.5 tabular-nums', isNonZero(r.dTxErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
-                            {fmtCount(r.dTxErrors)}
-                          </td>
-                          <td className={['px-4 py-2.5 tabular-nums', isNonZero(r.dRxCrcErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
-                            {fmtCount(r.dRxCrcErrors)}
-                          </td>
-                          <td className={['px-4 py-2.5 tabular-nums', isNonZero(r.dRxAlignErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
-                            {fmtCount(r.dRxAlignErrors)}
-                          </td>
-                          <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{fmtBytes(r.dRxBytes)}</td>
-                          <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{fmtBytes(r.dTxBytes)}</td>
-                          <td className="px-4 py-2.5 tabular-nums text-faint whitespace-nowrap">{fmtDate(r.lastLinkStChg)}</td>
-                          <td className="px-4 py-2.5 tabular-nums text-faint whitespace-nowrap">{fmtRelative(r.lastSampledAt)}</td>
-                        </tr>
-                      ))}
+                      {rows.map((r, i) => {
+                        const visibleCounters = selectVisibleCounters(r, counterMode)
+
+                        return (
+                          <tr
+                            key={r.id}
+                            className="group border-b border-border-faint last:border-0 hover:bg-muted transition-colors duration-100 animate-fade-up"
+                            style={{ animationDelay: `${Math.min(i * 12, 200)}ms` }}
+                          >
+                            <td className="px-4 py-2.5 tabular-nums text-muted-foreground border-l-2 border-l-transparent group-hover:border-l-primary transition-colors duration-100">
+                              {r.node || '—'}
+                            </td>
+                            <td className="px-4 py-2.5 font-mono text-foreground">{r.ifName}</td>
+                            <td className="px-4 py-2.5"><UsageLabel usage={r.usage} /></td>
+                            <td className="px-4 py-2.5 text-muted-foreground">{r.adminSt || '—'}</td>
+                            <td className="px-4 py-2.5"><OperStBadge st={r.operSt} /></td>
+                            <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{r.operSpeed || '—'}</td>
+                            <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.rxErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
+                              {fmtCount(visibleCounters.rxErrors)}
+                            </td>
+                            <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.txErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
+                              {fmtCount(visibleCounters.txErrors)}
+                            </td>
+                            <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.rxCrcErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
+                              {fmtCount(visibleCounters.rxCrcErrors)}
+                            </td>
+                            <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.rxAlignErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
+                              {fmtCount(visibleCounters.rxAlignErrors)}
+                            </td>
+                            <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{fmtBytes(visibleCounters.rxBytes)}</td>
+                            <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{fmtBytes(visibleCounters.txBytes)}</td>
+                            <td className="px-4 py-2.5 tabular-nums text-faint whitespace-nowrap">{fmtDate(r.lastLinkStChg)}</td>
+                            <td className="px-4 py-2.5 tabular-nums text-faint whitespace-nowrap">{fmtRelative(r.lastSampledAt)}</td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
