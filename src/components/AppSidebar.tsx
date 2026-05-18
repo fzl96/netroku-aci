@@ -236,9 +236,7 @@ export function AppSidebar() {
             <p className="text-[12.5px] font-semibold leading-none tracking-tight text-sidebar-foreground">
               Netroku ACI
             </p>
-            <p className="mt-[5px] text-[10px] leading-none text-sidebar-foreground/55">
-              By Furina
-            </p>
+            <p className="mt-[5px] text-[10px] leading-none text-sidebar-foreground/55"></p>
           </div>
         </div>
       </SidebarHeader>
