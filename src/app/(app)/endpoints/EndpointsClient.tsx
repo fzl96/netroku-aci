@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+import { ApicCredentialDialog } from '@/components/ApicCredentialDialog'
 import { ExportEndpointsDialog } from './ExportEndpointsDialog'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -207,6 +208,7 @@ export function EndpointsClient({
 }: Props) {
   const router = useRouter()
   const [syncing, setSyncing] = useState(false)
+  const [credentialOpen, setCredentialOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [searchValue, setSearchValue] = useState(query)
@@ -230,6 +232,7 @@ export function EndpointsClient({
     iface: filterIface,
     status: filterStatus,
   })
+  const selectedHost = apicHosts.find(host => host.id === selectedHostId)
 
   function buildUrl(overrides: { apic?: string; query?: string; page?: number; pageSize?: PageSizeValue; vlan?: string[]; node?: string[]; iface?: string[]; status?: string[] }) {
     const params = new URLSearchParams()
@@ -297,14 +300,14 @@ export function EndpointsClient({
     setJumpValue('')
   }
 
-  async function handleResync() {
+  async function handleResync(credentials: { username: string; password: string }) {
     if (!selectedHostId) return
     setSyncing(true)
     try {
       const res = await fetch('/api/endpoints/resync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apicHostId: selectedHostId }),
+        body: JSON.stringify({ apicHostId: selectedHostId, ...credentials }),
       })
       const data = await res.json() as { synced?: number; total?: number; error?: string }
       if (!res.ok) throw new Error(data.error ?? 'Resync failed')
@@ -345,7 +348,7 @@ export function EndpointsClient({
             </select>
 
             <button
-              onClick={handleResync}
+              onClick={() => setCredentialOpen(true)}
               disabled={!selectedHostId || syncing}
               title="Resync endpoints from APIC"
               className={[
@@ -633,6 +636,13 @@ export function EndpointsClient({
           </>
         )}
       </div>
+      <ApicCredentialDialog
+        open={credentialOpen}
+        onOpenChange={setCredentialOpen}
+        title="Resync endpoints"
+        description={`Enter APIC credentials for ${selectedHost?.name ?? 'the selected host'}. Credentials are used for this resync only.`}
+        onSubmit={handleResync}
+      />
     </div>
   )
 }

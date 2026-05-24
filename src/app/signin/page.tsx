@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
 import { INPUT_CLS } from "@/lib/ui-classes";
 
@@ -23,7 +22,7 @@ export default function SignInPage() {
       setError(error.message ?? "Sign in failed");
       return;
     }
-    router.push("/");
+    router.push("/dashboard");
   }
 
   return (
@@ -60,12 +59,6 @@ export default function SignInPage() {
           {loading ? "Signing in…" : "Sign in"}
         </button>
       </form>
-      <p className="text-sm text-subtle">
-        Need an account?{" "}
-        <Link href="/signup" className="underline text-foreground">
-          Sign up
-        </Link>
-      </p>
     </main>
   );
 }

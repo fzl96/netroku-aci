@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "./ThemeProvider";
 import { nextBinaryTheme } from "./theme-toggle";
+import { authClient } from "@/lib/auth-client";
 import {
   Sidebar,
   SidebarContent,
@@ -41,6 +43,10 @@ import {
   IconRouter,
   IconDeviceDesktopSearch,
   IconActivity,
+  IconUsers,
+  IconSettings,
+  IconLogout,
+  IconLayoutDashboard,
 } from "@tabler/icons-react";
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
@@ -52,13 +58,25 @@ type NavChild = {
 };
 
 type NavItem = {
-  href: string;
+  href?: string;
   label: string;
   icon: React.ReactNode;
   children?: NavChild[];
+  adminOnly?: boolean;
+  action?: "logout";
 };
 
 const NAV: { group: string; items: NavItem[] }[] = [
+  {
+    group: "",
+    items: [
+      {
+        href: "/dashboard",
+        label: "Dashboard",
+        icon: <IconLayoutDashboard size={15} stroke={1.75} />,
+      },
+    ],
+  },
   {
     group: "Infrastructure",
     items: [
@@ -66,6 +84,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
         href: "/apic-hosts",
         label: "APIC Hosts",
         icon: <IconRouter size={15} stroke={1.75} />,
+        adminOnly: true,
       },
       {
         href: "/endpoints",
@@ -74,7 +93,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       },
       {
         href: "/interface-health",
-        label: "Interface Health",
+        label: "Interfaces",
         icon: <IconActivity size={15} stroke={1.75} />,
       },
     ],
@@ -134,16 +153,51 @@ const NAV: { group: string; items: NavItem[] }[] = [
       },
     ],
   },
+  {
+    group: "Administration",
+    items: [
+      {
+        href: "/settings",
+        label: "Settings",
+        icon: <IconSettings size={15} stroke={1.75} />,
+      },
+      {
+        href: "/users",
+        label: "Users",
+        icon: <IconUsers size={15} stroke={1.75} />,
+        adminOnly: true,
+      },
+      {
+        label: "Logout",
+        icon: <IconLogout size={15} stroke={1.75} />,
+        action: "logout",
+      },
+    ],
+  },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function AppSidebar() {
+export function AppSidebar({ role }: { role: 'admin' | 'member' }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { setTheme } = useTheme();
+  const [loggingOut, setLoggingOut] = useState(false);
+  const nav = NAV.map(section => ({
+    ...section,
+    items: section.items.filter(item => !item.adminOnly || role === 'admin'),
+  })).filter(section => section.items.length > 0);
 
-  function isActive(href: string) {
+  function isActive(href?: string) {
+    if (!href) return false;
     return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  }
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    await authClient.signOut();
+    router.replace("/signin");
+    router.refresh();
   }
 
   function isNodeActive(node: NavChild): boolean {
@@ -242,9 +296,9 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {NAV.map((section) => (
+        {nav.map((section) => (
           <SidebarGroup key={section.group}>
-            <SidebarGroupLabel>{section.group}</SidebarGroupLabel>
+            {section.group && <SidebarGroupLabel>{section.group}</SidebarGroupLabel>}
             <SidebarMenu>
               {section.items.map((item) => {
                 const groupActive =
@@ -287,13 +341,25 @@ export function AppSidebar() {
                 }
 
                 return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={groupActive}>
-                      <Link href={item.href}>
+                  <SidebarMenuItem key={item.href ?? item.label}>
+                    {item.action === "logout" ? (
+                      <SidebarMenuButton
+                        type="button"
+                        onClick={handleLogout}
+                        disabled={loggingOut}
+                        className="text-sidebar-foreground/75 hover:text-sidebar-foreground"
+                      >
                         {item.icon}
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
+                        <span>{loggingOut ? "Logging out..." : item.label}</span>
+                      </SidebarMenuButton>
+                    ) : (
+                      <SidebarMenuButton asChild isActive={groupActive}>
+                        <Link href={item.href ?? "/"}>
+                          {item.icon}
+                          <span>{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    )}
                   </SidebarMenuItem>
                 );
               })}

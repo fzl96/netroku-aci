@@ -1,7 +1,5 @@
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
-import { decrypt } from '@/lib/crypto'
 import { apicFetch } from '@/lib/apic/client'
 
 async function testLogin(host: string, username: string, password: string): Promise<void> {
@@ -23,7 +21,7 @@ export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let body: { apicHostId?: string; host?: string; username?: string; password?: string }
+  let body: { host?: string; username?: string; password?: string }
   try {
     body = await request.json()
   } catch {
@@ -31,22 +29,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    if (body.apicHostId) {
-      // Test with stored credentials (edit mode, blank password field)
-      const apicHost = await prisma.apicHost.findFirst({
-        where: { id: body.apicHostId, userId: session.user.id },
-      })
-      if (!apicHost) return Response.json({ error: 'Host not found' }, { status: 404 })
-      const password = decrypt(apicHost.password)
-      await testLogin(apicHost.host, apicHost.username, password)
-    } else {
-      // Test with provided credentials (create mode, or edit with new password)
-      const { host, username, password } = body
-      if (!host?.trim() || !username?.trim() || !password) {
-        return Response.json({ error: 'host, username and password are required' }, { status: 400 })
-      }
-      await testLogin(host.trim(), username.trim(), password)
+    const { host, username, password } = body
+    if (!host?.trim() || !username?.trim() || !password) {
+      return Response.json({ error: 'host, username and password are required' }, { status: 400 })
     }
+    await testLogin(host.trim(), username.trim(), password)
 
     return Response.json({ ok: true })
   } catch (err) {

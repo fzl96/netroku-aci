@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   }
 
   const apicHost = await prisma.apicHost.findFirst({
-    where: { id: parsed.data.apicHostId, userId: session.user.id },
+    where: { id: parsed.data.apicHostId },
   })
   if (!apicHost) return Response.json({ error: 'Host not found' }, { status: 404 })
 

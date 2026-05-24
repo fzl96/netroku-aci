@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 
-const AUTH_PAGES = ["/signin", "/signup"];
+const AUTH_PAGES = ["/signin"];
 const PUBLIC_PAGES = ["/"];
 
 export function shouldRedirectUnauthenticated(

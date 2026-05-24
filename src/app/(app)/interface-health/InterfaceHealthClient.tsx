@@ -28,6 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { ApicCredentialDialog } from '@/components/ApicCredentialDialog'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -158,6 +159,7 @@ export function InterfaceHealthClient({
 }: Props) {
   const router = useRouter()
   const [syncing, setSyncing] = useState(false)
+  const [credentialOpen, setCredentialOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [isPending, startTransition] = useTransition()
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -165,6 +167,7 @@ export function InterfaceHealthClient({
   const [previousQuery, setPreviousQuery] = useState(query)
   const [jumpValue, setJumpValue] = useState('')
   const [counterMode, setCounterMode] = useState<CounterMode>('delta')
+  const selectedHost = apicHosts.find(host => host.id === selectedHostId)
 
   if (query !== previousQuery) {
     setPreviousQuery(query)
@@ -243,14 +246,14 @@ export function InterfaceHealthClient({
     setJumpValue('')
   }
 
-  async function handleResync() {
+  async function handleResync(credentials: { username: string; password: string }) {
     if (!selectedHostId) return
     setSyncing(true)
     try {
       const res = await fetch('/api/interfaces/resync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apicHostId: selectedHostId }),
+        body: JSON.stringify({ apicHostId: selectedHostId, ...credentials }),
       })
       const data = (await res.json()) as { synced?: number; total?: number; error?: string }
       if (!res.ok) throw new Error(data.error ?? 'Resync failed')
@@ -303,7 +306,7 @@ export function InterfaceHealthClient({
       <div className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur-sm">
         <div className="px-8 h-16 flex items-center justify-between gap-4">
           <div>
-            <h1 className="font-serif text-[18px] font-semibold text-foreground">Interface Health</h1>
+            <h1 className="font-serif text-[18px] font-semibold text-foreground">Interfaces</h1>
             <p className="text-xs text-subtle mt-0.5">
               Status, error, and utilisation counters
               {selectedHostId && (
@@ -332,7 +335,7 @@ export function InterfaceHealthClient({
             </select>
 
             <button
-              onClick={handleResync}
+              onClick={() => setCredentialOpen(true)}
               disabled={!selectedHostId || syncing}
               title="Resync interfaces from APIC"
               className={[
@@ -379,8 +382,25 @@ export function InterfaceHealthClient({
             <p className="text-xs text-subtle mb-6 max-w-[260px] leading-relaxed">
               {apicHosts.length === 0
                 ? 'No APIC hosts configured yet. Add one in Settings to get started.'
-                : 'Choose a host to view its interface health.'}
+                : 'Choose a host to view its interface inventory.'}
             </p>
+            {apicHosts.length > 0 && (
+              <select
+                value={selectedHostId}
+                onChange={e => handleHostChange(e.target.value)}
+                className={[
+                  'text-xs bg-muted border border-border rounded-lg',
+                  'px-3 py-2 text-foreground outline-none cursor-pointer',
+                  'focus:border-primary focus:ring-2 focus:ring-primary/10',
+                  'min-w-[220px] transition-colors',
+                ].join(' ')}
+              >
+                <option value="">Select APIC host…</option>
+                {apicHosts.map(h => (
+                  <option key={h.id} value={h.id}>{h.name} ({h.host})</option>
+                ))}
+              </select>
+            )}
           </div>
         ) : (
           <>
@@ -640,6 +660,13 @@ export function InterfaceHealthClient({
           </>
         )}
       </div>
+      <ApicCredentialDialog
+        open={credentialOpen}
+        onOpenChange={setCredentialOpen}
+        title="Resync interfaces"
+        description={`Enter APIC credentials for ${selectedHost?.name ?? 'the selected host'}. Credentials are used for this resync only.`}
+        onSubmit={handleResync}
+      />
     </div>
   )
 }

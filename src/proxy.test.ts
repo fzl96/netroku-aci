@@ -9,4 +9,8 @@ describe('shouldRedirectUnauthenticated', () => {
   it('still redirects signed-out users from protected pages', () => {
     expect(shouldRedirectUnauthenticated(null, '/apic-hosts')).toBe(true)
   })
+
+  it('treats signup as protected because admins create users', () => {
+    expect(shouldRedirectUnauthenticated(null, '/signup')).toBe(true)
+  })
 })

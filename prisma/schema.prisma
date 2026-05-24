@@ -19,9 +19,12 @@ model User {
   updatedAt       DateTime  @updatedAt
   username        String?
   displayUsername String?
+  role            String?   @default("member")
+  banned          Boolean?  @default(false)
+  banReason       String?
+  banExpires      DateTime?
   sessions        Session[]
   accounts        Account[]
-  apicHosts       ApicHost[]
 
   @@unique([email])
   @@unique([username])
@@ -36,6 +39,7 @@ model Session {
   updatedAt DateTime @updatedAt
   ipAddress String?
   userAgent String?
+  impersonatedBy String?
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -80,17 +84,13 @@ model ApicHost {
   id                  String              @id @default(cuid())
   name                String
   host                String
-  username            String              @default("")
-  password            String              @default("")
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
   lastInterfaceSyncAt DateTime?
-  userId              String
-  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   endpoints           Endpoint[]
   interfaces          InterfaceSnapshot[]
 
-  @@index([userId])
+  @@unique([host])
   @@map("apic_host")
 }
 

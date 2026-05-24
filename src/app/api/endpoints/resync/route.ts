@@ -1,7 +1,6 @@
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { decrypt } from '@/lib/crypto'
 import { fetchEndpointsFromApic } from '@/lib/apic/endpoints'
 
 const CHUNK_SIZE = 100
@@ -11,28 +10,26 @@ export async function POST(request: Request) {
   if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   let apicHostId: string
+  let username: string
+  let password: string
   try {
-    ;({ apicHostId } = await request.json())
+    ;({ apicHostId, username, password } = await request.json())
   } catch {
     return Response.json({ error: 'Invalid request body' }, { status: 400 })
   }
   if (!apicHostId) return Response.json({ error: 'apicHostId is required' }, { status: 400 })
+  if (!username?.trim() || !password) {
+    return Response.json({ error: 'username and password are required' }, { status: 400 })
+  }
 
   const apicHost = await prisma.apicHost.findFirst({
-    where: { id: apicHostId, userId: session.user.id },
+    where: { id: apicHostId },
   })
   if (!apicHost) return Response.json({ error: 'Host not found' }, { status: 404 })
 
-  let plaintextPassword: string
-  try {
-    plaintextPassword = decrypt(apicHost.password)
-  } catch {
-    return Response.json({ error: 'Failed to decrypt stored credentials' }, { status: 500 })
-  }
-
   let fetched: Awaited<ReturnType<typeof fetchEndpointsFromApic>>
   try {
-    fetched = await fetchEndpointsFromApic(apicHost.host, apicHost.username, plaintextPassword)
+    fetched = await fetchEndpointsFromApic(apicHost.host, username.trim(), password)
   } catch (err) {
     return Response.json(
       { error: err instanceof Error ? err.message : 'Failed to fetch endpoints from APIC' },

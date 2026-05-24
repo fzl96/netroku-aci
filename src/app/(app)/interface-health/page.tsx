@@ -8,7 +8,7 @@ import { InterfaceHealthClient, type InterfaceRowProps } from './InterfaceHealth
 import { sortInterfaceRows } from './sort'
 
 export const metadata: Metadata = {
-  title: 'Interface Health',
+  title: 'Interfaces',
   description: 'Per-interface status, error, and utilisation counters resynced from APIC.',
 }
 
