@@ -11,6 +11,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
+    "db:setup": "prisma migrate deploy && prisma generate",
     "seed:admin": "tsx prisma/seed-admin.ts",
     "test": "bun test"
   },
