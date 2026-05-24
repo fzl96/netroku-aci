@@ -1,6 +1,7 @@
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { recordAudit } from '@/lib/audit'
 import { fetchEndpointsFromApic } from '@/lib/apic/endpoints'
 
 const CHUNK_SIZE = 100
@@ -87,6 +88,14 @@ export async function POST(request: Request) {
   }
 
   const total = await prisma.endpoint.count({ where: { apicHostId } })
+
+  await recordAudit({
+    userId: session.user.id,
+    userName: session.user.username ?? session.user.name,
+    action: 'resync.endpoints',
+    target: `${apicHost.name} (${apicHost.host})`,
+    detail: `synced ${uniqueRows.length} (total ${total})`,
+  })
 
   return Response.json({ synced: uniqueRows.length, total })
 }

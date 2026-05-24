@@ -4,6 +4,7 @@ import { headers } from 'next/headers'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { recordAudit } from '@/lib/audit'
 
 const roleSchema = z.enum(['admin', 'member'])
 
@@ -35,6 +36,7 @@ async function requireAdmin() {
   return {
     headers: requestHeaders,
     userId: session.user.id,
+    userName: session.user.username ?? session.user.name,
   }
 }
 
@@ -74,7 +76,7 @@ export async function getUsers(): Promise<SafeUser[]> {
 
 export async function createUser(data: CreateUserValues): Promise<ActionResult<SafeUser>> {
   try {
-    await requireAdmin()
+    const actor = await requireAdmin()
 
     const parsed = createUserSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: 'Invalid data' }
@@ -104,6 +106,13 @@ export async function createUser(data: CreateUserValues): Promise<ActionResult<S
       },
     })
 
+    await recordAudit({
+      userId: actor.userId,
+      userName: actor.userName,
+      action: 'user.create',
+      target: `${username} (${parsed.data.role})`,
+    })
+
     return { success: true, data: toSafeUser(user) }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
@@ -116,9 +125,21 @@ export async function deleteUser(id: string): Promise<ActionResult<void>> {
     if (!id) return { success: false, error: 'User not found' }
     if (id === admin.userId) return { success: false, error: 'You cannot delete your own account' }
 
+    const target = await prisma.user.findUnique({
+      where: { id },
+      select: { username: true, name: true },
+    })
+
     await auth.api.removeUser({
       headers: admin.headers,
       body: { userId: id },
+    })
+
+    await recordAudit({
+      userId: admin.userId,
+      userName: admin.userName,
+      action: 'user.delete',
+      target: target?.username ?? target?.name ?? id,
     })
 
     return { success: true, data: undefined }

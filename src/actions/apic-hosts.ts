@@ -3,6 +3,7 @@
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { recordAudit } from '@/lib/audit'
 import {
   apicHostSchema,
   apicHostUpdateSchema,
@@ -22,18 +23,20 @@ export type SafeApicHost = {
   updatedAt: Date
 }
 
-async function requireSession(): Promise<{ id: string; role: string }> {
+async function requireSession(): Promise<{ id: string; role: string; userName: string }> {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) throw new Error('Unauthorized')
   return {
     id: session.user.id,
     role: session.user.role ?? 'member',
+    userName: session.user.username ?? session.user.name,
   }
 }
 
-async function requireAdmin(): Promise<void> {
+async function requireAdmin(): Promise<{ id: string; role: string; userName: string }> {
   const user = await requireSession()
   if (user.role !== 'admin') throw new Error('Forbidden')
+  return user
 }
 
 function toSafe(host: { id: string; name: string; host: string; createdAt: Date; updatedAt: Date }): SafeApicHost {
@@ -58,7 +61,7 @@ export async function createApicHost(
   data: ApicHostFormValues
 ): Promise<ActionResult<SafeApicHost>> {
   try {
-    await requireAdmin()
+    const actor = await requireAdmin()
     const parsed = apicHostSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: 'Invalid data' }
     const host = await prisma.apicHost.create({
@@ -66,6 +69,12 @@ export async function createApicHost(
         name: parsed.data.name,
         host: parsed.data.host,
       },
+    })
+    await recordAudit({
+      userId: actor.id,
+      userName: actor.userName,
+      action: 'apic_host.create',
+      target: `${host.name} (${host.host})`,
     })
     return { success: true, data: toSafe(host) }
   } catch (err) {
@@ -78,7 +87,7 @@ export async function updateApicHost(
   data: ApicHostUpdateFormValues
 ): Promise<ActionResult<SafeApicHost>> {
   try {
-    await requireAdmin()
+    const actor = await requireAdmin()
     const parsed = apicHostUpdateSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: 'Invalid data' }
     const result = await prisma.apicHost.updateMany({
@@ -90,6 +99,12 @@ export async function updateApicHost(
     })
     if (result.count === 0) return { success: false, error: 'Host not found' }
     const host = await prisma.apicHost.findUniqueOrThrow({ where: { id } })
+    await recordAudit({
+      userId: actor.id,
+      userName: actor.userName,
+      action: 'apic_host.update',
+      target: `${host.name} (${host.host})`,
+    })
     return { success: true, data: toSafe(host) }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
@@ -98,9 +113,16 @@ export async function updateApicHost(
 
 export async function deleteApicHost(id: string): Promise<ActionResult<void>> {
   try {
-    await requireAdmin()
+    const actor = await requireAdmin()
+    const existing = await prisma.apicHost.findUnique({ where: { id } })
     const result = await prisma.apicHost.deleteMany({ where: { id } })
     if (result.count === 0) return { success: false, error: 'Host not found' }
+    await recordAudit({
+      userId: actor.id,
+      userName: actor.userName,
+      action: 'apic_host.delete',
+      target: existing ? `${existing.name} (${existing.host})` : id,
+    })
     return { success: true, data: undefined }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }

@@ -57,6 +57,7 @@ import {
   IconSettings,
   IconLogout,
   IconLayoutDashboard,
+  IconHistory,
 } from "@tabler/icons-react";
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
@@ -166,6 +167,11 @@ const NAV: { group: string; items: NavItem[] }[] = [
   {
     group: "Administration",
     items: [
+      {
+        href: "/history",
+        label: "History",
+        icon: <IconHistory size={15} stroke={1.75} />,
+      },
       {
         href: "/settings",
         label: "Settings",

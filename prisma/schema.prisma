@@ -80,6 +80,22 @@ model Verification {
   @@map("verification")
 }
 
+model AuditLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  userId    String?
+  userName  String
+  action    String
+  target    String?
+  status    String
+  detail    String?
+  payload   Json?
+
+  @@index([createdAt])
+  @@index([userId])
+  @@map("audit_log")
+}
+
 model ApicHost {
   id                  String              @id @default(cuid())
   name                String
