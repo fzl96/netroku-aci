@@ -13,6 +13,9 @@ const trustedOrigins = (process.env.TRUSTED_ORIGINS ?? "")
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: "sqlite" }),
   trustedOrigins,
+  advanced: {
+    useSecureCookies: process.env.SECURE_COOKIES === "true",
+  },
   emailAndPassword: { enabled: true },
   plugins: [
     username(),
