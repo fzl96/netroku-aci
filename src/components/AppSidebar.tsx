@@ -165,7 +165,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     ],
   },
   {
-    group: "Administration",
+    group: "System",
     items: [
       {
         href: "/history",
