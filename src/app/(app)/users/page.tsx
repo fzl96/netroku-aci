@@ -17,5 +17,5 @@ export default async function UsersPage() {
 
   const users = await getUsers()
 
-  return <UsersClient initialUsers={users} />
+  return <UsersClient initialUsers={users} currentUserId={session.user.id} />
 }

@@ -28,9 +28,14 @@ type ActionResult<T> =
   | { success: false; error: string }
 
 async function requireAdmin() {
-  const session = await auth.api.getSession({ headers: await headers() })
+  const requestHeaders = await headers()
+  const session = await auth.api.getSession({ headers: requestHeaders })
   if (!session) throw new Error('Unauthorized')
   if (session.user.role !== 'admin') throw new Error('Forbidden')
+  return {
+    headers: requestHeaders,
+    userId: session.user.id,
+  }
 }
 
 function toSafeUser(user: {
@@ -100,6 +105,23 @@ export async function createUser(data: CreateUserValues): Promise<ActionResult<S
     })
 
     return { success: true, data: toSafeUser(user) }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  }
+}
+
+export async function deleteUser(id: string): Promise<ActionResult<void>> {
+  try {
+    const admin = await requireAdmin()
+    if (!id) return { success: false, error: 'User not found' }
+    if (id === admin.userId) return { success: false, error: 'You cannot delete your own account' }
+
+    await auth.api.removeUser({
+      headers: admin.headers,
+      body: { userId: id },
+    })
+
+    return { success: true, data: undefined }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
   }

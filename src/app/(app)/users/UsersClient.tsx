@@ -2,9 +2,20 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { IconShieldCheck, IconUser, IconUserPlus, IconUsers } from '@tabler/icons-react'
-import { createUser, type SafeUser } from '@/actions/users'
+import { IconShieldCheck, IconTrash, IconUser, IconUserPlus, IconUsers } from '@tabler/icons-react'
+import { createUser, deleteUser, type SafeUser } from '@/actions/users'
 import { INPUT_CLS, SELECT_CLS } from '@/lib/ui-classes'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -31,13 +42,21 @@ function RoleBadge({ role }: { role: SafeUser['role'] }) {
   )
 }
 
-export function UsersClient({ initialUsers }: { initialUsers: SafeUser[] }) {
+export function UsersClient({
+  initialUsers,
+  currentUserId,
+}: {
+  initialUsers: SafeUser[]
+  currentUserId: string
+}) {
   const [users, setUsers] = useState(initialUsers)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<'admin' | 'member'>('member')
   const [pending, setPending] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deletingUser, setDeletingUser] = useState<SafeUser | null>(null)
 
   const adminCount = users.filter(user => user.role === 'admin').length
   const memberCount = users.filter(user => user.role === 'member').length
@@ -63,6 +82,23 @@ export function UsersClient({ initialUsers }: { initialUsers: SafeUser[] }) {
     resetForm()
     setCreateOpen(false)
     toast.success(`Created ${result.data.username}`)
+  }
+
+  async function handleDelete() {
+    if (!deletingUser) return
+    setPending(true)
+    const result = await deleteUser(deletingUser.id)
+    setPending(false)
+
+    if (!result.success) {
+      toast.error(result.error)
+      return
+    }
+
+    setUsers(prev => prev.filter(user => user.id !== deletingUser.id))
+    setDeleteOpen(false)
+    setDeletingUser(null)
+    toast.success(`Deleted ${deletingUser.username}`)
   }
 
   return (
@@ -116,7 +152,7 @@ export function UsersClient({ initialUsers }: { initialUsers: SafeUser[] }) {
             <table className="w-full text-xs">
               <thead>
                 <tr>
-                  {['User', 'Role', 'Created'].map(header => (
+                  {['User', 'Role', 'Created', ''].map(header => (
                     <th
                       key={header}
                       className="text-left px-4 pt-3 pb-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-faint whitespace-nowrap border-b border-border"
@@ -129,7 +165,7 @@ export function UsersClient({ initialUsers }: { initialUsers: SafeUser[] }) {
               <tbody>
                 {users.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="px-4 py-14 text-center">
+                    <td colSpan={4} className="px-4 py-14 text-center">
                       <div className="mx-auto mb-4 h-10 w-10 rounded-xl bg-muted border border-border flex items-center justify-center">
                         <IconUsers size={18} stroke={1.5} className="text-faint" />
                       </div>
@@ -160,6 +196,25 @@ export function UsersClient({ initialUsers }: { initialUsers: SafeUser[] }) {
                       </td>
                       <td className="px-4 py-2.5 tabular-nums text-subtle">
                         {new Date(user.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        {user.id !== currentUserId ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => {
+                              setDeletingUser(user)
+                              setDeleteOpen(true)
+                            }}
+                            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-error hover:bg-error/10 transition-opacity"
+                            aria-label={`Delete ${user.displayUsername}`}
+                          >
+                            <IconTrash size={14} stroke={1.75} />
+                          </Button>
+                        ) : (
+                          <span className="text-[10px] text-faint">Current</span>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -245,6 +300,38 @@ export function UsersClient({ initialUsers }: { initialUsers: SafeUser[] }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteOpen} onOpenChange={open => {
+        if (!open) setDeletingUser(null)
+        setDeleteOpen(open)
+      }}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-serif text-base font-semibold text-foreground">
+              Delete &ldquo;{deletingUser?.displayUsername}&rdquo;?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-subtle">
+              This permanently removes the user account, sessions, and linked sign-in data. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end rounded-b-xl border-t border-subtle bg-muted px-4 py-3 gap-1">
+            <AlertDialogCancel
+              disabled={pending}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2 border-0 bg-transparent shadow-none hover:bg-transparent"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={pending}
+              className="bg-error text-error-foreground text-sm font-semibold px-5 py-2 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-60"
+            >
+              {pending ? 'Deleting…' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

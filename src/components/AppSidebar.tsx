@@ -26,6 +26,16 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 
 // Suppress the full leaf-active treatment (bg pill + left bar) for parent
@@ -183,6 +193,7 @@ export function AppSidebar({ role }: { role: 'admin' | 'member' }) {
   const router = useRouter();
   const { setTheme } = useTheme();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const nav = NAV.map(section => ({
     ...section,
     items: section.items.filter(item => !item.adminOnly || role === 'admin'),
@@ -345,7 +356,7 @@ export function AppSidebar({ role }: { role: 'admin' | 'member' }) {
                     {item.action === "logout" ? (
                       <SidebarMenuButton
                         type="button"
-                        onClick={handleLogout}
+                        onClick={() => setLogoutOpen(true)}
                         disabled={loggingOut}
                         className="text-sidebar-foreground/75 hover:text-sidebar-foreground"
                       >
@@ -383,6 +394,34 @@ export function AppSidebar({ role }: { role: 'admin' | 'member' }) {
           </button>
         </div>
       </SidebarFooter>
+
+      <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-serif text-base font-semibold text-foreground">
+              Log out?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-subtle">
+              You will need to sign in again before using Netroku ACI.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end rounded-b-xl border-t border-subtle bg-muted px-4 py-3 gap-1">
+            <AlertDialogCancel
+              disabled={loggingOut}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2 border-0 bg-transparent shadow-none hover:bg-transparent"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="bg-primary text-primary-foreground text-sm font-semibold px-5 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60"
+            >
+              {loggingOut ? "Logging out..." : "Log out"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sidebar>
   );
 }
