@@ -8,7 +8,7 @@ import {
   EPG_REQUIRED_COLUMNS_HELP,
   validateEpgCsv,
 } from '@/lib/apic/epgs/csv'
-import type { ParsedEpgRow } from '@/lib/apic/epgs/types'
+import { effectiveBridgeDomainTenant, effectiveContractTenant, type ParsedEpgRow } from '@/lib/apic/epgs/types'
 import type { CsvValidationError } from '@/lib/apic/types'
 
 type Mode = 'deploy' | 'rollback'
@@ -22,7 +22,10 @@ const EPG_COLUMNS: PreviewColumn<ParsedEpgRow>[] = [
   { header: 'Tenant', cell: r => r.tenant, className: 'text-foreground' },
   { header: 'ANP', cell: r => r.anp, className: 'font-mono text-foreground' },
   { header: 'EPG', cell: r => r.epg, className: 'font-mono text-foreground' },
+  { header: 'BD Tenant', cell: r => effectiveBridgeDomainTenant(r), className: 'font-mono text-foreground' },
   { header: 'Bridge Domain', cell: r => r.bd, className: 'font-mono text-foreground' },
+  { header: 'Physical Domain', cell: r => r.phys_domain ?? '', className: 'font-mono text-foreground' },
+  { header: 'Contract Tenant', cell: r => effectiveContractTenant(r), className: 'font-mono text-foreground' },
   { header: 'Consumed Contracts', cell: r => r.consContracts.join(', '), className: 'font-mono text-foreground' },
   { header: 'Provided Contracts', cell: r => r.provContracts.join(', '), className: 'font-mono text-foreground' },
   { header: 'Description', cell: r => r.epg_desc ?? '', className: 'text-subtle' },

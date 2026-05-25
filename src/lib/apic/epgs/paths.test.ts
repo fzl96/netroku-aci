@@ -2,11 +2,13 @@ import { describe, expect, it } from 'bun:test'
 import {
   buildContractPath,
   buildEpgPath,
+  buildPhysicalDomainPath,
   contractAttachmentPayload,
   buildContractRelationPath,
   contractRelationDeletePayload,
   epgDeletePayload,
   epgPayload,
+  physicalDomainAttachmentPayload,
 } from './paths'
 import type { ParsedEpgContractRow } from './types'
 
@@ -24,6 +26,7 @@ describe('EPG paths', () => {
   it('builds EPG and contract paths', () => {
     expect(buildEpgPath(row)).toBe('/api/node/mo/uni/tn-TenantA/ap-APP-A/epg-WEB-EPG.json')
     expect(buildContractPath('TenantA', 'WEB-CONTRACT')).toBe('/api/node/mo/uni/tn-TenantA/brc-WEB-CONTRACT.json')
+    expect(buildPhysicalDomainPath('MSI-PHYS-DOM')).toBe('/api/node/mo/uni/phys-MSI-PHYS-DOM.json')
   })
 })
 
@@ -44,6 +47,16 @@ describe('EPG payloads', () => {
     })
   })
 
+  it('keeps shared common BD payload name-based', () => {
+    const payload = JSON.parse(epgPayload({ ...row, bd_tenant: 'common' }))
+
+    expect(payload.fvAEPg.attributes.dn).toBe('uni/tn-TenantA/ap-APP-A/epg-WEB-EPG')
+    expect(payload.fvAEPg.children[0].fvRsBd.attributes).toEqual({
+      tnFvBDName: 'WEB-BD',
+      status: 'created,modified',
+    })
+  })
+
   it('builds consumed and provided contract payloads', () => {
     const consumed = JSON.parse(contractAttachmentPayload(row, 'consumer', 'WEB-CONTRACT'))
     const provided = JSON.parse(contractAttachmentPayload(row, 'provider', 'WEB-CONTRACT'))
@@ -55,6 +68,28 @@ describe('EPG payloads', () => {
     expect(provided.fvRsProv.attributes).toMatchObject({
       tnVzBrCPName: 'WEB-CONTRACT',
       status: 'created,modified',
+    })
+  })
+
+  it('keeps shared common contract payload name-based', () => {
+    const consumed = JSON.parse(contractAttachmentPayload({ ...row, contract_tenant: 'common' }, 'consumer', 'WEB-CONTRACT'))
+
+    expect(consumed.fvRsCons.attributes).toEqual({
+      tnVzBrCPName: 'WEB-CONTRACT',
+      status: 'created,modified',
+    })
+  })
+
+  it('builds physical domain attachment payload', () => {
+    expect(JSON.parse(physicalDomainAttachmentPayload('MSI-PHYS-DOM'))).toEqual({
+      fvRsDomAtt: {
+        attributes: {
+          resImedcy: 'immediate',
+          tDn: 'uni/phys-MSI-PHYS-DOM',
+          status: 'created',
+        },
+        children: [],
+      },
     })
   })
 

@@ -14,6 +14,10 @@ export function buildContractPath(tenant: string, contract: string): string {
   return `/api/node/mo/uni/tn-${tenant}/brc-${contract}.json`
 }
 
+export function buildPhysicalDomainPath(physDomain: string): string {
+  return `/api/node/mo/uni/phys-${physDomain}.json`
+}
+
 export function buildEpgDn(row: Pick<ParsedAnyEpgRow, 'tenant' | 'anp' | 'epg'>): string {
   return `uni/tn-${row.tenant}/ap-${row.anp}/epg-${row.epg}`
 }
@@ -64,6 +68,19 @@ export function contractAttachmentPayload(
       attributes: {
         tnVzBrCPName: contract,
         status: 'created,modified',
+      },
+      children: [],
+    },
+  })
+}
+
+export function physicalDomainAttachmentPayload(physDomain: string): string {
+  return JSON.stringify({
+    fvRsDomAtt: {
+      attributes: {
+        resImedcy: 'immediate',
+        tDn: `uni/phys-${physDomain}`,
+        status: 'created',
       },
       children: [],
     },

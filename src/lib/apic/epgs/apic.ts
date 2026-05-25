@@ -7,14 +7,17 @@ import {
   buildContractPath,
   buildEpgChildrenPath,
   buildEpgPath,
+  buildPhysicalDomainPath,
   buildTenantPath,
   contractAttachmentPayload,
   contractRelationDeletePayload,
   epgDeletePayload,
   epgPayload,
+  physicalDomainAttachmentPayload,
 } from './paths'
 import {
   epgBridgeDomainName,
+  hasPhysicalDomain,
   hasRoleContract,
   validateEpgState,
   type EpgChild,
@@ -27,6 +30,7 @@ import type {
   ParsedEpgContractRow,
   ParsedEpgRow,
 } from './types'
+import { effectiveBridgeDomainTenant, effectiveContractTenant } from './types'
 
 async function moExists(host: string, path: string, token: string): Promise<{ exists?: boolean; error?: string }> {
   const res = await apicFetch(host, path, { token })
@@ -67,7 +71,7 @@ async function postApic(
 }
 
 function epgGroupKey(row: ParsedEpgRow): string {
-  return `${row.tenant}|${row.anp}|${row.epg}|${row.bd}`
+  return `${row.tenant}|${row.anp}|${row.epg}|${effectiveBridgeDomainTenant(row)}|${row.bd}|${row.phys_domain ?? ''}`
 }
 
 function legacyContractRowsToEpgRows(rows: ParsedEpgContractRow[], role: EpgContractRole): ParsedEpgRow[] {
@@ -77,10 +81,78 @@ function legacyContractRowsToEpgRows(rows: ParsedEpgContractRow[], role: EpgCont
     anp: row.anp,
     epg: row.epg,
     bd: row.bd,
+    bd_tenant: row.bd_tenant,
+    contract_tenant: row.contract_tenant,
+    phys_domain: row.phys_domain,
     epg_desc: row.epg_desc,
     consContracts: role === 'consumer' ? [row.contract] : [],
     provContracts: role === 'provider' ? [row.contract] : [],
   }))
+}
+
+async function validateBridgeDomainForEpg(
+  row: ParsedEpgRow,
+  apicHost: string,
+  apicToken: string,
+): Promise<EpgValidationResult | null> {
+  const bdTenant = effectiveBridgeDomainTenant(row)
+  const bd = await moExists(apicHost, buildBridgeDomainPath(bdTenant, row.bd), apicToken)
+  if (bd.error) return { rowIndex: row.rowIndex, status: 'error', message: `Bridge domain check failed: ${bd.error}` }
+  if (!bd.exists) return { rowIndex: row.rowIndex, status: 'error', message: `Bridge domain not found: ${bdTenant}/${row.bd}` }
+
+  if (bdTenant === 'common' && row.tenant !== 'common') {
+    const localBd = await moExists(apicHost, buildBridgeDomainPath(row.tenant, row.bd), apicToken)
+    if (localBd.error) return { rowIndex: row.rowIndex, status: 'error', message: `Bridge domain ambiguity check failed: ${localBd.error}` }
+    if (localBd.exists) {
+      return {
+        rowIndex: row.rowIndex,
+        status: 'error',
+        message: `Bridge domain ${row.bd} exists in both ${row.tenant} and common; remove bd_tenant or rename one BD to avoid ambiguous APIC binding`,
+      }
+    }
+  }
+
+  return null
+}
+
+async function validatePhysicalDomainForEpg(
+  row: ParsedEpgRow,
+  apicHost: string,
+  apicToken: string,
+): Promise<EpgValidationResult | null> {
+  if (!row.phys_domain) return null
+
+  const physDomain = await moExists(apicHost, buildPhysicalDomainPath(row.phys_domain), apicToken)
+  if (physDomain.error) return { rowIndex: row.rowIndex, status: 'error', message: `Physical domain check failed: ${physDomain.error}` }
+  if (!physDomain.exists) return { rowIndex: row.rowIndex, status: 'error', message: `Physical domain not found: ${row.phys_domain}` }
+
+  return null
+}
+
+async function validateContractForEpg(
+  row: ParsedEpgRow,
+  contractName: string,
+  apicHost: string,
+  apicToken: string,
+): Promise<EpgValidationResult | null> {
+  const contractTenant = effectiveContractTenant(row)
+  const contract = await moExists(apicHost, buildContractPath(contractTenant, contractName), apicToken)
+  if (contract.error) return { rowIndex: row.rowIndex, status: 'error', message: `Contract check failed: ${contract.error}` }
+  if (!contract.exists) return { rowIndex: row.rowIndex, status: 'error', message: `Contract not found: ${contractTenant}/${contractName}` }
+
+  if (contractTenant === 'common' && row.tenant !== 'common') {
+    const localContract = await moExists(apicHost, buildContractPath(row.tenant, contractName), apicToken)
+    if (localContract.error) return { rowIndex: row.rowIndex, status: 'error', message: `Contract ambiguity check failed: ${localContract.error}` }
+    if (localContract.exists) {
+      return {
+        rowIndex: row.rowIndex,
+        status: 'error',
+        message: `Contract ${contractName} exists in both ${row.tenant} and common; remove contract_tenant or rename one contract to avoid ambiguous APIC binding`,
+      }
+    }
+  }
+
+  return null
 }
 
 function requestedContracts(row: ParsedEpgRow): { role: EpgContractRole; contract: string }[] {
@@ -109,9 +181,11 @@ export async function validateEpgOnlyDeployRows(
       if (anp.error) return { rowIndex: row.rowIndex, status: 'error', message: `ANP check failed: ${anp.error}` }
       if (!anp.exists) return { rowIndex: row.rowIndex, status: 'error', message: `ANP not found: ${row.tenant}/${row.anp}` }
 
-      const bd = await moExists(apicHost, buildBridgeDomainPath(row.tenant, row.bd), apicToken)
-      if (bd.error) return { rowIndex: row.rowIndex, status: 'error', message: `Bridge domain check failed: ${bd.error}` }
-      if (!bd.exists) return { rowIndex: row.rowIndex, status: 'error', message: `Bridge domain not found: ${row.tenant}/${row.bd}` }
+      const bdError = await validateBridgeDomainForEpg(row, apicHost, apicToken)
+      if (bdError) return bdError
+
+      const physDomainError = await validatePhysicalDomainForEpg(row, apicHost, apicToken)
+      if (physDomainError) return physDomainError
 
       const epg = await moExists(apicHost, buildEpgPath(row), apicToken)
       if (epg.error) return { rowIndex: row.rowIndex, status: 'error', message: `EPG check failed: ${epg.error}` }
@@ -121,6 +195,10 @@ export async function validateEpgOnlyDeployRows(
       if (childrenState.error) return { rowIndex: row.rowIndex, status: 'error', message: childrenState.error }
       const mismatch = validateEpgState(row, childrenState.children ?? [])
       if (mismatch) return { rowIndex: row.rowIndex, status: 'error', message: mismatch }
+
+      if (row.phys_domain && !hasPhysicalDomain(childrenState.children ?? [], row.phys_domain)) {
+        return { rowIndex: row.rowIndex, status: 'deploy', message: 'EPG exists; missing physical domain relation will be updated' }
+      }
 
       return { rowIndex: row.rowIndex, status: 'exists' }
     } catch (err) {
@@ -148,14 +226,15 @@ export async function validateEpgDeployRows(
       if (anp.error) return { rowIndex: row.rowIndex, status: 'error', message: `ANP check failed: ${anp.error}` }
       if (!anp.exists) return { rowIndex: row.rowIndex, status: 'error', message: `ANP not found: ${row.tenant}/${row.anp}` }
 
-      const bd = await moExists(apicHost, buildBridgeDomainPath(row.tenant, row.bd), apicToken)
-      if (bd.error) return { rowIndex: row.rowIndex, status: 'error', message: `Bridge domain check failed: ${bd.error}` }
-      if (!bd.exists) return { rowIndex: row.rowIndex, status: 'error', message: `Bridge domain not found: ${row.tenant}/${row.bd}` }
+      const bdError = await validateBridgeDomainForEpg(row, apicHost, apicToken)
+      if (bdError) return bdError
+
+      const physDomainError = await validatePhysicalDomainForEpg(row, apicHost, apicToken)
+      if (physDomainError) return physDomainError
 
       for (const contractName of uniqueContracts(row)) {
-        const contract = await moExists(apicHost, buildContractPath(row.tenant, contractName), apicToken)
-        if (contract.error) return { rowIndex: row.rowIndex, status: 'error', message: `Contract check failed: ${contract.error}` }
-        if (!contract.exists) return { rowIndex: row.rowIndex, status: 'error', message: `Contract not found: ${row.tenant}/${contractName}` }
+        const contractError = await validateContractForEpg(row, contractName, apicHost, apicToken)
+        if (contractError) return contractError
       }
 
       const epg = await moExists(apicHost, buildEpgPath(row), apicToken)
@@ -166,6 +245,7 @@ export async function validateEpgDeployRows(
       if (childrenState.error) return { rowIndex: row.rowIndex, status: 'error', message: childrenState.error }
       const children = childrenState.children ?? []
       const existingBd = epgBridgeDomainName(children)
+      const missingPhysicalDomain = row.phys_domain && !hasPhysicalDomain(children, row.phys_domain)
       if (existingBd && existingBd !== row.bd) {
         return {
           rowIndex: row.rowIndex,
@@ -175,14 +255,14 @@ export async function validateEpgDeployRows(
       }
 
       const missingContracts = requestedContracts(row).filter(item =>
-        !hasRoleContract(children, item.contract, item.role)
+        !hasRoleContract(children, item.contract, item.role, effectiveContractTenant(row))
       )
       return {
         rowIndex: row.rowIndex,
-        status: existingBd === row.bd && missingContracts.length === 0 ? 'exists' : 'deploy',
-        message: existingBd === row.bd && missingContracts.length === 0
+        status: existingBd === row.bd && missingContracts.length === 0 && !missingPhysicalDomain ? 'exists' : 'deploy',
+        message: existingBd === row.bd && missingContracts.length === 0 && !missingPhysicalDomain
           ? undefined
-          : 'EPG exists; missing contract relations will be updated',
+          : 'EPG exists; missing contract or physical domain relations will be updated',
       }
     } catch (err) {
       return {
@@ -203,6 +283,17 @@ export async function deployEpgOnlyRows(
     try {
       const epgError = await postApic(apicHost, buildEpgPath(row), epgPayload(row), apicToken, 'EPG deploy')
       if (epgError) return { rowIndex: row.rowIndex, success: false, message: epgError }
+
+      if (row.phys_domain) {
+        const physDomainError = await postApic(
+          apicHost,
+          buildEpgPath(row),
+          physicalDomainAttachmentPayload(row.phys_domain),
+          apicToken,
+          'Physical domain attachment',
+        )
+        if (physDomainError) return { rowIndex: row.rowIndex, success: false, message: physDomainError }
+      }
 
       return { rowIndex: row.rowIndex, success: true }
     } catch (err) {
@@ -240,6 +331,19 @@ export async function deployEpgRows(
       const epgError = await postApic(apicHost, epgPath, epgPayload(firstRow), apicToken, 'EPG deploy')
       if (epgError) {
         return group.map(row => ({ rowIndex: row.rowIndex, success: false, message: epgError }))
+      }
+
+      if (firstRow.phys_domain) {
+        const physDomainError = await postApic(
+          apicHost,
+          epgPath,
+          physicalDomainAttachmentPayload(firstRow.phys_domain),
+          apicToken,
+          'Physical domain attachment',
+        )
+        if (physDomainError) {
+          return group.map(row => ({ rowIndex: row.rowIndex, success: false, message: physDomainError }))
+        }
       }
 
       const results: EpgDeployResult[] = []
@@ -318,7 +422,7 @@ export async function validateEpgRollbackRows(
       const contracts = requestedContracts(row)
       if (contracts.length > 0) {
         const existingContracts = contracts.filter(item =>
-          hasRoleContract(children, item.contract, item.role)
+          hasRoleContract(children, item.contract, item.role, effectiveContractTenant(row))
         )
         return { rowIndex: row.rowIndex, status: existingContracts.length > 0 ? 'rollback' : 'missing' }
       }
@@ -351,7 +455,7 @@ export async function rollbackEpgRows(
 
         const errors: string[] = []
         for (const { role, contract } of contracts) {
-          if (!hasRoleContract(children, contract, role)) continue
+          if (!hasRoleContract(children, contract, role, effectiveContractTenant(row))) continue
           const res = await apicFetch(apicHost, buildContractRelationPath(row, role, contract), {
             method: 'POST',
             body: contractRelationDeletePayload(row, role, contract),

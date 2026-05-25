@@ -156,14 +156,17 @@ TenantA,VLAN1411-BD,TenantA-VRF,10.14.11.1/24,WAN-L3OUT,L3 bridge domain
 
 Bulk deploy and rollback `fvAEPg` objects under existing tenants and application profiles. Each row creates or updates one EPG, binds it to an existing bridge domain, and can attach multiple consumed (`fvRsCons`) and provided (`fvRsProv`) contracts.
 
+By default, the Bridge Domain and contracts are expected to live in the same tenant as the EPG. For shared-object cases, use `bd_tenant=common` for a BD in `common` and `contract_tenant=common` for consumed/provided contracts in `common`. If the EPG should be usable for physical static bindings, provide `phys_domain` to bind a physical domain to the EPG.
+
 ### Validation checks (per row)
 
 1. Tenant exists in APIC
 2. Application Profile / ANP exists in the tenant
-3. Bridge Domain exists in the tenant
-4. Optional consumed/provided contracts exist in the tenant
-5. Existing EPG is either reusable with the same Bridge Domain, or rejected if it points to a different Bridge Domain
-6. Existing contract relations are treated as idempotent; missing relations are queued for deploy
+3. Bridge Domain exists in the EPG tenant, or in `common` when `bd_tenant=common`
+4. Optional consumed/provided contracts exist in the EPG tenant, or in `common` when `contract_tenant=common`
+5. Optional physical domain exists when `phys_domain` is provided
+6. Existing EPG is either reusable with the same Bridge Domain, or rejected if it points to a different Bridge Domain
+7. Existing contract and physical domain relations are treated as idempotent; missing relations are queued for deploy
 
 For rollback, rows with contract columns remove only the selected consumed/provided contract relations. Rows without contract columns delete the EPG itself.
 
@@ -174,7 +177,10 @@ For rollback, rows with contract columns remove only the selected consumed/provi
 | `tenant` | Existing tenant name | `TenantA` |
 | `anp` | Existing Application Profile / ANP name (`ap` is also accepted) | `APP-A` |
 | `epg` | EPG name to create, update, or remove | `WEB-EPG` |
+| `bd_tenant` | Optional BD tenant. Empty defaults to `tenant`; only `common` is supported for shared BD lookup | `common` |
 | `bd` | Existing Bridge Domain name to bind | `WEB-BD` |
+| `phys_domain` | Optional physical domain to bind to the EPG (`physdom` is also accepted) | `MSI-PHYS-DOM` |
+| `contract_tenant` | Optional contract tenant. Empty defaults to `tenant`; only `common` is supported for shared contract lookup | `common` |
 | `cons_contract` | Optional comma-separated consumed contracts | `WEB-CONTRACT,API-CONTRACT` |
 | `prov_contract` | Optional comma-separated provided contracts | `DB-CONTRACT` |
 | `epg_desc` | Optional EPG description | `Web frontend EPG` |
@@ -182,9 +188,10 @@ For rollback, rows with contract columns remove only the selected consumed/provi
 ### Example
 
 ```csv
-tenant,anp,epg,bd,cons_contract,prov_contract,epg_desc
-TenantA,APP-A,WEB-EPG,WEB-BD,"WEB-CONTRACT,API-CONTRACT",,Web frontend EPG
-TenantA,APP-A,DB-EPG,DB-BD,,DB-CONTRACT,Database EPG
+tenant,anp,epg,bd_tenant,bd,phys_domain,contract_tenant,cons_contract,prov_contract,epg_desc
+TenantA,APP-A,WEB-EPG,,WEB-BD,,,"WEB-CONTRACT,API-CONTRACT",,Web frontend EPG
+TenantA,APP-A,DB-EPG,,DB-BD,MSI-PHYS-DOM,,,DB-CONTRACT,Database EPG
+SERVERFARM,APP-SERVERFARM,SHARED-EPG,common,SHARED-BD,MSI-PHYS-DOM,common,MSI-CRITICAL-NS-CT,,EPG using shared BD and contract from common
 ```
 
 ---

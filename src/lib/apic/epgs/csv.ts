@@ -1,12 +1,18 @@
 import { deduplicateRows } from '@/lib/apic/csv-utils'
-import type { CsvValidationError, ParsedEpgContractRow, ParsedEpgRow } from './types'
+import {
+  effectiveBridgeDomainTenant,
+  effectiveContractTenant,
+  type CsvValidationError,
+  type ParsedEpgContractRow,
+  type ParsedEpgRow,
+} from './types'
 
 const EPG_REQUIRED_HEADERS = ['tenant', 'epg', 'bd'] as const
 const CONTRACT_REQUIRED_HEADERS = ['tenant', 'epg', 'bd', 'contract'] as const
 const SAFE_DN_SEGMENT_RE = /^[^\s/[\]](?:[^/[\]]*[^\s/[\]])?$/
 
 export const EPG_REQUIRED_COLUMNS_HELP =
-  'Required columns: tenant, anp, epg, bd. Optional: cons_contract, prov_contract, epg_desc. The anp column may also be named ap. Multiple contracts may be comma-separated.'
+  'Required columns: tenant, anp, epg, bd. Optional: bd_tenant, contract_tenant, phys_domain, cons_contract, prov_contract, epg_desc. Empty bd_tenant and contract_tenant use tenant; common supports shared lookup. The anp column may also be named ap. Multiple contracts may be comma-separated.'
 
 export const EPG_ONLY_REQUIRED_COLUMNS_HELP = EPG_REQUIRED_COLUMNS_HELP
 
@@ -52,6 +58,62 @@ function contractKey(values: string[]): string {
   return [...values].sort().join(',')
 }
 
+function parseBridgeDomainTenant(
+  raw: string | undefined,
+  tenant: string,
+  rowIndex: number,
+  errors: CsvValidationError[],
+): string {
+  const bdTenant = raw?.trim() ?? ''
+  if (!bdTenant) return tenant
+
+  validateSegment(errors, rowIndex, 'bd_tenant', bdTenant)
+
+  if (bdTenant === tenant) return tenant
+  if (bdTenant.toLowerCase() === 'common') return 'common'
+
+  errors.push({
+    rowIndex,
+    field: 'bd_tenant',
+    message: 'bd_tenant must be empty, match tenant, or be common',
+  })
+  return bdTenant
+}
+
+function parseContractTenant(
+  raw: string | undefined,
+  tenant: string,
+  rowIndex: number,
+  errors: CsvValidationError[],
+): string {
+  const contractTenant = raw?.trim() ?? ''
+  if (!contractTenant) return tenant
+
+  validateSegment(errors, rowIndex, 'contract_tenant', contractTenant)
+
+  if (contractTenant === tenant) return tenant
+  if (contractTenant.toLowerCase() === 'common') return 'common'
+
+  errors.push({
+    rowIndex,
+    field: 'contract_tenant',
+    message: 'contract_tenant must be empty, match tenant, or be common',
+  })
+  return contractTenant
+}
+
+function parsePhysicalDomain(
+  raw: string | undefined,
+  rowIndex: number,
+  errors: CsvValidationError[],
+): string | undefined {
+  const physDomain = raw?.trim() ?? ''
+  if (!physDomain) return undefined
+
+  validateSegment(errors, rowIndex, 'phys_domain', physDomain)
+  return physDomain
+}
+
 export function validateEpgCsv(
   rawRows: Record<string, string>[],
   headers: string[],
@@ -83,6 +145,9 @@ export function validateEpgCsv(
     const anp = raw.anp?.trim() || raw.ap?.trim() || ''
     const epg = raw.epg?.trim() ?? ''
     const bd = raw.bd?.trim() ?? ''
+    const bd_tenant = parseBridgeDomainTenant(raw.bd_tenant, tenant, rowIndex, rowErrors)
+    const contract_tenant = parseContractTenant(raw.contract_tenant, tenant, rowIndex, rowErrors)
+    const phys_domain = parsePhysicalDomain(raw.phys_domain ?? raw.physdom, rowIndex, rowErrors)
     const epg_desc = raw.epg_desc?.trim() || undefined
     const consContracts = parseContractList(raw.cons_contract, 'cons_contract', rowIndex, rowErrors)
     const provContracts = parseContractList(raw.prov_contract, 'prov_contract', rowIndex, rowErrors)
@@ -97,12 +162,12 @@ export function validateEpgCsv(
       return
     }
 
-    rows.push({ rowIndex, tenant, anp, epg, bd, consContracts, provContracts, epg_desc })
+    rows.push({ rowIndex, tenant, anp, epg, bd, bd_tenant, contract_tenant, phys_domain, consContracts, provContracts, epg_desc })
   })
 
   return {
     rows: deduplicateRows(rows, errors, [{
-      key: row => `${row.tenant}|${row.anp}|${row.epg}|${row.bd}|${contractKey(row.consContracts)}|${contractKey(row.provContracts)}`,
+      key: row => `${row.tenant}|${row.anp}|${row.epg}|${effectiveBridgeDomainTenant(row)}|${row.bd}|${effectiveContractTenant(row)}|${row.phys_domain ?? ''}|${contractKey(row.consContracts)}|${contractKey(row.provContracts)}`,
       message: (_, first) => `Duplicate EPG row (first at row ${first})`,
     }]),
     errors,
@@ -140,6 +205,9 @@ export function validateEpgContractCsv(
     const anp = raw.anp?.trim() || raw.ap?.trim() || ''
     const epg = raw.epg?.trim() ?? ''
     const bd = raw.bd?.trim() ?? ''
+    const bd_tenant = parseBridgeDomainTenant(raw.bd_tenant, tenant, rowIndex, rowErrors)
+    const contract_tenant = parseContractTenant(raw.contract_tenant, tenant, rowIndex, rowErrors)
+    const phys_domain = parsePhysicalDomain(raw.phys_domain ?? raw.physdom, rowIndex, rowErrors)
     const contract = raw.contract?.trim() ?? ''
     const epg_desc = raw.epg_desc?.trim() || undefined
 
@@ -154,12 +222,12 @@ export function validateEpgContractCsv(
       return
     }
 
-    rows.push({ rowIndex, tenant, anp, epg, bd, contract, epg_desc })
+    rows.push({ rowIndex, tenant, anp, epg, bd, bd_tenant, contract_tenant, phys_domain, contract, epg_desc })
   })
 
   return {
     rows: deduplicateRows(rows, errors, [{
-      key: row => `${row.tenant}|${row.anp}|${row.epg}|${row.bd}|${row.contract}`,
+      key: row => `${row.tenant}|${row.anp}|${row.epg}|${effectiveBridgeDomainTenant(row)}|${row.bd}|${effectiveContractTenant(row)}|${row.phys_domain ?? ''}|${row.contract}`,
       message: (_, first) => `Duplicate EPG contract row (first at row ${first})`,
     }]),
     errors,

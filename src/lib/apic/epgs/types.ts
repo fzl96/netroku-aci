@@ -7,6 +7,9 @@ export interface EpgRow {
   anp: string
   epg: string
   bd: string
+  bd_tenant?: string
+  contract_tenant?: string
+  phys_domain?: string
   consContracts: string[]
   provContracts: string[]
   epg_desc?: string
@@ -27,6 +30,14 @@ export interface ParsedEpgContractRow extends EpgContractRow {
 }
 
 export type ParsedAnyEpgRow = ParsedEpgRow | ParsedEpgContractRow
+
+export function effectiveBridgeDomainTenant(row: Pick<EpgRow, 'tenant' | 'bd_tenant'>): string {
+  return row.bd_tenant?.trim() || row.tenant
+}
+
+export function effectiveContractTenant(row: Pick<EpgRow, 'tenant' | 'contract_tenant'>): string {
+  return row.contract_tenant?.trim() || row.tenant
+}
 
 export interface EpgValidationResult {
   rowIndex: number
