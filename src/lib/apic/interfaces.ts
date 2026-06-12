@@ -1,4 +1,5 @@
 import { apicFetch } from './client'
+import { prisma } from '@/lib/prisma'
 
 export interface ApicInterfaceRow {
   dn: string
@@ -227,4 +228,161 @@ export async function fetchInterfacesFromApic(
   const data = (await res.json()) as { imdata?: PhysIfNode[] }
 
   return parseInterfaceRows(data.imdata ?? [])
+}
+
+const INTERFACES_CHUNK_SIZE = 100
+
+export interface ResyncInterfacesArgs {
+  apicHostId: string
+  host: string
+  username: string
+  password: string
+}
+
+/**
+ * Fetch interface counters from APIC and persist them for one host.
+ * Phase 1 upserts InterfaceSnapshot rows, phase 2 loads the latest prior sample
+ * per interface, phase 3 inserts new samples with computed deltas.
+ * Returns the number of unique interfaces synced and the host's total snapshot count.
+ */
+export async function resyncInterfaces(
+  args: ResyncInterfacesArgs,
+): Promise<{ synced: number; total: number }> {
+  const { apicHostId, host, username, password } = args
+
+  const rows = await fetchInterfacesFromApic(host, username, password)
+
+  // Deduplicate by DN — defensive, the class query shouldn't return dupes but be paranoid
+  const deduped = new Map<string, (typeof rows)[number]>()
+  for (const row of rows) deduped.set(row.dn, row)
+  const uniqueRows = Array.from(deduped.values()).filter(r => r.dn)
+
+  const now = new Date()
+
+  // Phase 1: upsert all InterfaceSnapshot rows (chunked so a huge fabric doesn't trip SQLite)
+  const snapshotIds = new Map<string, string>() // dn -> snapshot.id
+
+  for (let i = 0; i < uniqueRows.length; i += INTERFACES_CHUNK_SIZE) {
+    const chunk = uniqueRows.slice(i, i + INTERFACES_CHUNK_SIZE)
+    const upserted = await prisma.$transaction(
+      chunk.map(row =>
+        prisma.interfaceSnapshot.upsert({
+          where: { apicHostId_dn: { apicHostId, dn: row.dn } },
+          update: {
+            node: row.node,
+            ifName: row.ifName,
+            usage: row.usage,
+            adminSt: row.adminSt,
+            operSt: row.operSt,
+            operSpeed: row.operSpeed,
+            description: row.description,
+            lastLinkStChg: row.lastLinkStChg,
+            lastSeenAt: now,
+          },
+          create: {
+            apicHostId,
+            dn: row.dn,
+            node: row.node,
+            ifName: row.ifName,
+            usage: row.usage,
+            adminSt: row.adminSt,
+            operSt: row.operSt,
+            operSpeed: row.operSpeed,
+            description: row.description,
+            lastLinkStChg: row.lastLinkStChg,
+            firstSeenAt: now,
+            lastSeenAt: now,
+          },
+          select: { id: true, dn: true },
+        }),
+      ),
+    )
+    for (const r of upserted) snapshotIds.set(r.dn, r.id)
+  }
+
+  // Phase 2: load the most recent sample for each interface in one go.
+  const ids = Array.from(snapshotIds.values())
+  const previousByInterface = new Map<string, {
+    rxBytes: bigint; rxErrors: bigint; rxDiscards: bigint
+    rxCrcErrors: bigint; rxAlignErrors: bigint
+    txBytes: bigint; txErrors: bigint; txDiscards: bigint
+  }>()
+
+  if (ids.length > 0) {
+    for (let i = 0; i < ids.length; i += 500) {
+      const idChunk = ids.slice(i, i + 500)
+      const previous = await prisma.interfaceSample.findMany({
+        where: { interfaceId: { in: idChunk } },
+        orderBy: { sampledAt: 'desc' },
+        select: {
+          interfaceId: true,
+          rxBytes: true, rxErrors: true, rxDiscards: true,
+          rxCrcErrors: true, rxAlignErrors: true,
+          txBytes: true, txErrors: true, txDiscards: true,
+        },
+      })
+      for (const row of previous) {
+        if (previousByInterface.has(row.interfaceId)) continue
+        previousByInterface.set(row.interfaceId, {
+          rxBytes: row.rxBytes,
+          rxErrors: row.rxErrors,
+          rxDiscards: row.rxDiscards,
+          rxCrcErrors: row.rxCrcErrors,
+          rxAlignErrors: row.rxAlignErrors,
+          txBytes: row.txBytes,
+          txErrors: row.txErrors,
+          txDiscards: row.txDiscards,
+        })
+      }
+    }
+  }
+
+  // Phase 3: insert new samples (chunked).
+  for (let i = 0; i < uniqueRows.length; i += INTERFACES_CHUNK_SIZE) {
+    const chunk = uniqueRows.slice(i, i + INTERFACES_CHUNK_SIZE)
+    await prisma.$transaction(
+      chunk.map((row) => {
+        const interfaceId = snapshotIds.get(row.dn)!
+        const prev = previousByInterface.get(interfaceId) ?? null
+
+        return prisma.interfaceSample.create({
+          data: {
+            apicHostId,
+            interfaceId,
+            sampledAt: now,
+            adminSt: row.adminSt,
+            operSt: row.operSt,
+            operSpeed: row.operSpeed,
+            rxBytes: row.rxBytes,
+            rxPkts: row.rxPkts,
+            rxErrors: row.rxErrors,
+            rxDiscards: row.rxDiscards,
+            rxCrcErrors: row.rxCrcErrors,
+            rxAlignErrors: row.rxAlignErrors,
+            txBytes: row.txBytes,
+            txPkts: row.txPkts,
+            txErrors: row.txErrors,
+            txDiscards: row.txDiscards,
+            dRxBytes: computeDelta(row.rxBytes, prev?.rxBytes ?? null),
+            dRxErrors: computeDelta(row.rxErrors, prev?.rxErrors ?? null),
+            dRxDiscards: computeDelta(row.rxDiscards, prev?.rxDiscards ?? null),
+            dRxCrcErrors: computeDelta(row.rxCrcErrors, prev?.rxCrcErrors ?? null),
+            dRxAlignErrors: computeDelta(row.rxAlignErrors, prev?.rxAlignErrors ?? null),
+            dTxBytes: computeDelta(row.txBytes, prev?.txBytes ?? null),
+            dTxErrors: computeDelta(row.txErrors, prev?.txErrors ?? null),
+            dTxDiscards: computeDelta(row.txDiscards, prev?.txDiscards ?? null),
+          },
+        })
+      }),
+    )
+  }
+
+  await prisma.apicHost.update({
+    where: { id: apicHostId },
+    data: { lastInterfaceSyncAt: now },
+  })
+
+  const total = await prisma.interfaceSnapshot.count({ where: { apicHostId } })
+
+  return { synced: uniqueRows.length, total }
 }
