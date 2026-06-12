@@ -1,4 +1,5 @@
 import { apicFetch } from './client'
+import { prisma } from '@/lib/prisma'
 
 export interface ApicEndpointRow {
   mac: string
@@ -112,4 +113,79 @@ export async function fetchEndpointsFromApic(
   }
 
   return rows
+}
+
+const ENDPOINTS_CHUNK_SIZE = 100
+
+export interface ResyncEndpointsArgs {
+  apicHostId: string
+  host: string
+  username: string
+  password: string
+}
+
+/**
+ * Fetch endpoints from APIC and persist them for one host.
+ * Marks existing rows inactive, then upserts the freshly fetched set as active.
+ * Returns the number of unique rows synced and the host's total row count.
+ */
+export async function resyncEndpoints(
+  args: ResyncEndpointsArgs,
+): Promise<{ synced: number; total: number }> {
+  const { apicHostId, host, username, password } = args
+
+  const fetched = await fetchEndpointsFromApic(host, username, password)
+
+  // Deduplicate by (mac, ip) — last occurrence wins for multi-path endpoints
+  const deduped = new Map<string, (typeof fetched)[number]>()
+  for (const row of fetched) {
+    deduped.set(`${row.mac}|${row.ip}`, row)
+  }
+  const uniqueRows = Array.from(deduped.values())
+
+  const now = new Date()
+
+  // Mark all current active endpoints as inactive
+  await prisma.endpoint.updateMany({
+    where: { apicHostId, isActive: true },
+    data: { isActive: false },
+  })
+
+  // Chunked transactional upsert
+  for (let i = 0; i < uniqueRows.length; i += ENDPOINTS_CHUNK_SIZE) {
+    const chunk = uniqueRows.slice(i, i + ENDPOINTS_CHUNK_SIZE)
+    await prisma.$transaction(
+      chunk.map(row =>
+        prisma.endpoint.upsert({
+          where: { apicHostId_mac_ip: { apicHostId, mac: row.mac, ip: row.ip } },
+          update: {
+            vlan: row.vlan,
+            dn: row.dn,
+            node: row.node,
+            interface: row.interface,
+            epgDescr: row.epgDescr,
+            isActive: true,
+            lastSeenAt: now,
+          },
+          create: {
+            apicHostId,
+            mac: row.mac,
+            ip: row.ip,
+            vlan: row.vlan,
+            dn: row.dn,
+            node: row.node,
+            interface: row.interface,
+            epgDescr: row.epgDescr,
+            isActive: true,
+            firstSeenAt: now,
+            lastSeenAt: now,
+          },
+        }),
+      ),
+    )
+  }
+
+  const total = await prisma.endpoint.count({ where: { apicHostId } })
+
+  return { synced: uniqueRows.length, total }
 }

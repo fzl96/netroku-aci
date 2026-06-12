@@ -2,9 +2,7 @@ import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { recordAudit } from '@/lib/audit'
-import { fetchEndpointsFromApic } from '@/lib/apic/endpoints'
-
-const CHUNK_SIZE = 100
+import { resyncEndpoints } from '@/lib/apic/endpoints'
 
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -23,14 +21,17 @@ export async function POST(request: Request) {
     return Response.json({ error: 'username and password are required' }, { status: 400 })
   }
 
-  const apicHost = await prisma.apicHost.findFirst({
-    where: { id: apicHostId },
-  })
+  const apicHost = await prisma.apicHost.findFirst({ where: { id: apicHostId } })
   if (!apicHost) return Response.json({ error: 'Host not found' }, { status: 404 })
 
-  let fetched: Awaited<ReturnType<typeof fetchEndpointsFromApic>>
+  let result: { synced: number; total: number }
   try {
-    fetched = await fetchEndpointsFromApic(apicHost.host, username.trim(), password)
+    result = await resyncEndpoints({
+      apicHostId,
+      host: apicHost.host,
+      username: username.trim(),
+      password,
+    })
   } catch (err) {
     return Response.json(
       { error: err instanceof Error ? err.message : 'Failed to fetch endpoints from APIC' },
@@ -38,64 +39,13 @@ export async function POST(request: Request) {
     )
   }
 
-  // Deduplicate by (mac, ip) — last occurrence wins for multi-path endpoints
-  const deduped = new Map<string, (typeof fetched)[0]>()
-  for (const row of fetched) {
-    deduped.set(`${row.mac}|${row.ip}`, row)
-  }
-  const uniqueRows = Array.from(deduped.values())
-
-  const now = new Date()
-
-  // Mark all current active endpoints as inactive
-  await prisma.endpoint.updateMany({
-    where: { apicHostId, isActive: true },
-    data: { isActive: false },
-  })
-
-  // Chunked transactional upsert
-  for (let i = 0; i < uniqueRows.length; i += CHUNK_SIZE) {
-    const chunk = uniqueRows.slice(i, i + CHUNK_SIZE)
-    await prisma.$transaction(
-      chunk.map(row =>
-        prisma.endpoint.upsert({
-          where: { apicHostId_mac_ip: { apicHostId, mac: row.mac, ip: row.ip } },
-          update: {
-            vlan: row.vlan,
-            dn: row.dn,
-            node: row.node,
-            interface: row.interface,
-            epgDescr: row.epgDescr,
-            isActive: true,
-            lastSeenAt: now,
-          },
-          create: {
-            apicHostId,
-            mac: row.mac,
-            ip: row.ip,
-            vlan: row.vlan,
-            dn: row.dn,
-            node: row.node,
-            interface: row.interface,
-            epgDescr: row.epgDescr,
-            isActive: true,
-            firstSeenAt: now,
-            lastSeenAt: now,
-          },
-        }),
-      ),
-    )
-  }
-
-  const total = await prisma.endpoint.count({ where: { apicHostId } })
-
   await recordAudit({
     userId: session.user.id,
     userName: session.user.username ?? session.user.name,
     action: 'resync.endpoints',
     target: `${apicHost.name} (${apicHost.host})`,
-    detail: `synced ${uniqueRows.length} (total ${total})`,
+    detail: `synced ${result.synced} (total ${result.total})`,
   })
 
-  return Response.json({ synced: uniqueRows.length, total })
+  return Response.json(result)
 }
