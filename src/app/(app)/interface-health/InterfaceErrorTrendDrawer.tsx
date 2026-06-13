@@ -48,6 +48,7 @@ export function InterfaceErrorTrendDrawer({
   const [data, setData] = useState<ErrorTrendPoint[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const [error, setError] = useState(false)
 
   // Fetch whenever the drawer opens for a new interface or the range changes.
   useEffect(() => {
@@ -55,12 +56,18 @@ export function InterfaceErrorTrendDrawer({
     let cancelled = false
     setLoading(true)
     setData(null)
+    setHidden(new Set())
+    setError(false)
     getInterfaceErrorSamples(selected.id, range)
       .then((rows) => {
         if (!cancelled) setData(rows)
       })
-      .catch(() => {
-        if (!cancelled) setData([])
+      .catch((err) => {
+        console.error(err)
+        if (!cancelled) {
+          setError(true)
+          setData([])
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -68,7 +75,7 @@ export function InterfaceErrorTrendDrawer({
     return () => {
       cancelled = true
     }
-  }, [selected, range])
+  }, [selected?.id, range])
 
   const toggleSeries = (key: string) =>
     setHidden((prev) => {
@@ -121,6 +128,7 @@ export function InterfaceErrorTrendDrawer({
               <button
                 key={s.key}
                 type="button"
+                aria-pressed={!off}
                 onClick={() => toggleSeries(s.key)}
                 className={[
                   'flex items-center gap-1.5 text-xs transition-opacity',
@@ -142,13 +150,17 @@ export function InterfaceErrorTrendDrawer({
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
               Loading…
             </div>
+          ) : error ? (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              Couldn&apos;t load samples
+            </div>
           ) : isEmpty ? (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
               No samples in this range
             </div>
           ) : (
             <ChartContainer config={chartConfig} className="h-full w-full">
-              <LineChart data={data ?? []} margin={{ left: 4, right: 8, top: 8 }}>
+              <LineChart data={data} margin={{ left: 4, right: 8, top: 8 }}>
                 <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey="sampledAt"
