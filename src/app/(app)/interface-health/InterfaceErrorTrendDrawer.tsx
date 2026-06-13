@@ -176,7 +176,17 @@ export function InterfaceErrorTrendDrawer({
                   }
                 />
                 <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={32} />
-                <ChartTooltip content={<ChartTooltipContent />} />
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      labelFormatter={(_, payload) =>
+                        payload?.[0]?.payload?.sampledAt
+                          ? new Date(payload[0].payload.sampledAt).toLocaleString()
+                          : ''
+                      }
+                    />
+                  }
+                />
                 {ERROR_TREND_SERIES.map((s) => (
                   <Line
                     key={s.key}
