@@ -29,6 +29,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ApicCredentialDialog } from '@/components/ApicCredentialDialog'
+import {
+  InterfaceErrorTrendDrawer,
+  type SelectedInterface,
+} from './InterfaceErrorTrendDrawer'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -158,6 +162,7 @@ export function InterfaceHealthClient({
   pageSize,
 }: Props) {
   const router = useRouter()
+  const [selected, setSelected] = useState<SelectedInterface | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [credentialOpen, setCredentialOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -546,8 +551,17 @@ export function InterfaceHealthClient({
                         return (
                           <tr
                             key={r.id}
-                            className="group border-b border-border-faint last:border-0 hover:bg-muted transition-colors duration-100 animate-fade-up"
+                            className="group cursor-pointer border-b border-border-faint last:border-0 hover:bg-muted transition-colors duration-100 animate-fade-up"
                             style={{ animationDelay: `${Math.min(i * 12, 200)}ms` }}
+                            onClick={() =>
+                              setSelected({
+                                id: r.id,
+                                node: r.node,
+                                ifName: r.ifName,
+                                description: r.description,
+                                operSt: r.operSt,
+                              })
+                            }
                           >
                             <td className="px-4 py-2.5 tabular-nums text-muted-foreground border-l-2 border-l-transparent group-hover:border-l-primary transition-colors duration-100">
                               {r.node || '—'}
@@ -667,6 +681,7 @@ export function InterfaceHealthClient({
         description={`Enter APIC credentials for ${selectedHost?.name ?? 'the selected host'}. Credentials are used for this resync only.`}
         onSubmit={handleResync}
       />
+      <InterfaceErrorTrendDrawer selected={selected} onClose={() => setSelected(null)} />
     </div>
   )
 }
