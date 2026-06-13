@@ -59,7 +59,14 @@ describe('serializeErrorSamples', () => {
         dTxDiscards: null,
       },
     ])
-    expect(out[0].dRxErrors).toBeNull()
-    expect(out[0].dTxDiscards).toBeNull()
+    expect(out[0]).toEqual({
+      sampledAt: '2026-06-13T00:00:00.000Z',
+      dRxErrors: null,
+      dTxErrors: null,
+      dRxCrcErrors: null,
+      dRxAlignErrors: null,
+      dRxDiscards: null,
+      dTxDiscards: null,
+    })
   })
 })

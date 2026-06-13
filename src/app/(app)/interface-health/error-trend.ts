@@ -20,6 +20,7 @@ export const ERROR_TREND_SERIES = [
   { key: 'dRxCrcErrors', label: 'CRC', color: 'var(--chart-3)' },
   { key: 'dRxAlignErrors', label: 'Align', color: 'var(--chart-4)' },
   { key: 'dRxDiscards', label: 'Rx disc', color: 'var(--chart-5)' },
+  // Falls back to a raw theme token — only 5 --chart-* slots exist, so no --chart-6.
   { key: 'dTxDiscards', label: 'Tx disc', color: 'var(--muted-foreground)' },
 ] as const
 
@@ -59,7 +60,8 @@ export function rangeToCutoff(range: ErrorTrendRange, now: Date): Date | null {
 }
 
 // Make Prisma rows safe to pass from a Server Action to a Client Component:
-// BigInt -> number (error deltas are small), Date -> ISO string. Nulls preserved.
+// BigInt -> number (error deltas are small — well below Number.MAX_SAFE_INTEGER / 2^53),
+// Date -> ISO string. Nulls preserved.
 export function serializeErrorSamples(rows: RawErrorSample[]): ErrorTrendPoint[] {
   const toNum = (v: bigint | null) => (v === null ? null : Number(v))
   return rows.map((r) => ({
