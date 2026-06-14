@@ -1,4 +1,4 @@
-import { apicFetch } from './client'
+import { apicFetch, apicLogin } from './client'
 import { prisma } from '@/lib/prisma'
 
 export interface ApicInterfaceRow {
@@ -205,18 +205,7 @@ export async function fetchInterfacesFromApic(
   username: string,
   plaintextPassword: string,
 ): Promise<ApicInterfaceRow[]> {
-  const loginRes = await apicFetch(host, '/api/aaaLogin.json', {
-    method: 'POST',
-    body: JSON.stringify({
-      aaaUser: { attributes: { name: username, pwd: plaintextPassword } },
-    }),
-  })
-  if (!loginRes.ok) throw new Error(`APIC authentication failed: ${loginRes.status}`)
-  const loginData = (await loginRes.json()) as {
-    imdata: Array<{ aaaLogin?: { attributes: { token: string } } }>
-  }
-  const token = loginData.imdata[0]?.aaaLogin?.attributes?.token
-  if (!token) throw new Error('No token in APIC login response')
+  const token = await apicLogin(host, username, plaintextPassword)
 
   const path
     = '/api/node/class/l1PhysIf.json'

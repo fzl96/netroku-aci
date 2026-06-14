@@ -54,3 +54,24 @@ export async function apicFetch(
     req.end();
   });
 }
+
+/** Authenticate against APIC and return the session token (APIC-cookie value). */
+export async function apicLogin(
+  host: string,
+  username: string,
+  plaintextPassword: string,
+): Promise<string> {
+  const loginRes = await apicFetch(host, "/api/aaaLogin.json", {
+    method: "POST",
+    body: JSON.stringify({
+      aaaUser: { attributes: { name: username, pwd: plaintextPassword } },
+    }),
+  });
+  if (!loginRes.ok) throw new Error(`APIC authentication failed: ${loginRes.status}`);
+  const loginData = (await loginRes.json()) as {
+    imdata: Array<{ aaaLogin?: { attributes: { token: string } } }>;
+  };
+  const token = loginData.imdata[0]?.aaaLogin?.attributes?.token;
+  if (!token) throw new Error("No token in APIC login response");
+  return token;
+}
