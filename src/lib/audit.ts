@@ -10,6 +10,7 @@ export type AuditAction =
   | 'resync.endpoints'
   | 'resync.interfaces'
   | 'resync.faults'
+  | 'resync.health'
   | 'user.create'
   | 'user.delete'
 
