@@ -77,3 +77,19 @@ describe('summarizeResults with faults dataset', () => {
     expect(summarizeResults(results)).toBe('partial')
   })
 })
+
+describe('summarizeResults with health dataset', () => {
+  it('counts the health dataset as a unit', () => {
+    const results: HostResult[] = [
+      {
+        apicHostId: 'h1',
+        host: 'apic1',
+        endpoints: { synced: 1, total: 1 },
+        interfaces: { synced: 2, total: 2 },
+        faults: { synced: 3, total: 3 },
+        healthScores: { error: 'boom' },
+      },
+    ]
+    expect(summarizeResults(results)).toBe('partial')
+  })
+})
