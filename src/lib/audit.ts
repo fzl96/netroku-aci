@@ -9,6 +9,7 @@ export type AuditAction =
   | 'rollback'
   | 'resync.endpoints'
   | 'resync.interfaces'
+  | 'resync.faults'
   | 'user.create'
   | 'user.delete'
 
