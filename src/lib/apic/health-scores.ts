@@ -133,3 +133,31 @@ export function parseHealthRows(sources: {
     ...parseTenantHealthRows(sources.tenant),
   ]
 }
+
+export const GOOD_MIN = 95
+export const FAIR_MIN = 80
+export const DEGRADED_THRESHOLD = 90
+
+export type HealthBand = 'good' | 'fair' | 'poor'
+
+export function healthBand(score: number): HealthBand {
+  if (score >= GOOD_MIN) return 'good'
+  if (score >= FAIR_MIN) return 'fair'
+  return 'poor'
+}
+
+export interface HealthSummary {
+  overall: number
+  worstScore: number
+  degradedCount: number
+}
+
+export function summarizeHealth(rows: ParsedHealthRow[]): HealthSummary {
+  const overall = rows.find(r => r.scope === 'fabric')?.score ?? 0
+  const breakdown = rows.filter(r => r.scope === 'node' || r.scope === 'tenant')
+  const worstScore = breakdown.length > 0
+    ? Math.min(...breakdown.map(r => r.score))
+    : overall
+  const degradedCount = breakdown.filter(r => r.score < DEGRADED_THRESHOLD).length
+  return { overall, worstScore, degradedCount }
+}

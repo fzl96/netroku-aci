@@ -4,9 +4,12 @@ import {
   parseNodeHealthRows,
   parseTenantHealthRows,
   parseHealthRows,
+  healthBand,
+  summarizeHealth,
   type FabricHealthNode,
   type TopSystemHealthNode,
   type TenantHealthNode,
+  type ParsedHealthRow,
 } from './health-scores'
 
 describe('parseFabricHealthRows', () => {
@@ -113,5 +116,39 @@ describe('parseHealthRows', () => {
       ],
     })
     expect(rows.map(r => r.scope)).toEqual(['fabric', 'node', 'tenant'])
+  })
+})
+
+describe('healthBand', () => {
+  it('classifies scores into good/fair/poor by threshold', () => {
+    expect(healthBand(95)).toBe('good')
+    expect(healthBand(100)).toBe('good')
+    expect(healthBand(94)).toBe('fair')
+    expect(healthBand(80)).toBe('fair')
+    expect(healthBand(79)).toBe('poor')
+    expect(healthBand(0)).toBe('poor')
+  })
+})
+
+describe('summarizeHealth', () => {
+  const mk = (scope: ParsedHealthRow['scope'], score: number): ParsedHealthRow => ({
+    dn: `${scope}-${score}`, scope, name: scope, node: null,
+    score, twScore: null, prevScore: null, maxSeverity: null,
+  })
+
+  it('takes overall from the fabric row, worst+degraded from node/tenant rows', () => {
+    const rows = [
+      mk('fabric', 96), mk('pod', 90),
+      mk('node', 99), mk('node', 70),
+      mk('tenant', 85),
+    ]
+    expect(summarizeHealth(rows)).toEqual({ overall: 96, worstScore: 70, degradedCount: 2 })
+    // degraded (<90): node 70 and tenant 85 => 2; pod/fabric excluded
+  })
+
+  it('defaults worstScore to overall when there are no node/tenant rows', () => {
+    expect(summarizeHealth([mk('fabric', 88)])).toEqual({
+      overall: 88, worstScore: 88, degradedCount: 0,
+    })
   })
 })
