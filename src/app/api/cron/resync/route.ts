@@ -3,6 +3,7 @@ import { recordAudit } from '@/lib/audit'
 import { resyncEndpoints } from '@/lib/apic/endpoints'
 import { resyncInterfaces } from '@/lib/apic/interfaces'
 import { resyncFaults } from '@/lib/apic/faults'
+import { resyncHealthScores } from '@/lib/apic/health-scores'
 import {
   isAuthorized,
   summarizeResults,
@@ -135,6 +136,30 @@ export async function POST(request: Request) {
       detail: 'error' in faults
         ? faults.error
         : `synced ${faults.synced} (total ${faults.total})`,
+    })
+
+    // Health scores
+    let healthScores: DatasetResult
+    try {
+      healthScores = await resyncHealthScores({
+        apicHostId,
+        host: apicHost.host,
+        username: trimmedUser,
+        password,
+      })
+    } catch (err) {
+      healthScores = { error: errorMessage(err, 'Failed to resync health scores') }
+    }
+    result.healthScores = healthScores
+    await recordAudit({
+      userId: null,
+      userName: 'scheduler',
+      action: 'resync.health',
+      target: `${apicHost.name} (${apicHost.host})`,
+      status: 'error' in healthScores ? 'failure' : 'success',
+      detail: 'error' in healthScores
+        ? healthScores.error
+        : `synced ${healthScores.synced} (total ${healthScores.total})`,
     })
 
     results.push(result)
