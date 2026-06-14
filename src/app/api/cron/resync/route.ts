@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { recordAudit } from '@/lib/audit'
 import { resyncEndpoints } from '@/lib/apic/endpoints'
 import { resyncInterfaces } from '@/lib/apic/interfaces'
+import { resyncFaults } from '@/lib/apic/faults'
 import {
   isAuthorized,
   summarizeResults,
@@ -110,6 +111,30 @@ export async function POST(request: Request) {
       detail: 'error' in interfaces
         ? interfaces.error
         : `synced ${interfaces.synced} (total ${interfaces.total})`,
+    })
+
+    // Faults
+    let faults: DatasetResult
+    try {
+      faults = await resyncFaults({
+        apicHostId,
+        host: apicHost.host,
+        username: trimmedUser,
+        password,
+      })
+    } catch (err) {
+      faults = { error: errorMessage(err, 'Failed to resync faults') }
+    }
+    result.faults = faults
+    await recordAudit({
+      userId: null,
+      userName: 'scheduler',
+      action: 'resync.faults',
+      target: `${apicHost.name} (${apicHost.host})`,
+      status: 'error' in faults ? 'failure' : 'success',
+      detail: 'error' in faults
+        ? faults.error
+        : `synced ${faults.synced} (total ${faults.total})`,
     })
 
     results.push(result)
