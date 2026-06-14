@@ -211,14 +211,18 @@ export function EndpointsClient({
   const [credentialOpen, setCredentialOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastDispatchedQuery = useRef(query)
   const [searchValue, setSearchValue] = useState(query)
   const [previousQuery, setPreviousQuery] = useState(query)
   const [jumpValue, setJumpValue] = useState('')
 
-  // Sync input when query changes via back/forward navigation
+  // Sync input when query changes via back/forward navigation, but ignore the
+  // echo from our own debounced router.replace so in-flight typing isn't clobbered.
   if (query !== previousQuery) {
     setPreviousQuery(query)
-    setSearchValue(query)
+    if (query !== lastDispatchedQuery.current) {
+      setSearchValue(query)
+    }
   }
 
   const effectivePageSize = pageSize === 'all' ? Math.max(total, 1) : pageSize
@@ -267,6 +271,7 @@ export function EndpointsClient({
     setSearchValue(value)
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
+      lastDispatchedQuery.current = value.trim()
       startTransition(() => {
         router.replace(buildUrl({ query: value, page: 1 }))
       })
