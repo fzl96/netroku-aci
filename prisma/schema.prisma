@@ -104,10 +104,13 @@ model ApicHost {
   updatedAt           DateTime            @updatedAt
   lastInterfaceSyncAt DateTime?
   lastFaultSyncAt     DateTime?
+  lastHealthSyncAt    DateTime?
   endpoints           Endpoint[]
   interfaces          InterfaceSnapshot[]
   faults              FaultSnapshot[]
   faultCounts         FaultCountSample[]
+  healthScores        HealthScoreSnapshot[]
+  healthSamples       HealthScoreSample[]
 
   @@unique([host])
   @@map("apic_host")
@@ -234,4 +237,39 @@ model FaultCountSample {
 
   @@index([apicHostId, sampledAt])
   @@map("fault_count_sample")
+}
+
+model HealthScoreSnapshot {
+  id          String   @id @default(cuid())
+  apicHostId  String
+  apicHost    ApicHost @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  dn          String
+  scope       String
+  name        String   @default("")
+  node        String?
+  score       Int
+  twScore     Int?
+  prevScore   Int?
+  maxSeverity String?
+  present     Boolean  @default(true)
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  @@unique([apicHostId, dn])
+  @@index([apicHostId])
+  @@index([apicHostId, scope])
+  @@map("health_score_snapshot")
+}
+
+model HealthScoreSample {
+  id            String   @id @default(cuid())
+  apicHostId    String
+  apicHost      ApicHost @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  sampledAt     DateTime @default(now())
+  overall       Int
+  worstScore    Int
+  degradedCount Int
+
+  @@index([apicHostId, sampledAt])
+  @@map("health_score_sample")
 }
