@@ -26,6 +26,7 @@ const ACTION_LABELS: Record<AuditAction, string> = {
   rollback: 'Rollback',
   'resync.endpoints': 'Resync endpoints',
   'resync.interfaces': 'Resync interfaces',
+  'resync.faults': 'Resync faults',
   'user.create': 'User created',
   'user.delete': 'User deleted',
 }
