@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { parseFaultRows, type FaultInstNode } from './faults'
+import { parseFaultRows, tallyFaultCounts, selectClearedDns, type FaultInstNode } from './faults'
 
 describe('parseFaultRows', () => {
   it('maps a faultInst MO to a fault row', () => {
@@ -63,5 +63,31 @@ describe('parseFaultRows', () => {
 
   it('skips entries without a faultInst body', () => {
     expect(parseFaultRows([{} as FaultInstNode])).toEqual([])
+  })
+})
+
+describe('tallyFaultCounts', () => {
+  it('counts rows by severity and totals them', () => {
+    const rows = [
+      { severity: 'critical' }, { severity: 'major' }, { severity: 'major' },
+      { severity: 'minor' }, { severity: 'warning' }, { severity: 'unknown' },
+    ] as Parameters<typeof tallyFaultCounts>[0]
+    expect(tallyFaultCounts(rows)).toEqual({
+      critical: 1, major: 2, minor: 1, warning: 1, total: 6,
+    })
+  })
+})
+
+describe('selectClearedDns', () => {
+  it('returns previously-active DNs absent from the current set', () => {
+    const previousActive = ['a/fault-F1', 'b/fault-F2', 'c/fault-F3']
+    const currentDns = new Set(['b/fault-F2'])
+    expect(selectClearedDns(previousActive, currentDns).sort()).toEqual(
+      ['a/fault-F1', 'c/fault-F3'],
+    )
+  })
+
+  it('returns empty when all previous faults are still present', () => {
+    expect(selectClearedDns(['x'], new Set(['x']))).toEqual([])
   })
 })

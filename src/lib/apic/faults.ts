@@ -72,3 +72,28 @@ export function parseFaultRows(imdata: FaultInstNode[]): ApicFaultRow[] {
   }
   return rows
 }
+
+export interface FaultCounts {
+  critical: number
+  major: number
+  minor: number
+  warning: number
+  total: number
+}
+
+export function tallyFaultCounts(rows: Array<{ severity: string }>): FaultCounts {
+  const counts: FaultCounts = { critical: 0, major: 0, minor: 0, warning: 0, total: 0 }
+  for (const row of rows) {
+    counts.total += 1
+    if (row.severity === 'critical') counts.critical += 1
+    else if (row.severity === 'major') counts.major += 1
+    else if (row.severity === 'minor') counts.minor += 1
+    else if (row.severity === 'warning') counts.warning += 1
+  }
+  return counts
+}
+
+/** Previously-active fault DNs that are absent from the current resync = cleared. */
+export function selectClearedDns(previousActiveDns: string[], currentDns: Set<string>): string[] {
+  return previousActiveDns.filter(dn => !currentDns.has(dn))
+}
