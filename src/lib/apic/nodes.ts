@@ -118,3 +118,70 @@ export function mergeNodes(
     }
   })
 }
+
+export function parsePsuRows(imdata: EqptPsuMo[]): ComponentRow[] {
+  const rows: ComponentRow[] = []
+  for (const item of imdata) {
+    const mo = item.eqptPsu
+    if (!mo) continue
+    const a = mo.attributes
+    rows.push({
+      dn: a.dn,
+      nodeId: nodeIdFromDn(a.dn),
+      type: 'psu',
+      name: a.id ?? '',
+      operSt: a.operSt ?? '',
+      model: a.model ?? '',
+      serial: a.ser ?? a.serial ?? '',
+    })
+  }
+  return rows
+}
+
+export function parseFanRows(imdata: EqptFanMo[]): ComponentRow[] {
+  const rows: ComponentRow[] = []
+  for (const item of imdata) {
+    const mo = item.eqptFan
+    if (!mo) continue
+    const a = mo.attributes
+    rows.push({
+      dn: a.dn,
+      nodeId: nodeIdFromDn(a.dn),
+      type: 'fan',
+      name: a.id ?? '',
+      operSt: a.operSt ?? '',
+      model: a.model ?? '',
+      serial: a.ser ?? a.serial ?? '',
+    })
+  }
+  return rows
+}
+
+export function isNodeOnline(node: Pick<NodeRow, 'fabricSt'>): boolean {
+  return node.fabricSt === 'active'
+}
+
+const HEALTHY_OPER_ST = new Set(['on', 'ok'])
+
+export function isComponentHealthy(
+  _type: ComponentRow['type'],
+  operSt: string,
+): boolean {
+  return HEALTHY_OPER_ST.has(operSt.toLowerCase())
+}
+
+export interface NodeSummary {
+  nodesTotal: number
+  nodesOnline: number
+  componentsTotal: number
+  componentsFailed: number
+}
+
+export function summarizeNodes(nodes: NodeRow[], components: ComponentRow[]): NodeSummary {
+  return {
+    nodesTotal: nodes.length,
+    nodesOnline: nodes.filter(isNodeOnline).length,
+    componentsTotal: components.length,
+    componentsFailed: components.filter(c => !isComponentHealthy(c.type, c.operSt)).length,
+  }
+}
