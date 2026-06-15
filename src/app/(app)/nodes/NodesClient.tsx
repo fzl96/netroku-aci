@@ -12,6 +12,7 @@ import {
 } from '@tabler/icons-react'
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
 import type { SafeApicHost } from '@/actions/apic-hosts'
+import { isNodeOnline } from '@/lib/apic/node-status'
 import { SEARCH_INPUT_CLS } from '@/lib/ui-classes'
 import {
   ChartContainer,
@@ -110,18 +111,30 @@ function fmtRelative(date: string | null): string {
   return `${day}d ago`
 }
 
-function StateBadge({ fabricSt, state }: { fabricSt: string; state: string | null }) {
-  const active = fabricSt === 'active'
+function StateBadge({ role, fabricSt, state }: { role: string; fabricSt: string; state: string | null }) {
+  const online = isNodeOnline({ role, fabricSt, state })
+  const controller = role.toLowerCase() === 'controller'
+  const primary = controller
+    ? state || fabricSt || '-'
+    : [fabricSt || '-', state].filter(Boolean).join(' / ')
+
   return (
-    <span
-      className={[
-        'inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold',
-        active
-          ? 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400'
-          : 'bg-red-500/12 text-red-600 dark:text-red-400',
-      ].join(' ')}
-    >
-      {[fabricSt || '-', state].filter(Boolean).join(' / ')}
+    <span className="inline-flex flex-col items-start gap-0.5">
+      <span
+        className={[
+          'inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold',
+          online
+            ? 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400'
+            : 'bg-red-500/12 text-red-600 dark:text-red-400',
+        ].join(' ')}
+      >
+        {primary}
+      </span>
+      {controller && fabricSt && (
+        <span className="text-[10px] leading-none text-faint whitespace-nowrap">
+          fabric: {fabricSt}
+        </span>
+      )}
     </span>
   )
 }
@@ -645,7 +658,7 @@ export function NodesClient({
                           <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap">{r.model || '-'}</td>
                           <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap">{r.version || '-'}</td>
                           <td className="px-4 py-2.5">
-                            <StateBadge fabricSt={r.fabricSt} state={r.state} />
+                            <StateBadge role={r.role} fabricSt={r.fabricSt} state={r.state} />
                           </td>
                           <td className="px-4 py-2.5 text-faint whitespace-nowrap">{r.uptime || '-'}</td>
                           <td className="px-4 py-2.5">

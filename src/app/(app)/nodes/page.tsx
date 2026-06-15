@@ -69,7 +69,14 @@ export default async function NodesPage({
 
     nodesTotal = await prisma.nodeSnapshot.count({ where: { apicHostId: apic, present: true } })
     nodesOnline = await prisma.nodeSnapshot.count({
-      where: { apicHostId: apic, present: true, fabricSt: 'active' },
+      where: {
+        apicHostId: apic,
+        present: true,
+        OR: [
+          { fabricSt: 'active' },
+          { role: 'controller', state: 'in-service' },
+        ],
+      },
     })
     componentsFailed = await prisma.hardwareComponent.count({
       where: { apicHostId: apic, present: true, healthy: false },

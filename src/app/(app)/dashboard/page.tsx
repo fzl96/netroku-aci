@@ -17,6 +17,7 @@ import {
   IconServer2,
 } from '@tabler/icons-react'
 import { auth } from '@/lib/auth'
+import { isNodeOnline } from '@/lib/apic/node-status'
 import { prisma } from '@/lib/prisma'
 import {
   buildAttentionItems,
@@ -186,6 +187,7 @@ export default async function DashboardPage() {
         apicHostId: true,
         role: true,
         fabricSt: true,
+        state: true,
       },
     }),
     prisma.hardwareComponent.findMany({
@@ -234,7 +236,7 @@ export default async function DashboardPage() {
     .length
 
   const nodesTotal = nodes.length
-  const nodesOnline = nodes.filter(row => row.fabricSt.toLowerCase() === 'active').length
+  const nodesOnline = nodes.filter(isNodeOnline).length
   const offlineNodes = Math.max(0, nodesTotal - nodesOnline)
   const leafCount = nodes.filter(row => row.role === 'leaf').length
   const spineCount = nodes.filter(row => row.role === 'spine').length
@@ -411,7 +413,7 @@ export default async function DashboardPage() {
         .map(row => row.score),
     ) ?? hostFabricScore
     const hostNodes = nodes.filter(row => row.apicHostId === host.id)
-    const hostOnlineNodes = hostNodes.filter(row => row.fabricSt.toLowerCase() === 'active').length
+    const hostOnlineNodes = hostNodes.filter(isNodeOnline).length
     const hostFailedHardware = hardware
       .filter(row => row.apicHostId === host.id && !row.healthy).length
     const hostLatestEndpoint = endpointFreshnessRows

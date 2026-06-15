@@ -17,7 +17,15 @@ export async function getNodeSummary(): Promise<NodeTileSummary> {
 
   const [nodesTotal, nodesOnline, componentsFailed] = await Promise.all([
     prisma.nodeSnapshot.count({ where: { present: true } }),
-    prisma.nodeSnapshot.count({ where: { present: true, fabricSt: 'active' } }),
+    prisma.nodeSnapshot.count({
+      where: {
+        present: true,
+        OR: [
+          { fabricSt: 'active' },
+          { role: 'controller', state: 'in-service' },
+        ],
+      },
+    }),
     prisma.hardwareComponent.count({ where: { present: true, healthy: false } }),
   ])
   return { nodesOnline, nodesTotal, componentsFailed }

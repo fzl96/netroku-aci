@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { apicFetch, apicLogin } from './client'
+import { isNodeOnline } from './node-status'
+export { isNodeOnline } from './node-status'
 
 export interface NodeRow {
   dn: string
@@ -155,10 +157,6 @@ export function parseFanRows(imdata: EqptFanMo[]): ComponentRow[] {
     })
   }
   return rows
-}
-
-export function isNodeOnline(node: Pick<NodeRow, 'fabricSt'>): boolean {
-  return node.fabricSt === 'active'
 }
 
 const HEALTHY_OPER_ST = new Set(['on', 'ok'])

@@ -137,9 +137,14 @@ describe('parseFanRows', () => {
 })
 
 describe('isNodeOnline', () => {
-  it('is true only when fabricSt is active', () => {
+  it('treats fabric-active nodes as online', () => {
     expect(isNodeOnline({ fabricSt: 'active' } as NodeRow)).toBe(true)
     expect(isNodeOnline({ fabricSt: 'inactive' } as NodeRow)).toBe(false)
+  })
+
+  it('treats in-service controllers as online even when fabricSt is not active', () => {
+    expect(isNodeOnline({ role: 'controller', fabricSt: 'unknown', state: 'in-service' } as NodeRow)).toBe(true)
+    expect(isNodeOnline({ role: 'controller', fabricSt: 'commissioned', state: 'in-service' } as NodeRow)).toBe(true)
   })
 })
 
