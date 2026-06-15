@@ -28,6 +28,7 @@ const ACTION_LABELS: Record<AuditAction, string> = {
   'resync.interfaces': 'Resync interfaces',
   'resync.faults': 'Resync faults',
   'resync.health': 'Resync health',
+  'resync.nodes': 'Resync nodes',
   'user.create': 'User created',
   'user.delete': 'User deleted',
 }
