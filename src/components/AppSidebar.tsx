@@ -54,7 +54,7 @@ import {
   IconDeviceDesktopSearch,
   IconActivity,
   IconAlertTriangle,
-  IconHeartRateMonitor,
+  IconActivityHeartbeat,
   IconUsers,
   IconSettings,
   IconLogout,
@@ -117,7 +117,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       {
         href: "/health-scores",
         label: "Health Scores",
-        icon: <IconHeartRateMonitor size={15} stroke={1.75} />,
+        icon: <IconActivityHeartbeat size={15} stroke={1.75} />,
       },
     ],
   },
