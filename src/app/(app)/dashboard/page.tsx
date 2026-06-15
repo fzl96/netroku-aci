@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { FaultsTile } from './FaultsTile'
 import { HealthTile } from './HealthTile'
+import { NodesTile } from './NodesTile'
 
 export const metadata: Metadata = {
   title: 'Dashboard',
@@ -23,6 +24,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <FaultsTile />
           <HealthTile />
+          <NodesTile />
         </div>
       </div>
     </div>
