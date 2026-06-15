@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
@@ -61,7 +62,7 @@ function maxDate(values: Array<Date | null>): Date | null {
 
 function hasPositiveDelta(value: bigint | number | null | undefined): boolean {
   if (value === null || value === undefined) return false
-  return BigInt(value) > 0n
+  return BigInt(value) > BigInt(0)
 }
 
 function toneTextClass(tone: PostureTone): string {
@@ -391,7 +392,16 @@ export default async function DashboardPage() {
       footer: `${formatNumber(leafCount)} leaf, ${formatNumber(spineCount)} spine, ${formatNumber(controllerCount)} controllers`,
       tone: failedHardware > 0 || offlineNodes > 0 ? 'critical' : nodesTotal === 0 ? 'unknown' : 'healthy',
     },
-  ]
+  ] satisfies Array<{
+    title: string
+    href: string
+    icon: ReactNode
+    value: string
+    label: string
+    detail: string
+    footer: string
+    tone: PostureTone
+  }>
 
   const freshness = [
     { label: 'Endpoints', date: latestEndpointSeenAt },
