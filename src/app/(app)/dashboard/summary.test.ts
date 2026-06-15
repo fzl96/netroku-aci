@@ -3,6 +3,7 @@ import {
   buildAttentionItems,
   classifyPosture,
   formatRelativeFreshness,
+  summarizeInterfaces,
 } from './summary'
 
 describe('classifyPosture', () => {
@@ -79,5 +80,57 @@ describe('formatRelativeFreshness', () => {
       '2026-06-15T03:00:00Z',
       new Date('2026-06-15T12:00:00Z'),
     )).toBe('9h ago')
+  })
+})
+
+describe('summarizeInterfaces', () => {
+  test('counts interface state and only treats the newest sample as noisy', () => {
+    const summary = summarizeInterfaces(
+      [
+        { id: 'eth1', adminSt: 'up', operSt: 'up' },
+        { id: 'eth2', adminSt: 'up', operSt: 'down' },
+        { id: 'eth3', adminSt: 'down', operSt: 'down' },
+        { id: 'eth4', adminSt: 'up', operSt: 'up' },
+      ],
+      [
+        {
+          interfaceId: 'eth1',
+          sampledAt: new Date('2026-06-15T12:00:00Z'),
+          dRxErrors: BigInt(0),
+          dTxErrors: BigInt(0),
+          dRxDiscards: BigInt(0),
+          dTxDiscards: BigInt(0),
+          dRxCrcErrors: BigInt(0),
+          dRxAlignErrors: BigInt(0),
+        },
+        {
+          interfaceId: 'eth1',
+          sampledAt: new Date('2026-06-15T11:00:00Z'),
+          dRxErrors: BigInt(5),
+          dTxErrors: BigInt(0),
+          dRxDiscards: BigInt(0),
+          dTxDiscards: BigInt(0),
+          dRxCrcErrors: BigInt(0),
+          dRxAlignErrors: BigInt(0),
+        },
+        {
+          interfaceId: 'eth2',
+          sampledAt: new Date('2026-06-15T12:00:00Z'),
+          dRxErrors: BigInt(0),
+          dTxErrors: BigInt(0),
+          dRxDiscards: BigInt(1),
+          dTxDiscards: BigInt(0),
+          dRxCrcErrors: BigInt(0),
+          dRxAlignErrors: BigInt(0),
+        },
+      ],
+    )
+
+    expect(summary).toEqual({
+      total: 4,
+      adminDown: 1,
+      operDown: 1,
+      noisy: 1,
+    })
   })
 })

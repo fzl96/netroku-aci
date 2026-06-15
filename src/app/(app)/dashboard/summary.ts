@@ -76,6 +76,30 @@ export interface AttentionItem {
   rank: number
 }
 
+export interface InterfaceSummarySnapshot {
+  id: string
+  adminSt: string
+  operSt: string
+}
+
+export interface InterfaceSummarySample {
+  interfaceId: string
+  sampledAt: string | Date
+  dRxErrors: bigint | number | null
+  dTxErrors: bigint | number | null
+  dRxDiscards: bigint | number | null
+  dTxDiscards: bigint | number | null
+  dRxCrcErrors: bigint | number | null
+  dRxAlignErrors: bigint | number | null
+}
+
+export interface InterfaceSummary {
+  total: number
+  adminDown: number
+  operDown: number
+  noisy: number
+}
+
 export function buildAttentionItems(input: AttentionInput): AttentionItem[] {
   const items: AttentionItem[] = [
     {
@@ -146,6 +170,58 @@ export function buildAttentionItems(input: AttentionInput): AttentionItem[] {
   return items
     .filter(item => item.count > 0)
     .sort((a, b) => a.rank - b.rank)
+}
+
+function sampleTime(sample: InterfaceSummarySample): number {
+  const date = sample.sampledAt instanceof Date ? sample.sampledAt : new Date(sample.sampledAt)
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime()
+}
+
+function hasPositiveDelta(value: bigint | number | null | undefined): boolean {
+  if (value === null || value === undefined) return false
+  return BigInt(value) > BigInt(0)
+}
+
+function sampleHasNoise(sample: InterfaceSummarySample | undefined): boolean {
+  if (!sample) return false
+
+  return [
+    sample.dRxErrors,
+    sample.dTxErrors,
+    sample.dRxDiscards,
+    sample.dTxDiscards,
+    sample.dRxCrcErrors,
+    sample.dRxAlignErrors,
+  ].some(hasPositiveDelta)
+}
+
+export function summarizeInterfaces(
+  snapshots: InterfaceSummarySnapshot[],
+  samples: InterfaceSummarySample[],
+): InterfaceSummary {
+  const latestSamples = new Map<string, InterfaceSummarySample>()
+
+  for (const sample of samples) {
+    const existing = latestSamples.get(sample.interfaceId)
+    if (!existing || sampleTime(sample) > sampleTime(existing)) {
+      latestSamples.set(sample.interfaceId, sample)
+    }
+  }
+
+  return snapshots.reduce<InterfaceSummary>(
+    (summary, snapshot) => {
+      const adminUp = snapshot.adminSt.toLowerCase() === 'up'
+      const operUp = snapshot.operSt.toLowerCase() === 'up'
+
+      return {
+        total: summary.total + 1,
+        adminDown: summary.adminDown + (adminUp ? 0 : 1),
+        operDown: summary.operDown + (adminUp && !operUp ? 1 : 0),
+        noisy: summary.noisy + (sampleHasNoise(latestSamples.get(snapshot.id)) ? 1 : 0),
+      }
+    },
+    { total: 0, adminDown: 0, operDown: 0, noisy: 0 },
+  )
 }
 
 export function formatRelativeFreshness(value: string | Date | null, now = new Date()): string {

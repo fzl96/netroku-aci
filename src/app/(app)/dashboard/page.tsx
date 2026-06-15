@@ -22,6 +22,7 @@ import {
   buildAttentionItems,
   classifyPosture,
   formatRelativeFreshness,
+  summarizeInterfaces,
   type PostureTone,
 } from './summary'
 
@@ -58,11 +59,6 @@ function maxDate(values: Array<Date | null>): Date | null {
 
   if (timestamps.length === 0) return null
   return new Date(Math.max(...timestamps))
-}
-
-function hasPositiveDelta(value: bigint | number | null | undefined): boolean {
-  if (value === null || value === undefined) return false
-  return BigInt(value) > BigInt(0)
 }
 
 function toneTextClass(tone: PostureTone): string {
@@ -111,6 +107,7 @@ export default async function DashboardPage() {
     endpointInterfaceRows,
     endpointFreshnessRows,
     interfaces,
+    latestInterfaceSamples,
     faultRows,
     healthRows,
     nodes,
@@ -150,21 +147,24 @@ export default async function DashboardPage() {
     }),
     prisma.interfaceSnapshot.findMany({
       select: {
+        id: true,
         apicHostId: true,
         adminSt: true,
         operSt: true,
-        samples: {
-          orderBy: { sampledAt: 'desc' },
-          take: 1,
-          select: {
-            dRxErrors: true,
-            dTxErrors: true,
-            dRxDiscards: true,
-            dTxDiscards: true,
-            dRxCrcErrors: true,
-            dRxAlignErrors: true,
-          },
-        },
+      },
+    }),
+    prisma.interfaceSample.findMany({
+      distinct: ['interfaceId'],
+      orderBy: [{ interfaceId: 'asc' }, { sampledAt: 'desc' }],
+      select: {
+        interfaceId: true,
+        sampledAt: true,
+        dRxErrors: true,
+        dTxErrors: true,
+        dRxDiscards: true,
+        dTxDiscards: true,
+        dRxCrcErrors: true,
+        dRxAlignErrors: true,
       },
     }),
     prisma.faultSnapshot.groupBy({
@@ -206,24 +206,11 @@ export default async function DashboardPage() {
   const endpointInterfaceCount = endpointInterfaceRows
     .filter(row => row.interface.trim() !== '').length
 
-  const totalInterfaces = interfaces.length
-  const adminDownInterfaces = interfaces
-    .filter(row => row.adminSt.toLowerCase() !== 'up').length
-  const downInterfaces = interfaces
-    .filter(row => row.adminSt.toLowerCase() === 'up' && row.operSt.toLowerCase() !== 'up').length
-  const noisyInterfaces = interfaces.filter((row) => {
-    const sample = row.samples[0]
-    if (!sample) return false
-
-    return [
-      sample.dRxErrors,
-      sample.dTxErrors,
-      sample.dRxDiscards,
-      sample.dTxDiscards,
-      sample.dRxCrcErrors,
-      sample.dRxAlignErrors,
-    ].some(hasPositiveDelta)
-  }).length
+  const interfaceSummary = summarizeInterfaces(interfaces, latestInterfaceSamples)
+  const totalInterfaces = interfaceSummary.total
+  const adminDownInterfaces = interfaceSummary.adminDown
+  const downInterfaces = interfaceSummary.operDown
+  const noisyInterfaces = interfaceSummary.noisy
 
   const faultCounts = SEVERITIES.reduce<Record<Severity, number>>(
     (acc, severity) => ({ ...acc, [severity]: severityCount(faultRows, severity) }),
