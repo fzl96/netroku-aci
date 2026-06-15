@@ -4,6 +4,7 @@ import { resyncEndpoints } from '@/lib/apic/endpoints'
 import { resyncInterfaces } from '@/lib/apic/interfaces'
 import { resyncFaults } from '@/lib/apic/faults'
 import { resyncHealthScores } from '@/lib/apic/health-scores'
+import { resyncNodes } from '@/lib/apic/nodes'
 import {
   isAuthorized,
   summarizeResults,
@@ -160,6 +161,31 @@ export async function POST(request: Request) {
       detail: 'error' in healthScores
         ? healthScores.error
         : `synced ${healthScores.synced} (total ${healthScores.total})`,
+    })
+
+    // Nodes & hardware
+    let nodes: DatasetResult
+    try {
+      const r = await resyncNodes({
+        apicHostId,
+        host: apicHost.host,
+        username: trimmedUser,
+        password,
+      })
+      nodes = { synced: r.syncedNodes, total: r.syncedNodes + r.syncedComponents }
+    } catch (err) {
+      nodes = { error: errorMessage(err, 'Failed to resync nodes') }
+    }
+    result.nodes = nodes
+    await recordAudit({
+      userId: null,
+      userName: 'scheduler',
+      action: 'resync.nodes',
+      target: `${apicHost.name} (${apicHost.host})`,
+      status: 'error' in nodes ? 'failure' : 'success',
+      detail: 'error' in nodes
+        ? nodes.error
+        : `synced ${nodes.synced} nodes (total ${nodes.total})`,
     })
 
     results.push(result)
