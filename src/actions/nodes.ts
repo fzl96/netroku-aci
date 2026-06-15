@@ -2,6 +2,7 @@
 
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
+import { isNodeOnline } from '@/lib/apic/node-status'
 import { prisma } from '@/lib/prisma'
 
 export interface NodeTileSummary {
@@ -15,18 +16,15 @@ export async function getNodeSummary(): Promise<NodeTileSummary> {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session) return { nodesOnline: 0, nodesTotal: 0, componentsFailed: 0 }
 
-  const [nodesTotal, nodesOnline, componentsFailed] = await Promise.all([
-    prisma.nodeSnapshot.count({ where: { present: true } }),
-    prisma.nodeSnapshot.count({
-      where: {
-        present: true,
-        OR: [
-          { fabricSt: 'active' },
-          { role: 'controller', state: 'in-service' },
-        ],
-      },
+  const [nodes, componentsFailed] = await Promise.all([
+    prisma.nodeSnapshot.findMany({
+      where: { present: true },
+      select: { role: true, fabricSt: true, state: true },
     }),
     prisma.hardwareComponent.count({ where: { present: true, healthy: false } }),
   ])
+
+  const nodesTotal = nodes.length
+  const nodesOnline = nodes.filter(isNodeOnline).length
   return { nodesOnline, nodesTotal, componentsFailed }
 }

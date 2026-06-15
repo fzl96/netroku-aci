@@ -87,10 +87,9 @@ describe('summarizeInterfaces', () => {
   test('counts interface state and only treats the newest sample as noisy', () => {
     const summary = summarizeInterfaces(
       [
-        { id: 'eth1', adminSt: 'up', operSt: 'up' },
-        { id: 'eth2', adminSt: 'up', operSt: 'down' },
-        { id: 'eth3', adminSt: 'down', operSt: 'down' },
-        { id: 'eth4', adminSt: 'up', operSt: 'up' },
+        { adminSt: 'up', operSt: 'up', count: 2 },
+        { adminSt: 'up', operSt: 'down', count: 1 },
+        { adminSt: 'down', operSt: 'down', count: 1 },
       ],
       [
         {

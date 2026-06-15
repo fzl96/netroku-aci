@@ -76,10 +76,10 @@ export interface AttentionItem {
   rank: number
 }
 
-export interface InterfaceSummarySnapshot {
-  id: string
+export interface InterfaceStateRow {
   adminSt: string
   operSt: string
+  count: number
 }
 
 export interface InterfaceSummarySample {
@@ -179,7 +179,7 @@ function sampleTime(sample: InterfaceSummarySample): number {
 
 function hasPositiveDelta(value: bigint | number | null | undefined): boolean {
   if (value === null || value === undefined) return false
-  return BigInt(value) > BigInt(0)
+  return Number(value) > 0
 }
 
 function sampleHasNoise(sample: InterfaceSummarySample | undefined): boolean {
@@ -196,9 +196,12 @@ function sampleHasNoise(sample: InterfaceSummarySample | undefined): boolean {
 }
 
 export function summarizeInterfaces(
-  snapshots: InterfaceSummarySnapshot[],
+  stateRows: InterfaceStateRow[],
   samples: InterfaceSummarySample[],
 ): InterfaceSummary {
+  // Samples are expected to be the latest sample per interface (the dashboard
+  // query enforces this via `distinct`), but we dedup defensively so the noisy
+  // count never double-counts an interface with stale rows in the input.
   const latestSamples = new Map<string, InterfaceSummarySample>()
 
   for (const sample of samples) {
@@ -208,19 +211,24 @@ export function summarizeInterfaces(
     }
   }
 
-  return snapshots.reduce<InterfaceSummary>(
-    (summary, snapshot) => {
-      const adminUp = snapshot.adminSt.toLowerCase() === 'up'
-      const operUp = snapshot.operSt.toLowerCase() === 'up'
+  let noisy = 0
+  for (const sample of latestSamples.values()) {
+    if (sampleHasNoise(sample)) noisy += 1
+  }
+
+  return stateRows.reduce<InterfaceSummary>(
+    (summary, row) => {
+      const adminUp = row.adminSt.toLowerCase() === 'up'
+      const operUp = row.operSt.toLowerCase() === 'up'
 
       return {
-        total: summary.total + 1,
-        adminDown: summary.adminDown + (adminUp ? 0 : 1),
-        operDown: summary.operDown + (adminUp && !operUp ? 1 : 0),
-        noisy: summary.noisy + (sampleHasNoise(latestSamples.get(snapshot.id)) ? 1 : 0),
+        ...summary,
+        total: summary.total + row.count,
+        adminDown: summary.adminDown + (adminUp ? 0 : row.count),
+        operDown: summary.operDown + (adminUp && !operUp ? row.count : 0),
       }
     },
-    { total: 0, adminDown: 0, operDown: 0, noisy: 0 },
+    { total: 0, adminDown: 0, operDown: 0, noisy },
   )
 }
 

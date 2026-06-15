@@ -107,7 +107,7 @@ export default async function DashboardPage() {
     endpointNodeRows,
     endpointInterfaceRows,
     endpointFreshnessRows,
-    interfaces,
+    interfaceStateRows,
     latestInterfaceSamples,
     faultRows,
     healthRows,
@@ -146,13 +146,9 @@ export default async function DashboardPage() {
       by: ['apicHostId'],
       _max: { lastSeenAt: true },
     }),
-    prisma.interfaceSnapshot.findMany({
-      select: {
-        id: true,
-        apicHostId: true,
-        adminSt: true,
-        operSt: true,
-      },
+    prisma.interfaceSnapshot.groupBy({
+      by: ['adminSt', 'operSt'],
+      _count: { _all: true },
     }),
     prisma.interfaceSample.findMany({
       distinct: ['interfaceId'],
@@ -208,7 +204,14 @@ export default async function DashboardPage() {
   const endpointInterfaceCount = endpointInterfaceRows
     .filter(row => row.interface.trim() !== '').length
 
-  const interfaceSummary = summarizeInterfaces(interfaces, latestInterfaceSamples)
+  const interfaceSummary = summarizeInterfaces(
+    interfaceStateRows.map(row => ({
+      adminSt: row.adminSt,
+      operSt: row.operSt,
+      count: row._count._all,
+    })),
+    latestInterfaceSamples,
+  )
   const totalInterfaces = interfaceSummary.total
   const adminDownInterfaces = interfaceSummary.adminDown
   const downInterfaces = interfaceSummary.operDown
