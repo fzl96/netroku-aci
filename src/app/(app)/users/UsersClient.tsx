@@ -4,7 +4,12 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { IconShieldCheck, IconTrash, IconUser, IconUserPlus, IconUsers } from '@tabler/icons-react'
 import { createUser, deleteUser, type SafeUser } from '@/actions/users'
-import { INPUT_CLS, SELECT_CLS } from '@/lib/ui-classes'
+import {
+  DENSE_TABLE_HEAD_CLS,
+  INPUT_CLS,
+  SELECT_CLS,
+  TABLE_SCROLL_CLS,
+} from '@/lib/ui-classes'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -148,14 +153,14 @@ export function UsersClient({
         </div>
 
         <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm animate-fade-up">
-          <div className="overflow-x-auto">
+          <div className={TABLE_SCROLL_CLS}>
             <table className="w-full text-xs">
               <thead>
                 <tr>
                   {['User', 'Role', 'Created', ''].map(header => (
                     <th
                       key={header}
-                      className="text-left px-4 pt-3 pb-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-faint whitespace-nowrap border-b border-border"
+                      className={DENSE_TABLE_HEAD_CLS}
                     >
                       {header}
                     </th>

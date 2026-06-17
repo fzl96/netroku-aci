@@ -14,7 +14,11 @@ import {
   IconChevronRight,
 } from '@tabler/icons-react'
 import type { SafeApicHost } from '@/actions/apic-hosts'
-import { SEARCH_INPUT_CLS } from '@/lib/ui-classes'
+import {
+  DENSE_TABLE_HEAD_CLS,
+  SEARCH_INPUT_CLS,
+  TABLE_SCROLL_CLS,
+} from '@/lib/ui-classes'
 import {
   selectVisibleCounters,
   type CounterFields,
@@ -532,7 +536,7 @@ export function InterfaceHealthClient({
                   )}
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className={TABLE_SCROLL_CLS}>
                   <table className="w-full text-xs">
                     <thead>
                       <tr>
@@ -548,7 +552,7 @@ export function InterfaceHealthClient({
                         ].map(h => (
                           <th
                             key={h}
-                            className="text-left px-4 pt-3 pb-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-faint whitespace-nowrap border-b border-border"
+                            className={DENSE_TABLE_HEAD_CLS}
                           >
                             {h}
                           </th>

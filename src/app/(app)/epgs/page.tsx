@@ -1,7 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { INPUT_CLS, SELECT_CLS } from '@/lib/ui-classes'
+import {
+  INPUT_CLS,
+  MUTED_TABLE_HEAD_CLS,
+  SELECT_CLS,
+  TABLE_SCROLL_CLS,
+} from '@/lib/ui-classes'
 import { cn } from '@/lib/utils'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -213,13 +218,13 @@ export default function EPGsPage() {
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto">
+          <div className={TABLE_SCROLL_CLS}>
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-subtle bg-muted">
                   {['EPG Name', 'Tenant', 'App Profile', 'Bridge Domain', 'Ports', 'Contracts', 'Status', ''].map(h => (
                     <th key={h}
-                      className="text-left px-4 py-2.5 text-[10px] uppercase tracking-wide font-semibold text-subtle whitespace-nowrap">
+                      className={MUTED_TABLE_HEAD_CLS}>
                       {h}
                     </th>
                   ))}

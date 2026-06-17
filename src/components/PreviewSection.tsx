@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from 'react'
 import type { ParsedRow, ValidationResult, RowStatus } from '@/lib/apic/types'
+import { MUTED_TABLE_HEAD_CLS } from '@/lib/ui-classes'
 import { cn } from '@/lib/utils'
 
 type Mode = 'deploy' | 'rollback'
@@ -302,7 +303,7 @@ export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
           <thead className="sticky top-0 z-10">
             <tr className="border-b border-subtle bg-muted">
               {cols.map(c => (
-                <th key={c.header} className="text-left px-3 py-2.5 text-[10px] uppercase tracking-wide font-semibold text-subtle whitespace-nowrap bg-muted">
+                <th key={c.header} className={cn(MUTED_TABLE_HEAD_CLS, 'px-3 bg-muted')}>
                   {c.header}
                 </th>
               ))}

@@ -47,7 +47,11 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { INPUT_OVERRIDE_CLS } from '@/lib/ui-classes'
+import {
+  DENSE_TABLE_HEAD_CLS,
+  INPUT_OVERRIDE_CLS,
+  TABLE_SCROLL_CLS,
+} from '@/lib/ui-classes'
 
 // ─── Shared form ─────────────────────────────────────────────────────────────
 
@@ -257,14 +261,14 @@ export function ApicHostsClient({ initialHosts }: { initialHosts: SafeApicHost[]
 
         {/* Table card */}
         <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm animate-fade-up">
-          <div className="overflow-x-auto">
+          <div className={TABLE_SCROLL_CLS}>
             <table className="w-full text-xs">
               <thead>
                 <tr>
                   {['Name', 'Host', 'Added', ''].map(h => (
                     <th
                       key={h}
-                      className="text-left px-4 pt-3 pb-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-faint whitespace-nowrap border-b border-border"
+                      className={DENSE_TABLE_HEAD_CLS}
                     >
                       {h}
                     </th>

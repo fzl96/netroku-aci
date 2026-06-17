@@ -19,6 +19,10 @@ import { getSession } from '@/lib/auth'
 import { isNodeOnline } from '@/lib/apic/node-status'
 import { prisma } from '@/lib/prisma'
 import {
+  DASHBOARD_TABLE_HEAD_CLS,
+  TABLE_SCROLL_CLS,
+} from '@/lib/ui-classes'
+import {
   buildAttentionItems,
   classifyPosture,
   formatRelativeFreshness,
@@ -636,16 +640,16 @@ export default async function DashboardPage() {
               </div>
             </div>
 
-            <div className="mt-4 overflow-x-auto">
+            <div className={`mt-4 ${TABLE_SCROLL_CLS}`}>
               <table className="w-full min-w-[760px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-border text-xs text-muted-foreground">
-                    <th className="py-2 pr-4 font-medium">Host</th>
-                    <th className="px-4 py-2 font-medium">Endpoints</th>
-                    <th className="px-4 py-2 font-medium">Faults</th>
-                    <th className="px-4 py-2 font-medium">Health</th>
-                    <th className="px-4 py-2 font-medium">Nodes</th>
-                    <th className="py-2 pl-4 font-medium">Freshest data</th>
+                    <th className={`${DASHBOARD_TABLE_HEAD_CLS} py-2 pr-4`}>Host</th>
+                    <th className={`${DASHBOARD_TABLE_HEAD_CLS} px-4 py-2`}>Endpoints</th>
+                    <th className={`${DASHBOARD_TABLE_HEAD_CLS} px-4 py-2`}>Faults</th>
+                    <th className={`${DASHBOARD_TABLE_HEAD_CLS} px-4 py-2`}>Health</th>
+                    <th className={`${DASHBOARD_TABLE_HEAD_CLS} px-4 py-2`}>Nodes</th>
+                    <th className={`${DASHBOARD_TABLE_HEAD_CLS} py-2 pl-4`}>Freshest data</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">

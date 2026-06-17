@@ -1,6 +1,10 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import {
+  MUTED_TABLE_HEAD_CLS,
+  TABLE_SCROLL_CLS,
+} from '@/lib/ui-classes'
 
 type BridgeDomainMode = 'L2 Only' | 'L3'
 type BridgeDomainStatus = 'deployed' | 'configured' | 'review'
@@ -209,7 +213,7 @@ export default function PolicyBridgeDomainsPage() {
             </span>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className={TABLE_SCROLL_CLS}>
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-subtle bg-muted">
@@ -227,7 +231,7 @@ export default function PolicyBridgeDomainsPage() {
                   ].map((heading) => (
                     <th
                       key={heading}
-                      className="text-left px-4 py-2.5 text-[10px] uppercase tracking-wide font-semibold text-subtle whitespace-nowrap"
+                      className={MUTED_TABLE_HEAD_CLS}
                     >
                       {heading}
                     </th>

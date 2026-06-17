@@ -1,4 +1,8 @@
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  DASHBOARD_TABLE_HEAD_CLS,
+  TABLE_SCROLL_CLS,
+} from '@/lib/ui-classes'
 
 function SkeletonPill({ className = '' }: { className?: string }) {
   return (
@@ -181,7 +185,7 @@ export default function DashboardLoading() {
               </div>
             </div>
 
-            <div className="mt-4 overflow-x-auto">
+            <div className={`mt-4 ${TABLE_SCROLL_CLS}`}>
               <table className="w-full min-w-[760px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-border">
@@ -189,7 +193,7 @@ export default function DashboardLoading() {
                       <th
                         key={heading}
                         className={[
-                          'py-2 font-medium',
+                          `${DASHBOARD_TABLE_HEAD_CLS} py-2`,
                           index === 0 ? 'pr-4' : index === 5 ? 'pl-4' : 'px-4',
                         ].join(' ')}
                       >

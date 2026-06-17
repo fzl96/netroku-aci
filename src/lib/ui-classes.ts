@@ -24,3 +24,18 @@ export const INPUT_OVERRIDE_CLS =
 // Form section label (uppercase tracking)
 export const LABEL_CLS =
   'block text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5'
+
+// Table wrappers and headers
+export const TABLE_SCROLL_CLS = 'relative max-h-[calc(100vh-14rem)] overflow-auto'
+
+export const DENSE_TABLE_HEAD_CLS =
+  'sticky top-0 z-10 bg-card text-left px-4 pt-3 pb-2.5 ' +
+  'text-[9px] font-semibold uppercase tracking-[0.12em] text-faint ' +
+  'whitespace-nowrap border-b border-border'
+
+export const MUTED_TABLE_HEAD_CLS =
+  'sticky top-0 z-10 bg-muted text-left px-4 py-2.5 ' +
+  'text-[10px] uppercase tracking-wide font-semibold text-subtle whitespace-nowrap'
+
+export const DASHBOARD_TABLE_HEAD_CLS =
+  'sticky top-0 z-10 bg-card font-medium'
