@@ -12,6 +12,8 @@ import {
   IconDownload,
   IconChevronLeft,
   IconChevronRight,
+  IconChevronDown,
+  IconChevronUp,
 } from '@tabler/icons-react'
 import type { SafeApicHost } from '@/actions/apic-hosts'
 import {
@@ -24,6 +26,10 @@ import {
   type CounterFields,
   type CounterMode,
 } from './counter-mode'
+import type {
+  InterfaceSortDirection,
+  InterfaceSortKey,
+} from './sort'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -82,6 +88,9 @@ interface Props {
   page: number
   total: number
   pageSize: PageSizeValue
+  sortKey: InterfaceSortKey | null
+  sortDirection: InterfaceSortDirection
+  counterMode: CounterMode
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -169,6 +178,9 @@ export function InterfaceHealthClient({
   page,
   total,
   pageSize,
+  sortKey,
+  sortDirection,
+  counterMode,
 }: Props) {
   const router = useRouter()
   const [selected, setSelected] = useState<SelectedInterface | null>(null)
@@ -181,7 +193,6 @@ export function InterfaceHealthClient({
   const [searchValue, setSearchValue] = useState(query)
   const [previousQuery, setPreviousQuery] = useState(query)
   const [jumpValue, setJumpValue] = useState('')
-  const [counterMode, setCounterMode] = useState<CounterMode>('delta')
   const selectedHost = apicHosts.find(host => host.id === selectedHostId)
 
   // Sync input when query changes via back/forward navigation, but ignore the
@@ -204,6 +215,9 @@ export function InterfaceHealthClient({
     node?: string[]
     page?: number
     pageSize?: PageSizeValue
+    sort?: InterfaceSortKey | null
+    dir?: InterfaceSortDirection
+    counterMode?: CounterMode
   }) {
     const params = new URLSearchParams()
     const apic = overrides.apic ?? selectedHostId
@@ -211,12 +225,20 @@ export function InterfaceHealthClient({
     const n = overrides.node !== undefined ? overrides.node : filterNode
     const p = overrides.page ?? page
     const ps = overrides.pageSize !== undefined ? overrides.pageSize : pageSize
+    const s = overrides.sort !== undefined ? overrides.sort : sortKey
+    const d = overrides.dir ?? sortDirection
+    const mode = overrides.counterMode ?? counterMode
 
     if (apic) params.set('apic', apic)
     if (q.trim()) params.set('query', q.trim())
     if (n.length > 0) params.set('node', n.join(','))
     if (p > 1) params.set('page', String(p))
     if (ps !== 50) params.set('pageSize', String(ps))
+    if (s) {
+      params.set('sort', s)
+      if (d !== 'desc') params.set('dir', d)
+    }
+    if (mode !== 'delta') params.set('mode', mode)
     const qs = params.toString()
     return `/interface-health${qs ? `?${qs}` : ''}`
   }
@@ -256,6 +278,20 @@ export function InterfaceHealthClient({
   function handlePageSizeChange(ps: PageSizeValue) {
     startTransition(() => {
       router.replace(buildUrl({ pageSize: ps, page: 1 }))
+    })
+  }
+
+  function handleCounterModeChange(mode: CounterMode) {
+    startTransition(() => {
+      router.replace(buildUrl({ counterMode: mode, page: 1 }))
+    })
+  }
+
+  function handleSort(key: InterfaceSortKey) {
+    const nextDirection: InterfaceSortDirection =
+      sortKey === key && sortDirection === 'desc' ? 'asc' : 'desc'
+    startTransition(() => {
+      router.replace(buildUrl({ sort: key, dir: nextDirection, page: 1 }))
     })
   }
 
@@ -320,6 +356,40 @@ export function InterfaceHealthClient({
 
   const activeFilterCount = filterNode.length > 0 ? 1 : 0
   const loading = isPending || syncing
+  const tableHeaders: ({ label: string; sortKey?: InterfaceSortKey })[] = [
+    { label: 'Node' },
+    { label: 'Interface' },
+    { label: 'Description' },
+    { label: 'Admin' },
+    { label: 'Oper' },
+    { label: 'Speed' },
+    {
+      label: counterMode === 'delta' ? 'Rx err Δ' : 'Rx err',
+      sortKey: 'rxErrors',
+    },
+    {
+      label: counterMode === 'delta' ? 'Tx err Δ' : 'Tx err',
+      sortKey: 'txErrors',
+    },
+    {
+      label: counterMode === 'delta' ? 'CRC Δ' : 'CRC',
+      sortKey: 'rxCrcErrors',
+    },
+    {
+      label: counterMode === 'delta' ? 'Align Δ' : 'Align',
+      sortKey: 'rxAlignErrors',
+    },
+    {
+      label: counterMode === 'delta' ? 'Rx Δ' : 'Rx',
+      sortKey: 'rxBytes',
+    },
+    {
+      label: counterMode === 'delta' ? 'Tx Δ' : 'Tx',
+      sortKey: 'txBytes',
+    },
+    { label: 'Last link change' },
+    { label: 'Sampled' },
+  ]
 
   return (
     <div className="min-h-full bg-background">
@@ -490,7 +560,7 @@ export function InterfaceHealthClient({
                       key={mode}
                       type="button"
                       aria-pressed={counterMode === mode}
-                      onClick={() => setCounterMode(mode)}
+                      onClick={() => handleCounterModeChange(mode)}
                       className={[
                         'rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors',
                         counterMode === mode
@@ -540,21 +610,36 @@ export function InterfaceHealthClient({
                   <table className="w-full text-xs">
                     <thead>
                       <tr>
-                        {[
-                          'Node', 'Interface', 'Description', 'Admin', 'Oper', 'Speed',
-                          counterMode === 'delta' ? 'Rx err Δ' : 'Rx err',
-                          counterMode === 'delta' ? 'Tx err Δ' : 'Tx err',
-                          counterMode === 'delta' ? 'CRC Δ' : 'CRC',
-                          counterMode === 'delta' ? 'Align Δ' : 'Align',
-                          counterMode === 'delta' ? 'Rx Δ' : 'Rx',
-                          counterMode === 'delta' ? 'Tx Δ' : 'Tx',
-                          'Last link change', 'Sampled',
-                        ].map(h => (
+                        {tableHeaders.map(h => (
                           <th
-                            key={h}
+                            key={h.label}
+                            aria-sort={
+                              h.sortKey && sortKey === h.sortKey
+                                ? sortDirection === 'asc' ? 'ascending' : 'descending'
+                                : undefined
+                            }
                             className={DENSE_TABLE_HEAD_CLS}
                           >
-                            {h}
+                            {h.sortKey ? (
+                              <button
+                                type="button"
+                                onClick={() => handleSort(h.sortKey!)}
+                                className="inline-flex items-center gap-1 text-inherit transition-colors hover:text-foreground"
+                              >
+                                <span>{h.label}</span>
+                                {sortKey === h.sortKey ? (
+                                  sortDirection === 'asc' ? (
+                                    <IconChevronUp size={11} stroke={2} />
+                                  ) : (
+                                    <IconChevronDown size={11} stroke={2} />
+                                  )
+                                ) : (
+                                  <span className="w-[11px]" aria-hidden="true" />
+                                )}
+                              </button>
+                            ) : (
+                              h.label
+                            )}
                           </th>
                         ))}
                       </tr>

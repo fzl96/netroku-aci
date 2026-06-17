@@ -4,7 +4,8 @@ import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getApicHosts } from '@/actions/apic-hosts'
 import { InterfaceHealthClient, type InterfaceRowProps } from './InterfaceHealthClient'
-import { sortInterfaceRows } from './sort'
+import type { CounterMode } from './counter-mode'
+import { parseInterfaceSortParams, sortInterfaceRows } from './sort'
 
 export const metadata: Metadata = {
   title: 'Interfaces',
@@ -29,12 +30,24 @@ export default async function InterfaceHealthPage({
     node?: string
     page?: string
     pageSize?: string
+    sort?: string
+    dir?: string
+    mode?: string
   }>
 }) {
   const session = await getSession()
   if (!session) redirect('/signin')
 
-  const { apic, query, node, page: pageParam, pageSize: pageSizeParam } = await searchParams
+  const {
+    apic,
+    query,
+    node,
+    page: pageParam,
+    pageSize: pageSizeParam,
+    sort,
+    dir,
+    mode,
+  } = await searchParams
   const apicHosts = await getApicHosts()
 
   // Empty / missing node param = show all nodes. Comma-separated list otherwise.
@@ -44,6 +57,8 @@ export default async function InterfaceHealthPage({
 
   const page = Math.max(1, parseInt(pageParam ?? '1', 10) || 1)
   const pageSize = parsePageSize(pageSizeParam)
+  const counterMode: CounterMode = mode === 'current' ? 'current' : 'delta'
+  const interfaceSort = parseInterfaceSortParams({ sort, dir, mode: counterMode })
 
   let rows: InterfaceRowProps[] = []
   let total = 0
@@ -105,7 +120,7 @@ export default async function InterfaceHealthPage({
 
     total = snapshotTotal
 
-    const sortedSnapshots = sortInterfaceRows(snapshots)
+    const sortedSnapshots = sortInterfaceRows(snapshots, interfaceSort ?? undefined)
     const visibleSnapshots = take === undefined
       ? sortedSnapshots
       : sortedSnapshots.slice(skip, skip + take)
@@ -156,6 +171,9 @@ export default async function InterfaceHealthPage({
       page={page}
       total={total}
       pageSize={pageSize}
+      sortKey={interfaceSort?.key ?? null}
+      sortDirection={interfaceSort?.direction ?? 'desc'}
+      counterMode={counterMode}
     />
   )
 }
