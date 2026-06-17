@@ -1,7 +1,6 @@
 'use server'
 
-import { headers } from 'next/headers'
-import { auth } from '@/lib/auth'
+import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { recordAudit } from '@/lib/audit'
 import {
@@ -24,7 +23,7 @@ export type SafeApicHost = {
 }
 
 async function requireSession(): Promise<{ id: string; role: string; userName: string }> {
-  const session = await auth.api.getSession({ headers: await headers() })
+  const session = await getSession()
   if (!session) throw new Error('Unauthorized')
   return {
     id: session.user.id,

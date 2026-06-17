@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
-import { headers } from 'next/headers'
-import { auth } from '@/lib/auth'
+import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getApicHosts } from '@/actions/apic-hosts'
 import { buildEndpointWhere, type EndpointStatusFilter } from '@/lib/endpoints/query'
@@ -27,7 +26,7 @@ export default async function EndpointsPage({
 }: {
   searchParams: Promise<{ apic?: string; query?: string; page?: string; pageSize?: string; vlan?: string; node?: string; iface?: string; status?: string }>
 }) {
-  const session = await auth.api.getSession({ headers: await headers() })
+  const session = await getSession()
   if (!session) redirect('/signin')
 
   const { apic, query, page: pageParam, pageSize: pageSizeParam, vlan, node, iface, status } = await searchParams

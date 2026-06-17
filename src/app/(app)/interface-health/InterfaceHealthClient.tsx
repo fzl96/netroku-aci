@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState, useTransition } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
@@ -29,10 +30,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ApicCredentialDialog } from '@/components/ApicCredentialDialog'
-import {
-  InterfaceErrorTrendDrawer,
-  type SelectedInterface,
-} from './InterfaceErrorTrendDrawer'
+import type { SelectedInterface } from './InterfaceErrorTrendDrawer'
+
+// recharts is heavy and only needed once the trend drawer is opened, so it is
+// code-split out of the initial interface-health bundle.
+const InterfaceErrorTrendDrawer = dynamic(
+  () => import('./InterfaceErrorTrendDrawer').then((m) => m.InterfaceErrorTrendDrawer),
+  { ssr: false },
+)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

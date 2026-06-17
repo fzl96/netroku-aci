@@ -1,7 +1,6 @@
 'use server'
 
-import { headers } from 'next/headers'
-import { auth } from '@/lib/auth'
+import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import {
   rangeToCutoff,
@@ -16,7 +15,7 @@ export async function getInterfaceErrorSamples(
   interfaceId: string,
   range: ErrorTrendRange,
 ): Promise<ErrorTrendPoint[]> {
-  const session = await auth.api.getSession({ headers: await headers() })
+  const session = await getSession()
   if (!session) throw new Error('Unauthorized')
 
   const cutoff = rangeToCutoff(range, new Date())

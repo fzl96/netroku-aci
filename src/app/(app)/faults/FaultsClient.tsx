@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState, useTransition } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
@@ -12,7 +13,6 @@ import {
   IconChevronRight,
   IconCheck,
 } from '@tabler/icons-react'
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
 import type { SafeApicHost } from '@/actions/apic-hosts'
 import { SEARCH_INPUT_CLS } from '@/lib/ui-classes'
 import {
@@ -24,13 +24,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from '@/components/ui/chart'
 import { ApicCredentialDialog } from '@/components/ApicCredentialDialog'
+import type { TrendPoint } from './FaultsTrendChart'
+
+const FaultsTrendChart = dynamic(() => import('./FaultsTrendChart'), {
+  ssr: false,
+  loading: () => (
+    <div className="bg-card border border-border rounded-2xl p-4 shadow-sm h-[232px] animate-pulse" />
+  ),
+})
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,14 +47,6 @@ export interface FaultRowProps {
   descr: string
   ack: boolean
   created: string | null
-}
-
-type TrendPoint = {
-  sampledAt: string
-  critical: number
-  major: number
-  minor: number
-  warning: number
 }
 
 type PageSizeValue = 10 | 50 | 100 | 1000 | 'all'
@@ -72,13 +66,6 @@ const SEVERITY_LABEL: Record<Severity, string> = {
   major: 'Major',
   minor: 'Minor',
   warning: 'Warning',
-}
-
-const trendConfig: ChartConfig = {
-  critical: { label: 'Critical', color: 'var(--chart-1)' },
-  major: { label: 'Major', color: 'var(--chart-2)' },
-  minor: { label: 'Minor', color: 'var(--chart-3)' },
-  warning: { label: 'Warning', color: 'var(--chart-4)' },
 }
 
 interface Props {
@@ -367,53 +354,7 @@ export function FaultsClient({
           </div>
         ) : (
           <>
-            {trend.length > 0 && (
-              <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
-                <h2 className="text-[9px] font-semibold uppercase tracking-[0.12em] text-faint mb-3">
-                  Severity trend
-                </h2>
-                <ChartContainer config={trendConfig} className="h-44 w-full">
-                  <LineChart data={trend} margin={{ left: 4, right: 8, top: 8 }}>
-                    <CartesianGrid vertical={false} />
-                    <XAxis
-                      dataKey="sampledAt"
-                      tickLine={false}
-                      axisLine={false}
-                      minTickGap={32}
-                      tickFormatter={(v) =>
-                        new Date(v).toLocaleString(undefined, {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                        })
-                      }
-                    />
-                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={32} />
-                    <ChartTooltip
-                      content={
-                        <ChartTooltipContent
-                          labelFormatter={(_, payload) =>
-                            payload?.[0]?.payload?.sampledAt
-                              ? new Date(payload[0].payload.sampledAt).toLocaleString()
-                              : ''
-                          }
-                        />
-                      }
-                    />
-                    {SEVERITIES.map((s) => (
-                      <Line
-                        key={s}
-                        type="monotone"
-                        dataKey={s}
-                        stroke={`var(--color-${s})`}
-                        dot={false}
-                        connectNulls={false}
-                      />
-                    ))}
-                  </LineChart>
-                </ChartContainer>
-              </div>
-            )}
+            {trend.length > 0 && <FaultsTrendChart trend={trend} />}
 
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 min-w-0">

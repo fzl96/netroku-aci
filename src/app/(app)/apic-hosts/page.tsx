@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
-import { headers } from 'next/headers'
-import { auth } from '@/lib/auth'
+import { getSession } from '@/lib/auth'
 import { getApicHosts } from '@/actions/apic-hosts'
 import { ApicHostsClient } from './ApicHostsClient'
 
@@ -11,7 +10,7 @@ export const metadata: Metadata = {
 }
 
 export default async function ApicHostsPage() {
-  const session = await auth.api.getSession({ headers: await headers() })
+  const session = await getSession()
   if (!session) redirect('/signin')
   if (session.user.role !== 'admin') notFound()
 

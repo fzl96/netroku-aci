@@ -1,7 +1,6 @@
 'use server'
 
-import { headers } from 'next/headers'
-import { auth } from '@/lib/auth'
+import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 export interface FaultTileHost {
@@ -17,7 +16,7 @@ export interface FaultTileHost {
 
 /** Latest active-fault severity counts + a recent total-fault sparkline per host. */
 export async function getFaultCountSummary(): Promise<FaultTileHost[]> {
-  const session = await auth.api.getSession({ headers: await headers() })
+  const session = await getSession()
   if (!session) return []
 
   const hosts = await prisma.apicHost.findMany({

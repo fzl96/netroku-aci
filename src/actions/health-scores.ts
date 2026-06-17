@@ -1,7 +1,6 @@
 'use server'
 
-import { headers } from 'next/headers'
-import { auth } from '@/lib/auth'
+import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 export interface HealthTileHost {
@@ -14,7 +13,7 @@ export interface HealthTileHost {
 
 /** Latest overall fabric score + worst node/tenant score per host. */
 export async function getHealthSummary(): Promise<HealthTileHost[]> {
-  const session = await auth.api.getSession({ headers: await headers() })
+  const session = await getSession()
   if (!session) return []
 
   const hosts = await prisma.apicHost.findMany({

@@ -1,3 +1,5 @@
+import { cache } from "react";
+import { headers } from "next/headers";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { admin } from "better-auth/plugins";
@@ -29,3 +31,13 @@ export const auth = betterAuth({
     }),
   ],
 });
+
+/**
+ * Request-scoped session lookup. Wrapped in React `cache()` so that multiple
+ * callers within a single server render (e.g. a layout, its page, and any
+ * server actions/helpers they invoke) share one auth lookup instead of
+ * re-querying the session per call.
+ */
+export const getSession = cache(async () =>
+  auth.api.getSession({ headers: await headers() }),
+);

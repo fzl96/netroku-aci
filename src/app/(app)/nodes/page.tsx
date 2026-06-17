@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
-import { headers } from 'next/headers'
-import { auth } from '@/lib/auth'
+import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getApicHosts } from '@/actions/apic-hosts'
 import { NodesClient, type ComponentRowProps, type NodeRowProps } from './NodesClient'
@@ -37,7 +36,7 @@ export default async function NodesPage({
     pageSize?: string
   }>
 }) {
-  const session = await auth.api.getSession({ headers: await headers() })
+  const session = await getSession()
   if (!session) redirect('/signin')
 
   const { apic, query, view: viewParam, role, type, page: pageParam, pageSize: pageSizeParam } =

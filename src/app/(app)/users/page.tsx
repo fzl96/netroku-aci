@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
-import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
+import { getSession } from '@/lib/auth'
 import { getUsers } from '@/actions/users'
 import { UsersClient } from './UsersClient'
 
@@ -11,7 +10,7 @@ export const metadata: Metadata = {
 }
 
 export default async function UsersPage() {
-  const session = await auth.api.getSession({ headers: await headers() })
+  const session = await getSession()
   if (!session) redirect('/signin')
   if (session.user.role !== 'admin') notFound()
 

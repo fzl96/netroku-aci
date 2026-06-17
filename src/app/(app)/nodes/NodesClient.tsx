@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
@@ -10,17 +11,18 @@ import {
   IconSearch,
   IconServer,
 } from '@tabler/icons-react'
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
 import type { SafeApicHost } from '@/actions/apic-hosts'
 import { isNodeOnline } from '@/lib/apic/node-status'
 import { SEARCH_INPUT_CLS } from '@/lib/ui-classes'
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from '@/components/ui/chart'
 import { ApicCredentialDialog } from '@/components/ApicCredentialDialog'
+import type { TrendPoint } from './NodesTrendChart'
+
+const NodesTrendChart = dynamic(() => import('./NodesTrendChart'), {
+  ssr: false,
+  loading: () => (
+    <div className="bg-card border border-border rounded-2xl p-4 shadow-sm h-[232px] animate-pulse" />
+  ),
+})
 
 export interface NodeRowProps {
   id: string
@@ -47,11 +49,6 @@ export interface ComponentRowProps {
 }
 
 type View = 'nodes' | 'components'
-type TrendPoint = {
-  sampledAt: string
-  nodesOnline: number
-  componentsFailed: number
-}
 
 type PageSizeValue = 10 | 50 | 100 | 1000 | 'all'
 const PAGE_SIZE_OPTIONS: { label: string; value: PageSizeValue }[] = [
@@ -73,11 +70,6 @@ const TYPES = ['psu', 'fan'] as const
 const TYPE_LABEL: Record<(typeof TYPES)[number], string> = {
   psu: 'PSU',
   fan: 'Fan',
-}
-
-const trendConfig: ChartConfig = {
-  nodesOnline: { label: 'Nodes online', color: 'var(--chart-1)' },
-  componentsFailed: { label: 'Failed components', color: 'var(--chart-2)' },
 }
 
 interface Props {
@@ -437,57 +429,7 @@ export function NodesClient({
               </div>
             </div>
 
-            {trend.length > 0 && (
-              <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
-                <h2 className="text-[9px] font-semibold uppercase tracking-[0.12em] text-faint mb-3">
-                  Node trend
-                </h2>
-                <ChartContainer config={trendConfig} className="h-44 w-full">
-                  <LineChart data={trend} margin={{ left: 4, right: 8, top: 8 }}>
-                    <CartesianGrid vertical={false} />
-                    <XAxis
-                      dataKey="sampledAt"
-                      tickLine={false}
-                      axisLine={false}
-                      minTickGap={32}
-                      tickFormatter={(v) =>
-                        new Date(v).toLocaleString(undefined, {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                        })
-                      }
-                    />
-                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={32} />
-                    <ChartTooltip
-                      content={
-                        <ChartTooltipContent
-                          labelFormatter={(_, payload) =>
-                            payload?.[0]?.payload?.sampledAt
-                              ? new Date(payload[0].payload.sampledAt).toLocaleString()
-                              : ''
-                          }
-                        />
-                      }
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="nodesOnline"
-                      stroke="var(--color-nodesOnline)"
-                      dot={false}
-                      connectNulls={false}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="componentsFailed"
-                      stroke="var(--color-componentsFailed)"
-                      dot={false}
-                      connectNulls={false}
-                    />
-                  </LineChart>
-                </ChartContainer>
-              </div>
-            )}
+            {trend.length > 0 && <NodesTrendChart trend={trend} />}
 
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 min-w-0">

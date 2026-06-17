@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { headers } from 'next/headers'
 import {
   IconActivity,
   IconActivityHeartbeat,
@@ -16,7 +15,7 @@ import {
   IconRouter,
   IconServer2,
 } from '@tabler/icons-react'
-import { auth } from '@/lib/auth'
+import { getSession } from '@/lib/auth'
 import { isNodeOnline } from '@/lib/apic/node-status'
 import { prisma } from '@/lib/prisma'
 import {
@@ -97,7 +96,7 @@ function endpointCount(
 }
 
 export default async function DashboardPage() {
-  const session = await auth.api.getSession({ headers: await headers() })
+  const session = await getSession()
   if (!session) redirect('/signin')
 
   const [
