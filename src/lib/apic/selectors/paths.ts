@@ -4,7 +4,7 @@ export function buildProfilePath(profile: string): string {
   return `/api/node/mo/uni/infra/accportprof-${profile}.json`
 }
 
-export function buildSelectorDn(profile: string, selector: string): string {
+function buildSelectorDn(profile: string, selector: string): string {
   return `uni/infra/accportprof-${profile}/hports-${selector}-typ-range`
 }
 

@@ -1,8 +1,12 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { useTheme } from './ThemeProvider'
+import { useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
+import { useTheme } from "./ThemeProvider";
+import { nextBinaryTheme } from "./theme-toggle";
+import { authClient } from "@/lib/auth-client";
 import {
   Sidebar,
   SidebarContent,
@@ -16,12 +20,28 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-} from '@/components/ui/sidebar'
+} from "@/components/ui/sidebar";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from '@/components/ui/collapsible'
+} from "@/components/ui/collapsible";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
+
+// Suppress the full leaf-active treatment (bg pill + left bar) for parent
+// containers — they only need to look "expanded", not "current page".
+const PARENT_ACTIVE_CLS =
+  "data-[active=true]:bg-transparent data-[active=true]:before:hidden data-[active=true]:[&>svg:first-child]:text-sidebar-foreground";
 import {
   IconServer,
   IconDatabase,
@@ -30,106 +50,297 @@ import {
   IconSun,
   IconMoon,
   IconChevronRight,
-} from '@tabler/icons-react'
+  IconRouter,
+  IconDeviceDesktopSearch,
+  IconActivity,
+  IconAlertTriangle,
+  IconActivityHeartbeat,
+  IconServer2,
+  IconUsers,
+  IconSettings,
+  IconLogout,
+  IconLayoutDashboard,
+  IconHistory,
+} from "@tabler/icons-react";
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
 
 type NavChild = {
-  href: string
-  label: string
-}
+  href?: string;
+  label: string;
+  children?: NavChild[];
+};
 
 type NavItem = {
-  href: string
-  label: string
-  icon: React.ReactNode
-  children?: NavChild[]
-}
+  href?: string;
+  label: string;
+  icon: React.ReactNode;
+  children?: NavChild[];
+  adminOnly?: boolean;
+  action?: "logout";
+};
 
 const NAV: { group: string; items: NavItem[] }[] = [
   {
-    group: 'Fabric',
+    group: "",
     items: [
       {
-        href: '/static-ports',
-        label: 'Static Ports',
-        icon: <IconServer size={15} stroke={1.75} />,
+        href: "/dashboard",
+        label: "Dashboard",
+        icon: <IconLayoutDashboard size={15} stroke={1.75} />,
+      },
+    ],
+  },
+  {
+    group: "Infrastructure",
+    items: [
+      {
+        href: "/apic-hosts",
+        label: "APIC Hosts",
+        icon: <IconRouter size={15} stroke={1.75} />,
+        adminOnly: true,
+      },
+      {
+        href: "/endpoints",
+        label: "Endpoints",
+        icon: <IconDeviceDesktopSearch size={15} stroke={1.75} />,
+      },
+      {
+        href: "/interface-health",
+        label: "Interfaces",
+        icon: <IconActivity size={15} stroke={1.75} />,
+      },
+      {
+        href: "/faults",
+        label: "Faults",
+        icon: <IconAlertTriangle size={15} stroke={1.75} />,
+      },
+      {
+        href: "/health-scores",
+        label: "Health Scores",
+        icon: <IconActivityHeartbeat size={15} stroke={1.75} />,
+      },
+      {
+        href: "/nodes",
+        label: "Nodes",
+        icon: <IconServer2 size={15} stroke={1.75} />,
+      },
+    ],
+  },
+  {
+    group: "Workflows",
+    items: [
+      {
+        href: "/bridge-domains",
+        label: "Bridge Domains",
+        icon: <IconDatabase size={15} stroke={1.75} />,
         children: [
-          { href: '/static-ports/deploy', label: 'Deploy' },
-          { href: '/static-ports/rollback', label: 'Rollback' },
+          {
+            href: "/bridge-domains/l2",
+            label: "L2 Only",
+            children: [
+              { href: "/bridge-domains/l2/deploy", label: "Deploy" },
+              { href: "/bridge-domains/l2/rollback", label: "Rollback" },
+            ],
+          },
+          {
+            href: "/bridge-domains/l3",
+            label: "L3",
+            children: [
+              { href: "/bridge-domains/l3/deploy", label: "Deploy" },
+              { href: "/bridge-domains/l3/rollback", label: "Rollback" },
+            ],
+          },
         ],
       },
       {
-        href: '/interface-selectors',
-        label: 'Interface Selectors',
+        href: "/bridge-domains/epgs",
+        label: "EPG",
+        icon: <IconAffiliate size={15} stroke={1.75} />,
+        children: [
+          { href: "/bridge-domains/epgs/deploy", label: "Deploy" },
+          { href: "/bridge-domains/epgs/rollback", label: "Rollback" },
+        ],
+      },
+      {
+        href: "/static-ports",
+        label: "Static Ports",
+        icon: <IconServer size={15} stroke={1.75} />,
+        children: [
+          { href: "/static-ports/deploy", label: "Deploy" },
+          { href: "/static-ports/rollback", label: "Rollback" },
+        ],
+      },
+      {
+        href: "/interface-selectors",
+        label: "Interface Selectors",
         icon: <IconPlugConnected size={15} stroke={1.75} />,
         children: [
-          { href: '/interface-selectors/deploy', label: 'Deploy' },
-          { href: '/interface-selectors/rollback', label: 'Rollback' },
+          { href: "/interface-selectors/deploy", label: "Deploy" },
+          { href: "/interface-selectors/rollback", label: "Rollback" },
         ],
       },
     ],
   },
   {
-    group: 'Policy',
+    group: "System",
     items: [
       {
-        href: '/bridge-domains',
-        label: 'Bridge Domains',
-        icon: <IconDatabase size={15} stroke={1.75} />,
+        href: "/history",
+        label: "History",
+        icon: <IconHistory size={15} stroke={1.75} />,
       },
       {
-        href: '/epgs',
-        label: 'EPGs',
-        icon: <IconAffiliate size={15} stroke={1.75} />,
+        href: "/settings",
+        label: "Settings",
+        icon: <IconSettings size={15} stroke={1.75} />,
+      },
+      {
+        href: "/users",
+        label: "Users",
+        icon: <IconUsers size={15} stroke={1.75} />,
+        adminOnly: true,
+      },
+      {
+        label: "Logout",
+        icon: <IconLogout size={15} stroke={1.75} />,
+        action: "logout",
       },
     ],
   },
-]
+];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function AppSidebar() {
-  const pathname = usePathname()
-  const { theme, toggle } = useTheme()
+export function AppSidebar({ role }: { role: 'admin' | 'member' }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { setTheme } = useTheme();
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const nav = NAV.map(section => ({
+    ...section,
+    items: section.items.filter(item => !item.adminOnly || role === 'admin'),
+  })).filter(section => section.items.length > 0);
 
-  function isActive(href: string) {
-    return href === '/' ? pathname === '/' : pathname.startsWith(href)
+  function isActive(href?: string) {
+    if (!href) return false;
+    return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  }
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    await authClient.signOut();
+    router.replace("/signin");
+    router.refresh();
+  }
+
+  function isNodeActive(node: NavChild): boolean {
+    return Boolean(
+      (node.href && isActive(node.href)) ||
+      node.children?.some((child) => isNodeActive(child)),
+    );
+  }
+
+  function renderSubNode(node: NavChild, depth = 0): React.ReactNode {
+    const active = isNodeActive(node);
+
+    if (node.children && node.children.length > 0) {
+      return (
+        <Collapsible
+          key={node.href ?? node.label}
+          asChild
+          defaultOpen={active}
+          className="group/subcollapsible"
+        >
+          <SidebarMenuSubItem>
+            <CollapsibleTrigger asChild>
+              <SidebarMenuSubButton
+                asChild
+                size="sm"
+                isActive={active}
+                className={cn("font-normal", PARENT_ACTIVE_CLS)}
+              >
+                <button type="button">
+                  <span>{node.label}</span>
+                  <IconChevronRight
+                    size={12}
+                    stroke={1.75}
+                    className="ml-auto transition-transform duration-200 group-data-[state=open]/subcollapsible:rotate-90"
+                  />
+                </button>
+              </SidebarMenuSubButton>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarMenuSub
+                className={[
+                  "mx-2 gap-0.5 py-0",
+                  depth === 0 ? "ml-3" : "ml-4",
+                ].join(" ")}
+              >
+                {node.children.map((child) => renderSubNode(child, depth + 1))}
+              </SidebarMenuSub>
+            </CollapsibleContent>
+          </SidebarMenuSubItem>
+        </Collapsible>
+      );
+    }
+
+    return (
+      <SidebarMenuSubItem key={node.href ?? node.label}>
+        {node.href ? (
+          <SidebarMenuSubButton
+            asChild
+            size="sm"
+            isActive={
+              pathname === node.href || pathname.startsWith(node.href + "/")
+            }
+          >
+            <Link href={node.href}>
+              <span>{node.label}</span>
+            </Link>
+          </SidebarMenuSubButton>
+        ) : (
+          <span className="flex h-7 min-w-0 items-center px-2 text-xs text-muted-foreground">
+            {node.label}
+          </span>
+        )}
+      </SidebarMenuSubItem>
+    );
   }
 
   return (
-    <Sidebar variant="floating">
-      <SidebarHeader>
-        <div className="flex items-center gap-3 px-1 py-2">
-          <div className="w-7 h-7 rounded-lg bg-[var(--accent)] flex items-center justify-center shrink-0 shadow-sm">
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-              <path
-                d="M8 1.5L13.5 4.75v6.5L8 14.5 2.5 11.25v-6.5L8 1.5z"
-                stroke="white"
-                strokeWidth="1.2"
-                strokeLinejoin="round"
-              />
-              <circle cx="8" cy="8" r="1.75" fill="white" />
-            </svg>
-          </div>
+    <Sidebar>
+      <SidebarHeader className="h-16 flex-row items-center border-b border-sidebar-border/60 px-3 py-0">
+        <div className="flex items-center gap-3">
+          <Image
+            src="/brand-icon.png"
+            alt=""
+            width={36}
+            height={36}
+            aria-hidden
+            className="h-9 w-9 shrink-0"
+          />
           <div className="min-w-0">
-            <p className="text-[12.5px] font-semibold leading-none tracking-tight text-[var(--text)]">
-              ACI Toolkit
+            <p className="text-[12.5px] font-semibold leading-none tracking-tight text-sidebar-foreground">
+              Netroku ACI
             </p>
-            <p className="text-[10px] leading-none mt-[5px] text-[var(--sb-brand-sub)]">
-              Cisco APIC
-            </p>
+            <p className="mt-[5px] text-[10px] leading-none text-sidebar-foreground/55"></p>
           </div>
         </div>
       </SidebarHeader>
 
       <SidebarContent>
-        {NAV.map((section) => (
+        {nav.map((section) => (
           <SidebarGroup key={section.group}>
-            <SidebarGroupLabel>{section.group}</SidebarGroupLabel>
+            {section.group && <SidebarGroupLabel>{section.group}</SidebarGroupLabel>}
             <SidebarMenu>
               {section.items.map((item) => {
-                const groupActive = isActive(item.href)
+                const groupActive =
+                  item.children && item.children.length > 0
+                    ? pathname === item.href ||
+                      item.children.some((child) => isNodeActive(child))
+                    : isActive(item.href);
 
                 if (item.children && item.children.length > 0) {
                   return (
@@ -141,7 +352,10 @@ export function AppSidebar() {
                     >
                       <SidebarMenuItem>
                         <CollapsibleTrigger asChild>
-                          <SidebarMenuButton isActive={groupActive}>
+                          <SidebarMenuButton
+                            isActive={groupActive}
+                            className={PARENT_ACTIVE_CLS}
+                          >
                             {item.icon}
                             <span>{item.label}</span>
                             <IconChevronRight
@@ -153,57 +367,85 @@ export function AppSidebar() {
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                           <SidebarMenuSub>
-                            {item.children.map((child) => (
-                              <SidebarMenuSubItem key={child.href}>
-                                <SidebarMenuSubButton
-                                  asChild
-                                  isActive={pathname === child.href || pathname.startsWith(child.href + '/')}
-                                >
-                                  <Link href={child.href}>
-                                    <span>{child.label}</span>
-                                  </Link>
-                                </SidebarMenuSubButton>
-                              </SidebarMenuSubItem>
-                            ))}
+                            {item.children.map((child) => renderSubNode(child))}
                           </SidebarMenuSub>
                         </CollapsibleContent>
                       </SidebarMenuItem>
                     </Collapsible>
-                  )
+                  );
                 }
 
                 return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={groupActive}>
-                      <Link href={item.href}>
+                  <SidebarMenuItem key={item.href ?? item.label}>
+                    {item.action === "logout" ? (
+                      <SidebarMenuButton
+                        type="button"
+                        onClick={() => setLogoutOpen(true)}
+                        disabled={loggingOut}
+                        className="text-sidebar-foreground/75 hover:text-sidebar-foreground"
+                      >
                         {item.icon}
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
+                        <span>{loggingOut ? "Logging out..." : item.label}</span>
+                      </SidebarMenuButton>
+                    ) : (
+                      <SidebarMenuButton asChild isActive={groupActive}>
+                        <Link href={item.href ?? "/"}>
+                          {item.icon}
+                          <span>{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    )}
                   </SidebarMenuItem>
-                )
+                );
               })}
             </SidebarMenu>
           </SidebarGroup>
         ))}
       </SidebarContent>
 
-      <SidebarFooter>
-        <div className="flex items-center justify-between px-2 py-1">
-          <p className="text-[10px] text-[var(--sb-footer)]">v0.1.0</p>
+      <SidebarFooter className="border-t border-sidebar-border/60 px-3 py-2">
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] text-sidebar-foreground/50">v0.1.0</p>
           <button
-            onClick={toggle}
-            className="p-1 rounded-md text-[var(--sb-footer)] transition-colors hover:opacity-70"
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            type="button"
+            onClick={() => setTheme((theme) => nextBinaryTheme(theme))}
+            className="rounded-md p-1 text-sidebar-foreground/60 transition-colors hover:text-sidebar-foreground hover:bg-sidebar-accent"
+            title="Toggle theme"
+            aria-label="Toggle theme"
           >
-            {theme === 'dark' ? (
-              <IconSun size={13} stroke={2} />
-            ) : (
-              <IconMoon size={13} stroke={2} />
-            )}
+            <IconMoon size={13} stroke={2} className="block dark:hidden" />
+            <IconSun size={13} stroke={2} className="hidden dark:block" />
           </button>
         </div>
       </SidebarFooter>
+
+      <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-serif text-base font-semibold text-foreground">
+              Log out?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-subtle">
+              You will need to sign in again before using Netroku ACI.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end rounded-b-xl border-t border-subtle bg-muted px-4 py-3 gap-1">
+            <AlertDialogCancel
+              disabled={loggingOut}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2 border-0 bg-transparent shadow-none hover:bg-transparent"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="bg-primary text-primary-foreground text-sm font-semibold px-5 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60"
+            >
+              {loggingOut ? "Logging out..." : "Log out"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sidebar>
-  )
+  );
 }

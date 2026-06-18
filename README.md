@@ -6,20 +6,120 @@ A Next.js web app for bulk provisioning Cisco ACI access policy and fabric bindi
 
 - **CSV drag-and-drop** — upload a spreadsheet, get instant validation feedback before anything is sent to APIC
 - **Deploy + Rollback** — every feature includes a rollback flow using the same CSV
+- **EPG + contract workflows** — create EPGs, bind them to bridge domains, and attach consumed/provided contracts
 - **Parallel execution** — 10 concurrent checks during validate, 5 during deploy
 - **Session-aware** — detects expired APIC tokens and prompts reconnect
 - **TLS bypass** — works with self-signed APIC certificates out of the box
 
-## Getting Started
+## Running It On Your Own System
+
+The app is a standard Next.js 16 project backed by a local SQLite database (via Prisma). The steps below cover a full setup from a clean machine. Commands are shown for **Bun**; the **Node/npm** equivalents are listed in the callout afterwards.
+
+### Prerequisites
+
+- **Bun** ≥ 1.1 ([install](https://bun.sh)) — or **Node.js** ≥ 20 with npm
+- **Git**
+- An empty directory for the project
+
+> **Windows users:** Bun on Windows has a known compatibility issue with the TLS bypass library used to talk to self-signed APICs. Use **WSL2** or **Node.js** instead.
+
+### 1. Install a runtime
+
+Install Bun (recommended) or Node.js 20+. Verify:
+
+```bash
+bun --version    # or: node --version
+```
+
+### 2. Clone the repository
+
+```bash
+git clone <repo-url> netroku-aci
+cd netroku-aci
+```
+
+### 3. Install dependencies
 
 ```bash
 bun install
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+### 4. Create the environment file
 
-> **Windows users:** Bun on Windows has a known compatibility issue with the TLS bypass library. Use WSL2 or Node.js instead (`npm install && npm run dev`).
+Copy the example and fill in the values:
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `DATABASE_URL` | yes | SQLite connection string. Keep `file:./dev.db` (resolved relative to `/prisma`). |
+| `BETTER_AUTH_SECRET` | yes | Session signing secret. Generate with `openssl rand -hex 32`. |
+| `BETTER_AUTH_URL` | yes | Base URL the app is served from (e.g. `http://localhost:3000`). |
+| `NEXT_PUBLIC_APP_URL` | yes | Public base URL used by the browser. |
+| `TRUSTED_ORIGINS` | yes | Comma-separated origins Better Auth accepts (add LAN IPs / Tailscale hosts here). |
+| `SECURE_COOKIES` | no | Set to `true` **only** when served exclusively over HTTPS. Leave blank for HTTP/LAN. |
+| `ENCRYPTION_KEY` | yes | 64-char hex (32 bytes) used by `src/lib/crypto.ts`. Generate with `openssl rand -hex 32`. |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | yes (for seeding) | First admin account created by the seed script. Password ≥ 8 chars. |
+| `SCHEDULER_TOKEN` | no | Bearer token an external scheduler must send to `POST /api/cron/resync`. Generate with `openssl rand -hex 32`. |
+
+### 5. Create the SQLite database file
+
+Create an empty `dev.db` in the `/prisma` directory (the migration step will populate the schema):
+
+```bash
+touch prisma/dev.db
+```
+
+### 6. Apply the migrations
+
+This creates every table from the committed migration files:
+
+```bash
+bun run prisma:deploy
+```
+
+### 7. Generate the Prisma client
+
+```bash
+bun run prisma:generate
+```
+
+> Steps 6 and 7 are bundled in a single script: `bun run db:setup`.
+
+### 8. Seed the first admin user
+
+Reads `ADMIN_USERNAME` / `ADMIN_PASSWORD` from `.env` and creates an admin account:
+
+```bash
+bun run seed:admin
+```
+
+### 9. Build and start (production)
+
+```bash
+bun run build
+bun run start
+```
+
+### …or run in development mode
+
+```bash
+bun run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) and sign in with the seeded admin credentials.
+
+> **Using Node/npm instead of Bun:** replace `bun install` → `npm install`, `bun run dev` → `npm run dev`, `bun run build` → `npm run build`, `bun run start` → `npm run start`, and so on. Every command above maps to the matching `package.json` script.
+
+### Connecting an APIC
+
+The app never bundles APIC credentials. After signing in:
+
+1. Go to **APIC Hosts** and add a controller (a friendly name + the APIC IP/hostname).
+2. On any monitoring page, click **Resync** and enter the APIC username/password for that pull. Credentials are used for that single request only — they are **not persisted** to the database.
+3. APIC session tokens expire after **600 seconds** (10 minutes) by default; reconnect if requests start returning 401.
 
 ---
 
@@ -96,6 +196,137 @@ leaf102-intf-prof,eth1-1,1/1,leaf101-leaf102-vpc-ipg,vpc,
 
 ---
 
+## Bridge Domains
+
+Bulk deploy and rollback bridge domains from CSV. L2-only rows create or delete an `fvBD` with fixed L2 behavior. L3 rows create/delete the bridge domain; APIC removes child subnet and L3Out relations when the parent BD is deleted.
+
+### L2 Only Defaults
+
+| Attribute | Value |
+|---|---|
+| `unkMacUcastAct` | `flood` |
+| `arpFlood` | `true` |
+| `unicastRoute` | `no` |
+| `mac` | `00:22:BD:F8:19:FF` |
+
+### L2 Only CSV Format
+
+| Column | Description | Example |
+|---|---|---|
+| `tenant` | Existing tenant name | `TenantA` |
+| `bd` | Bridge Domain name | `VLAN1411-BD` |
+| `vrf` | Existing VRF name | `TenantA-VRF` |
+| `bd_desc` | Optional description | `L2 bridge domain` |
+
+```csv
+tenant,bd,vrf,bd_desc
+TenantA,VLAN1411-BD,TenantA-VRF,L2 bridge domain
+```
+
+### L3 Defaults
+
+| Attribute | Value |
+|---|---|
+| `unkMacUcastAct` | `proxy` |
+| `arpFlood` | `false` |
+| `unicastRoute` | `yes` |
+| `mac` | `00:22:BD:F8:19:FF` |
+| Subnet `scope` | `public` |
+
+### L3 CSV Format
+
+| Column | Description | Example |
+|---|---|---|
+| `tenant` | Existing tenant name | `TenantA` |
+| `bd` | Bridge Domain name | `VLAN1411-BD` |
+| `vrf` | Existing VRF name | `TenantA-VRF` |
+| `subnet` | Bridge Domain gateway subnet in IPv4 CIDR form | `10.14.11.1/24` |
+| `l3out` | Existing L3Out name in the same tenant | `WAN-L3OUT` |
+| `bd_desc` | Optional description | `L3 bridge domain` |
+
+```csv
+tenant,bd,vrf,subnet,l3out,bd_desc
+TenantA,VLAN1411-BD,TenantA-VRF,10.14.11.1/24,WAN-L3OUT,L3 bridge domain
+```
+
+---
+
+## EPGs
+
+Bulk deploy and rollback `fvAEPg` objects under existing tenants and application profiles. Each row creates or updates one EPG, binds it to an existing bridge domain, and can attach multiple consumed (`fvRsCons`) and provided (`fvRsProv`) contracts.
+
+By default, the Bridge Domain and contracts are expected to live in the same tenant as the EPG. For shared-object cases, use `bd_tenant=common` for a BD in `common` and `contract_tenant=common` for consumed/provided contracts in `common`. If the EPG should be usable for physical static bindings, provide `phys_domain` to bind a physical domain to the EPG.
+
+### Validation checks (per row)
+
+1. Tenant exists in APIC
+2. Application Profile / ANP exists in the tenant
+3. Bridge Domain exists in the EPG tenant, or in `common` when `bd_tenant=common`
+4. Optional consumed/provided contracts exist in the EPG tenant, or in `common` when `contract_tenant=common`
+5. Optional physical domain exists when `phys_domain` is provided
+6. Existing EPG is either reusable with the same Bridge Domain, or rejected if it points to a different Bridge Domain
+7. Existing contract and physical domain relations are treated as idempotent; missing relations are queued for deploy
+
+For rollback, rows with contract columns remove only the selected consumed/provided contract relations. Rows without contract columns delete the EPG itself.
+
+### CSV Format
+
+| Column | Description | Example |
+|---|---|---|
+| `tenant` | Existing tenant name | `TenantA` |
+| `anp` | Existing Application Profile / ANP name (`ap` is also accepted) | `APP-A` |
+| `epg` | EPG name to create, update, or remove | `WEB-EPG` |
+| `bd_tenant` | Optional BD tenant. Empty defaults to `tenant`; only `common` is supported for shared BD lookup | `common` |
+| `bd` | Existing Bridge Domain name to bind | `WEB-BD` |
+| `phys_domain` | Optional physical domain to bind to the EPG (`physdom` is also accepted) | `MSI-PHYS-DOM` |
+| `contract_tenant` | Optional contract tenant. Empty defaults to `tenant`; only `common` is supported for shared contract lookup | `common` |
+| `cons_contract` | Optional comma-separated consumed contracts | `WEB-CONTRACT,API-CONTRACT` |
+| `prov_contract` | Optional comma-separated provided contracts | `DB-CONTRACT` |
+| `epg_desc` | Optional EPG description | `Web frontend EPG` |
+
+### Example
+
+```csv
+tenant,anp,epg,bd_tenant,bd,phys_domain,contract_tenant,cons_contract,prov_contract,epg_desc
+TenantA,APP-A,WEB-EPG,,WEB-BD,,,"WEB-CONTRACT,API-CONTRACT",,Web frontend EPG
+TenantA,APP-A,DB-EPG,,DB-BD,MSI-PHYS-DOM,,,DB-CONTRACT,Database EPG
+SERVERFARM,APP-SERVERFARM,SHARED-EPG,common,SHARED-BD,MSI-PHYS-DOM,common,MSI-CRITICAL-NS-CT,,EPG using shared BD and contract from common
+```
+
+---
+
+## Monitoring & Health Checks
+
+Beyond provisioning, the app polls each registered APIC and stores the results in SQLite so the dashboard and per-feature pages can render history and trends without hitting the controller on every page load.
+
+### How a sync works
+
+Every monitoring page has a **Resync** action that calls its own route handler (`POST /api/<feature>/resync`). The handler logs into APIC (`aaaLogin`), queries one or more managed-object **classes** over the REST API, and writes the parsed rows into the database. Two shapes of data are persisted per feature:
+
+- **Snapshot tables** — the current state of each object, upserted on `(apicHostId, dn)`. A row's `firstSeenAt` / `lastSeenAt` (and `present` / `lifecycle` / `isActive`) track appearance and disappearance across syncs rather than being deleted.
+- **Sample tables** — a timestamped aggregate row appended on every sync, used to draw trend charts (e.g. `HealthScoreSample`, `FaultCountSample`, `NodeStatusSample`, `InterfaceSample`).
+
+An external scheduler can drive all features for one or more hosts at once via `POST /api/cron/resync` (authorized with the `SCHEDULER_TOKEN` bearer header). Every sync is written to the `AuditLog` table and surfaced on the **History** page.
+
+> **Credentials are never stored.** The APIC username/password are supplied with each resync request (from the UI or the scheduler payload) and used only for that pull.
+
+### Page → APIC endpoint → storage
+
+| Page | APIC class endpoint(s) queried | Resync route | Stored in |
+|---|---|---|---|
+| **Dashboard** | _none directly_ — aggregates the snapshot/sample tables below | _(reads only)_ | reads `FaultCountSample`, `HealthScoreSample`, `NodeStatusSample`, `Endpoint`, `InterfaceSnapshot` |
+| **Endpoints** | `GET /api/node/class/fvCEp.json?rsp-subtree=children&rsp-subtree-class=fvIp` (endpoints + IPs), `GET /api/node/class/fvAEPg.json` (EPG descriptions) | `POST /api/endpoints/resync` | `Endpoint` (`mac`, `ip`, `vlan`, `dn`, `node`, `interface`, `epgDescr`, `isActive`) |
+| **Interface Health** | `GET /api/node/class/l1PhysIf.json?rsp-subtree=full&rsp-subtree-class=ethpmPhysIf,rmonIfIn,rmonIfOut,rmonDot3Stats,rmonEtherStats` | `POST /api/interfaces/resync` | `InterfaceSnapshot` (admin/oper state, speed, usage) + `InterfaceSample` (rx/tx bytes, pkts, errors, discards, CRC/align errors, plus per-sync deltas) |
+| **Faults** | `GET /api/node/class/faultInst.json` | `POST /api/faults/resync` | `FaultSnapshot` (code, severity, domain, cause, affected DN, ack, lifecycle: active/cleared) + `FaultCountSample` (counts by severity) |
+| **Health Scores** | `GET /api/node/class/fabricHealthTotal.json` (overall fabric), `GET /api/node/class/topSystem.json?rsp-subtree-include=health` (per-node), `GET /api/node/class/fvTenant.json?rsp-subtree-include=health` (per-tenant) | `POST /api/health-scores/resync` | `HealthScoreSnapshot` (score, time-window score, previous score, scope, max severity) + `HealthScoreSample` (overall, worst, degraded count) |
+| **Nodes** | `GET /api/node/class/fabricNode.json` (inventory), `GET /api/node/class/topSystem.json` (state/uptime/mgmt addr), `GET /api/node/class/eqptPsu.json` (PSUs), `GET /api/node/class/eqptFan.json` (fans) | `POST /api/nodes/resync` | `NodeSnapshot` (role, model, serial, version, fabric state, uptime) + `HardwareComponent` (PSU/fan oper state + health) + `NodeStatusSample` (nodes total/online, components total/failed) |
+| **History** | _none_ — read-only view of sync and admin activity | _(reads only)_ | `AuditLog` |
+| **APIC Hosts** | _none_ — `aaaLogin` test on save | _(CRUD)_ | `ApicHost` (name, host, last-sync timestamps per feature) |
+
+All monitoring queries use the read-only `GET /api/node/class/<class>.json` form of the APIC REST API; the provisioning routes below use `GET`/`POST`/`DELETE` against `/api/node/mo/<dn>.json`.
+
+---
+
 ## Architecture
 
 ```
@@ -115,6 +346,32 @@ All APIC traffic is proxied through Next.js route handlers to avoid CORS. The AP
 | `POST /api/apic/interface-selectors/deploy` | Deploy interface selectors |
 | `POST /api/apic/interface-selectors/validate-rollback` | Check which selectors exist |
 | `POST /api/apic/interface-selectors/rollback` | Remove interface selectors |
+| `POST /api/apic/bridge-domains/l2/validate` | Validate L2-only Bridge Domain rows |
+| `POST /api/apic/bridge-domains/l2/deploy` | Deploy L2-only Bridge Domains |
+| `POST /api/apic/bridge-domains/l2/validate-rollback` | Check which L2-only Bridge Domains exist and match rollback intent |
+| `POST /api/apic/bridge-domains/l2/rollback` | Remove L2-only Bridge Domains |
+| `POST /api/apic/bridge-domains/l3/validate` | Validate L3 Bridge Domain rows |
+| `POST /api/apic/bridge-domains/l3/deploy` | Deploy L3 Bridge Domains, subnets, and L3Out attachment |
+| `POST /api/apic/bridge-domains/l3/validate-rollback` | Check which L3 Bridge Domains exist and match rollback intent |
+| `POST /api/apic/bridge-domains/l3/rollback` | Remove L3 Bridge Domains |
+| `POST /api/apic/bridge-domains/epgs/validate` | Validate EPG rows, Bridge Domain binding, and optional contracts |
+| `POST /api/apic/bridge-domains/epgs/deploy` | Deploy EPGs and attach consumed/provided contracts |
+| `POST /api/apic/bridge-domains/epgs/rollback/validate` | Check which EPGs or contract relations can be removed |
+| `POST /api/apic/bridge-domains/epgs/rollback` | Delete EPGs or remove selected consumed/provided contract relations |
+
+### Monitoring / sync routes
+
+These handlers query read-only APIC classes and persist the results (see [Monitoring & Health Checks](#monitoring--health-checks)).
+
+| Route | Purpose |
+|---|---|
+| `POST /api/endpoints/resync` | Pull endpoints (`fvCEp`/`fvAEPg`) and upsert the `Endpoint` table |
+| `POST /api/interfaces/resync` | Pull `l1PhysIf` + rmon counters into `InterfaceSnapshot` / `InterfaceSample` |
+| `POST /api/faults/resync` | Pull `faultInst` into `FaultSnapshot` / `FaultCountSample` |
+| `POST /api/health-scores/resync` | Pull fabric/node/tenant health into `HealthScoreSnapshot` / `HealthScoreSample` |
+| `POST /api/nodes/resync` | Pull `fabricNode`/`topSystem`/`eqptPsu`/`eqptFan` into `NodeSnapshot` / `HardwareComponent` / `NodeStatusSample` |
+| `POST /api/cron/resync` | Scheduler entry point — runs all syncs for the supplied hosts (Bearer `SCHEDULER_TOKEN`) |
+| `GET /api/endpoints/export`, `GET /api/interfaces/export` | CSV export of the stored snapshots |
 
 ## Running Tests
 
@@ -126,6 +383,7 @@ Tests cover path construction, CSV validation, and the parallel runner.
 
 ## Notes
 
-- The app **does not create tenants, APs, EPGs, or interface profiles** — these must already exist in APIC
+- The app **does not create tenants, APs/ANPs, VRFs, contracts, L3Outs, or interface profiles** — these must already exist in APIC
+- The EPG workflow creates EPGs and binds them to existing Bridge Domains; static port binding still expects the target EPG to exist first
 - For static ports, the EPG must have a **physical domain attached** with the target VLANs in its VLAN pool
 - APIC session tokens expire after **600 seconds** (10 minutes) by default — reconnect if validation or deploy starts returning 401 errors

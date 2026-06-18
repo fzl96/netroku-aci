@@ -1,11 +1,23 @@
 // src/components/PreviewSection.tsx
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ParsedRow, ValidationResult, RowStatus } from '@/lib/apic/types'
+import { MUTED_TABLE_HEAD_CLS } from '@/lib/ui-classes'
+import { cn } from '@/lib/utils'
 
 type Mode = 'deploy' | 'rollback'
-type Feature = 'static-ports' | 'interface-selectors'
+type Feature =
+  | 'static-ports'
+  | 'interface-selectors'
+  | 'bridge-domains-l2'
+  | 'bridge-domains-l3'
+  | 'epg'
+  | 'epg-consumer'
+  | 'epg-provider'
+  | 'epg-contract'
+  | 'epg-consumer-contract'
+  | 'epg-provider-contract'
 
 export interface PreviewColumn<TRow> {
   header: string
@@ -26,7 +38,7 @@ interface PreviewSectionProps<TRow extends { rowIndex: number }> {
   onReconnect: () => void
 }
 
-const ENDPOINTS: Record<Feature, Record<Mode, string>> = {
+const ENDPOINTS: Record<Feature, Partial<Record<Mode, string>>> = {
   'static-ports': {
     deploy: '/api/apic/validate',
     rollback: '/api/apic/validate-rollback',
@@ -34,6 +46,33 @@ const ENDPOINTS: Record<Feature, Record<Mode, string>> = {
   'interface-selectors': {
     deploy: '/api/apic/interface-selectors/validate',
     rollback: '/api/apic/interface-selectors/validate-rollback',
+  },
+  'bridge-domains-l2': {
+    deploy: '/api/apic/bridge-domains/l2/validate',
+    rollback: '/api/apic/bridge-domains/l2/validate-rollback',
+  },
+  'bridge-domains-l3': {
+    deploy: '/api/apic/bridge-domains/l3/validate',
+    rollback: '/api/apic/bridge-domains/l3/validate-rollback',
+  },
+  'epg': {
+    deploy: '/api/apic/bridge-domains/epgs/validate',
+    rollback: '/api/apic/bridge-domains/epgs/rollback/validate',
+  },
+  'epg-consumer': {
+    deploy: '/api/apic/bridge-domains/epgs/consumer/validate',
+  },
+  'epg-provider': {
+    deploy: '/api/apic/bridge-domains/epgs/provider/validate',
+  },
+  'epg-contract': {
+    rollback: '/api/apic/bridge-domains/epgs/rollback/validate',
+  },
+  'epg-consumer-contract': {
+    rollback: '/api/apic/bridge-domains/epgs/consumer/validate-rollback',
+  },
+  'epg-provider-contract': {
+    rollback: '/api/apic/bridge-domains/epgs/provider/validate-rollback',
   },
 }
 
@@ -61,15 +100,15 @@ const MODE_CONFIG: Record<Mode, {
 }
 
 const STATIC_PORT_COLUMNS: PreviewColumn<ParsedRow>[] = [
-  { header: '#', cell: (_r, i) => i + 1, className: 'font-mono text-[var(--text-faint)] tabular-nums select-none' },
-  { header: 'Tenant', cell: r => r.tenant, className: 'text-[var(--text)]' },
-  { header: 'AP', cell: r => r.ap, className: 'text-[var(--text)]' },
-  { header: 'EPG', cell: r => r.epg, className: 'text-[var(--text)]' },
-  { header: 'VLAN', cell: r => r.vlan, className: 'font-mono text-[var(--text)]' },
-  { header: 'Nodes', cell: r => r.node2 ? `${r.node1} / ${r.node2}` : r.node1, className: 'font-mono text-[var(--text)]' },
-  { header: 'Type', cell: r => r.port_type, className: 'text-[var(--text)]' },
-  { header: 'Interface / IPG', cell: r => r.interface_or_ipg, className: 'font-mono text-[var(--text)]' },
-  { header: 'Mode', cell: r => r.mode, className: 'text-[var(--text)]' },
+  { header: '#', cell: (_r, i) => i + 1, className: 'font-mono text-faint tabular-nums select-none' },
+  { header: 'Tenant', cell: r => r.tenant, className: 'text-foreground' },
+  { header: 'AP', cell: r => r.ap, className: 'text-foreground' },
+  { header: 'EPG', cell: r => r.epg, className: 'text-foreground' },
+  { header: 'VLAN', cell: r => r.vlan, className: 'font-mono text-foreground' },
+  { header: 'Nodes', cell: r => r.node2 ? `${r.node1} / ${r.node2}` : r.node1, className: 'font-mono text-foreground' },
+  { header: 'Type', cell: r => r.port_type, className: 'text-foreground' },
+  { header: 'Interface / IPG', cell: r => r.interface_or_ipg, className: 'font-mono text-foreground' },
+  { header: 'Mode', cell: r => r.mode, className: 'text-foreground' },
 ]
 
 function staticPortLabel(r: ParsedRow): string {
@@ -79,11 +118,20 @@ function staticPortLabel(r: ParsedRow): string {
 function ChevronIcon({ open }: { open: boolean }) {
   return (
     <svg
-      width="12" height="12" viewBox="0 0 12 12" fill="none"
-      className="transition-transform duration-200"
-      style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      aria-hidden
+      className={cn('transition-transform duration-200', open && 'rotate-180')}
     >
-      <path d="M2 4.5L6 8l4-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M2 4.5L6 8l4-3.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }
@@ -97,23 +145,18 @@ interface IssueRowProps {
 function IssueRow({ label, result, skippedLabel }: IssueRowProps) {
   const isError = result.status === 'error'
   return (
-    <div className="flex items-start gap-3 py-2 border-b border-[var(--border-lighter)] last:border-0">
+    <div className="flex items-start gap-3 border-b border-border-faint py-2 last:border-0">
       <span
-        style={isError
-          ? { background: 'var(--error-bg)', color: 'var(--error-text)' }
-          : { background: 'var(--warning-bg)', color: 'var(--warning-text)' }
-        }
-        className="mt-0.5 shrink-0 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-sm"
+        className={cn(
+          'mt-0.5 shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-semibold tracking-wider uppercase',
+          isError ? 'bg-error-bg text-error' : 'bg-warning-bg text-warning',
+        )}
       >
         {isError ? 'Error' : skippedLabel}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-xs text-[var(--text)] font-medium truncate font-mono">
-          {label}
-        </p>
-        {result.message && (
-          <p className="text-xs text-[var(--text-subtle)] mt-0.5">{result.message}</p>
-        )}
+        <p className="truncate font-mono text-xs font-medium text-foreground">{label}</p>
+        {result.message && <p className="mt-0.5 text-xs text-subtle">{result.message}</p>}
       </div>
     </div>
   )
@@ -140,27 +183,41 @@ export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
   const [loading, setLoading]     = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [issuesOpen, setIssuesOpen] = useState(false)
-  const contentRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (rows.length === 0) return
-    setLoading(true)
-    setFetchError(null)
-    setIssuesOpen(false)
+    if (!endpoint) return
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => {
+      setLoading(true)
+      setFetchError(null)
+      setIssuesOpen(false)
 
-    fetch(endpoint, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ rows, apicHost, apicToken }),
-    })
-      .then(r => r.json() as Promise<{ results?: ValidationResult[]; error?: string }>)
-      .then(data => {
-        if (data.error) { setFetchError(data.error); return }
-        setResults(data.results ?? [])
+      fetch(endpoint, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ rows, apicHost, apicToken }),
+        signal:  controller.signal,
       })
-      .catch(() => setFetchError('Validation request failed'))
-      .finally(() => setLoading(false))
-  }, [rows, apicHost, apicToken, endpoint])
+        .then(r => r.json() as Promise<{ results?: ValidationResult[]; error?: string }>)
+        .then(data => {
+          if (controller.signal.aborted) return
+          if (data.error) { setFetchError(data.error); return }
+          setResults(data.results ?? [])
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setFetchError('Validation request failed')
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setLoading(false)
+        })
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+      controller.abort()
+    }
+  }, [rows, apicHost, apicToken, endpoint, feature, mode])
 
   const statusMap  = new Map(results?.map(r => [r.rowIndex, r]) ?? [])
   const actionableRows = rows.filter(r => statusMap.get(r.rowIndex)?.status === cfg.actionableStatus)
@@ -177,17 +234,17 @@ export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
   if (loading) {
     return (
       <div>
-        <div className="px-6 pt-6 pb-5 border-b border-[var(--border-light)]">
-          <h2 className="font-serif text-base font-semibold text-[var(--text)]">Preview & Validate</h2>
-          <p className="text-xs text-[var(--text-subtle)] mt-0.5">Checking {rows.length} rows against APIC…</p>
+        <div className="px-6 pt-6 pb-5 border-b border-subtle">
+          <h2 className="font-serif text-base font-semibold text-foreground">Preview & Validate</h2>
+          <p className="text-xs text-subtle mt-0.5">Checking {rows.length} rows against APIC…</p>
         </div>
         <div className="px-6 py-4 space-y-2.5">
           {Array.from({ length: Math.min(rows.length, 5) }).map((_, i) => (
             <div key={i} className="flex gap-4 animate-pulse">
-              <div className="h-3 bg-[var(--border)] rounded w-20" />
-              <div className="h-3 bg-[var(--border)] rounded w-24" />
-              <div className="h-3 bg-[var(--border)] rounded w-16" />
-              <div className="h-3 bg-[var(--border)] rounded w-10" />
+              <div className="h-3 bg-border rounded w-20" />
+              <div className="h-3 bg-border rounded w-24" />
+              <div className="h-3 bg-border rounded w-16" />
+              <div className="h-3 bg-border rounded w-10" />
             </div>
           ))}
         </div>
@@ -199,25 +256,25 @@ export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
     const isExpired = fetchError.includes('401')
     return (
       <div>
-        <div className="px-6 pt-6 pb-5 border-b border-[var(--border-light)]">
-          <h2 className="font-serif text-base font-semibold text-[var(--text)]">Preview & Validate</h2>
+        <div className="px-6 pt-6 pb-5 border-b border-subtle">
+          <h2 className="font-serif text-base font-semibold text-foreground">Preview & Validate</h2>
         </div>
         <div className="px-6 py-5">
           {isExpired ? (
-            <div
-              style={{ background: 'var(--error-bg)', borderColor: 'var(--error-border)' }}
-              className="flex items-start gap-3 p-3.5 border rounded-lg"
-            >
-              <p style={{ color: 'var(--error-text)' }} className="text-xs flex-1">
+            <div className="flex items-start gap-3 rounded-lg border border-error-border bg-error-bg p-3.5">
+              <p className="flex-1 text-xs text-error">
                 Your APIC session has expired. Please reconnect to continue.
               </p>
-              <button onClick={onReconnect}
-                className="text-xs font-semibold text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors shrink-0">
+              <button
+                type="button"
+                onClick={onReconnect}
+                className="shrink-0 text-xs font-semibold text-primary transition-colors hover:text-primary/90"
+              >
                 Reconnect →
               </button>
             </div>
           ) : (
-            <p style={{ color: 'var(--error-text)' }} className="text-sm">{fetchError}</p>
+            <p className="text-sm text-error">{fetchError}</p>
           )}
         </div>
       </div>
@@ -231,10 +288,10 @@ export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
   return (
     <div>
       {/* Card header */}
-      <div className="px-6 pt-6 pb-5 border-b border-[var(--border-light)]">
-        <h2 className="font-serif text-base font-semibold text-[var(--text)]">Preview & Validate</h2>
+      <div className="px-6 pt-6 pb-5 border-b border-subtle">
+        <h2 className="font-serif text-base font-semibold text-foreground">Preview & Validate</h2>
         {results && (
-          <p className="text-xs text-[var(--text-subtle)] mt-0.5">
+          <p className="text-xs text-subtle mt-0.5">
             {rows.length} row{rows.length !== 1 ? 's' : ''} loaded
           </p>
         )}
@@ -244,9 +301,9 @@ export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
       <div className="overflow-auto max-h-[calc(100svh-360px)] min-h-[200px]">
         <table className="w-full text-xs">
           <thead className="sticky top-0 z-10">
-            <tr className="border-b border-[var(--border-light)] bg-[var(--surface-alt)]">
+            <tr className="border-b border-subtle bg-muted">
               {cols.map(c => (
-                <th key={c.header} className="text-left px-3 py-2.5 text-[10px] uppercase tracking-wide font-semibold text-[var(--text-subtle)] whitespace-nowrap bg-[var(--surface-alt)]">
+                <th key={c.header} className={cn(MUTED_TABLE_HEAD_CLS, 'px-3 bg-muted')}>
                   {c.header}
                 </th>
               ))}
@@ -254,9 +311,9 @@ export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
           </thead>
           <tbody>
             {rows.map((row, i) => (
-              <tr key={row.rowIndex} className="border-b border-[var(--border-lighter)] even:bg-[var(--surface-alt)]">
+              <tr key={row.rowIndex} className="border-b border-border-faint even:bg-muted">
                 {cols.map(c => (
-                  <td key={c.header} className={`px-3 py-2 ${c.className ?? 'text-[var(--text)]'}`}>
+                  <td key={c.header} className={`px-3 py-2 ${c.className ?? 'text-foreground'}`}>
                     {c.cell(row, i)}
                   </td>
                 ))}
@@ -268,17 +325,17 @@ export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
 
       {/* Results area */}
       {results && (
-        <div className="px-6 py-4 space-y-3">
+        <div className="space-y-3 px-6 py-4">
           {sessionExpired ? (
-            <div
-              style={{ background: 'var(--error-bg)', borderColor: 'var(--error-border)' }}
-              className="flex items-start gap-3 p-3.5 border rounded-lg"
-            >
-              <p style={{ color: 'var(--error-text)' }} className="text-xs flex-1">
+            <div className="flex items-start gap-3 rounded-lg border border-error-border bg-error-bg p-3.5">
+              <p className="flex-1 text-xs text-error">
                 Your APIC session has expired. Please reconnect to continue.
               </p>
-              <button onClick={onReconnect}
-                className="text-xs font-semibold text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors shrink-0">
+              <button
+                type="button"
+                onClick={onReconnect}
+                className="shrink-0 text-xs font-semibold text-primary transition-colors hover:text-primary/90"
+              >
                 Reconnect →
               </button>
             </div>
@@ -286,23 +343,25 @@ export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
             <>
               {/* Summary + action button */}
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <p className="text-xs text-[var(--text-subtle)]">
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="text-xs text-subtle">
                     {actionableCount} {cfg.countLabel}
                     {skippedCount > 0 && ` · ${skippedCount} ${cfg.skippedLabel.toLowerCase()}`}
                     {errorCount > 0 && ` · ${errorCount} error${errorCount > 1 ? 's' : ''}`}
                   </p>
                   <button
+                    type="button"
                     onClick={onChangeCSV}
-                    className="text-xs text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors"
+                    className="text-xs text-primary transition-colors hover:text-primary/90"
                   >
                     Change CSV
                   </button>
                 </div>
                 <button
+                  type="button"
                   onClick={() => onDeploy(actionableRows)}
                   disabled={actionableCount === 0}
-                  className="bg-[var(--accent)] text-white text-xs font-semibold px-4 py-2 rounded-lg disabled:opacity-40 hover:bg-[var(--accent-hover)] transition-colors whitespace-nowrap"
+                  className="whitespace-nowrap rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
                 >
                   {cfg.buttonVerb} {actionableCount} row{actionableCount !== 1 ? 's' : ''} →
                 </button>
@@ -310,40 +369,55 @@ export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
 
               {/* Collapsible issues panel */}
               {hasIssues && (
-                <div className="border border-[var(--border-light)] rounded-lg overflow-hidden">
+                <div className="overflow-hidden rounded-lg border border-subtle">
                   <button
-                    onClick={() => setIssuesOpen(o => !o)}
-                    className="w-full flex items-center justify-between px-3.5 py-2.5 text-xs text-[var(--text-muted)] hover:bg-[var(--surface-alt)] transition-colors"
+                    type="button"
+                    onClick={() => setIssuesOpen((o) => !o)}
+                    className="flex w-full items-center justify-between px-3.5 py-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted"
                   >
                     <span className="font-medium">
                       {issueRows.length} issue{issueRows.length !== 1 ? 's' : ''}
-                      <span className="font-normal text-[var(--text-subtle)] ml-1.5">
+                      <span className="ml-1.5 font-normal text-subtle">
                         {[
-                          errorCount   > 0 && `${errorCount} error${errorCount > 1 ? 's' : ''}`,
+                          errorCount > 0 && `${errorCount} error${errorCount > 1 ? 's' : ''}`,
                           skippedCount > 0 && `${skippedCount} ${cfg.skippedLabel.toLowerCase()}`,
-                        ].filter(Boolean).join(' · ')}
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
                       </span>
                     </span>
-                    <span className="text-[var(--text-subtle)]">
+                    <span className="text-subtle">
                       <ChevronIcon open={issuesOpen} />
                     </span>
                   </button>
 
                   <div
-                    ref={contentRef}
-                    style={{
-                      maxHeight: issuesOpen ? (contentRef.current?.scrollHeight ?? 9999) : 0,
-                      overflow: 'hidden',
-                      transition: 'max-height 220ms ease',
-                    }}
+                    className={cn(
+                      'overflow-hidden transition-[max-height] duration-200 ease-in-out',
+                      issuesOpen ? 'max-h-[9999px]' : 'max-h-0',
+                    )}
                   >
-                    <div className="px-3.5 pb-1 pt-0.5">
-                      {issueRows.filter(x => x.result.status === 'error').map(({ row, result }) => (
-                        <IssueRow key={row.rowIndex} label={labelFn(row)} result={result} skippedLabel={cfg.skippedLabel} />
-                      ))}
-                      {issueRows.filter(x => x.result.status === cfg.skippedStatus).map(({ row, result }) => (
-                        <IssueRow key={row.rowIndex} label={labelFn(row)} result={result} skippedLabel={cfg.skippedLabel} />
-                      ))}
+                    <div className="px-3.5 pt-0.5 pb-1">
+                      {issueRows
+                        .filter((x) => x.result.status === 'error')
+                        .map(({ row, result }) => (
+                          <IssueRow
+                            key={row.rowIndex}
+                            label={labelFn(row)}
+                            result={result}
+                            skippedLabel={cfg.skippedLabel}
+                          />
+                        ))}
+                      {issueRows
+                        .filter((x) => x.result.status === cfg.skippedStatus)
+                        .map(({ row, result }) => (
+                          <IssueRow
+                            key={row.rowIndex}
+                            label={labelFn(row)}
+                            result={result}
+                            skippedLabel={cfg.skippedLabel}
+                          />
+                        ))}
                     </div>
                   </div>
                 </div>

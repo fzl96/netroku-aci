@@ -1,13 +1,17 @@
+import { getSession } from '@/lib/auth'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppSidebar } from '@/components/AppSidebar'
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const session = await getSession()
+  const role = session?.user.role === 'admin' ? 'admin' : 'member'
+
   return (
     <TooltipProvider>
       <SidebarProvider>
-        <AppSidebar />
-        <main className="flex-1 overflow-y-auto bg-[var(--bg)]">
+        <AppSidebar role={role} />
+        <main className="flex-1 overflow-y-auto bg-background">
           {children}
         </main>
       </SidebarProvider>
