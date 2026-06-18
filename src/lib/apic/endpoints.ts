@@ -1,5 +1,6 @@
 import { apicFetch, apicLogin } from './client'
 import { prisma } from '@/lib/prisma'
+import { planEndpointResync, type ActiveEndpoint } from './endpoint-resync'
 
 export interface ApicEndpointRow {
   mac: string
@@ -137,29 +138,55 @@ export async function resyncEndpoints(
 
   const now = new Date()
 
-  // Mark all current active endpoints as inactive
-  await prisma.endpoint.updateMany({
+  // Load the current active set (at most one row per mac|ip).
+  const activeRows = (await prisma.endpoint.findMany({
     where: { apicHostId, isActive: true },
-    data: { isActive: false },
-  })
+    select: {
+      id: true, mac: true, ip: true, vlan: true,
+      dn: true, node: true, interface: true, epgDescr: true,
+    },
+  })) satisfies ActiveEndpoint[]
 
-  // Chunked transactional upsert
-  for (let i = 0; i < uniqueRows.length; i += ENDPOINTS_CHUNK_SIZE) {
-    const chunk = uniqueRows.slice(i, i + ENDPOINTS_CHUNK_SIZE)
+  const plan = planEndpointResync(activeRows, uniqueRows)
+
+  // Bump unchanged rows.
+  for (let i = 0; i < plan.bumps.length; i += ENDPOINTS_CHUNK_SIZE) {
+    const ids = plan.bumps.slice(i, i + ENDPOINTS_CHUNK_SIZE)
+    await prisma.endpoint.updateMany({
+      where: { id: { in: ids } },
+      data: { lastSeenAt: now },
+    })
+  }
+
+  // Mark moved-away and departed rows inactive.
+  for (let i = 0; i < plan.clears.length; i += ENDPOINTS_CHUNK_SIZE) {
+    const ids = plan.clears.slice(i, i + ENDPOINTS_CHUNK_SIZE)
+    await prisma.endpoint.updateMany({
+      where: { id: { in: ids } },
+      data: { isActive: false, clearedAt: now },
+    })
+  }
+
+  // Relabel rows whose only change is the EPG description.
+  for (let i = 0; i < plan.relabels.length; i += ENDPOINTS_CHUNK_SIZE) {
+    const chunk = plan.relabels.slice(i, i + ENDPOINTS_CHUNK_SIZE)
+    await prisma.$transaction(
+      chunk.map(r =>
+        prisma.endpoint.update({
+          where: { id: r.id },
+          data: { epgDescr: r.epgDescr, lastSeenAt: now },
+        }),
+      ),
+    )
+  }
+
+  // Insert new active placements (brand-new endpoints + new location of moved ones).
+  for (let i = 0; i < plan.inserts.length; i += ENDPOINTS_CHUNK_SIZE) {
+    const chunk = plan.inserts.slice(i, i + ENDPOINTS_CHUNK_SIZE)
     await prisma.$transaction(
       chunk.map(row =>
-        prisma.endpoint.upsert({
-          where: { apicHostId_mac_ip: { apicHostId, mac: row.mac, ip: row.ip } },
-          update: {
-            vlan: row.vlan,
-            dn: row.dn,
-            node: row.node,
-            interface: row.interface,
-            epgDescr: row.epgDescr,
-            isActive: true,
-            lastSeenAt: now,
-          },
-          create: {
+        prisma.endpoint.create({
+          data: {
             apicHostId,
             mac: row.mac,
             ip: row.ip,
