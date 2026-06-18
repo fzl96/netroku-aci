@@ -110,6 +110,17 @@ export async function fetchEndpointsFromApic(
 
 const ENDPOINTS_CHUNK_SIZE = 100
 
+/** Thrown when a resync is requested for a host that already has one running. */
+export class EndpointResyncInProgressError extends Error {
+  constructor(apicHostId: string) {
+    super(`A resync is already in progress for host ${apicHostId}`)
+    this.name = 'EndpointResyncInProgressError'
+  }
+}
+
+/** A held lock older than this is treated as stale and may be reclaimed (e.g. after a crash). */
+const STALE_RESYNC_MS = 10 * 60 * 1000
+
 export interface ResyncEndpointsArgs {
   apicHostId: string
   host: string
@@ -118,93 +129,124 @@ export interface ResyncEndpointsArgs {
 }
 
 /**
- * Fetch endpoints from APIC and persist them for one host.
- * Marks existing rows inactive, then upserts the freshly fetched set as active.
- * Returns the number of unique rows synced and the host's total row count.
+ * Fetch endpoints from APIC and reconcile them into the placement-history table
+ * for one host. Unchanged endpoints have lastSeenAt bumped; moved endpoints
+ * (node/interface/vlan/EPG change) get their old row marked inactive (clearedAt
+ * stamped) and a new active row inserted; an epgDescr-only change is updated in
+ * place; endpoints absent from the fetch are marked inactive. Serialized per host
+ * via a resync lock — throws EndpointResyncInProgressError if one is already running.
+ * Executes in chunked phases (not a single transaction); a mid-run failure self-heals
+ * on the next successful resync. Returns unique rows synced and the host's total count.
  */
 export async function resyncEndpoints(
   args: ResyncEndpointsArgs,
 ): Promise<{ synced: number; total: number }> {
   const { apicHostId, host, username, password } = args
 
-  const fetched = await fetchEndpointsFromApic(host, username, password)
-
-  // Deduplicate by (mac, ip) — last occurrence wins for multi-path endpoints
-  const deduped = new Map<string, (typeof fetched)[number]>()
-  for (const row of fetched) {
-    deduped.set(`${row.mac}|${row.ip}`, row)
-  }
-  const uniqueRows = Array.from(deduped.values())
-
-  const now = new Date()
-
-  // Load the current active set (at most one row per mac|ip).
-  const activeRows = (await prisma.endpoint.findMany({
-    where: { apicHostId, isActive: true },
-    select: {
-      id: true, mac: true, ip: true, vlan: true,
-      dn: true, node: true, interface: true, epgDescr: true,
+  // Acquire a per-host lock so concurrent resyncs (manual + cron) cannot both
+  // mutate the same host's placement rows and break the one-active-per-(mac,ip)
+  // invariant. The timestamp doubles as an ownership token for release.
+  const lockStamp = new Date()
+  const staleBefore = new Date(lockStamp.getTime() - STALE_RESYNC_MS)
+  const acquired = await prisma.apicHost.updateMany({
+    where: {
+      id: apicHostId,
+      OR: [{ resyncStartedAt: null }, { resyncStartedAt: { lt: staleBefore } }],
     },
-  })) satisfies ActiveEndpoint[]
-
-  const plan = planEndpointResync(activeRows, uniqueRows)
-
-  // Bump unchanged rows.
-  for (let i = 0; i < plan.bumps.length; i += ENDPOINTS_CHUNK_SIZE) {
-    const ids = plan.bumps.slice(i, i + ENDPOINTS_CHUNK_SIZE)
-    await prisma.endpoint.updateMany({
-      where: { id: { in: ids } },
-      data: { lastSeenAt: now },
-    })
+    data: { resyncStartedAt: lockStamp },
+  })
+  if (acquired.count === 0) {
+    throw new EndpointResyncInProgressError(apicHostId)
   }
 
-  // Mark moved-away and departed rows inactive.
-  for (let i = 0; i < plan.clears.length; i += ENDPOINTS_CHUNK_SIZE) {
-    const ids = plan.clears.slice(i, i + ENDPOINTS_CHUNK_SIZE)
-    await prisma.endpoint.updateMany({
-      where: { id: { in: ids } },
-      data: { isActive: false, clearedAt: now },
-    })
+  try {
+    const fetched = await fetchEndpointsFromApic(host, username, password)
+
+    // Deduplicate by (mac, ip) — last occurrence wins for multi-path endpoints
+    const deduped = new Map<string, (typeof fetched)[number]>()
+    for (const row of fetched) {
+      deduped.set(`${row.mac}|${row.ip}`, row)
+    }
+    const uniqueRows = Array.from(deduped.values())
+
+    const now = new Date()
+
+    // Load the current active set (at most one row per mac|ip).
+    const activeRows = (await prisma.endpoint.findMany({
+      where: { apicHostId, isActive: true },
+      select: {
+        id: true, mac: true, ip: true, vlan: true,
+        dn: true, node: true, interface: true, epgDescr: true,
+      },
+    })) satisfies ActiveEndpoint[]
+
+    const plan = planEndpointResync(activeRows, uniqueRows)
+
+    // Bump unchanged rows.
+    for (let i = 0; i < plan.bumps.length; i += ENDPOINTS_CHUNK_SIZE) {
+      const ids = plan.bumps.slice(i, i + ENDPOINTS_CHUNK_SIZE)
+      await prisma.endpoint.updateMany({
+        where: { id: { in: ids } },
+        data: { lastSeenAt: now },
+      })
+    }
+
+    // Mark moved-away and departed rows inactive.
+    for (let i = 0; i < plan.clears.length; i += ENDPOINTS_CHUNK_SIZE) {
+      const ids = plan.clears.slice(i, i + ENDPOINTS_CHUNK_SIZE)
+      await prisma.endpoint.updateMany({
+        where: { id: { in: ids } },
+        data: { isActive: false, clearedAt: now },
+      })
+    }
+
+    // Relabel rows whose only change is the EPG description.
+    for (let i = 0; i < plan.relabels.length; i += ENDPOINTS_CHUNK_SIZE) {
+      const chunk = plan.relabels.slice(i, i + ENDPOINTS_CHUNK_SIZE)
+      await prisma.$transaction(
+        chunk.map(r =>
+          prisma.endpoint.update({
+            where: { id: r.id },
+            data: { epgDescr: r.epgDescr, lastSeenAt: now },
+          }),
+        ),
+      )
+    }
+
+    // Insert new active placements (brand-new endpoints + new location of moved ones).
+    for (let i = 0; i < plan.inserts.length; i += ENDPOINTS_CHUNK_SIZE) {
+      const chunk = plan.inserts.slice(i, i + ENDPOINTS_CHUNK_SIZE)
+      await prisma.$transaction(
+        chunk.map(row =>
+          prisma.endpoint.create({
+            data: {
+              apicHostId,
+              mac: row.mac,
+              ip: row.ip,
+              vlan: row.vlan,
+              dn: row.dn,
+              node: row.node,
+              interface: row.interface,
+              epgDescr: row.epgDescr,
+              isActive: true,
+              firstSeenAt: now,
+              lastSeenAt: now,
+            },
+          }),
+        ),
+      )
+    }
+
+    const total = await prisma.endpoint.count({ where: { apicHostId } })
+
+    return { synced: uniqueRows.length, total }
+  } finally {
+    // Release only if we still hold the lock (guards against a stale-reclaim race).
+    await prisma.apicHost
+      .updateMany({
+        where: { id: apicHostId, resyncStartedAt: lockStamp },
+        data: { resyncStartedAt: null },
+      })
+      .catch(() => {})
   }
-
-  // Relabel rows whose only change is the EPG description.
-  for (let i = 0; i < plan.relabels.length; i += ENDPOINTS_CHUNK_SIZE) {
-    const chunk = plan.relabels.slice(i, i + ENDPOINTS_CHUNK_SIZE)
-    await prisma.$transaction(
-      chunk.map(r =>
-        prisma.endpoint.update({
-          where: { id: r.id },
-          data: { epgDescr: r.epgDescr, lastSeenAt: now },
-        }),
-      ),
-    )
-  }
-
-  // Insert new active placements (brand-new endpoints + new location of moved ones).
-  for (let i = 0; i < plan.inserts.length; i += ENDPOINTS_CHUNK_SIZE) {
-    const chunk = plan.inserts.slice(i, i + ENDPOINTS_CHUNK_SIZE)
-    await prisma.$transaction(
-      chunk.map(row =>
-        prisma.endpoint.create({
-          data: {
-            apicHostId,
-            mac: row.mac,
-            ip: row.ip,
-            vlan: row.vlan,
-            dn: row.dn,
-            node: row.node,
-            interface: row.interface,
-            epgDescr: row.epgDescr,
-            isActive: true,
-            firstSeenAt: now,
-            lastSeenAt: now,
-          },
-        }),
-      ),
-    )
-  }
-
-  const total = await prisma.endpoint.count({ where: { apicHostId } })
-
-  return { synced: uniqueRows.length, total }
 }

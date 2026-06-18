@@ -2,7 +2,7 @@ import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { recordAudit } from '@/lib/audit'
-import { resyncEndpoints } from '@/lib/apic/endpoints'
+import { resyncEndpoints, EndpointResyncInProgressError } from '@/lib/apic/endpoints'
 
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -33,6 +33,9 @@ export async function POST(request: Request) {
       password,
     })
   } catch (err) {
+    if (err instanceof EndpointResyncInProgressError) {
+      return Response.json({ error: err.message }, { status: 409 })
+    }
     return Response.json(
       { error: err instanceof Error ? err.message : 'Failed to fetch endpoints from APIC' },
       { status: 502 },

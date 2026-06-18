@@ -106,6 +106,7 @@ model ApicHost {
   lastFaultSyncAt     DateTime?
   lastHealthSyncAt    DateTime?
   lastNodeSyncAt      DateTime?
+  resyncStartedAt     DateTime?
   endpoints           Endpoint[]
   interfaces          InterfaceSnapshot[]
   faults              FaultSnapshot[]
