@@ -121,22 +121,23 @@ model ApicHost {
 }
 
 model Endpoint {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   apicHostId  String
-  apicHost    ApicHost @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  apicHost    ApicHost  @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
   mac         String
   ip          String
   vlan        String
   dn          String
   node        String
   interface   String
-  epgDescr    String   @default("")
-  isActive    Boolean  @default(true)
-  firstSeenAt DateTime @default(now())
-  lastSeenAt  DateTime @default(now())
+  epgDescr    String    @default("")
+  isActive    Boolean   @default(true)
+  firstSeenAt DateTime  @default(now())
+  lastSeenAt  DateTime  @default(now())
+  clearedAt   DateTime?
 
-  @@unique([apicHostId, mac, ip])
   @@index([apicHostId])
+  @@index([apicHostId, mac, ip])
   @@map("endpoint")
 }
 

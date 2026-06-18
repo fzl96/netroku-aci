@@ -21,6 +21,7 @@ function endpoint(overrides: Partial<Endpoint> = {}): Endpoint {
     isActive: true,
     firstSeenAt: new Date('2026-05-16T08:00:00.000Z'),
     lastSeenAt: new Date('2026-05-16T09:00:00.000Z'),
+    clearedAt: null,
     ...overrides,
   }
 }
