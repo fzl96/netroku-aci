@@ -118,6 +118,11 @@ function fmtCount(value: string | null): string {
   return value
 }
 
+function fmtDelta(value: string | null): string {
+  if (value === null) return 'Reset'
+  return value
+}
+
 function fmtBytes(value: string | null): string {
   if (value === null) return '—'
   try {
@@ -672,16 +677,16 @@ export function InterfaceHealthClient({
                             <td className="px-4 py-2.5"><OperStBadge st={r.operSt} /></td>
                             <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{r.operSpeed || '—'}</td>
                             <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.rxErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
-                              {fmtCount(visibleCounters.rxErrors)}
+                              {counterMode === 'delta' ? fmtDelta(visibleCounters.rxErrors) : fmtCount(visibleCounters.rxErrors)}
                             </td>
                             <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.txErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
-                              {fmtCount(visibleCounters.txErrors)}
+                              {counterMode === 'delta' ? fmtDelta(visibleCounters.txErrors) : fmtCount(visibleCounters.txErrors)}
                             </td>
                             <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.rxCrcErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
-                              {fmtCount(visibleCounters.rxCrcErrors)}
+                              {counterMode === 'delta' ? fmtDelta(visibleCounters.rxCrcErrors) : fmtCount(visibleCounters.rxCrcErrors)}
                             </td>
                             <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.rxAlignErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
-                              {fmtCount(visibleCounters.rxAlignErrors)}
+                              {counterMode === 'delta' ? fmtDelta(visibleCounters.rxAlignErrors) : fmtCount(visibleCounters.rxAlignErrors)}
                             </td>
                             <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{fmtBytes(visibleCounters.rxBytes)}</td>
                             <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{fmtBytes(visibleCounters.txBytes)}</td>
