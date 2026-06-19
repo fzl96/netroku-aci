@@ -78,10 +78,10 @@ export default async function InterfaceHealthPage({
       ...(query?.trim()
         ? {
             OR: [
-              { ifName: { contains: query.trim() } },
-              { node: { contains: query.trim() } },
-              { description: { contains: query.trim() } },
-              { dn: { contains: query.trim() } },
+              { ifName: { contains: query.trim(), mode: 'insensitive' as const } },
+              { node: { contains: query.trim(), mode: 'insensitive' as const } },
+              { description: { contains: query.trim(), mode: 'insensitive' as const } },
+              { dn: { contains: query.trim(), mode: 'insensitive' as const } },
             ],
           }
         : {}),

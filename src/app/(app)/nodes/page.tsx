@@ -89,9 +89,9 @@ export default async function NodesPage({
         ...(trimmedQuery
           ? {
               OR: [
-                { name: { contains: trimmedQuery } },
-                { nodeId: { contains: trimmedQuery } },
-                { dn: { contains: trimmedQuery } },
+                { name: { contains: trimmedQuery, mode: 'insensitive' as const } },
+                { nodeId: { contains: trimmedQuery, mode: 'insensitive' as const } },
+                { dn: { contains: trimmedQuery, mode: 'insensitive' as const } },
               ],
             }
           : {}),
@@ -120,8 +120,8 @@ export default async function NodesPage({
         ...(trimmedQuery
           ? {
               OR: [
-                { name: { contains: trimmedQuery } },
-                { nodeId: { contains: trimmedQuery } },
+                { name: { contains: trimmedQuery, mode: 'insensitive' as const } },
+                { nodeId: { contains: trimmedQuery, mode: 'insensitive' as const } },
               ],
             }
           : {}),

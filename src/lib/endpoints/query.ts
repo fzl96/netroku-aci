@@ -41,13 +41,13 @@ export function buildEndpointWhere(
     ...(query
       ? {
           OR: [
-            { mac: { contains: query } },
-            { ip: { contains: query } },
-            { vlan: { contains: query } },
-            { node: { contains: query } },
-            { interface: { contains: query } },
-            { epgDescr: { contains: query } },
-            { dn: { contains: query } },
+            { mac: { contains: query, mode: 'insensitive' } },
+            { ip: { contains: query, mode: 'insensitive' } },
+            { vlan: { contains: query, mode: 'insensitive' } },
+            { node: { contains: query, mode: 'insensitive' } },
+            { interface: { contains: query, mode: 'insensitive' } },
+            { epgDescr: { contains: query, mode: 'insensitive' } },
+            { dn: { contains: query, mode: 'insensitive' } },
           ],
         }
       : {}),

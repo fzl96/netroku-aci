@@ -66,9 +66,9 @@ export default async function HealthScoresPage({
       ...(query?.trim()
         ? {
             OR: [
-              { name: { contains: query.trim() } },
-              { node: { contains: query.trim() } },
-              { dn: { contains: query.trim() } },
+              { name: { contains: query.trim(), mode: 'insensitive' as const } },
+              { node: { contains: query.trim(), mode: 'insensitive' as const } },
+              { dn: { contains: query.trim(), mode: 'insensitive' as const } },
             ],
           }
         : {}),
