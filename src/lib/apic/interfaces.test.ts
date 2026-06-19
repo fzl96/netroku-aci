@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'bun:test'
-import { computeDelta, parseInterfaceRows } from './interfaces'
+import {
+  computeDelta,
+  executeInterfaceResyncWrites,
+  parseInterfaceRows,
+  type InterfaceWriteClient,
+  type ApicInterfaceRow,
+} from './interfaces'
 
 const b = (n: string | number): bigint => BigInt(n)
 
@@ -201,5 +207,98 @@ describe('parseInterfaceRows', () => {
   it('skips items without an l1PhysIf payload', () => {
     const rows = parseInterfaceRows([{} as Parameters<typeof parseInterfaceRows>[0][number]])
     expect(rows).toEqual([])
+  })
+})
+
+describe('executeInterfaceResyncWrites', () => {
+  it('runs snapshot upserts, previous-sample reads, sample inserts, host stamp, and total count in one transaction', async () => {
+    const calls: string[] = []
+    let inTransaction = false
+    const interfaceSnapshot = {
+      upsert: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('snapshot:upsert')
+        return { id: 'snapshot-1', dn: 'topology/pod-1/node-101/sys/phys-[eth1/1]' }
+      },
+      count: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('snapshot:count')
+        return 1
+      },
+    }
+    const interfaceSample = {
+      findMany: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('sample:findMany')
+        return []
+      },
+      create: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('sample:create')
+        return {}
+      },
+    }
+    const apicHost = {
+      update: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('host')
+        return {}
+      },
+    }
+    const db = {
+      $transaction: async <T>(fn: (tx: {
+        interfaceSnapshot: typeof interfaceSnapshot
+        interfaceSample: typeof interfaceSample
+        apicHost: typeof apicHost
+      }) => Promise<T>, options?: { timeout?: number }) => {
+        expect(options).toEqual({ timeout: 30000 })
+        calls.push('transaction:start')
+        inTransaction = true
+        const result = await fn({ interfaceSnapshot, interfaceSample, apicHost })
+        inTransaction = false
+        calls.push('transaction:end')
+        return result
+      },
+    }
+
+    const row: ApicInterfaceRow = {
+      dn: 'topology/pod-1/node-101/sys/phys-[eth1/1]',
+      node: '101',
+      ifName: 'eth1/1',
+      usage: '',
+      adminSt: 'up',
+      operSt: 'up',
+      operSpeed: '25G',
+      description: '',
+      lastLinkStChg: null,
+      rxBytes: b(1),
+      rxPkts: b(1),
+      rxErrors: b(0),
+      rxDiscards: b(0),
+      rxCrcErrors: b(0),
+      rxAlignErrors: b(0),
+      txBytes: b(1),
+      txPkts: b(1),
+      txErrors: b(0),
+      txDiscards: b(0),
+    }
+
+    const result = await executeInterfaceResyncWrites(
+      db as unknown as InterfaceWriteClient,
+      'host-1',
+      [row],
+      new Date('2026-06-19T00:00:00Z'),
+    )
+
+    expect(result.total).toBe(1)
+    expect(calls).toEqual([
+      'transaction:start',
+      'snapshot:upsert',
+      'sample:findMany',
+      'sample:create',
+      'host',
+      'snapshot:count',
+      'transaction:end',
+    ])
   })
 })

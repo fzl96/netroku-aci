@@ -220,6 +220,24 @@ export async function fetchInterfacesFromApic(
 }
 
 const INTERFACES_CHUNK_SIZE = 100
+const INTERFACES_TRANSACTION_TIMEOUT_MS = 30_000
+
+type InterfaceSnapshotDelegate = Pick<typeof prisma.interfaceSnapshot, 'upsert' | 'count'>
+type InterfaceSampleDelegate = Pick<typeof prisma.interfaceSample, 'findMany' | 'create'>
+type ApicHostDelegate = Pick<typeof prisma.apicHost, 'update'>
+
+interface InterfaceMutationClient {
+  interfaceSnapshot: InterfaceSnapshotDelegate
+  interfaceSample: InterfaceSampleDelegate
+  apicHost: ApicHostDelegate
+}
+
+export interface InterfaceWriteClient {
+  $transaction<T>(
+    fn: (tx: InterfaceMutationClient) => Promise<T>,
+    options?: { timeout?: number },
+  ): Promise<T>
+}
 
 export interface ResyncInterfacesArgs {
   apicHostId: string
@@ -248,130 +266,139 @@ export async function resyncInterfaces(
 
   const now = new Date()
 
-  // Phase 1: upsert all InterfaceSnapshot rows (chunked so a huge fabric doesn't trip SQLite)
-  const snapshotIds = new Map<string, string>() // dn -> snapshot.id
+  const { total } = await executeInterfaceResyncWrites(prisma, apicHostId, uniqueRows, now)
 
-  for (let i = 0; i < uniqueRows.length; i += INTERFACES_CHUNK_SIZE) {
-    const chunk = uniqueRows.slice(i, i + INTERFACES_CHUNK_SIZE)
-    const upserted = await prisma.$transaction(
-      chunk.map(row =>
-        prisma.interfaceSnapshot.upsert({
-          where: { apicHostId_dn: { apicHostId, dn: row.dn } },
-          update: {
-            node: row.node,
-            ifName: row.ifName,
-            usage: row.usage,
-            adminSt: row.adminSt,
-            operSt: row.operSt,
-            operSpeed: row.operSpeed,
-            description: row.description,
-            lastLinkStChg: row.lastLinkStChg,
-            lastSeenAt: now,
-          },
-          create: {
-            apicHostId,
-            dn: row.dn,
-            node: row.node,
-            ifName: row.ifName,
-            usage: row.usage,
-            adminSt: row.adminSt,
-            operSt: row.operSt,
-            operSpeed: row.operSpeed,
-            description: row.description,
-            lastLinkStChg: row.lastLinkStChg,
-            firstSeenAt: now,
-            lastSeenAt: now,
-          },
-          select: { id: true, dn: true },
-        }),
-      ),
-    )
-    for (const r of upserted) snapshotIds.set(r.dn, r.id)
-  }
+  return { synced: uniqueRows.length, total }
+}
 
-  // Phase 2: load the most recent sample for each interface in one go.
-  const ids = Array.from(snapshotIds.values())
-  const previousByInterface = new Map<string, {
-    rxBytes: bigint; rxErrors: bigint; rxDiscards: bigint
-    rxCrcErrors: bigint; rxAlignErrors: bigint
-    txBytes: bigint; txErrors: bigint; txDiscards: bigint
-  }>()
+export async function executeInterfaceResyncWrites(
+  db: InterfaceWriteClient,
+  apicHostId: string,
+  uniqueRows: ApicInterfaceRow[],
+  now: Date,
+): Promise<{ total: number }> {
+  return db.$transaction(async tx => {
+    const snapshotIds = new Map<string, string>()
 
-  if (ids.length > 0) {
-    for (let i = 0; i < ids.length; i += 500) {
-      const idChunk = ids.slice(i, i + 500)
-      const previous = await prisma.interfaceSample.findMany({
-        where: { interfaceId: { in: idChunk } },
-        orderBy: { sampledAt: 'desc' },
-        select: {
-          interfaceId: true,
-          rxBytes: true, rxErrors: true, rxDiscards: true,
-          rxCrcErrors: true, rxAlignErrors: true,
-          txBytes: true, txErrors: true, txDiscards: true,
-        },
-      })
-      for (const row of previous) {
-        if (previousByInterface.has(row.interfaceId)) continue
-        previousByInterface.set(row.interfaceId, {
-          rxBytes: row.rxBytes,
-          rxErrors: row.rxErrors,
-          rxDiscards: row.rxDiscards,
-          rxCrcErrors: row.rxCrcErrors,
-          rxAlignErrors: row.rxAlignErrors,
-          txBytes: row.txBytes,
-          txErrors: row.txErrors,
-          txDiscards: row.txDiscards,
-        })
-      }
+    for (let i = 0; i < uniqueRows.length; i += INTERFACES_CHUNK_SIZE) {
+      const chunk = uniqueRows.slice(i, i + INTERFACES_CHUNK_SIZE)
+      const upserted = await Promise.all(
+        chunk.map(row =>
+          tx.interfaceSnapshot.upsert({
+            where: { apicHostId_dn: { apicHostId, dn: row.dn } },
+            update: {
+              node: row.node,
+              ifName: row.ifName,
+              usage: row.usage,
+              adminSt: row.adminSt,
+              operSt: row.operSt,
+              operSpeed: row.operSpeed,
+              description: row.description,
+              lastLinkStChg: row.lastLinkStChg,
+              lastSeenAt: now,
+            },
+            create: {
+              apicHostId,
+              dn: row.dn,
+              node: row.node,
+              ifName: row.ifName,
+              usage: row.usage,
+              adminSt: row.adminSt,
+              operSt: row.operSt,
+              operSpeed: row.operSpeed,
+              description: row.description,
+              lastLinkStChg: row.lastLinkStChg,
+              firstSeenAt: now,
+              lastSeenAt: now,
+            },
+            select: { id: true, dn: true },
+          }),
+        ),
+      )
+      for (const r of upserted) snapshotIds.set(r.dn, r.id)
     }
-  }
 
-  // Phase 3: insert new samples (chunked).
-  for (let i = 0; i < uniqueRows.length; i += INTERFACES_CHUNK_SIZE) {
-    const chunk = uniqueRows.slice(i, i + INTERFACES_CHUNK_SIZE)
-    await prisma.$transaction(
-      chunk.map((row) => {
-        const interfaceId = snapshotIds.get(row.dn)!
-        const prev = previousByInterface.get(interfaceId) ?? null
+    const ids = Array.from(snapshotIds.values())
+    const previousByInterface = new Map<string, {
+      rxBytes: bigint; rxErrors: bigint; rxDiscards: bigint
+      rxCrcErrors: bigint; rxAlignErrors: bigint
+      txBytes: bigint; txErrors: bigint; txDiscards: bigint
+    }>()
 
-        return prisma.interfaceSample.create({
-          data: {
-            apicHostId,
-            interfaceId,
-            sampledAt: now,
-            adminSt: row.adminSt,
-            operSt: row.operSt,
-            operSpeed: row.operSpeed,
+    if (ids.length > 0) {
+      for (let i = 0; i < ids.length; i += 500) {
+        const idChunk = ids.slice(i, i + 500)
+        const previous = await tx.interfaceSample.findMany({
+          where: { interfaceId: { in: idChunk } },
+          orderBy: { sampledAt: 'desc' },
+          select: {
+            interfaceId: true,
+            rxBytes: true, rxErrors: true, rxDiscards: true,
+            rxCrcErrors: true, rxAlignErrors: true,
+            txBytes: true, txErrors: true, txDiscards: true,
+          },
+        })
+        for (const row of previous) {
+          if (previousByInterface.has(row.interfaceId)) continue
+          previousByInterface.set(row.interfaceId, {
             rxBytes: row.rxBytes,
-            rxPkts: row.rxPkts,
             rxErrors: row.rxErrors,
             rxDiscards: row.rxDiscards,
             rxCrcErrors: row.rxCrcErrors,
             rxAlignErrors: row.rxAlignErrors,
             txBytes: row.txBytes,
-            txPkts: row.txPkts,
             txErrors: row.txErrors,
             txDiscards: row.txDiscards,
-            dRxBytes: computeDelta(row.rxBytes, prev?.rxBytes ?? null),
-            dRxErrors: computeDelta(row.rxErrors, prev?.rxErrors ?? null),
-            dRxDiscards: computeDelta(row.rxDiscards, prev?.rxDiscards ?? null),
-            dRxCrcErrors: computeDelta(row.rxCrcErrors, prev?.rxCrcErrors ?? null),
-            dRxAlignErrors: computeDelta(row.rxAlignErrors, prev?.rxAlignErrors ?? null),
-            dTxBytes: computeDelta(row.txBytes, prev?.txBytes ?? null),
-            dTxErrors: computeDelta(row.txErrors, prev?.txErrors ?? null),
-            dTxDiscards: computeDelta(row.txDiscards, prev?.txDiscards ?? null),
-          },
-        })
-      }),
-    )
-  }
+          })
+        }
+      }
+    }
 
-  await prisma.apicHost.update({
-    where: { id: apicHostId },
-    data: { lastInterfaceSyncAt: now },
-  })
+    for (let i = 0; i < uniqueRows.length; i += INTERFACES_CHUNK_SIZE) {
+      const chunk = uniqueRows.slice(i, i + INTERFACES_CHUNK_SIZE)
+      await Promise.all(
+        chunk.map((row) => {
+          const interfaceId = snapshotIds.get(row.dn)!
+          const prev = previousByInterface.get(interfaceId) ?? null
 
-  const total = await prisma.interfaceSnapshot.count({ where: { apicHostId } })
+          return tx.interfaceSample.create({
+            data: {
+              apicHostId,
+              interfaceId,
+              sampledAt: now,
+              adminSt: row.adminSt,
+              operSt: row.operSt,
+              operSpeed: row.operSpeed,
+              rxBytes: row.rxBytes,
+              rxPkts: row.rxPkts,
+              rxErrors: row.rxErrors,
+              rxDiscards: row.rxDiscards,
+              rxCrcErrors: row.rxCrcErrors,
+              rxAlignErrors: row.rxAlignErrors,
+              txBytes: row.txBytes,
+              txPkts: row.txPkts,
+              txErrors: row.txErrors,
+              txDiscards: row.txDiscards,
+              dRxBytes: computeDelta(row.rxBytes, prev?.rxBytes ?? null),
+              dRxErrors: computeDelta(row.rxErrors, prev?.rxErrors ?? null),
+              dRxDiscards: computeDelta(row.rxDiscards, prev?.rxDiscards ?? null),
+              dRxCrcErrors: computeDelta(row.rxCrcErrors, prev?.rxCrcErrors ?? null),
+              dRxAlignErrors: computeDelta(row.rxAlignErrors, prev?.rxAlignErrors ?? null),
+              dTxBytes: computeDelta(row.txBytes, prev?.txBytes ?? null),
+              dTxErrors: computeDelta(row.txErrors, prev?.txErrors ?? null),
+              dTxDiscards: computeDelta(row.txDiscards, prev?.txDiscards ?? null),
+            },
+          })
+        }),
+      )
+    }
 
-  return { synced: uniqueRows.length, total }
+    await tx.apicHost.update({
+      where: { id: apicHostId },
+      data: { lastInterfaceSyncAt: now },
+    })
+
+    const total = await tx.interfaceSnapshot.count({ where: { apicHostId } })
+    return { total }
+  }, { timeout: INTERFACES_TRANSACTION_TIMEOUT_MS })
 }

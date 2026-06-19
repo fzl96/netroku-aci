@@ -2,9 +2,11 @@ import { describe, expect, it } from 'bun:test'
 import {
   parseFabricNodeRows,
   parseTopSystemRows,
+  executeNodeResyncWrites,
   mergeNodes,
   type FabricNodeMo,
   type TopSystemMo,
+  type NodeWriteClient,
 } from './nodes'
 import {
   parsePsuRows,
@@ -170,5 +172,107 @@ describe('summarizeNodes', () => {
     expect(summarizeNodes(nodes, components)).toEqual({
       nodesTotal: 3, nodesOnline: 2, componentsTotal: 3, componentsFailed: 1,
     })
+  })
+})
+
+describe('executeNodeResyncWrites', () => {
+  it('runs node/component upserts, present marking, status sample, and host stamp in one transaction', async () => {
+    const calls: string[] = []
+    let inTransaction = false
+    const nodeSnapshot = {
+      upsert: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('node:upsert')
+        return {}
+      },
+      updateMany: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('node:updateMany')
+        return { count: 0 }
+      },
+    }
+    const hardwareComponent = {
+      upsert: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('component:upsert')
+        return {}
+      },
+      updateMany: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('component:updateMany')
+        return { count: 0 }
+      },
+    }
+    const nodeStatusSample = {
+      create: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('sample')
+        return {}
+      },
+    }
+    const apicHost = {
+      update: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('host')
+        return {}
+      },
+    }
+    const db = {
+      $transaction: async <T>(fn: (tx: {
+        nodeSnapshot: typeof nodeSnapshot
+        hardwareComponent: typeof hardwareComponent
+        nodeStatusSample: typeof nodeStatusSample
+        apicHost: typeof apicHost
+      }) => Promise<T>, options?: { timeout?: number }) => {
+        expect(options).toEqual({ timeout: 30000 })
+        calls.push('transaction:start')
+        inTransaction = true
+        const result = await fn({ nodeSnapshot, hardwareComponent, nodeStatusSample, apicHost })
+        inTransaction = false
+        calls.push('transaction:end')
+        return result
+      },
+    }
+
+    const result = await executeNodeResyncWrites(
+      db as unknown as NodeWriteClient,
+      'host-1',
+      [{
+        dn: 'topology/pod-1/node-101',
+        nodeId: '101',
+        name: 'leaf-101',
+        role: 'leaf',
+        model: '',
+        serial: '',
+        version: null,
+        fabricSt: 'active',
+        state: null,
+        podId: '1',
+        uptime: null,
+        oobMgmtAddr: null,
+      }],
+      [{
+        dn: 'topology/pod-1/node-101/sys/ch/psuslot-1/psu',
+        nodeId: '101',
+        type: 'psu',
+        name: '1',
+        operSt: 'on',
+        model: '',
+        serial: '',
+      }],
+      new Date('2026-06-19T00:00:00Z'),
+    )
+
+    expect(result.nodesOnline).toBe(1)
+    expect(calls).toEqual([
+      'transaction:start',
+      'node:upsert',
+      'node:updateMany',
+      'component:upsert',
+      'component:updateMany',
+      'sample',
+      'host',
+      'transaction:end',
+    ])
   })
 })

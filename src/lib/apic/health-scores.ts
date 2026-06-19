@@ -184,6 +184,24 @@ export async function fetchHealthScoresFromApic(
 }
 
 const HEALTH_CHUNK_SIZE = 100
+const HEALTH_TRANSACTION_TIMEOUT_MS = 30_000
+
+type HealthScoreSnapshotDelegate = Pick<typeof prisma.healthScoreSnapshot, 'upsert' | 'updateMany' | 'count'>
+type HealthScoreSampleDelegate = Pick<typeof prisma.healthScoreSample, 'create'>
+type ApicHostDelegate = Pick<typeof prisma.apicHost, 'update'>
+
+interface HealthMutationClient {
+  healthScoreSnapshot: HealthScoreSnapshotDelegate
+  healthScoreSample: HealthScoreSampleDelegate
+  apicHost: ApicHostDelegate
+}
+
+export interface HealthWriteClient {
+  $transaction<T>(
+    fn: (tx: HealthMutationClient) => Promise<T>,
+    options?: { timeout?: number },
+  ): Promise<T>
+}
 
 export interface ResyncHealthArgs {
   apicHostId: string
@@ -213,67 +231,75 @@ export async function resyncHealthScores(args: ResyncHealthArgs): Promise<Resync
   const uniqueRows = Array.from(deduped.values())
   const now = new Date()
 
-  // Phase 1: upsert snapshots (chunked).
-  for (let i = 0; i < uniqueRows.length; i += HEALTH_CHUNK_SIZE) {
-    const chunk = uniqueRows.slice(i, i + HEALTH_CHUNK_SIZE)
-    await prisma.$transaction(
-      chunk.map(row =>
-        prisma.healthScoreSnapshot.upsert({
-          where: { apicHostId_dn: { apicHostId, dn: row.dn } },
-          update: {
-            scope: row.scope,
-            name: row.name,
-            node: row.node,
-            score: row.score,
-            twScore: row.twScore,
-            prevScore: row.prevScore,
-            maxSeverity: row.maxSeverity,
-            present: true,
-            lastSeenAt: now,
-          },
-          create: {
-            apicHostId,
-            dn: row.dn,
-            scope: row.scope,
-            name: row.name,
-            node: row.node,
-            score: row.score,
-            twScore: row.twScore,
-            prevScore: row.prevScore,
-            maxSeverity: row.maxSeverity,
-            present: true,
-            firstSeenAt: now,
-            lastSeenAt: now,
-          },
-        }),
-      ),
-    )
-  }
-
-  // Phase 2: mark previously-present objects that disappeared as absent.
-  const currentDns = uniqueRows.map(r => r.dn)
-  await prisma.healthScoreSnapshot.updateMany({
-    where: { apicHostId, present: true, dn: { notIn: currentDns } },
-    data: { present: false },
-  })
-
-  // Phase 3: record an overall-trend sample.
-  const summary = summarizeHealth(uniqueRows)
-  await prisma.healthScoreSample.create({
-    data: {
-      apicHostId,
-      sampledAt: now,
-      overall: summary.overall,
-      worstScore: summary.worstScore,
-      degradedCount: summary.degradedCount,
-    },
-  })
-
-  await prisma.apicHost.update({
-    where: { id: apicHostId },
-    data: { lastHealthSyncAt: now },
-  })
-
-  const total = await prisma.healthScoreSnapshot.count({ where: { apicHostId, present: true } })
+  const { summary, total } = await executeHealthScoreResyncWrites(prisma, apicHostId, uniqueRows, now)
   return { synced: uniqueRows.length, total, overall: summary.overall }
+}
+
+export async function executeHealthScoreResyncWrites(
+  db: HealthWriteClient,
+  apicHostId: string,
+  uniqueRows: ParsedHealthRow[],
+  now: Date,
+): Promise<{ summary: HealthSummary; total: number }> {
+  return db.$transaction(async tx => {
+    for (let i = 0; i < uniqueRows.length; i += HEALTH_CHUNK_SIZE) {
+      const chunk = uniqueRows.slice(i, i + HEALTH_CHUNK_SIZE)
+      await Promise.all(
+        chunk.map(row =>
+          tx.healthScoreSnapshot.upsert({
+            where: { apicHostId_dn: { apicHostId, dn: row.dn } },
+            update: {
+              scope: row.scope,
+              name: row.name,
+              node: row.node,
+              score: row.score,
+              twScore: row.twScore,
+              prevScore: row.prevScore,
+              maxSeverity: row.maxSeverity,
+              present: true,
+              lastSeenAt: now,
+            },
+            create: {
+              apicHostId,
+              dn: row.dn,
+              scope: row.scope,
+              name: row.name,
+              node: row.node,
+              score: row.score,
+              twScore: row.twScore,
+              prevScore: row.prevScore,
+              maxSeverity: row.maxSeverity,
+              present: true,
+              firstSeenAt: now,
+              lastSeenAt: now,
+            },
+          }),
+        ),
+      )
+    }
+
+    const currentDns = uniqueRows.map(r => r.dn)
+    await tx.healthScoreSnapshot.updateMany({
+      where: { apicHostId, present: true, dn: { notIn: currentDns } },
+      data: { present: false },
+    })
+
+    const summary = summarizeHealth(uniqueRows)
+    await tx.healthScoreSample.create({
+      data: {
+        apicHostId,
+        sampledAt: now,
+        overall: summary.overall,
+        worstScore: summary.worstScore,
+        degradedCount: summary.degradedCount,
+      },
+    })
+    await tx.apicHost.update({
+      where: { id: apicHostId },
+      data: { lastHealthSyncAt: now },
+    })
+
+    const total = await tx.healthScoreSnapshot.count({ where: { apicHostId, present: true } })
+    return { summary, total }
+  }, { timeout: HEALTH_TRANSACTION_TIMEOUT_MS })
 }
