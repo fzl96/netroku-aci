@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: netroku-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: netroku
+      POSTGRES_PASSWORD: netroku
+      POSTGRES_DB: netroku
+    ports:
+      - "5432:5432"
+    volumes:
+      - netroku-pgdata:/var/lib/postgresql/data
+
+volumes:
+  netroku-pgdata:
