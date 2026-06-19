@@ -1,6 +1,6 @@
 import { apicFetch, apicLogin } from './client'
 import { prisma } from '@/lib/prisma'
-import { planEndpointResync, type ActiveEndpoint } from './endpoint-resync'
+import { planEndpointResync, type ActiveEndpoint, type EndpointResyncPlan } from './endpoint-resync'
 
 export interface ApicEndpointRow {
   mac: string
@@ -109,6 +109,7 @@ export async function fetchEndpointsFromApic(
 }
 
 const ENDPOINTS_CHUNK_SIZE = 100
+const ENDPOINT_RECONCILE_TRANSACTION_TIMEOUT_MS = 30_000
 
 /** Thrown when a resync is requested for a host that already has one running. */
 export class EndpointResyncInProgressError extends Error {
@@ -120,6 +121,19 @@ export class EndpointResyncInProgressError extends Error {
 
 /** A held lock older than this is treated as stale and may be reclaimed (e.g. after a crash). */
 const STALE_RESYNC_MS = 10 * 60 * 1000
+
+type EndpointDelegate = Pick<typeof prisma.endpoint, 'updateMany' | 'update' | 'create'>
+
+interface EndpointMutationClient {
+  endpoint: EndpointDelegate
+}
+
+export interface EndpointTransactionClient {
+  $transaction<T>(
+    fn: (tx: EndpointMutationClient) => Promise<T>,
+    options?: { timeout?: number },
+  ): Promise<T>
+}
 
 export interface ResyncEndpointsArgs {
   apicHostId: string
@@ -135,8 +149,9 @@ export interface ResyncEndpointsArgs {
  * stamped) and a new active row inserted; an epgDescr-only change is updated in
  * place; endpoints absent from the fetch are marked inactive. Serialized per host
  * via a resync lock — throws EndpointResyncInProgressError if one is already running.
- * Executes in chunked phases (not a single transaction); a mid-run failure self-heals
- * on the next successful resync. Returns unique rows synced and the host's total count.
+ * Applies all placement-history writes in one Postgres transaction, so moved endpoints
+ * cannot be left with zero active rows by a mid-run failure. Returns unique rows synced
+ * and the host's total count.
  */
 export async function resyncEndpoints(
   args: ResyncEndpointsArgs,
@@ -182,10 +197,33 @@ export async function resyncEndpoints(
 
     const plan = planEndpointResync(activeRows, uniqueRows)
 
+    await executeEndpointResyncPlan(prisma, apicHostId, plan, now)
+
+    const total = await prisma.endpoint.count({ where: { apicHostId } })
+
+    return { synced: uniqueRows.length, total }
+  } finally {
+    // Release only if we still hold the lock (guards against a stale-reclaim race).
+    await prisma.apicHost
+      .updateMany({
+        where: { id: apicHostId, resyncStartedAt: lockStamp },
+        data: { resyncStartedAt: null },
+      })
+      .catch(() => {})
+  }
+}
+
+export async function executeEndpointResyncPlan(
+  db: EndpointTransactionClient,
+  apicHostId: string,
+  plan: EndpointResyncPlan,
+  now: Date,
+): Promise<void> {
+  await db.$transaction(async tx => {
     // Bump unchanged rows.
     for (let i = 0; i < plan.bumps.length; i += ENDPOINTS_CHUNK_SIZE) {
       const ids = plan.bumps.slice(i, i + ENDPOINTS_CHUNK_SIZE)
-      await prisma.endpoint.updateMany({
+      await tx.endpoint.updateMany({
         where: { id: { in: ids } },
         data: { lastSeenAt: now },
       })
@@ -194,7 +232,7 @@ export async function resyncEndpoints(
     // Mark moved-away and departed rows inactive.
     for (let i = 0; i < plan.clears.length; i += ENDPOINTS_CHUNK_SIZE) {
       const ids = plan.clears.slice(i, i + ENDPOINTS_CHUNK_SIZE)
-      await prisma.endpoint.updateMany({
+      await tx.endpoint.updateMany({
         where: { id: { in: ids } },
         data: { isActive: false, clearedAt: now },
       })
@@ -203,11 +241,11 @@ export async function resyncEndpoints(
     // Relabel rows whose only change is the EPG description.
     for (let i = 0; i < plan.relabels.length; i += ENDPOINTS_CHUNK_SIZE) {
       const chunk = plan.relabels.slice(i, i + ENDPOINTS_CHUNK_SIZE)
-      await prisma.$transaction(
-        chunk.map(r =>
-          prisma.endpoint.update({
-            where: { id: r.id },
-            data: { epgDescr: r.epgDescr, lastSeenAt: now },
+      await Promise.all(
+        chunk.map(row =>
+          tx.endpoint.update({
+            where: { id: row.id },
+            data: { epgDescr: row.epgDescr, lastSeenAt: now },
           }),
         ),
       )
@@ -216,9 +254,9 @@ export async function resyncEndpoints(
     // Insert new active placements (brand-new endpoints + new location of moved ones).
     for (let i = 0; i < plan.inserts.length; i += ENDPOINTS_CHUNK_SIZE) {
       const chunk = plan.inserts.slice(i, i + ENDPOINTS_CHUNK_SIZE)
-      await prisma.$transaction(
+      await Promise.all(
         chunk.map(row =>
-          prisma.endpoint.create({
+          tx.endpoint.create({
             data: {
               apicHostId,
               mac: row.mac,
@@ -236,17 +274,5 @@ export async function resyncEndpoints(
         ),
       )
     }
-
-    const total = await prisma.endpoint.count({ where: { apicHostId } })
-
-    return { synced: uniqueRows.length, total }
-  } finally {
-    // Release only if we still hold the lock (guards against a stale-reclaim race).
-    await prisma.apicHost
-      .updateMany({
-        where: { id: apicHostId, resyncStartedAt: lockStamp },
-        data: { resyncStartedAt: null },
-      })
-      .catch(() => {})
-  }
+  }, { timeout: ENDPOINT_RECONCILE_TRANSACTION_TIMEOUT_MS })
 }
