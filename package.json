@@ -12,6 +12,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "db:setup": "prisma migrate deploy && prisma generate",
+    "migrate:data": "tsx --env-file=.env scripts/migrate-sqlite-to-postgres.ts",
     "seed:admin": "tsx --env-file=.env prisma/seed-admin.ts",
     "test": "bun test"
   },
