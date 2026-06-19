@@ -48,7 +48,9 @@ async function main() {
   await copyTable(
     'apicHost',
     () => sqlite.apicHost.findMany(),
-    rows => pg.apicHost.createMany({ data: rows as Prisma.ApicHostCreateManyInput[] }),
+    rows => pg.apicHost.createMany({
+      data: rows.map(({ resyncStartedAt: _resyncStartedAt, ...row }) => row) as Prisma.ApicHostCreateManyInput[],
+    }),
     () => pg.apicHost.count(),
   )
 
