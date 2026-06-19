@@ -13,12 +13,13 @@ A Next.js web app for bulk provisioning Cisco ACI access policy and fabric bindi
 
 ## Running It On Your Own System
 
-The app is a standard Next.js 16 project backed by a local SQLite database (via Prisma). The steps below cover a full setup from a clean machine. Commands are shown for **Bun**; the **Node/npm** equivalents are listed in the callout afterwards.
+The app is a standard Next.js 16 project backed by a local Postgres database (via Prisma). The steps below cover a full setup from a clean machine. Commands are shown for **Bun**; the **Node/npm** equivalents are listed in the callout afterwards.
 
 ### Prerequisites
 
 - **Bun** ≥ 1.1 ([install](https://bun.sh)) — or **Node.js** ≥ 20 with npm
 - **Git**
+- **Docker** with Docker Compose
 - An empty directory for the project
 
 > **Windows users:** Bun on Windows has a known compatibility issue with the TLS bypass library used to talk to self-signed APICs. Use **WSL2** or **Node.js** instead.
@@ -54,7 +55,7 @@ cp .env.example .env
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `DATABASE_URL` | yes | SQLite connection string. Keep `file:./dev.db` (resolved relative to `/prisma`). |
+| `DATABASE_URL` | yes | Postgres connection string. For local Docker, use `postgresql://netroku:netroku@localhost:5432/netroku?schema=public`. |
 | `BETTER_AUTH_SECRET` | yes | Session signing secret. Generate with `openssl rand -hex 32`. |
 | `BETTER_AUTH_URL` | yes | Base URL the app is served from (e.g. `http://localhost:3000`). |
 | `NEXT_PUBLIC_APP_URL` | yes | Public base URL used by the browser. |
@@ -64,29 +65,28 @@ cp .env.example .env
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | yes (for seeding) | First admin account created by the seed script. Password ≥ 8 chars. |
 | `SCHEDULER_TOKEN` | no | Bearer token an external scheduler must send to `POST /api/cron/resync`. Generate with `openssl rand -hex 32`. |
 
-### 5. Create the SQLite database file
-
-Create an empty `dev.db` in the `/prisma` directory (the migration step will populate the schema):
+### 5. Start Postgres
 
 ```bash
-touch prisma/dev.db
+docker compose up -d
 ```
 
-### 6. Apply the migrations
+### 6. Apply the migrations and generate the Prisma client
 
-This creates every table from the committed migration files:
+This creates every table from the committed migration files and generates the Prisma client:
 
 ```bash
-bun run prisma:deploy
+bun run db:setup
 ```
 
-### 7. Generate the Prisma client
+### 7. Optional: migrate legacy SQLite data
 
-```bash
-bun run prisma:generate
-```
+If you have an old `prisma/dev.db` to import:
 
-> Steps 6 and 7 are bundled in a single script: `bun run db:setup`.
+1. Generate the read-only SQLite client: `bunx prisma generate --schema=prisma/schema.sqlite.prisma`
+2. Run the copy: `bun run migrate:data`
+
+The script refuses to run if the destination tables are non-empty. Skip this step on a fresh install.
 
 ### 8. Seed the first admin user
 
@@ -112,6 +112,15 @@ bun run dev
 Open [http://localhost:3000](http://localhost:3000) and sign in with the seeded admin credentials.
 
 > **Using Node/npm instead of Bun:** replace `bun install` → `npm install`, `bun run dev` → `npm run dev`, `bun run build` → `npm run build`, `bun run start` → `npm run start`, and so on. Every command above maps to the matching `package.json` script.
+
+### Rollback to SQLite
+
+`prisma/dev.db` is left untouched by the migration. To revert:
+
+1. In `prisma/schema.prisma`, set `provider = "sqlite"`.
+2. Set `DATABASE_URL="file:./dev.db"` in `.env`.
+3. Restore the SQLite migrations from git history, or revert the cutover commit.
+4. Run `bun run prisma:generate`.
 
 ### Connecting an APIC
 
