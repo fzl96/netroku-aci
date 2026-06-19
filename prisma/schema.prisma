@@ -138,6 +138,11 @@ model Endpoint {
 
   @@index([apicHostId])
   @@index([apicHostId, mac, ip])
+  @@index([apicHostId, lastSeenAt], name: "endpoint_host_last_seen_idx")
+  @@index([apicHostId, isActive], name: "endpoint_host_active_idx")
+  @@index([apicHostId, vlan], name: "endpoint_host_vlan_idx")
+  @@index([apicHostId, node], name: "endpoint_host_node_idx")
+  @@index([apicHostId, interface], name: "endpoint_host_interface_idx")
   @@map("endpoint")
 }
 
@@ -161,6 +166,7 @@ model InterfaceSnapshot {
 
   @@unique([apicHostId, dn])
   @@index([apicHostId])
+  @@index([apicHostId, node, ifName], name: "interface_snapshot_host_node_if_idx")
   @@map("interface_snapshot")
 }
 
@@ -225,6 +231,8 @@ model FaultSnapshot {
   @@unique([apicHostId, dn])
   @@index([apicHostId])
   @@index([apicHostId, lifecycle])
+  @@index([apicHostId, lifecycle, severity], name: "fault_snapshot_host_lifecycle_severity_idx")
+  @@index([apicHostId, lifecycle, node], name: "fault_snapshot_host_lifecycle_node_idx")
   @@map("fault_snapshot")
 }
 
@@ -263,6 +271,7 @@ model HealthScoreSnapshot {
   @@unique([apicHostId, dn])
   @@index([apicHostId])
   @@index([apicHostId, scope])
+  @@index([apicHostId, present, scope, score], name: "health_score_snapshot_host_present_scope_score_idx")
   @@map("health_score_snapshot")
 }
 
@@ -302,6 +311,8 @@ model NodeSnapshot {
   @@unique([apicHostId, dn])
   @@index([apicHostId])
   @@index([apicHostId, role])
+  @@index([apicHostId, present, role], name: "node_snapshot_host_present_role_idx")
+  @@index([apicHostId, present, fabricSt], name: "node_snapshot_host_present_fabric_idx")
   @@map("node_snapshot")
 }
 
@@ -324,6 +335,9 @@ model HardwareComponent {
   @@unique([apicHostId, dn])
   @@index([apicHostId, nodeId])
   @@index([apicHostId, type])
+  @@index([apicHostId, present, type], name: "hardware_component_host_present_type_idx")
+  @@index([apicHostId, present, healthy], name: "hardware_component_host_present_healthy_idx")
+  @@index([apicHostId, present, nodeId, type, healthy], name: "hardware_component_host_present_node_type_healthy_idx")
   @@map("hardware_component")
 }
 
