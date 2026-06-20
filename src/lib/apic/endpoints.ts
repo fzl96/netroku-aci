@@ -23,17 +23,55 @@ interface FvIpAttrs {
   addr: string
 }
 
+interface FvRsCEpToPathEpAttrs {
+  tDn: string
+}
+
+interface FvCEpChild {
+  fvIp?: { attributes: FvIpAttrs }
+  fvRsCEpToPathEp?: { attributes: FvRsCEpToPathEpAttrs }
+}
+
 interface FvAEPgAttrs {
   dn: string
   descr: string
 }
 
-const FABRIC_PATH_RE = /topology\/pod-\d+\/paths-(\d+)\/pathep-\[([^\]]+)\]/
+// vPC endpoints live on a protection path spanning both leaves, e.g.
+// topology/pod-1/protpaths-3113-3114/pathep-[<vpc-ipg>]. Single-homed endpoints
+// use topology/pod-1/paths-<node>/pathep-[<port>]. Check protpaths first because
+// a non-anchored "paths-" also appears inside "protpaths-".
+const PROTPATH_RE = /\/protpaths-(\d+)-(\d+)\/pathep-\[([^\]]+)\]/
+const PATH_RE = /\/paths-(\d+)\/pathep-\[([^\]]+)\]/
 
-function parsePathDn(fabricPathDn: string): { node: string; iface: string } {
-  const m = FABRIC_PATH_RE.exec(fabricPathDn)
-  if (!m) return { node: '', iface: '' }
-  return { node: m[1], iface: m[2] }
+/**
+ * Resolve a fabric path DN to its node(s) and interface. For a vPC protection
+ * path both member nodes are returned as an ascending `"<lo>-<hi>"` pair so the
+ * placement is stable across resyncs (the per-leaf `fabricPathDn` alternates
+ * between the two members and would otherwise look like a move every poll).
+ */
+export function parsePathDn(pathDn: string): { node: string; iface: string } {
+  const vpc = PROTPATH_RE.exec(pathDn)
+  if (vpc) {
+    const [lo, hi] = [Number(vpc[1]), Number(vpc[2])].sort((a, b) => a - b)
+    return { node: `${lo}-${hi}`, iface: vpc[3] }
+  }
+  const single = PATH_RE.exec(pathDn)
+  if (single) return { node: single[1], iface: single[2] }
+  return { node: '', iface: '' }
+}
+
+/**
+ * Pick the authoritative path DN for an endpoint. Prefer the `fvRsCEpToPathEp`
+ * relation's `tDn` (the protection path for a vPC, which names both leaves);
+ * among multiple relations prefer a `protpaths-` one. Fall back to the
+ * single-leaf `fabricPathDn` when no relation child is present.
+ */
+function pathDnForEndpoint(attrs: FvCEpAttrs, children: FvCEpChild[]): string {
+  const tDns = children
+    .map(child => child.fvRsCEpToPathEp?.attributes.tDn)
+    .filter((tDn): tDn is string => Boolean(tDn))
+  return tDns.find(tDn => tDn.includes('/protpaths-')) ?? tDns[0] ?? attrs.fabricPathDn
 }
 
 async function apicGet(host: string, token: string, path: string): Promise<unknown[]> {
@@ -50,12 +88,27 @@ export async function fetchEndpointsFromApic(
 ): Promise<ApicEndpointRow[]> {
   const token = await apicLogin(host, username, plaintextPassword)
 
-  // Fetch endpoints and EPGs in parallel
+  // Fetch endpoints (with IP children and the path relation that names both vPC
+  // leaves) and EPGs in parallel.
   const [epRaw, epgRaw] = await Promise.all([
-    apicGet(host, token, '/api/node/class/fvCEp.json?rsp-subtree=children&rsp-subtree-class=fvIp'),
+    apicGet(
+      host,
+      token,
+      '/api/node/class/fvCEp.json?rsp-subtree=children&rsp-subtree-class=fvIp,fvRsCEpToPathEp',
+    ),
     apicGet(host, token, '/api/node/class/fvAEPg.json'),
   ])
 
+  return parseEndpointRows(epRaw, epgRaw)
+}
+
+/**
+ * Transform raw `fvCEp` (with `fvIp`/`fvRsCEpToPathEp` children) and `fvAEPg`
+ * imdata into flat endpoint rows. Pure — no network — so the path/EPG parsing is
+ * unit-testable. One row per (endpoint, IP); endpoints with no usable IP yield a
+ * single MAC-only row.
+ */
+export function parseEndpointRows(epRaw: unknown[], epgRaw: unknown[]): ApicEndpointRow[] {
   // Build EPG DN → description map
   const epgDescrMap = new Map<string, string>()
   for (const item of epgRaw) {
@@ -73,27 +126,20 @@ export async function fetchEndpointsFromApic(
   const rows: ApicEndpointRow[] = []
 
   for (const item of epRaw) {
-    const epObj = item as {
-      fvCEp?: {
-        attributes: FvCEpAttrs
-        children?: Array<{ fvIp?: { attributes: FvIpAttrs } }>
-      }
-    }
-    const ep = epObj.fvCEp
+    const ep = (item as { fvCEp?: { attributes: FvCEpAttrs; children?: FvCEpChild[] } }).fvCEp
     if (!ep) continue
 
-    const { mac, encap, fabricPathDn, dn } = ep.attributes
-    const { node, iface } = parsePathDn(fabricPathDn)
+    const children = ep.children ?? []
+    const { mac, encap, dn } = ep.attributes
+    const { node, iface } = parsePathDn(pathDnForEndpoint(ep.attributes, children))
     const vlan = encap
     const epgDescr = epgDescrForDn(dn)
 
     // Collect IP addresses from children
     const ips: string[] = []
-    if (ep.children) {
-      for (const child of ep.children) {
-        const addr = child.fvIp?.attributes?.addr
-        if (addr && addr !== '0.0.0.0') ips.push(addr)
-      }
+    for (const child of children) {
+      const addr = child.fvIp?.attributes?.addr
+      if (addr && addr !== '0.0.0.0') ips.push(addr)
     }
 
     if (ips.length === 0) {
