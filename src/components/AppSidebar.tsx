@@ -61,6 +61,7 @@ import {
   IconLogout,
   IconLayoutDashboard,
   IconHistory,
+  IconTopologyStar3,
 } from "@tabler/icons-react";
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
@@ -104,6 +105,11 @@ const NAV: { group: string; items: NavItem[] }[] = [
         href: "/endpoints",
         label: "Endpoints",
         icon: <IconDeviceDesktopSearch size={15} stroke={1.75} />,
+      },
+      {
+        href: "/epgs",
+        label: "EPG",
+        icon: <IconTopologyStar3 size={15} stroke={1.75} />,
       },
       {
         href: "/interface-health",
