@@ -106,6 +106,7 @@ model ApicHost {
   lastFaultSyncAt     DateTime?
   lastHealthSyncAt    DateTime?
   lastNodeSyncAt      DateTime?
+  lastEpgSyncAt       DateTime?
   endpoints           Endpoint[]
   interfaces          InterfaceSnapshot[]
   faults              FaultSnapshot[]
@@ -115,6 +116,7 @@ model ApicHost {
   nodes               NodeSnapshot[]
   hardware            HardwareComponent[]
   nodeSamples         NodeStatusSample[]
+  epgs                EpgSnapshot[]
 
   @@unique([host])
   @@map("apic_host")
@@ -353,4 +355,55 @@ model NodeStatusSample {
 
   @@index([apicHostId, sampledAt])
   @@map("node_status_sample")
+}
+
+model EpgSnapshot {
+  id                String   @id @default(cuid())
+  apicHostId        String
+  apicHost          ApicHost @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  dn                String
+  name              String
+  tenant            String
+  appProfile        String
+  description       String   @default("")
+  bridgeDomain      String   @default("")
+  pcTag             String   @default("")
+  preferredGroup    Boolean  @default(false)
+  isolation         Boolean  @default(false)
+  domains           String[]
+  providedContracts String[]
+  consumedContracts String[]
+  present           Boolean  @default(true)
+  firstSeenAt       DateTime @default(now())
+  lastSeenAt        DateTime @default(now())
+  bindings          EpgPathBinding[]
+
+  @@unique([apicHostId, dn])
+  @@index([apicHostId, present])
+  @@index([apicHostId, tenant])
+  @@map("epg_snapshot")
+}
+
+model EpgPathBinding {
+  id          String      @id @default(cuid())
+  apicHostId  String
+  epgId       String
+  epg         EpgSnapshot @relation(fields: [epgId], references: [id], onDelete: Cascade)
+  dn          String
+  pathTDn     String
+  pod         String      @default("")
+  node        String      @default("")
+  port        String      @default("")
+  pathType    String      @default("port")
+  encap       String      @default("")
+  mode        String      @default("trunk")
+  present     Boolean     @default(true)
+  firstSeenAt DateTime    @default(now())
+  lastSeenAt  DateTime    @default(now())
+
+  @@unique([apicHostId, dn])
+  @@index([apicHostId, present])
+  @@index([apicHostId, node])
+  @@index([epgId])
+  @@map("epg_path_binding")
 }
