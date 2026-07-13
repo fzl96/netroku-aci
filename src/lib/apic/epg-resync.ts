@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { fetchEpgInventoryFromApic, type EpgRow } from './epg-inventory'
 
 const EPG_CHUNK_SIZE = 100
-const EPG_TRANSACTION_TIMEOUT_MS = 30_000
+const EPG_TRANSACTION_TIMEOUT_MS = 120_000
 // Distinct from the endpoints lock namespace (20_260_619) so EPG and endpoint
 // resyncs for the same host don't contend with each other.
 const EPG_ADVISORY_LOCK_NAMESPACE = 20_260_713
