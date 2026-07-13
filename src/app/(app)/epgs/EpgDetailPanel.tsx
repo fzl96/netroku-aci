@@ -36,7 +36,7 @@ export function EpgDetailPanel({ epg, onClose }: { epg: EpgWithBindings; onClose
   return (
     <>
       <div className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-20" onClick={onClose} />
-      <aside className="animate-panel-in fixed top-0 right-0 z-30 flex h-full w-[480px] flex-col border-l border-border bg-card shadow-2xl">
+      <aside className="animate-panel-in fixed top-0 right-0 z-30 flex h-full w-[640px] max-w-full flex-col border-l border-border bg-card shadow-2xl">
         <div className="px-6 py-5 border-b border-subtle flex items-start justify-between shrink-0">
           <div className="min-w-0">
             <h2 className="font-serif text-base font-semibold text-foreground truncate">{epg.name}</h2>
