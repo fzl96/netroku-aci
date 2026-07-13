@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { INPUT_CLS } from "@/lib/ui-classes";
 
 export default function SignInPage() {
-  const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +20,7 @@ export default function SignInPage() {
       setError(error.message ?? "Sign in failed");
       return;
     }
-    router.push("/dashboard");
+    window.location.href = "/dashboard";
   }
 
   return (
