@@ -74,6 +74,11 @@ async function tryAcquireEpgResyncAdvisoryLock(
   return rows[0]?.acquired === true
 }
 
+/**
+ * Persist the fetched EPGs and their bindings for one host in a single locked
+ * transaction. Callers must pass EPGs already deduplicated by `dn` (as
+ * `resyncEpgs` does) — the parent-id map assumes one row per dn.
+ */
 export async function executeEpgResyncWrites(
   db: EpgWriteClient,
   apicHostId: string,

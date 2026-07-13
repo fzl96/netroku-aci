@@ -61,15 +61,13 @@ export function buildEpgWhere(
   }
 }
 
-/** A selected leaf matches an exact node or either member of a vPC pair. */
-function nodeCondition(value: string): Prisma.EpgPathBindingWhereInput {
-  return {
-    OR: [
-      { node: value },
-      { node: { startsWith: `${value}-` } },
-      { node: { endsWith: `-${value}` } },
-    ],
-  }
+/** OR-conditions matching an exact node or either member of a vPC pair. */
+function nodeConditions(value: string): Prisma.EpgPathBindingWhereInput[] {
+  return [
+    { node: value },
+    { node: { startsWith: `${value}-` } },
+    { node: { endsWith: `-${value}` } },
+  ]
 }
 
 export function buildBindingWhere(
@@ -89,7 +87,7 @@ export function buildBindingWhere(
     ...(present !== undefined ? { present } : {}),
     ...(Object.keys(epgWhere).length > 0 ? { epg: epgWhere } : {}),
     ...(filters.node?.length
-      ? { AND: [{ OR: filters.node.flatMap(v => nodeCondition(v).OR!) }] }
+      ? { AND: [{ OR: filters.node.flatMap(nodeConditions) }] }
       : {}),
     ...(query
       ? {

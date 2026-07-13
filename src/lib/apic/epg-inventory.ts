@@ -46,8 +46,9 @@ interface FvAEPgChild {
 
 const EPG_DN_RE = /^uni\/tn-([^/]+)\/ap-([^/]+)\/epg-(.+)$/
 
-// Static bindings target one of three path shapes. Check protpaths first
-// because a non-anchored "paths-" also appears inside "protpaths-".
+// Static bindings target one of three path shapes. Both regexes are anchored,
+// so ordering is not required for correctness, but protpaths is checked first
+// since a vPC tDn is the more specific shape.
 const PROT_TDN_RE = /^topology\/pod-(\d+)\/protpaths-(\d+)-(\d+)\/pathep-\[([^\]]+)\]$/
 const PATH_TDN_RE = /^topology\/pod-(\d+)\/paths-(\d+)\/pathep-\[([^\]]+)\]$/
 
