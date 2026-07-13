@@ -90,10 +90,7 @@ export function EpgDetailPanel({ epg, onClose }: { epg: EpgWithBindings; onClose
                   </thead>
                   <tbody>
                     {bindings.map(b => (
-                      <tr key={b.id} className={[
-                        'border-b border-border-faint last:border-0',
-                        b.present ? '' : 'opacity-50',
-                      ].join(' ')}>
+                      <tr key={b.id} className="border-b border-border-faint last:border-0">
                         <td className="px-4 py-2 tabular-nums text-muted-foreground">{b.pod || '—'}</td>
                         <td className="px-4 py-2 tabular-nums text-foreground">{b.node || '—'}</td>
                         <td className="px-4 py-2 font-mono text-muted-foreground max-w-[140px] truncate" title={b.port}>{b.port}</td>

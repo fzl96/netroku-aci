@@ -15,8 +15,8 @@ export class EpgResyncInProgressError extends Error {
   }
 }
 
-type EpgSnapshotDelegate = Pick<typeof prisma.epgSnapshot, 'upsert' | 'updateMany'>
-type EpgPathBindingDelegate = Pick<typeof prisma.epgPathBinding, 'upsert' | 'updateMany'>
+type EpgSnapshotDelegate = Pick<typeof prisma.epgSnapshot, 'deleteMany' | 'createMany' | 'findMany'>
+type EpgPathBindingDelegate = Pick<typeof prisma.epgPathBinding, 'deleteMany' | 'createMany'>
 type ApicHostDelegate = Pick<typeof prisma.apicHost, 'update'>
 
 interface EpgMutationClient {
@@ -46,10 +46,9 @@ export interface ResyncEpgsResult {
 }
 
 /**
- * Fetch EPG inventory (with static port bindings) from APIC and persist it for
- * one host. Upserts EpgSnapshot then EpgPathBinding by (apicHostId, dn) and
- * flips departed rows to present: false — rows are never deleted. Serialized
- * per host via a Postgres advisory transaction lock.
+ * Fetch EPG inventory (with static port bindings) from APIC and persist the latest state for
+ * one host. Replaces existing EpgSnapshot and EpgPathBinding records in a single bulk transaction.
+ * Serialized per host via a Postgres advisory transaction lock.
  */
 export async function resyncEpgs(args: ResyncEpgsArgs): Promise<ResyncEpgsResult> {
   const { apicHostId, host, username, password } = args
@@ -75,9 +74,8 @@ async function tryAcquireEpgResyncAdvisoryLock(
 }
 
 /**
- * Persist the fetched EPGs and their bindings for one host in a single locked
- * transaction. Callers must pass EPGs already deduplicated by `dn` (as
- * `resyncEpgs` does) — the parent-id map assumes one row per dn.
+ * Persist the fetched EPGs and their bindings for one host in a single locked transaction,
+ * replacing previous state with current snapshot. Callers must pass EPGs deduplicated by `dn`.
  */
 export async function executeEpgResyncWrites(
   db: EpgWriteClient,
@@ -89,75 +87,63 @@ export async function executeEpgResyncWrites(
     const acquired = await tryAcquireEpgResyncAdvisoryLock(tx, apicHostId)
     if (!acquired) throw new EpgResyncInProgressError(apicHostId)
 
-    // Upsert EPGs first — bindings need the parent row ids.
-    const idByDn = new Map<string, string>()
-    for (let i = 0; i < epgs.length; i += EPG_CHUNK_SIZE) {
-      const chunk = epgs.slice(i, i + EPG_CHUNK_SIZE)
-      const upserted = await Promise.all(
-        chunk.map(e =>
-          tx.epgSnapshot.upsert({
-            where: { apicHostId_dn: { apicHostId, dn: e.dn } },
-            update: {
-              name: e.name, tenant: e.tenant, appProfile: e.appProfile,
-              description: e.description, bridgeDomain: e.bridgeDomain,
-              pcTag: e.pcTag, preferredGroup: e.preferredGroup,
-              isolation: e.isolation, domains: e.domains,
-              providedContracts: e.providedContracts,
-              consumedContracts: e.consumedContracts,
-              present: true, lastSeenAt: now,
-            },
-            create: {
-              apicHostId, dn: e.dn, name: e.name, tenant: e.tenant,
-              appProfile: e.appProfile, description: e.description,
-              bridgeDomain: e.bridgeDomain, pcTag: e.pcTag,
-              preferredGroup: e.preferredGroup, isolation: e.isolation,
-              domains: e.domains, providedContracts: e.providedContracts,
-              consumedContracts: e.consumedContracts,
-              present: true, firstSeenAt: now, lastSeenAt: now,
-            },
-          }),
-        ),
-      )
-      chunk.forEach((e, j) => idByDn.set(e.dn, upserted[j].id))
-    }
-    await tx.epgSnapshot.updateMany({
-      where: { apicHostId, present: true, dn: { notIn: epgs.map(e => e.dn) } },
-      data: { present: false },
-    })
+    // Purge previous state for this host
+    await tx.epgPathBinding.deleteMany({ where: { apicHostId } })
+    await tx.epgSnapshot.deleteMany({ where: { apicHostId } })
 
-    // Bindings, deduped by dn across all EPGs.
+    // Bulk insert EPG snapshots
+    if (epgs.length > 0) {
+      await tx.epgSnapshot.createMany({
+        data: epgs.map(e => ({
+          apicHostId,
+          dn: e.dn,
+          name: e.name,
+          tenant: e.tenant,
+          appProfile: e.appProfile,
+          description: e.description,
+          bridgeDomain: e.bridgeDomain,
+          pcTag: e.pcTag,
+          preferredGroup: e.preferredGroup,
+          isolation: e.isolation,
+          domains: e.domains,
+          providedContracts: e.providedContracts,
+          consumedContracts: e.consumedContracts,
+        })),
+      })
+    }
+
+    const createdEpgs = epgs.length > 0
+      ? await tx.epgSnapshot.findMany({
+          where: { apicHostId },
+          select: { id: true, dn: true },
+        })
+      : []
+    const idByDn = new Map<string, string>()
+    for (const e of createdEpgs) idByDn.set(e.dn, e.id)
+
+    // Collect and deduplicate bindings by dn
     const bindingByDn = new Map<string, { epgDn: string; binding: EpgRow['bindings'][number] }>()
     for (const e of epgs) {
       for (const b of e.bindings) bindingByDn.set(b.dn, { epgDn: e.dn, binding: b })
     }
     const uniqueBindings = Array.from(bindingByDn.values())
 
-    for (let i = 0; i < uniqueBindings.length; i += EPG_CHUNK_SIZE) {
-      const chunk = uniqueBindings.slice(i, i + EPG_CHUNK_SIZE)
-      await Promise.all(
-        chunk.map(({ epgDn, binding: b }) => {
-          const epgId = idByDn.get(epgDn)!
-          return tx.epgPathBinding.upsert({
-            where: { apicHostId_dn: { apicHostId, dn: b.dn } },
-            update: {
-              epgId, pathTDn: b.pathTDn, pod: b.pod, node: b.node,
-              port: b.port, pathType: b.pathType, encap: b.encap,
-              mode: b.mode, present: true, lastSeenAt: now,
-            },
-            create: {
-              apicHostId, epgId, dn: b.dn, pathTDn: b.pathTDn, pod: b.pod,
-              node: b.node, port: b.port, pathType: b.pathType,
-              encap: b.encap, mode: b.mode,
-              present: true, firstSeenAt: now, lastSeenAt: now,
-            },
-          })
-        }),
-      )
+    if (uniqueBindings.length > 0) {
+      await tx.epgPathBinding.createMany({
+        data: uniqueBindings.map(({ epgDn, binding: b }) => ({
+          apicHostId,
+          epgId: idByDn.get(epgDn)!,
+          dn: b.dn,
+          pathTDn: b.pathTDn,
+          pod: b.pod,
+          node: b.node,
+          port: b.port,
+          pathType: b.pathType,
+          encap: b.encap,
+          mode: b.mode,
+        })),
+      })
     }
-    await tx.epgPathBinding.updateMany({
-      where: { apicHostId, present: true, dn: { notIn: uniqueBindings.map(u => u.binding.dn) } },
-      data: { present: false },
-    })
 
     await tx.apicHost.update({
       where: { id: apicHostId },

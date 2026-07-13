@@ -1,12 +1,9 @@
 import type { Prisma } from '@prisma/client'
 
-export type EpgPresenceFilter = 'present' | 'absent'
-
 export interface EpgFilters {
   query?: string
   tenant?: string[]
   ap?: string[]
-  presence?: EpgPresenceFilter[]
 }
 
 export interface BindingFilters extends EpgFilters {
@@ -19,19 +16,14 @@ export type EpgWithBindings = Prisma.EpgSnapshotGetPayload<{
 
 export type BindingWithEpg = Prisma.EpgPathBindingGetPayload<{
   include: {
-    epg: { select: { name: true; tenant: true; appProfile: true; dn: true; present: true } }
+    epg: { select: { name: true; tenant: true; appProfile: true; dn: true } }
   }
 }>
 
 export function countActiveEpgFilterGroups(filters: BindingFilters): number {
-  return [filters.tenant, filters.ap, filters.node, filters.presence]
+  return [filters.tenant, filters.ap, filters.node]
     .filter(values => values && values.length > 0)
     .length
-}
-
-function presentValue(presence?: EpgPresenceFilter[]): boolean | undefined {
-  if (presence?.length !== 1) return undefined
-  return presence[0] === 'present'
 }
 
 export function buildEpgWhere(
@@ -39,13 +31,11 @@ export function buildEpgWhere(
   filters: EpgFilters,
 ): Prisma.EpgSnapshotWhereInput {
   const query = filters.query?.trim()
-  const present = presentValue(filters.presence)
 
   return {
     apicHostId,
     ...(filters.tenant?.length ? { tenant: { in: filters.tenant } } : {}),
     ...(filters.ap?.length ? { appProfile: { in: filters.ap } } : {}),
-    ...(present !== undefined ? { present } : {}),
     ...(query
       ? {
           OR: [
@@ -75,7 +65,6 @@ export function buildBindingWhere(
   filters: BindingFilters,
 ): Prisma.EpgPathBindingWhereInput {
   const query = filters.query?.trim()
-  const present = presentValue(filters.presence)
 
   const epgWhere: Prisma.EpgSnapshotWhereInput = {
     ...(filters.tenant?.length ? { tenant: { in: filters.tenant } } : {}),
@@ -84,7 +73,6 @@ export function buildBindingWhere(
 
   return {
     apicHostId,
-    ...(present !== undefined ? { present } : {}),
     ...(Object.keys(epgWhere).length > 0 ? { epg: epgWhere } : {}),
     ...(filters.node?.length
       ? { AND: [{ OR: filters.node.flatMap(nodeConditions) }] }

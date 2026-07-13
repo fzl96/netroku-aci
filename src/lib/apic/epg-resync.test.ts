@@ -37,28 +37,36 @@ function makeEpg(overrides: Partial<EpgRow> = {}): EpgRow {
 }
 
 interface Calls {
-  epgUpserts: unknown[]
-  epgUpdateManys: unknown[]
-  bindingUpserts: unknown[]
-  bindingUpdateManys: unknown[]
+  epgDeletes: unknown[]
+  epgCreateManys: unknown[]
+  bindingDeletes: unknown[]
+  bindingCreateManys: unknown[]
   hostUpdates: unknown[]
 }
 
 function mockClient(lockAcquired = true): { client: EpgWriteClient; calls: Calls } {
   const calls: Calls = {
-    epgUpserts: [], epgUpdateManys: [], bindingUpserts: [], bindingUpdateManys: [], hostUpdates: [],
+    epgDeletes: [], epgCreateManys: [], bindingDeletes: [], bindingCreateManys: [], hostUpdates: [],
   }
   const tx = {
     epgSnapshot: {
-      upsert: async (args: { where: { apicHostId_dn: { dn: string } } }) => {
-        calls.epgUpserts.push(args)
-        return { id: `epg-${args.where.apicHostId_dn.dn}` }
+      deleteMany: async (args: unknown) => { calls.epgDeletes.push(args); return { count: 0 } },
+      createMany: async (args: { data: Array<{ dn: string }> }) => {
+        calls.epgCreateManys.push(args)
+        return { count: args.data.length }
       },
-      updateMany: async (args: unknown) => { calls.epgUpdateManys.push(args); return { count: 0 } },
+      findMany: async (args: { where: { apicHostId: string } }) => {
+        const createCall = calls.epgCreateManys[calls.epgCreateManys.length - 1] as { data: Array<{ dn: string }> } | undefined
+        const data = createCall?.data ?? []
+        return data.map(d => ({ id: `epg-${d.dn}`, dn: d.dn }))
+      },
     },
     epgPathBinding: {
-      upsert: async (args: unknown) => { calls.bindingUpserts.push(args); return { id: 'b1' } },
-      updateMany: async (args: unknown) => { calls.bindingUpdateManys.push(args); return { count: 0 } },
+      deleteMany: async (args: unknown) => { calls.bindingDeletes.push(args); return { count: 0 } },
+      createMany: async (args: { data: Array<{ epgId: string; dn: string }> }) => {
+        calls.bindingCreateManys.push(args)
+        return { count: args.data.length }
+      },
     },
     apicHost: {
       update: async (args: unknown) => { calls.hostUpdates.push(args); return {} },
@@ -74,44 +82,26 @@ function mockClient(lockAcquired = true): { client: EpgWriteClient; calls: Calls
 describe('executeEpgResyncWrites', () => {
   const now = new Date('2026-07-13T00:00:00Z')
 
-  it('upserts EPGs then bindings with the parent id, and marks absentees', async () => {
+  it('purges existing state and bulk inserts EPGs then bindings', async () => {
     const { client, calls } = mockClient()
     const epg = makeEpg()
 
     const result = await executeEpgResyncWrites(client, 'host-1', [epg], now)
 
     expect(result).toEqual({ syncedEpgs: 1, syncedBindings: 1 })
-    expect(calls.epgUpserts).toHaveLength(1)
-    const epgUpsert = calls.epgUpserts[0] as {
-      where: { apicHostId_dn: { apicHostId: string; dn: string } }
-      create: Record<string, unknown>
-      update: Record<string, unknown>
-    }
-    expect(epgUpsert.where.apicHostId_dn).toEqual({ apicHostId: 'host-1', dn: epg.dn })
-    expect(epgUpsert.create.tenant).toBe('t1')
-    expect(epgUpsert.update.present).toBe(true)
-    expect(epgUpsert.update.lastSeenAt).toEqual(now)
+    expect(calls.epgDeletes).toHaveLength(1)
+    expect(calls.bindingDeletes).toHaveLength(1)
 
-    const bindingUpsert = calls.bindingUpserts[0] as {
-      where: { apicHostId_dn: { dn: string } }
-      create: Record<string, unknown>
-    }
-    expect(bindingUpsert.create.epgId).toBe(`epg-${epg.dn}`)
-    expect(bindingUpsert.create.node).toBe('101')
+    expect(calls.epgCreateManys).toHaveLength(1)
+    const epgCreate = calls.epgCreateManys[0] as { data: Array<Record<string, unknown>> }
+    expect(epgCreate.data[0].apicHostId).toBe('host-1')
+    expect(epgCreate.data[0].dn).toBe(epg.dn)
+    expect(epgCreate.data[0].tenant).toBe('t1')
 
-    // Absent EPGs and bindings flipped to present: false, scoped to still-present rows.
-    const epgAbsent = calls.epgUpdateManys[0] as {
-      where: { apicHostId: string; present: boolean; dn: { notIn: string[] } }
-      data: { present: boolean }
-    }
-    expect(epgAbsent.where.dn.notIn).toEqual([epg.dn])
-    expect(epgAbsent.data.present).toBe(false)
-    const bindingAbsent = calls.bindingUpdateManys[0] as {
-      where: { dn: { notIn: string[] } }
-      data: { present: boolean }
-    }
-    expect(bindingAbsent.where.dn.notIn).toEqual([epg.bindings[0].dn])
-    expect(bindingAbsent.data.present).toBe(false)
+    expect(calls.bindingCreateManys).toHaveLength(1)
+    const bindingCreate = calls.bindingCreateManys[0] as { data: Array<Record<string, unknown>> }
+    expect(bindingCreate.data[0].epgId).toBe(`epg-${epg.dn}`)
+    expect(bindingCreate.data[0].node).toBe('101')
 
     // lastEpgSyncAt stamped inside the same transaction.
     expect(calls.hostUpdates).toHaveLength(1)
@@ -137,3 +127,4 @@ describe('executeEpgResyncWrites', () => {
     expect(result).toEqual({ syncedEpgs: 2, syncedBindings: 1 })
   })
 })
+

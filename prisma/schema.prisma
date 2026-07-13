@@ -373,13 +373,9 @@ model EpgSnapshot {
   domains           String[]
   providedContracts String[]
   consumedContracts String[]
-  present           Boolean  @default(true)
-  firstSeenAt       DateTime @default(now())
-  lastSeenAt        DateTime @default(now())
   bindings          EpgPathBinding[]
 
   @@unique([apicHostId, dn])
-  @@index([apicHostId, present])
   @@index([apicHostId, tenant])
   @@map("epg_snapshot")
 }
@@ -397,13 +393,10 @@ model EpgPathBinding {
   pathType    String      @default("port")
   encap       String      @default("")
   mode        String      @default("trunk")
-  present     Boolean     @default(true)
-  firstSeenAt DateTime    @default(now())
-  lastSeenAt  DateTime    @default(now())
 
   @@unique([apicHostId, dn])
-  @@index([apicHostId, present])
   @@index([apicHostId, node])
   @@index([epgId])
   @@map("epg_path_binding")
 }
+

@@ -9,7 +9,6 @@ import {
 import type { SafeApicHost } from '@/actions/apic-hosts'
 import {
   countActiveEpgFilterGroups,
-  type EpgPresenceFilter,
   type EpgWithBindings,
   type BindingWithEpg,
 } from '@/lib/epgs/query'
@@ -40,21 +39,6 @@ function fmt(date: string | Date | null) {
   return new Date(date).toLocaleString()
 }
 
-function PresentBadge({ present }: { present: boolean }) {
-  return (
-    <span className={[
-      'flex items-center gap-1.5 text-[10px] font-medium',
-      present ? 'text-success' : 'text-faint',
-    ].join(' ')}>
-      <span className={[
-        'w-1.5 h-1.5 rounded-full shrink-0',
-        present ? 'bg-success-dot' : 'bg-border',
-      ].join(' ')} />
-      {present ? 'Present' : 'Removed'}
-    </span>
-  )
-}
-
 interface Props {
   apicHosts: SafeApicHost[]
   view: ViewValue
@@ -65,23 +49,20 @@ interface Props {
   filterTenant: string[]
   filterAp: string[]
   filterNode: string[]
-  filterPresence: EpgPresenceFilter[]
   tenants: string[]
   aps: string[]
   nodeOptions: string[]
   page: number
   total: number
   pageSize: PageSizeValue
-  presentTotal: number
-  absentTotal: number
   lastSyncAt: string | null
 }
 
 export function EpgsClient({
   apicHosts, view, epgs, bindings, selectedHostId, query,
-  filterTenant, filterAp, filterNode, filterPresence,
+  filterTenant, filterAp, filterNode,
   tenants, aps, nodeOptions,
-  page, total, pageSize, presentTotal, absentTotal, lastSyncAt,
+  page, total, pageSize, lastSyncAt,
 }: Props) {
   const router = useRouter()
   const [syncing, setSyncing] = useState(false)
@@ -104,7 +85,7 @@ export function EpgsClient({
   const rangeStart = total === 0 ? 0 : (page - 1) * effectivePageSize + 1
   const rangeEnd = pageSize === 'all' ? total : Math.min(page * effectivePageSize, total)
   const activeFilterGroupCount = countActiveEpgFilterGroups({
-    tenant: filterTenant, ap: filterAp, node: filterNode, presence: filterPresence,
+    tenant: filterTenant, ap: filterAp, node: filterNode,
   })
   const selectedHost = apicHosts.find(host => host.id === selectedHostId)
   const selectedEpg = epgs.find(e => e.id === selectedEpgId) ?? null
@@ -112,7 +93,7 @@ export function EpgsClient({
 
   function buildUrl(overrides: {
     apic?: string; view?: ViewValue; query?: string; page?: number; pageSize?: PageSizeValue
-    tenant?: string[]; ap?: string[]; node?: string[]; presence?: string[]
+    tenant?: string[]; ap?: string[]; node?: string[]
   }) {
     const params = new URLSearchParams()
     const apic = overrides.apic ?? selectedHostId
@@ -123,7 +104,6 @@ export function EpgsClient({
     const ft = overrides.tenant !== undefined ? overrides.tenant : filterTenant
     const fa = overrides.ap !== undefined ? overrides.ap : filterAp
     const fn = overrides.node !== undefined ? overrides.node : filterNode
-    const fp = overrides.presence !== undefined ? overrides.presence : filterPresence
 
     if (apic) params.set('apic', apic)
     if (v !== 'epg') params.set('view', v)
@@ -133,7 +113,6 @@ export function EpgsClient({
     if (ft.length > 0) params.set('tenant', ft.join(','))
     if (fa.length > 0) params.set('ap', fa.join(','))
     if (fn.length > 0) params.set('node', fn.join(','))
-    if (fp.length > 0 && fp.length < 2) params.set('presence', fp[0])
     const qs = params.toString()
     return `/epgs${qs ? `?${qs}` : ''}`
   }
@@ -151,7 +130,7 @@ export function EpgsClient({
     }, 300)
   }
 
-  function handleFilterChange(key: 'tenant' | 'ap' | 'node' | 'presence', value: string[]) {
+  function handleFilterChange(key: 'tenant' | 'ap' | 'node', value: string[]) {
     navigate(buildUrl({ [key]: value, page: 1 }))
   }
 
@@ -303,16 +282,11 @@ export function EpgsClient({
                     {view === 'port' && (
                       <FilterSubmenu label="Node" value={filterNode} options={nodeOptions} onChange={v => handleFilterChange('node', v)} disabled={isPending} searchable />
                     )}
-                    <FilterSubmenu label="Presence" value={filterPresence} options={['present', 'absent']} onChange={v => handleFilterChange('presence', v)} disabled={isPending} />
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
 
               <div className="flex items-center gap-3 shrink-0 text-xs text-subtle">
-                <span><span className="font-semibold text-success">{presentTotal}</span> present</span>
-                <span className="text-border">·</span>
-                <span><span className="font-semibold text-foreground">{absentTotal}</span> removed</span>
-                <span className="text-border">·</span>
                 <span title="Last EPG sync">synced {fmt(lastSyncAt)}</span>
               </div>
             </div>
@@ -345,7 +319,7 @@ export function EpgsClient({
                     <table className="w-full text-xs">
                       <thead>
                         <tr>
-                          {['EPG', 'Tenant', 'App Profile', 'Bridge Domain', 'Ports', 'Contracts', 'Status'].map(h => (
+                          {['EPG', 'Tenant', 'App Profile', 'Bridge Domain', 'Ports', 'Contracts'].map(h => (
                             <th key={h} className={DENSE_TABLE_HEAD_CLS}>{h}</th>
                           ))}
                         </tr>
@@ -373,7 +347,6 @@ export function EpgsClient({
                                 ? <span className="font-medium text-foreground">{epg.providedContracts.length + epg.consumedContracts.length}</span>
                                 : <span className="text-faint">0</span>}
                             </td>
-                            <td className="px-4 py-2.5"><PresentBadge present={epg.present} /></td>
                           </tr>
                         ))}
                       </tbody>
@@ -382,7 +355,7 @@ export function EpgsClient({
                     <table className="w-full text-xs">
                       <thead>
                         <tr>
-                          {['Node', 'Port', 'Type', 'Encap', 'Mode', 'EPG', 'Tenant', 'Status'].map(h => (
+                          {['Node', 'Port', 'Type', 'Encap', 'Mode', 'EPG', 'Tenant'].map(h => (
                             <th key={h} className={DENSE_TABLE_HEAD_CLS}>{h}</th>
                           ))}
                         </tr>
@@ -402,7 +375,6 @@ export function EpgsClient({
                             <td className="px-4 py-2.5 text-subtle">{b.mode}</td>
                             <td className="px-4 py-2.5 font-mono text-foreground max-w-[200px] truncate" title={b.epg.dn}>{b.epg.name}</td>
                             <td className="px-4 py-2.5 text-muted-foreground">{b.epg.tenant}</td>
-                            <td className="px-4 py-2.5"><PresentBadge present={b.present} /></td>
                           </tr>
                         ))}
                       </tbody>
@@ -479,3 +451,4 @@ export function EpgsClient({
     </div>
   )
 }
+
