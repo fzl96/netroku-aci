@@ -22,6 +22,8 @@ import {
 import { ApicCredentialDialog } from '@/components/ApicCredentialDialog'
 import { FilterSubmenu } from '@/components/FilterSubmenu'
 import { ExportEndpointsDialog } from './ExportEndpointsDialog'
+import { PortDetailPanel } from './PortDetailPanel'
+import type { EndpointPortSummary } from './sort'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -72,6 +74,7 @@ function TableSkeleton() {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+type ViewValue = 'endpoint' | 'port'
 type PageSizeValue = 10 | 50 | 100 | 1000 | 'all'
 const PAGE_SIZE_OPTIONS: { label: string; value: PageSizeValue }[] = [
   { label: '10', value: 10 },
@@ -83,7 +86,9 @@ const PAGE_SIZE_OPTIONS: { label: string; value: PageSizeValue }[] = [
 
 interface Props {
   apicHosts: SafeApicHost[]
+  view: ViewValue
   endpoints: Endpoint[]
+  ports?: EndpointPortSummary[]
   selectedHostId: string
   query: string
   filterVlan: string[]
@@ -102,7 +107,9 @@ interface Props {
 
 export function EndpointsClient({
   apicHosts,
+  view,
   endpoints,
+  ports = [],
   selectedHostId,
   query,
   filterVlan,
@@ -127,14 +134,12 @@ export function EndpointsClient({
   const [searchValue, setSearchValue] = useState(query)
   const [previousQuery, setPreviousQuery] = useState(query)
   const [jumpValue, setJumpValue] = useState('')
+  const [selectedPort, setSelectedPort] = useState<EndpointPortSummary | null>(null)
 
-  // Sync input when query changes via back/forward navigation, but ignore the
-  // echo from our own debounced router.replace so in-flight typing isn't clobbered.
+  // Sync input when query changes via back/forward navigation.
   if (query !== previousQuery) {
     setPreviousQuery(query)
-    if (query !== lastDispatchedQuery.current) {
-      setSearchValue(query)
-    }
+    setSearchValue(query)
   }
 
   const effectivePageSize = pageSize === 'all' ? Math.max(total, 1) : pageSize
@@ -147,12 +152,15 @@ export function EndpointsClient({
     node: filterNode,
     iface: filterIface,
     status: filterStatus,
-  })
+  }, view)
   const selectedHost = apicHosts.find(host => host.id === selectedHostId)
+  const noun = view === 'endpoint' ? 'endpoints' : 'ports'
+  const currentItemsCount = view === 'endpoint' ? endpoints.length : ports.length
 
-  function buildUrl(overrides: { apic?: string; query?: string; page?: number; pageSize?: PageSizeValue; vlan?: string[]; node?: string[]; iface?: string[]; status?: string[] }) {
+  function buildUrl(overrides: { apic?: string; view?: ViewValue; query?: string; page?: number; pageSize?: PageSizeValue; vlan?: string[]; node?: string[]; iface?: string[]; status?: string[] }) {
     const params = new URLSearchParams()
     const apic = overrides.apic ?? selectedHostId
+    const v = overrides.view ?? view
     const q = overrides.query !== undefined ? overrides.query : query
     const p = overrides.page ?? page
     const ps = overrides.pageSize !== undefined ? overrides.pageSize : pageSize
@@ -162,12 +170,13 @@ export function EndpointsClient({
     const fs = overrides.status !== undefined ? overrides.status : filterStatus
 
     if (apic) params.set('apic', apic)
+    if (v !== 'endpoint') params.set('view', v)
     if (q.trim()) params.set('query', q.trim())
     if (p > 1) params.set('page', String(p))
     if (ps !== 50) params.set('pageSize', String(ps))
     if (fv.length > 0) params.set('vlan', fv.join(','))
     if (fn.length > 0) params.set('node', fn.join(','))
-    if (fi.length > 0) params.set('iface', fi.join(','))
+    if (v === 'endpoint' && fi.length > 0) params.set('iface', fi.join(','))
     if (fs.length > 0 && fs.length < 2) params.set('status', fs[0])
     const qs = params.toString()
     return `/endpoints${qs ? `?${qs}` : ''}`
@@ -334,9 +343,28 @@ export function EndpointsClient({
           </div>
         ) : (
           <>
-            {/* Search + filters + stats row */}
+            {/* View toggle + search + filters + stats row */}
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 min-w-0">
+                {/* View toggle */}
+                <div className="flex rounded-lg border border-border overflow-hidden shrink-0">
+                  {([['endpoint', 'By Endpoint'], ['port', 'By Port']] as const).map(([v, label]) => (
+                    <button
+                      key={v}
+                      onClick={() => startTransition(() => { router.replace(buildUrl({ view: v, page: 1 })) })}
+                      disabled={isPending}
+                      className={[
+                        'px-3 py-2 text-xs font-semibold transition-colors',
+                        view === v
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:text-foreground',
+                      ].join(' ')}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
                 {/* Search */}
                 <div className="relative w-56 shrink-0">
                   <IconSearch
@@ -348,7 +376,7 @@ export function EndpointsClient({
                     type="text"
                     value={searchValue}
                     onChange={e => handleSearchChange(e.target.value)}
-                    placeholder="Search MAC, IP, VLAN…"
+                    placeholder={view === 'endpoint' ? 'Search MAC, IP, VLAN…' : 'Search node, port, MAC, IP…'}
                     className={SEARCH_INPUT_CLS}
                   />
                 </div>
@@ -358,8 +386,8 @@ export function EndpointsClient({
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      title="Filter endpoints"
-                      aria-label="Filter endpoints"
+                      title={`Filter ${noun}`}
+                      aria-label={`Filter ${noun}`}
                       disabled={isPending}
                       className={[
                         'relative flex size-9 shrink-0 items-center justify-center rounded-lg border transition-colors outline-none',
@@ -382,7 +410,9 @@ export function EndpointsClient({
                     <DropdownMenuSeparator />
                     <FilterSubmenu label="VLAN" value={filterVlan} options={vlans} onChange={value => handleFilterChange('vlan', value)} disabled={isPending} searchable />
                     <FilterSubmenu label="Node" value={filterNode} options={nodes} onChange={value => handleFilterChange('node', value)} disabled={isPending} />
-                    <FilterSubmenu label="Interface" value={filterIface} options={ifaces} onChange={value => handleFilterChange('iface', value)} disabled={isPending} searchable />
+                    {view === 'endpoint' && (
+                      <FilterSubmenu label="Interface" value={filterIface} options={ifaces} onChange={value => handleFilterChange('iface', value)} disabled={isPending} searchable />
+                    )}
                     <FilterSubmenu label="Status" value={filterStatus} options={['active', 'historical']} onChange={value => handleFilterChange('status', value)} disabled={isPending} />
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -413,16 +443,16 @@ export function EndpointsClient({
                 isPending ? 'opacity-60 pointer-events-none' : 'opacity-100',
               ].join(' ')}
             >
-              {endpoints.length === 0 && !isPending ? (
+              {currentItemsCount === 0 && !isPending ? (
                 <div className="px-4 py-14 text-center">
-                  {query || filterVlan.length > 0 || filterNode.length > 0 || filterIface.length > 0 || filterStatus.length > 0 ? (
+                  {query || filterVlan.length > 0 || filterNode.length > 0 || (view === 'endpoint' && filterIface.length > 0) || filterStatus.length > 0 ? (
                     <>
-                      <p className="text-sm text-subtle">No endpoints match the current filters</p>
+                      <p className="text-sm text-subtle">No {noun} match the current filters</p>
                       <p className="text-xs text-faint mt-1">Try adjusting the search or filter values</p>
                     </>
                   ) : (
                     <>
-                      <p className="text-sm text-subtle">No endpoints found</p>
+                      <p className="text-sm text-subtle">No {noun} found</p>
                       <p className="text-xs text-faint mt-1">
                         Click <strong>Resync</strong> to pull the latest data from the APIC
                       </p>
@@ -434,7 +464,10 @@ export function EndpointsClient({
                   <table className="w-full text-xs">
                     <thead>
                       <tr>
-                        {['MAC', 'IP', 'VLAN', 'Node', 'Interface', 'EPG Description', 'First Seen', 'Last Seen', 'Status'].map(h => (
+                        {(view === 'endpoint'
+                          ? ['MAC', 'IP', 'VLAN', 'Node', 'Interface', 'EPG Description', 'First Seen', 'Last Seen', 'Status']
+                          : ['Node', 'Interface', 'Endpoints', 'VLANs', 'EPG Description', 'Last Seen']
+                        ).map(h => (
                           <th
                             key={h}
                             className={DENSE_TABLE_HEAD_CLS}
@@ -448,23 +481,44 @@ export function EndpointsClient({
                       <TableSkeleton />
                     ) : (
                       <tbody>
-                        {endpoints.map((ep, index) => (
-                          <tr
-                            key={ep.id}
-                            className="group border-b border-border-faint last:border-0 hover:bg-muted transition-colors duration-100 animate-fade-up"
-                            style={{ animationDelay: `${Math.min(index * 20, 200)}ms` }}
-                          >
-                            <td className="px-4 py-2.5 font-mono text-foreground border-l-2 border-l-transparent group-hover:border-l-primary transition-colors duration-100">{ep.mac}</td>
-                            <td className="px-4 py-2.5 font-mono text-muted-foreground">{ep.ip || '—'}</td>
-                            <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{ep.vlan}</td>
-                            <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{ep.node || '—'}</td>
-                            <td className="px-4 py-2.5 font-mono text-muted-foreground">{ep.interface || '—'}</td>
-                            <td className="px-4 py-2.5 text-subtle max-w-[200px] truncate" title={ep.epgDescr}>{ep.epgDescr || '—'}</td>
-                            <td className="px-4 py-2.5 tabular-nums text-faint whitespace-nowrap">{fmt(ep.firstSeenAt)}</td>
-                            <td className="px-4 py-2.5 tabular-nums text-faint whitespace-nowrap">{fmt(ep.lastSeenAt)}</td>
-                            <td className="px-4 py-2.5"><Badge active={ep.isActive} /></td>
-                          </tr>
-                        ))}
+                        {view === 'endpoint' ? (
+                          endpoints.map((ep, index) => (
+                            <tr
+                              key={ep.id}
+                              className="group border-b border-border-faint last:border-0 hover:bg-muted transition-colors duration-100 animate-fade-up"
+                              style={{ animationDelay: `${Math.min(index * 20, 200)}ms` }}
+                            >
+                              <td className="px-4 py-2.5 font-mono text-foreground border-l-2 border-l-transparent group-hover:border-l-primary transition-colors duration-100">{ep.mac}</td>
+                              <td className="px-4 py-2.5 font-mono text-muted-foreground">{ep.ip || '—'}</td>
+                              <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{ep.vlan}</td>
+                              <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{ep.node || '—'}</td>
+                              <td className="px-4 py-2.5 font-mono text-muted-foreground">{ep.interface || '—'}</td>
+                              <td className="px-4 py-2.5 text-subtle max-w-[200px] truncate" title={ep.epgDescr}>{ep.epgDescr || '—'}</td>
+                              <td className="px-4 py-2.5 tabular-nums text-faint whitespace-nowrap">{fmt(ep.firstSeenAt)}</td>
+                              <td className="px-4 py-2.5 tabular-nums text-faint whitespace-nowrap">{fmt(ep.lastSeenAt)}</td>
+                              <td className="px-4 py-2.5"><Badge active={ep.isActive} /></td>
+                            </tr>
+                          ))
+                        ) : (
+                          ports.map((port, index) => (
+                            <tr
+                              key={port.id}
+                              onClick={() => setSelectedPort(port)}
+                              className="group border-b border-border-faint last:border-0 hover:bg-muted transition-colors duration-100 cursor-pointer animate-fade-up"
+                              style={{ animationDelay: `${Math.min(index * 20, 200)}ms` }}
+                            >
+                              <td className="px-4 py-2.5 tabular-nums font-medium text-foreground border-l-2 border-l-transparent group-hover:border-l-primary transition-colors duration-100">{port.node}</td>
+                              <td className="px-4 py-2.5 font-mono text-muted-foreground">{port.interface}</td>
+                              <td className="px-4 py-2.5 tabular-nums text-foreground">
+                                <span className="font-semibold">{port.endpointCount}</span>
+                                <span className="text-[11px] text-subtle ml-1.5">({port.activeCount} active)</span>
+                              </td>
+                              <td className="px-4 py-2.5 font-mono text-muted-foreground max-w-[160px] truncate" title={port.vlans.join(', ')}>{port.vlans.join(', ') || '—'}</td>
+                              <td className="px-4 py-2.5 text-subtle max-w-[200px] truncate" title={port.epgDescrs.join(', ')}>{port.epgDescrs.join(', ') || '—'}</td>
+                              <td className="px-4 py-2.5 tabular-nums text-faint whitespace-nowrap">{fmt(port.lastSeenAt)}</td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     )}
                   </table>
@@ -477,8 +531,8 @@ export function EndpointsClient({
               <div className="flex items-center justify-between pt-1 gap-4">
                 <p className="text-xs text-subtle shrink-0">
                   {pageSize === 'all'
-                    ? `Showing all ${total} endpoints`
-                    : `Showing ${rangeStart}–${rangeEnd} of ${total} endpoints`}
+                    ? `Showing all ${total} ${noun}`
+                    : `Showing ${rangeStart}–${rangeEnd} of ${total} ${noun}`}
                 </p>
 
                 <div className="flex items-center gap-2">
@@ -553,6 +607,14 @@ export function EndpointsClient({
           </>
         )}
       </div>
+
+      {selectedPort && (
+        <PortDetailPanel
+          port={selectedPort}
+          onClose={() => setSelectedPort(null)}
+        />
+      )}
+
       <ApicCredentialDialog
         open={credentialOpen}
         onOpenChange={setCredentialOpen}
