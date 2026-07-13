@@ -63,13 +63,13 @@ export function EpgDetailPanel({ epg, onClose }: { epg: EpgWithBindings; onClose
           </div>
 
           <Field label="Domains">
-            {epg.domains.length > 0 ? epg.domains.map(d => <Pill key={d}>{d}</Pill>) : <span className="text-faint">—</span>}
+            {epg.domains.length > 0 ? epg.domains.map((d: string) => <Pill key={d}>{d}</Pill>) : <span className="text-faint">—</span>}
           </Field>
           <Field label="Provided Contracts">
-            {epg.providedContracts.length > 0 ? epg.providedContracts.map(c => <Pill key={c}>{c}</Pill>) : <span className="text-faint">—</span>}
+            {epg.providedContracts.length > 0 ? epg.providedContracts.map((c: string) => <Pill key={c}>{c}</Pill>) : <span className="text-faint">—</span>}
           </Field>
           <Field label="Consumed Contracts">
-            {epg.consumedContracts.length > 0 ? epg.consumedContracts.map(c => <Pill key={c}>{c}</Pill>) : <span className="text-faint">—</span>}
+            {epg.consumedContracts.length > 0 ? epg.consumedContracts.map((c: string) => <Pill key={c}>{c}</Pill>) : <span className="text-faint">—</span>}
           </Field>
 
           <div>
