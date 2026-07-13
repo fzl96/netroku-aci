@@ -110,3 +110,17 @@ describe('summarizeResults with nodes dataset', () => {
     expect(summarizeResults(results)).toBe('partial')
   })
 })
+
+describe('summarizeResults epgs dataset', () => {
+  it('counts a failed epgs dataset toward partial status', () => {
+    const status = summarizeResults([
+      {
+        apicHostId: 'h1',
+        host: 'apic1',
+        endpoints: { synced: 1, total: 1 },
+        epgs: { error: 'boom' },
+      },
+    ])
+    expect(status).toBe('partial')
+  })
+})
