@@ -443,13 +443,8 @@ export function EpgsClient({
         )}
       </div>
 
-      {selectedEpg && (
-        <EpgDetailPanel epg={selectedEpg} onClose={() => setSelectedEpgId(null)} />
-      )}
-
-      {selectedPort && (
-        <EpgPortDetailPanel port={selectedPort} onClose={() => setSelectedPort(null)} />
-      )}
+      <EpgDetailPanel epg={selectedEpg} onClose={() => setSelectedEpgId(null)} />
+      <EpgPortDetailPanel port={selectedPort} onClose={() => setSelectedPort(null)} />
 
       <ApicCredentialDialog
         open={credentialOpen}

@@ -608,12 +608,10 @@ export function EndpointsClient({
         )}
       </div>
 
-      {selectedPort && (
-        <PortDetailPanel
-          port={selectedPort}
-          onClose={() => setSelectedPort(null)}
-        />
-      )}
+      <PortDetailPanel
+        port={selectedPort}
+        onClose={() => setSelectedPort(null)}
+      />
 
       <ApicCredentialDialog
         open={credentialOpen}
