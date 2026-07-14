@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 
 const AUTH_PAGES = ["/signin"];
+const PUBLIC_PREFIXES = ["/docs"];
 const PUBLIC_PAGES = ["/"];
 
 export function shouldRedirectUnauthenticated(
@@ -10,7 +11,9 @@ export function shouldRedirectUnauthenticated(
   pathname: string,
 ) {
   const isAuthPage = AUTH_PAGES.includes(pathname);
-  const isPublicPage = PUBLIC_PAGES.includes(pathname);
+  const isPublicPage =
+    PUBLIC_PAGES.includes(pathname) ||
+    PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
   return !session && !isAuthPage && !isPublicPage;
 }
