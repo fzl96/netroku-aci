@@ -3,10 +3,42 @@ title: Interface Health
 description: Monitoring interface health across nodes.
 ---
 
-The interface health page displays per-interface health data across fabric nodes.
+The interface health page displays the admin/oper state and error counter samples for every physical interface (`l1PhysIf`) tracked across all fabric nodes. It is useful for spotting flapping links, incrementing error counters, and ports that are operationally down despite being admin-up.
 
-## TODO
+## Columns
 
-- Node and interface filtering
-- Counter modes
-- Natural sort order
+| Column | Description |
+|---|---|
+| Node | Leaf or spine node ID |
+| Interface | Interface name (e.g. `eth1/1`) |
+| Description | Interface description as configured on the node |
+| Admin | Administrative state (`up` / `down`) |
+| Oper | Operational state (`up` / `down`) |
+| Speed | Negotiated link speed |
+| Rx err | Received error counter (delta or cumulative — see Counter mode) |
+| Tx err | Transmitted error counter |
+| CRC | CRC error counter |
+| Align | Alignment error counter |
+| Last link change | When the interface last changed operational state |
+| Sampled | Timestamp of the counter sample shown |
+
+## Counter mode
+
+The toolbar has a **Delta / Total** toggle:
+
+- **Delta** — shows the change in counters since the previous sample. Useful for spotting interfaces that are actively accumulating errors.
+- **Total** — shows cumulative counters since the interface was last reset. Useful for longer-term trending.
+
+## Sort order
+
+Interfaces are sorted using a **natural sort** on the interface name, so `eth1/2` sorts before `eth1/10`. Within a node, interfaces appear in port-number order rather than alphabetical order.
+
+## Filters
+
+- **APIC host selector** — switch between configured APIC hosts
+- **Node filter** — show only interfaces from selected nodes
+- **CRC filter** — show only interfaces with non-zero CRC counter deltas in the latest sample
+
+## Resync
+
+Click **Resync** to pull fresh interface state and counter samples from APIC. You will be prompted for APIC credentials. Each resync appends a new counter sample, so the delta counters reflect the change since the previous resync.

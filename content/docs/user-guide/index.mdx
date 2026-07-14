@@ -3,9 +3,23 @@ title: User Guide
 description: How to use the Netroku ACI monitoring dashboard.
 ---
 
-This section covers each page of the Netroku ACI dashboard.
+This section covers each monitoring page in Netroku ACI — what data it shows, how to filter it, and how to keep it up to date.
 
-## TODO
+## Navigation
 
-- Overview of the dashboard layout and navigation
-- Common workflows
+The sidebar lists every page. All monitoring pages are available to both **admin** and **member** accounts.
+
+## Data freshness
+
+All data displayed in Netroku ACI comes from snapshots stored in the database — nothing is fetched live from APIC on page load. Data stays current through the [Scheduled Resync](/docs/admin/scheduled-resync) mechanism. Each monitoring page also has a manual **Resync** button that pulls fresh data on demand (requires entering APIC credentials).
+
+If a page shows dashes or zeros, the most likely cause is that a resync has not been run yet for that APIC host.
+
+## Pages in this section
+
+- [Dashboard](/docs/user-guide/dashboard) — global posture, headline stats, and per-host coverage at a glance
+- [Endpoints](/docs/user-guide/endpoints) — learned MAC/IP endpoint inventory with VLAN, node, interface, and EPG context
+- [EPGs](/docs/user-guide/epgs) — End Point Group inventory with bridge domain, contract, and static port binding details
+- [Faults](/docs/user-guide/faults) — active fabric faults by severity, with trend chart and per-node filtering
+- [Health Scores](/docs/user-guide/health-scores) — fabric, node, and tenant health scores with degraded object tracking
+- [Interface Health](/docs/user-guide/interface-health) — per-interface admin/oper state and error counter samples

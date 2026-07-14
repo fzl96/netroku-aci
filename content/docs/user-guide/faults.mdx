@@ -3,10 +3,48 @@ title: Faults
 description: Viewing and filtering ACI fabric faults.
 ---
 
-The faults page lists all active faults reported by the ACI fabric.
+The faults page lists all active `faultInst` objects from the ACI fabric. Faults are stored as a point-in-time snapshot — only faults present in the most recent resync are shown as active.
 
-## TODO
+## Severity levels
 
-- Severity levels
-- Filtering and sorting
-- Fault details
+ACI reports four severity levels, shown in descending order of urgency:
+
+| Severity | Description |
+|---|---|
+| **Critical** | Requires immediate attention; typically indicates a service-affecting condition |
+| **Major** | Significant problem that may affect service if not resolved |
+| **Minor** | Non-service-affecting issue worth tracking |
+| **Warning** | Informational; low-urgency condition |
+
+## Columns
+
+| Column | Description |
+|---|---|
+| Code | ACI fault code (e.g. `F0532`) |
+| Severity | critical / major / minor / warning |
+| Domain | Fault domain (e.g. `infra`, `tenant`) |
+| Type | Fault type classification |
+| Affected DN | Distinguished name of the affected object |
+| Node | Leaf or spine node, if applicable |
+| Description | Human-readable fault description from APIC |
+| Ack | Whether the fault has been acknowledged in APIC |
+| Created | When the fault was first raised |
+
+## Trend chart
+
+Above the table, a trend chart shows how fault counts have changed over recent sync intervals. This gives a quick sense of whether the fault count is growing, stable, or recovering.
+
+## Search and filters
+
+- **Search bar** — filters by fault code, affected DN, node, or description
+- **Severity filter** — show one or more severity levels
+- **Node filter** — multi-select; shows only faults from selected nodes
+- **APIC host selector** — switch between configured APIC hosts
+
+## Pagination
+
+The table is paginated. Use the page size selector to display 10, 50, 100, 1000, or all faults at once.
+
+## Resync
+
+Click **Resync** to pull a fresh fault snapshot from APIC. You will be prompted for APIC credentials.

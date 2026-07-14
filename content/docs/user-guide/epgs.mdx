@@ -3,10 +3,48 @@ title: EPGs
 description: End Point Groups inventory and monitoring.
 ---
 
-The EPGs page displays all End Point Groups and their associated endpoints.
+The EPGs page shows all End Point Groups (`fvAEPg`) from the ACI fabric, along with their bridge domain associations, static port bindings, and contract relationships.
 
-## TODO
+## Views
 
-- EPG table columns
-- Filtering by tenant, app profile, EPG
-- Excel export
+**EPG view** — one row per EPG.
+
+| Column | Description |
+|---|---|
+| EPG | EPG name |
+| Tenant | Tenant the EPG belongs to |
+| App Profile | Application profile containing the EPG |
+| Bridge Domain | Bridge domain the EPG is bound to |
+| Ports | Number of static port bindings |
+| Contracts | Consumed and provided contracts |
+
+**Port view** — one row per static port binding, showing which EPGs are present on each physical port.
+
+| Column | Description |
+|---|---|
+| Node | Leaf node |
+| Port | Physical interface |
+| Type | Binding type (e.g. `vpc`, `access`) |
+| EPGs | EPGs bound to this port |
+| Tenants | Tenants represented on this port |
+| Encaps / VLANs | VLAN encapsulations in use |
+| Mode | Encapsulation mode |
+
+## Filters
+
+Use the filter controls to narrow results by:
+
+- **Tenant** — multi-select
+- **App Profile** — multi-select
+- **EPG** — multi-select
+
+## Export
+
+Click **Export** to download an Excel file (`.xlsx`) of the current filtered result set. The export dialog offers two groupings:
+
+- **By EPG** — one sheet per EPG with its port bindings and contracts
+- **By port** — one sheet per port with its EPG and tenant associations
+
+## Resync
+
+Click **Resync** to pull a fresh EPG snapshot from APIC. You will be prompted for APIC credentials. The resync updates EPGs, static path bindings, and contract relationships in the database.
