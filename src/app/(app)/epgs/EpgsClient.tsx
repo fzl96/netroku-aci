@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
-  IconRefresh, IconSearch, IconChevronLeft, IconChevronRight, IconServer, IconFilter2,
+  IconRefresh, IconSearch, IconChevronLeft, IconChevronRight, IconServer, IconFilter2, IconLoader,
 } from '@tabler/icons-react'
 import type { SafeApicHost } from '@/actions/apic-hosts'
 import {
@@ -170,16 +170,25 @@ export function EpgsClient({
           </div>
 
           <div className="flex items-center gap-2">
-            <select
-              value={selectedHostId}
-              onChange={e => navigate(e.target.value ? `/epgs?apic=${e.target.value}` : '/epgs')}
-              className="text-xs bg-muted border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 min-w-[180px]"
-            >
-              <option value="">Select APIC host…</option>
-              {apicHosts.map(h => (
-                <option key={h.id} value={h.id}>{h.name} ({h.host})</option>
-              ))}
-            </select>
+            <div className="relative inline-flex items-center">
+              <select
+                value={selectedHostId}
+                onChange={e => navigate(e.target.value ? `/epgs?apic=${e.target.value}` : '/epgs')}
+                disabled={isPending}
+                className={[
+                  'text-xs bg-muted border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 min-w-[180px]',
+                  isPending ? 'opacity-70 cursor-wait pr-8' : '',
+                ].join(' ')}
+              >
+                <option value="">Select APIC host…</option>
+                {apicHosts.map(h => (
+                  <option key={h.id} value={h.id}>{h.name} ({h.host})</option>
+                ))}
+              </select>
+              {isPending && (
+                <IconLoader size={14} className="absolute right-2.5 animate-spin text-primary pointer-events-none" />
+              )}
+            </div>
 
             <button
               onClick={() => setCredentialOpen(true)}
@@ -217,16 +226,25 @@ export function EpgsClient({
                 : 'Choose a host to view its EPG inventory.'}
             </p>
             {apicHosts.length > 0 && (
-              <select
-                value={selectedHostId}
-                onChange={e => navigate(e.target.value ? `/epgs?apic=${e.target.value}` : '/epgs')}
-                className="text-xs bg-muted border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 min-w-[200px]"
-              >
-                <option value="">Select APIC host…</option>
-                {apicHosts.map(h => (
-                  <option key={h.id} value={h.id}>{h.name} ({h.host})</option>
-                ))}
-              </select>
+              <div className="relative inline-flex items-center">
+                <select
+                  value={selectedHostId}
+                  onChange={e => navigate(e.target.value ? `/epgs?apic=${e.target.value}` : '/epgs')}
+                  disabled={isPending}
+                  className={[
+                    'text-xs bg-muted border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 min-w-[200px]',
+                    isPending ? 'opacity-70 cursor-wait pr-8' : '',
+                  ].join(' ')}
+                >
+                  <option value="">Select APIC host…</option>
+                  {apicHosts.map(h => (
+                    <option key={h.id} value={h.id}>{h.name} ({h.host})</option>
+                  ))}
+                </select>
+                {isPending && (
+                  <IconLoader size={14} className="absolute right-2.5 animate-spin text-primary pointer-events-none" />
+                )}
+              </div>
             )}
           </div>
         ) : (

@@ -10,6 +10,7 @@ import {
   IconRefresh,
   IconSearch,
   IconServer,
+  IconLoader,
 } from '@tabler/icons-react'
 import type { SafeApicHost } from '@/actions/apic-hosts'
 import { isNodeOnline } from '@/lib/apic/node-status'
@@ -334,21 +335,28 @@ export function NodesClient({
           </div>
 
           <div className="flex items-center gap-2">
-            <select
-              value={selectedHostId}
-              onChange={e => handleHostChange(e.target.value)}
-              className={[
-                'text-xs bg-muted border border-border rounded-lg',
-                'px-3 py-2 text-foreground outline-none',
-                'focus:border-primary focus:ring-2 focus:ring-primary/10',
-                'min-w-[180px]',
-              ].join(' ')}
-            >
-              <option value="">Select APIC host...</option>
-              {apicHosts.map(h => (
-                <option key={h.id} value={h.id}>{h.name} ({h.host})</option>
-              ))}
-            </select>
+            <div className="relative inline-flex items-center">
+              <select
+                value={selectedHostId}
+                onChange={e => handleHostChange(e.target.value)}
+                disabled={isPending}
+                className={[
+                  'text-xs bg-muted border border-border rounded-lg',
+                  'px-3 py-2 text-foreground outline-none',
+                  'focus:border-primary focus:ring-2 focus:ring-primary/10',
+                  'min-w-[180px]',
+                  isPending ? 'opacity-70 cursor-wait pr-8' : '',
+                ].join(' ')}
+              >
+                <option value="">Select APIC host...</option>
+                {apicHosts.map(h => (
+                  <option key={h.id} value={h.id}>{h.name} ({h.host})</option>
+                ))}
+              </select>
+              {isPending && (
+                <IconLoader size={14} className="absolute right-2.5 animate-spin text-primary pointer-events-none" />
+              )}
+            </div>
 
             <button
               onClick={() => setCredentialOpen(true)}
@@ -386,21 +394,28 @@ export function NodesClient({
                 : 'Choose a host to view node and hardware health.'}
             </p>
             {apicHosts.length > 0 && (
-              <select
-                value={selectedHostId}
-                onChange={e => handleHostChange(e.target.value)}
-                className={[
-                  'text-xs bg-muted border border-border rounded-lg',
-                  'px-3 py-2 text-foreground outline-none cursor-pointer',
-                  'focus:border-primary focus:ring-2 focus:ring-primary/10',
-                  'min-w-[220px] transition-colors',
-                ].join(' ')}
-              >
-                <option value="">Select APIC host...</option>
-                {apicHosts.map(h => (
-                  <option key={h.id} value={h.id}>{h.name} ({h.host})</option>
-                ))}
-              </select>
+              <div className="relative inline-flex items-center">
+                <select
+                  value={selectedHostId}
+                  onChange={e => handleHostChange(e.target.value)}
+                  disabled={isPending}
+                  className={[
+                    'text-xs bg-muted border border-border rounded-lg',
+                    'px-3 py-2 text-foreground outline-none cursor-pointer',
+                    'focus:border-primary focus:ring-2 focus:ring-primary/10',
+                    'min-w-[220px] transition-colors',
+                    isPending ? 'opacity-70 cursor-wait pr-8' : '',
+                  ].join(' ')}
+                >
+                  <option value="">Select APIC host...</option>
+                  {apicHosts.map(h => (
+                    <option key={h.id} value={h.id}>{h.name} ({h.host})</option>
+                  ))}
+                </select>
+                {isPending && (
+                  <IconLoader size={14} className="absolute right-2.5 animate-spin text-primary pointer-events-none" />
+                )}
+              </div>
             )}
           </div>
         ) : (
