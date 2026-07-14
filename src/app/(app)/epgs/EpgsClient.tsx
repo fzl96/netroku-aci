@@ -216,6 +216,18 @@ export function EpgsClient({
                 ? 'No APIC hosts configured yet. Add one in Settings to get started.'
                 : 'Choose a host to view its EPG inventory.'}
             </p>
+            {apicHosts.length > 0 && (
+              <select
+                value={selectedHostId}
+                onChange={e => navigate(e.target.value ? `/epgs?apic=${e.target.value}` : '/epgs')}
+                className="text-xs bg-muted border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 min-w-[200px]"
+              >
+                <option value="">Select APIC host…</option>
+                {apicHosts.map(h => (
+                  <option key={h.id} value={h.id}>{h.name} ({h.host})</option>
+                ))}
+              </select>
+            )}
           </div>
         ) : (
           <>
