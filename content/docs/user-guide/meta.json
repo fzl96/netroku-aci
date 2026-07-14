@@ -1,0 +1,12 @@
+{
+  "title": "User Guide",
+  "pages": [
+    "index",
+    "dashboard",
+    "endpoints",
+    "epgs",
+    "faults",
+    "health-scores",
+    "interface-health"
+  ]
+}
