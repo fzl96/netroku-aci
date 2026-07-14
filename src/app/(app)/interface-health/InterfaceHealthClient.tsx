@@ -163,6 +163,25 @@ function OperStBadge({ st }: { st: string }) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+function TableSkeleton({ columns = 8 }: { columns?: number }) {
+  return (
+    <tbody>
+      {Array.from({ length: 8 }).map((_, i) => (
+        <tr key={i} className="border-b border-border-faint last:border-0">
+          {Array.from({ length: columns }).map((_, j) => (
+            <td key={j} className={['px-4 py-2.5', j === 0 ? 'border-l-2 border-l-transparent' : ''].join(' ')}>
+              <div
+                className="h-2.5 rounded-sm bg-muted animate-pulse"
+                style={{ width: `${35 + ((i * 13 + j * 17) % 45)}%` }}
+              />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </tbody>
+  )
+}
+
 export function InterfaceHealthClient({
   apicHosts,
   rows,
@@ -459,19 +478,7 @@ export function InterfaceHealthClient({
       </div>
 
       <div className="px-8 py-6 space-y-4">
-        {isPending ? (
-          <div className="flex flex-col items-center justify-center py-28 text-center animate-fade-up">
-            <div className="w-14 h-14 rounded-2xl bg-card border border-border flex items-center justify-center shadow-sm mb-4">
-              <IconLoader size={24} className="animate-spin text-primary" />
-            </div>
-            <h2 className="font-serif text-base font-semibold text-foreground mb-1">
-              Loading APIC host data…
-            </h2>
-            <p className="text-xs text-subtle">
-              Fetching interface status and error counters from the selected host
-            </p>
-          </div>
-        ) : !selectedHostId ? (
+        {!selectedHostId && !isPending ? (
           <div className="flex flex-col items-center justify-center py-28 text-center">
             <div className="relative mb-6">
               <div className="w-14 h-14 rounded-2xl bg-card border border-border flex items-center justify-center shadow-sm">
@@ -691,8 +698,11 @@ export function InterfaceHealthClient({
                         ))}
                       </tr>
                     </thead>
-                    <tbody>
-                      {rows.map((r, i) => {
+                    {isPending ? (
+                      <TableSkeleton columns={HEAD_COLS.length} />
+                    ) : (
+                      <tbody>
+                        {rows.map((r, i) => {
                         const visibleCounters = selectVisibleCounters(r, counterMode)
 
                         return (
@@ -735,7 +745,8 @@ export function InterfaceHealthClient({
                           </tr>
                         )
                       })}
-                    </tbody>
+                      </tbody>
+                    )}
                   </table>
                 </div>
               )}

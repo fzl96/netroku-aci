@@ -59,6 +59,25 @@ interface Props {
   lastSyncAt: string | null
 }
 
+function TableSkeleton({ columns = 6 }: { columns?: number }) {
+  return (
+    <tbody>
+      {Array.from({ length: 8 }).map((_, i) => (
+        <tr key={i} className="border-b border-border-faint last:border-0">
+          {Array.from({ length: columns }).map((_, j) => (
+            <td key={j} className={['px-4 py-2.5', j === 0 ? 'border-l-2 border-l-transparent' : ''].join(' ')}>
+              <div
+                className="h-2.5 rounded-sm bg-muted animate-pulse"
+                style={{ width: `${35 + ((i * 13 + j * 17) % 45)}%` }}
+              />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </tbody>
+  )
+}
+
 export function EpgsClient({
   apicHosts, view, epgs, ports = [], selectedHostId, query,
   filterTenant, filterAp, filterNode,
@@ -204,19 +223,8 @@ export function EpgsClient({
       </div>
 
       <div className="px-8 py-6 space-y-4">
-        {isPending ? (
-          <div className="flex flex-col items-center justify-center py-28 text-center animate-fade-up">
-            <div className="w-14 h-14 rounded-2xl bg-card border border-border flex items-center justify-center shadow-sm mb-4">
-              <IconLoader size={24} className="animate-spin text-primary" />
-            </div>
-            <h2 className="font-serif text-base font-semibold text-foreground mb-1">
-              Loading APIC host data…
-            </h2>
-            <p className="text-xs text-subtle">
-              Fetching EPG inventory from the selected host
-            </p>
-          </div>
-        ) : !selectedHostId ? (
+        {!selectedHostId && !isPending ? (
+
           <div className="flex flex-col items-center justify-center py-28 text-center">
             <div className="relative mb-6">
               <div className="w-14 h-14 rounded-2xl bg-card border border-border flex items-center justify-center shadow-sm">
@@ -333,7 +341,7 @@ export function EpgsClient({
               isPending ? 'opacity-60 pointer-events-none' : 'opacity-100',
             ].join(' ')}>
               {currentItemsCount === 0 && !isPending ? (
-                <div className="px-4 py-14 text-center">
+                <div className="px-8 py-6 space-y-4">
                   {query || activeFilterGroupCount > 0 ? (
                     <>
                       <p className="text-sm text-subtle">No {noun} match the current filters</p>
@@ -359,8 +367,11 @@ export function EpgsClient({
                           ))}
                         </tr>
                       </thead>
-                      <tbody>
-                        {epgs.map(epg => (
+                      {isPending ? (
+                        <TableSkeleton columns={6} />
+                      ) : (
+                        <tbody>
+                          {epgs.map(epg => (
                           <tr
                             key={epg.id}
                             onClick={() => setSelectedEpgId(epg.id)}
@@ -384,7 +395,8 @@ export function EpgsClient({
                             </td>
                           </tr>
                         ))}
-                      </tbody>
+                        </tbody>
+                      )}
                     </table>
                   ) : (
                     <table className="w-full text-xs">
@@ -395,8 +407,11 @@ export function EpgsClient({
                           ))}
                         </tr>
                       </thead>
-                      <tbody>
-                        {ports.map(port => (
+                      {isPending ? (
+                        <TableSkeleton columns={7} />
+                      ) : (
+                        <tbody>
+                          {ports.map(port => (
                           <tr
                             key={port.id}
                             onClick={() => setSelectedPort(port)}
