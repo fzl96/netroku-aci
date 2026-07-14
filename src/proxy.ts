@@ -4,7 +4,8 @@ import { auth } from "@/lib/auth";
 
 const AUTH_PAGES = ["/signin"];
 const PUBLIC_PREFIXES = ["/docs"];
-const PUBLIC_PAGES = ["/"];
+// Docs are public, and their Cmd/Ctrl+K search calls /api/search — keep it reachable without a session.
+const PUBLIC_PAGES = ["/", "/api/search"];
 
 export function shouldRedirectUnauthenticated(
   session: unknown,
