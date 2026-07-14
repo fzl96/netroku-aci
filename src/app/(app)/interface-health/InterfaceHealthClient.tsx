@@ -638,7 +638,7 @@ export function InterfaceHealthClient({
                 isPending ? 'opacity-60 pointer-events-none' : 'opacity-100',
               ].join(' ')}
             >
-              {rows.length === 0 ? (
+              {rows.length === 0 && !isPending ? (
                 <div className="px-4 py-14 text-center">
                   {view === 'crc' && !query && activeFilterCount === 0 ? (
                     <>
