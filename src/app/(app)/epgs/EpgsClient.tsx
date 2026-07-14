@@ -23,6 +23,7 @@ import { FilterSubmenu } from '@/components/FilterSubmenu'
 import { ApicCredentialDialog } from '@/components/ApicCredentialDialog'
 import { EpgDetailPanel } from './EpgDetailPanel'
 import { EpgPortDetailPanel } from './EpgPortDetailPanel'
+import { ExportEpgsDialog } from './ExportEpgsDialog'
 import type { EpgPortSummary } from './sort'
 
 type ViewValue = 'epg' | 'port'
@@ -55,6 +56,8 @@ interface Props {
   page: number
   total: number
   pageSize: PageSizeValue
+  epgHostTotal: number
+  epgFilteredTotal: number
   lastSyncAt: string | null
 }
 
@@ -81,7 +84,7 @@ export function EpgsClient({
   view, epgs, ports = [], selectedHostId, query,
   filterTenant, filterAp, filterNode,
   tenants, aps, nodeOptions,
-  page, total, pageSize, lastSyncAt,
+  page, total, pageSize, epgHostTotal, epgFilteredTotal, lastSyncAt,
 }: Props) {
   const apicHosts = useApicHosts()
   const router = useRouter()
@@ -218,6 +221,18 @@ export function EpgsClient({
               <IconRefresh size={12} stroke={1.75} className={loading ? 'animate-spin' : ''} />
               {syncing ? 'Syncing…' : isPending ? 'Loading…' : 'Resync'}
             </button>
+
+            <ExportEpgsDialog
+              apicHostId={selectedHostId}
+              hostTotal={epgHostTotal}
+              filteredTotal={epgFilteredTotal}
+              filters={{
+                query,
+                tenant: filterTenant,
+                ap: filterAp,
+                node: filterNode,
+              }}
+            />
           </div>
         </div>
       </div>

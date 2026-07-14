@@ -26,6 +26,15 @@ export function countActiveEpgFilterGroups(filters: BindingFilters): number {
     .length
 }
 
+export function hasActiveEpgFilters(filters: BindingFilters): boolean {
+  return Boolean(
+    filters.query?.trim()
+    || filters.tenant?.length
+    || filters.ap?.length
+    || filters.node?.length,
+  )
+}
+
 export function buildEpgWhere(
   apicHostId: string,
   filters: EpgFilters,
@@ -49,6 +58,12 @@ export function buildEpgWhere(
         }
       : {}),
   }
+}
+
+/** EPG-level filter: keep EPGs with at least one binding on the selected nodes. */
+export function epgHasNodeBindingWhere(nodes: string[]): Prisma.EpgSnapshotWhereInput {
+  if (!nodes.length) return {}
+  return { bindings: { some: { OR: nodes.flatMap(nodeConditions) } } }
 }
 
 /** OR-conditions matching an exact node or either member of a vPC pair. */

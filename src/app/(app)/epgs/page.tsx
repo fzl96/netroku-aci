@@ -5,6 +5,7 @@ import { getApicHosts } from '@/actions/apic-hosts'
 import {
   buildEpgWhere,
   buildBindingWhere,
+  epgHasNodeBindingWhere,
   expandNodeOptions,
   type EpgWithBindings,
 } from '@/lib/epgs/query'
@@ -48,6 +49,8 @@ export default async function EpgsPage({
   let epgs: EpgWithBindings[] = []
   let ports: EpgPortSummary[] = []
   let total = 0
+  let epgHostTotal = 0
+  let epgFilteredTotal = 0
   let tenants: string[] = []
   let aps: string[] = []
   let nodeOptions: string[] = []
@@ -64,7 +67,12 @@ export default async function EpgsPage({
     const take = pageSize === 'all' ? undefined : pageSize
     const hostWhere = { apicHostId: apic }
 
-    const [host, tenantRows, apRows, nodeRows] = await Promise.all([
+    const filteredCountWhere = {
+      ...buildEpgWhere(apic, filters),
+      ...epgHasNodeBindingWhere(filterNode),
+    }
+
+    const [host, tenantRows, apRows, nodeRows, hostCount, filteredCount] = await Promise.all([
       prisma.apicHost.findFirst({ where: { id: apic }, select: { lastEpgSyncAt: true } }),
       prisma.epgSnapshot.findMany({
         where: hostWhere, select: { tenant: true }, distinct: ['tenant'], orderBy: { tenant: 'asc' },
@@ -75,8 +83,12 @@ export default async function EpgsPage({
       prisma.epgPathBinding.findMany({
         where: hostWhere, select: { node: true }, distinct: ['node'],
       }),
+      prisma.epgSnapshot.count({ where: hostWhere }),
+      prisma.epgSnapshot.count({ where: filteredCountWhere }),
     ])
 
+    epgHostTotal = hostCount
+    epgFilteredTotal = filteredCount
     lastSyncAt = host?.lastEpgSyncAt?.toISOString() ?? null
     tenants = tenantRows.map(r => r.tenant).filter(Boolean)
     aps = apRows.map(r => r.appProfile).filter(Boolean)
@@ -124,6 +136,8 @@ export default async function EpgsPage({
       page={page}
       total={total}
       pageSize={pageSize}
+      epgHostTotal={epgHostTotal}
+      epgFilteredTotal={epgFilteredTotal}
       lastSyncAt={lastSyncAt}
     />
   )
