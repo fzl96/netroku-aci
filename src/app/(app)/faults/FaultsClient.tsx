@@ -12,8 +12,9 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconCheck,
+  IconLoader,
 } from '@tabler/icons-react'
-import type { SafeApicHost } from '@/actions/apic-hosts'
+import { useApicHosts } from '@/components/ApicHostsProvider'
 import {
   DENSE_TABLE_HEAD_CLS,
   SEARCH_INPUT_CLS,
@@ -73,7 +74,6 @@ const SEVERITY_LABEL: Record<Severity, string> = {
 }
 
 interface Props {
-  apicHosts: SafeApicHost[]
   selectedApic: string | null
   query: string
   severity: string | null
@@ -129,8 +129,26 @@ function SeverityBadge({ severity }: { severity: string }) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+function TableSkeleton({ columns = 7 }: { columns?: number }) {
+  return (
+    <tbody>
+      {Array.from({ length: 8 }).map((_, i) => (
+        <tr key={i} className="border-b border-border-faint last:border-0">
+          {Array.from({ length: columns }).map((_, j) => (
+            <td key={j} className={['px-4 py-2.5', j === 0 ? 'border-l-2 border-l-transparent' : ''].join(' ')}>
+              <div
+                className="h-2.5 rounded-sm bg-muted animate-pulse"
+                style={{ width: `${35 + ((i * 13 + j * 17) % 45)}%` }}
+              />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </tbody>
+  )
+}
+
 export function FaultsClient({
-  apicHosts,
   selectedApic,
   query,
   severity,
@@ -143,6 +161,7 @@ export function FaultsClient({
   lastSyncedAt,
   trend,
 }: Props) {
+  const apicHosts = useApicHosts()
   const router = useRouter()
   const selectedHostId = selectedApic ?? ''
   const [syncing, setSyncing] = useState(false)
@@ -290,11 +309,13 @@ export function FaultsClient({
             <select
               value={selectedHostId}
               onChange={e => handleHostChange(e.target.value)}
+              disabled={isPending}
               className={[
                 'text-xs bg-muted border border-border rounded-lg',
                 'px-3 py-2 text-foreground outline-none',
                 'focus:border-primary focus:ring-2 focus:ring-primary/10',
                 'min-w-[180px]',
+                'disabled:opacity-60 disabled:cursor-not-allowed transition-opacity',
               ].join(' ')}
             >
               <option value="">Select APIC host…</option>
@@ -322,7 +343,7 @@ export function FaultsClient({
       </div>
 
       <div className="px-8 py-6 space-y-4">
-        {!selectedHostId ? (
+        {!selectedHostId && !isPending ? (
           <div className="flex flex-col items-center justify-center py-28 text-center">
             <div className="relative mb-6">
               <div className="w-14 h-14 rounded-2xl bg-card border border-border flex items-center justify-center shadow-sm">
@@ -342,11 +363,13 @@ export function FaultsClient({
               <select
                 value={selectedHostId}
                 onChange={e => handleHostChange(e.target.value)}
+                disabled={isPending}
                 className={[
                   'text-xs bg-muted border border-border rounded-lg',
                   'px-3 py-2 text-foreground outline-none cursor-pointer',
                   'focus:border-primary focus:ring-2 focus:ring-primary/10',
                   'min-w-[220px] transition-colors',
+                  'disabled:opacity-60 disabled:cursor-not-allowed transition-opacity',
                 ].join(' ')}
               >
                 <option value="">Select APIC host…</option>
@@ -485,8 +508,11 @@ export function FaultsClient({
                         ))}
                       </tr>
                     </thead>
-                    <tbody>
-                      {rows.map((r, i) => (
+                    {isPending ? (
+                      <TableSkeleton columns={7} />
+                    ) : (
+                      <tbody>
+                        {rows.map((r, i) => (
                         <tr
                           key={r.id}
                           className="group border-b border-border-faint last:border-0 hover:bg-muted transition-colors duration-100 animate-fade-up"
@@ -513,7 +539,8 @@ export function FaultsClient({
                           </td>
                         </tr>
                       ))}
-                    </tbody>
+                      </tbody>
+                    )}
                   </table>
                 </div>
               )}

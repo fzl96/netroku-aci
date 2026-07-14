@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'bun:test'
-import { parseFaultRows, tallyFaultCounts, selectClearedDns, type FaultInstNode } from './faults'
+import {
+  executeFaultResyncWrites,
+  parseFaultRows,
+  tallyFaultCounts,
+  selectClearedDns,
+  type FaultInstNode,
+  type FaultWriteClient,
+} from './faults'
 
 describe('parseFaultRows', () => {
   it('maps a faultInst MO to a fault row', () => {
@@ -89,5 +96,95 @@ describe('selectClearedDns', () => {
 
   it('returns empty when all previous faults are still present', () => {
     expect(selectClearedDns(['x'], new Set(['x']))).toEqual([])
+  })
+})
+
+describe('executeFaultResyncWrites', () => {
+  it('runs fault upserts, cleared detection, sample insert, and host stamp in one transaction', async () => {
+    const calls: string[] = []
+    let inTransaction = false
+    const faultSnapshot = {
+      upsert: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('upsert')
+        return {}
+      },
+      findMany: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('findMany')
+        return [{ dn: 'old/fault-F1' }]
+      },
+      updateMany: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('updateMany')
+        return { count: 1 }
+      },
+      count: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('count')
+        return 1
+      },
+    }
+    const faultCountSample = {
+      create: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('sample')
+        return {}
+      },
+    }
+    const apicHost = {
+      update: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('host')
+        return {}
+      },
+    }
+    const db = {
+      $transaction: async <T>(fn: (tx: {
+        faultSnapshot: typeof faultSnapshot
+        faultCountSample: typeof faultCountSample
+        apicHost: typeof apicHost
+      }) => Promise<T>, options?: { timeout?: number }) => {
+        expect(options).toEqual({ timeout: 30000 })
+        calls.push('transaction:start')
+        inTransaction = true
+        const result = await fn({ faultSnapshot, faultCountSample, apicHost })
+        inTransaction = false
+        calls.push('transaction:end')
+        return result
+      },
+    }
+
+    const result = await executeFaultResyncWrites(
+      db as unknown as FaultWriteClient,
+      'host-1',
+      [{
+        dn: 'new/fault-F2',
+        code: 'F2',
+        severity: 'critical',
+        domain: '',
+        type: '',
+        cause: '',
+        affectedDn: 'new',
+        node: null,
+        descr: '',
+        ack: false,
+        created: null,
+        lastTransition: null,
+      }],
+      new Date('2026-06-19T00:00:00Z'),
+    )
+
+    expect(result.total).toBe(1)
+    expect(calls).toEqual([
+      'transaction:start',
+      'upsert',
+      'findMany',
+      'updateMany',
+      'sample',
+      'host',
+      'count',
+      'transaction:end',
+    ])
   })
 })

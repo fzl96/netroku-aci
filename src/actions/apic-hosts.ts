@@ -1,5 +1,6 @@
 'use server'
 
+import { cache } from 'react'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { recordAudit } from '@/lib/audit'
@@ -48,13 +49,16 @@ function toSafe(host: { id: string; name: string; host: string; createdAt: Date;
   }
 }
 
-export async function getApicHosts(): Promise<SafeApicHost[]> {
+async function _getApicHosts(): Promise<SafeApicHost[]> {
   await requireSession()
   const hosts = await prisma.apicHost.findMany({
     orderBy: { createdAt: 'desc' },
   })
   return hosts.map(toSafe)
 }
+
+/** Cached per-request: safe to call from multiple server components without redundant DB hits. */
+export const getApicHosts = cache(_getApicHosts)
 
 export async function createApicHost(
   data: ApicHostFormValues

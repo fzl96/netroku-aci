@@ -4,12 +4,14 @@ import {
   parseNodeHealthRows,
   parseTenantHealthRows,
   parseHealthRows,
+  executeHealthScoreResyncWrites,
   healthBand,
   summarizeHealth,
   type FabricHealthNode,
   type TopSystemHealthNode,
   type TenantHealthNode,
   type ParsedHealthRow,
+  type HealthWriteClient,
 } from './health-scores'
 
 describe('parseFabricHealthRows', () => {
@@ -150,5 +152,88 @@ describe('summarizeHealth', () => {
     expect(summarizeHealth([mk('fabric', 88)])).toEqual({
       overall: 88, worstScore: 88, degradedCount: 0,
     })
+  })
+})
+
+describe('executeHealthScoreResyncWrites', () => {
+  it('runs health upserts, absent marking, sample insert, host stamp, and total count in one transaction', async () => {
+    const calls: string[] = []
+    let inTransaction = false
+    const healthScoreSnapshot = {
+      upsert: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('upsert')
+        return {}
+      },
+      updateMany: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('updateMany')
+        return { count: 0 }
+      },
+      count: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('count')
+        return 1
+      },
+    }
+    const healthScoreSample = {
+      create: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('sample')
+        return {}
+      },
+    }
+    const apicHost = {
+      update: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('host')
+        return {}
+      },
+    }
+    const db = {
+      $transaction: async <T>(fn: (tx: {
+        healthScoreSnapshot: typeof healthScoreSnapshot
+        healthScoreSample: typeof healthScoreSample
+        apicHost: typeof apicHost
+      }) => Promise<T>, options?: { timeout?: number }) => {
+        expect(options).toEqual({ timeout: 30000 })
+        calls.push('transaction:start')
+        inTransaction = true
+        const result = await fn({ healthScoreSnapshot, healthScoreSample, apicHost })
+        inTransaction = false
+        calls.push('transaction:end')
+        return result
+      },
+    }
+
+    const result = await executeHealthScoreResyncWrites(
+      db as unknown as HealthWriteClient,
+      'host-1',
+      [{
+        dn: 'topology',
+        scope: 'fabric',
+        name: 'Fabric',
+        node: null,
+        score: 97,
+        twScore: null,
+        prevScore: null,
+        maxSeverity: null,
+      }],
+      new Date('2026-06-19T00:00:00Z'),
+    )
+
+    expect(result).toEqual({
+      total: 1,
+      summary: { overall: 97, worstScore: 97, degradedCount: 0 },
+    })
+    expect(calls).toEqual([
+      'transaction:start',
+      'upsert',
+      'updateMany',
+      'sample',
+      'host',
+      'count',
+      'transaction:end',
+    ])
   })
 })

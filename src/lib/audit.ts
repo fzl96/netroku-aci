@@ -12,6 +12,7 @@ export type AuditAction =
   | 'resync.faults'
   | 'resync.health'
   | 'resync.nodes'
+  | 'resync.epgs'
   | 'user.create'
   | 'user.delete'
 

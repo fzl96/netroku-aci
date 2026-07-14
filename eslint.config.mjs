@@ -13,6 +13,7 @@ const eslintConfig = defineConfig([
     ".superpowers/**",
     "out/**",
     "build/**",
+    "prisma/generated/**",
     "next-env.d.ts",
   ]),
 ]);

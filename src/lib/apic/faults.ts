@@ -112,6 +112,24 @@ export async function fetchFaultsFromApic(
 }
 
 const FAULTS_CHUNK_SIZE = 100
+const FAULTS_TRANSACTION_TIMEOUT_MS = 30_000
+
+type FaultSnapshotDelegate = Pick<typeof prisma.faultSnapshot, 'upsert' | 'findMany' | 'updateMany' | 'count'>
+type FaultCountSampleDelegate = Pick<typeof prisma.faultCountSample, 'create'>
+type ApicHostDelegate = Pick<typeof prisma.apicHost, 'update'>
+
+interface FaultMutationClient {
+  faultSnapshot: FaultSnapshotDelegate
+  faultCountSample: FaultCountSampleDelegate
+  apicHost: ApicHostDelegate
+}
+
+export interface FaultWriteClient {
+  $transaction<T>(
+    fn: (tx: FaultMutationClient) => Promise<T>,
+    options?: { timeout?: number },
+  ): Promise<T>
+}
 
 export interface ResyncFaultsArgs {
   apicHostId: string
@@ -140,77 +158,85 @@ export async function resyncFaults(args: ResyncFaultsArgs): Promise<ResyncFaults
   const uniqueRows = Array.from(deduped.values())
   const now = new Date()
 
-  // Phase 1: upsert active faults (chunked so a huge fabric doesn't trip SQLite).
-  for (let i = 0; i < uniqueRows.length; i += FAULTS_CHUNK_SIZE) {
-    const chunk = uniqueRows.slice(i, i + FAULTS_CHUNK_SIZE)
-    await prisma.$transaction(
-      chunk.map(row =>
-        prisma.faultSnapshot.upsert({
-          where: { apicHostId_dn: { apicHostId, dn: row.dn } },
-          update: {
-            code: row.code,
-            severity: row.severity,
-            domain: row.domain,
-            type: row.type,
-            cause: row.cause,
-            affectedDn: row.affectedDn,
-            node: row.node,
-            descr: row.descr,
-            ack: row.ack,
-            created: row.created,
-            lastTransition: row.lastTransition,
-            lifecycle: 'active',
-            clearedAt: null,
-            lastSeenAt: now,
-          },
-          create: {
-            apicHostId,
-            dn: row.dn,
-            code: row.code,
-            severity: row.severity,
-            domain: row.domain,
-            type: row.type,
-            cause: row.cause,
-            affectedDn: row.affectedDn,
-            node: row.node,
-            descr: row.descr,
-            ack: row.ack,
-            created: row.created,
-            lastTransition: row.lastTransition,
-            lifecycle: 'active',
-            firstSeenAt: now,
-            lastSeenAt: now,
-          },
-        }),
-      ),
-    )
-  }
-
-  // Phase 2: flip previously-active faults that disappeared to cleared.
-  const previouslyActive = await prisma.faultSnapshot.findMany({
-    where: { apicHostId, lifecycle: 'active' },
-    select: { dn: true },
-  })
-  const currentDns = new Set(uniqueRows.map(r => r.dn))
-  const clearedDns = selectClearedDns(previouslyActive.map(f => f.dn), currentDns)
-  if (clearedDns.length > 0) {
-    await prisma.faultSnapshot.updateMany({
-      where: { apicHostId, dn: { in: clearedDns } },
-      data: { lifecycle: 'cleared', clearedAt: now },
-    })
-  }
-
-  // Phase 3: record a severity-count sample for the trend.
-  const counts = tallyFaultCounts(uniqueRows)
-  await prisma.faultCountSample.create({
-    data: { apicHostId, sampledAt: now, ...counts },
-  })
-
-  await prisma.apicHost.update({
-    where: { id: apicHostId },
-    data: { lastFaultSyncAt: now },
-  })
-
-  const total = await prisma.faultSnapshot.count({ where: { apicHostId, lifecycle: 'active' } })
+  const { counts, total } = await executeFaultResyncWrites(prisma, apicHostId, uniqueRows, now)
   return { synced: uniqueRows.length, ...counts, total }
+}
+
+export async function executeFaultResyncWrites(
+  db: FaultWriteClient,
+  apicHostId: string,
+  uniqueRows: ApicFaultRow[],
+  now: Date,
+): Promise<{ counts: FaultCounts; total: number }> {
+  return db.$transaction(async tx => {
+    for (let i = 0; i < uniqueRows.length; i += FAULTS_CHUNK_SIZE) {
+      const chunk = uniqueRows.slice(i, i + FAULTS_CHUNK_SIZE)
+      await Promise.all(
+        chunk.map(row =>
+          tx.faultSnapshot.upsert({
+            where: { apicHostId_dn: { apicHostId, dn: row.dn } },
+            update: {
+              code: row.code,
+              severity: row.severity,
+              domain: row.domain,
+              type: row.type,
+              cause: row.cause,
+              affectedDn: row.affectedDn,
+              node: row.node,
+              descr: row.descr,
+              ack: row.ack,
+              created: row.created,
+              lastTransition: row.lastTransition,
+              lifecycle: 'active',
+              clearedAt: null,
+              lastSeenAt: now,
+            },
+            create: {
+              apicHostId,
+              dn: row.dn,
+              code: row.code,
+              severity: row.severity,
+              domain: row.domain,
+              type: row.type,
+              cause: row.cause,
+              affectedDn: row.affectedDn,
+              node: row.node,
+              descr: row.descr,
+              ack: row.ack,
+              created: row.created,
+              lastTransition: row.lastTransition,
+              lifecycle: 'active',
+              firstSeenAt: now,
+              lastSeenAt: now,
+            },
+          }),
+        ),
+      )
+    }
+
+    const previouslyActive = await tx.faultSnapshot.findMany({
+      where: { apicHostId, lifecycle: 'active' },
+      select: { dn: true },
+    })
+    const currentDns = new Set(uniqueRows.map(r => r.dn))
+    const clearedDns = selectClearedDns(previouslyActive.map(f => f.dn), currentDns)
+    if (clearedDns.length > 0) {
+      await tx.faultSnapshot.updateMany({
+        where: { apicHostId, dn: { in: clearedDns } },
+        data: { lifecycle: 'cleared', clearedAt: now },
+      })
+    }
+
+    const counts = tallyFaultCounts(uniqueRows)
+    await tx.faultCountSample.create({
+      data: { apicHostId, sampledAt: now, ...counts },
+    })
+    await tx.apicHost.update({
+      where: { id: apicHostId },
+      data: { lastFaultSyncAt: now },
+    })
+
+    const total = await tx.faultSnapshot.count({ where: { apicHostId, lifecycle: 'active' } })
+    return { counts, total }
+  }, { timeout: FAULTS_TRANSACTION_TIMEOUT_MS })
 }

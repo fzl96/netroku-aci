@@ -69,9 +69,9 @@ export default async function FaultsPage({
       ...(query?.trim()
         ? {
             OR: [
-              { code: { contains: query.trim() } },
-              { descr: { contains: query.trim() } },
-              { affectedDn: { contains: query.trim() } },
+              { code: { contains: query.trim(), mode: 'insensitive' as const } },
+              { descr: { contains: query.trim(), mode: 'insensitive' as const } },
+              { affectedDn: { contains: query.trim(), mode: 'insensitive' as const } },
             ],
           }
         : {}),
@@ -124,7 +124,6 @@ export default async function FaultsPage({
 
   return (
     <FaultsClient
-      apicHosts={apicHosts}
       selectedApic={apic ?? null}
       query={query ?? ''}
       severity={severityFilter ?? null}

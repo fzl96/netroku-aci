@@ -50,15 +50,24 @@ export function InterfaceErrorTrendDrawer({
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const [error, setError] = useState(false)
 
+  const selectedId = selected?.id ?? null
+  const [prevSelectedId, setPrevSelectedId] = useState<string | null>(null)
+
+  if (selectedId !== prevSelectedId) {
+    setPrevSelectedId(selectedId)
+    if (selectedId) {
+      setLoading(true)
+      setData(null)
+      setHidden(new Set())
+      setError(false)
+    }
+  }
+
   // Fetch whenever the drawer opens for a new interface or the range changes.
   useEffect(() => {
-    if (!selected) return
+    if (!selectedId) return
     let cancelled = false
-    setLoading(true)
-    setData(null)
-    setHidden(new Set())
-    setError(false)
-    getInterfaceErrorSamples(selected.id, range)
+    getInterfaceErrorSamples(selectedId, range)
       .then((rows) => {
         if (!cancelled) setData(rows)
       })
@@ -75,7 +84,7 @@ export function InterfaceErrorTrendDrawer({
     return () => {
       cancelled = true
     }
-  }, [selected?.id, range])
+  }, [selectedId, range])
 
   const toggleSeries = (key: string) =>
     setHidden((prev) => {
@@ -94,8 +103,8 @@ export function InterfaceErrorTrendDrawer({
         if (!open) onClose()
       }}
     >
-      <SheetContent side="right" className="flex w-full flex-col gap-4 sm:max-w-xl">
-        <SheetHeader>
+      <SheetContent side="right" className="flex w-full flex-col gap-4 p-6 data-[side=right]:sm:max-w-3xl">
+        <SheetHeader className="p-0">
           <SheetTitle>
             {selected?.node || '—'} /{' '}
             <span className="font-mono">{selected?.ifName}</span>
@@ -160,7 +169,7 @@ export function InterfaceErrorTrendDrawer({
             </div>
           ) : (
             <ChartContainer config={chartConfig} className="h-full w-full">
-              <LineChart data={data} margin={{ left: 4, right: 8, top: 8 }}>
+              <LineChart data={data} margin={{ left: 8, right: 16, top: 8, bottom: 4 }}>
                 <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey="sampledAt"
@@ -175,7 +184,7 @@ export function InterfaceErrorTrendDrawer({
                     })
                   }
                 />
-                <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={32} />
+                <YAxis allowDecimals={false} tickLine={false} axisLine={false} width={48} />
                 <ChartTooltip
                   content={
                     <ChartTooltipContent

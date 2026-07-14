@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'EPGs',
-  description: 'Browse and manage Endpoint Groups across the fabric.',
+  title: 'EPG',
+  description: 'Deployed EPGs and their static port bindings across the fabric.',
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {

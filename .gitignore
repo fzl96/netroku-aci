@@ -46,6 +46,7 @@ prisma/dev.db
 prisma/dev.db-journal
 prisma/dev.db-wal
 prisma/dev.db-shm
+prisma/generated/
 
 /.claude
 /.superpowers

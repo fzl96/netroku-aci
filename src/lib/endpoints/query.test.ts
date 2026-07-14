@@ -31,13 +31,13 @@ describe('buildEndpointWhere', () => {
     expect(buildEndpointWhere('host-1', { query: 'needle' })).toEqual({
       apicHostId: 'host-1',
       OR: [
-        { mac: { contains: 'needle' } },
-        { ip: { contains: 'needle' } },
-        { vlan: { contains: 'needle' } },
-        { node: { contains: 'needle' } },
-        { interface: { contains: 'needle' } },
-        { epgDescr: { contains: 'needle' } },
-        { dn: { contains: 'needle' } },
+        { mac: { contains: 'needle', mode: 'insensitive' } },
+        { ip: { contains: 'needle', mode: 'insensitive' } },
+        { vlan: { contains: 'needle', mode: 'insensitive' } },
+        { node: { contains: 'needle', mode: 'insensitive' } },
+        { interface: { contains: 'needle', mode: 'insensitive' } },
+        { epgDescr: { contains: 'needle', mode: 'insensitive' } },
+        { dn: { contains: 'needle', mode: 'insensitive' } },
       ],
     })
   })

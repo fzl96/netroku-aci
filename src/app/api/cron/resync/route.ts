@@ -5,6 +5,7 @@ import { resyncInterfaces } from '@/lib/apic/interfaces'
 import { resyncFaults } from '@/lib/apic/faults'
 import { resyncHealthScores } from '@/lib/apic/health-scores'
 import { resyncNodes } from '@/lib/apic/nodes'
+import { resyncEpgs } from '@/lib/apic/epg-resync'
 import {
   isAuthorized,
   summarizeResults,
@@ -186,6 +187,31 @@ export async function POST(request: Request) {
       detail: 'error' in nodes
         ? nodes.error
         : `synced ${nodes.synced} nodes (total ${nodes.total})`,
+    })
+
+    // EPGs & static port bindings
+    let epgs: DatasetResult
+    try {
+      const r = await resyncEpgs({
+        apicHostId,
+        host: apicHost.host,
+        username: trimmedUser,
+        password,
+      })
+      epgs = { synced: r.syncedEpgs, total: r.syncedEpgs + r.syncedBindings }
+    } catch (err) {
+      epgs = { error: errorMessage(err, 'Failed to resync EPGs') }
+    }
+    result.epgs = epgs
+    await recordAudit({
+      userId: null,
+      userName: 'scheduler',
+      action: 'resync.epgs',
+      target: `${apicHost.name} (${apicHost.host})`,
+      status: 'error' in epgs ? 'failure' : 'success',
+      detail: 'error' in epgs
+        ? epgs.error
+        : `synced ${epgs.synced} EPGs (total ${epgs.total})`,
     })
 
     results.push(result)

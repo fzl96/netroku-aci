@@ -1,0 +1,344 @@
+// Prisma schema — better-auth + SQLite
+
+generator sqliteClient {
+  provider = "prisma-client-js"
+  output   = "./generated/sqlite"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id              String    @id
+  name            String
+  email           String
+  emailVerified   Boolean   @default(false)
+  image           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  username        String?
+  displayUsername String?
+  role            String?   @default("member")
+  banned          Boolean?  @default(false)
+  banReason       String?
+  banExpires      DateTime?
+  sessions        Session[]
+  accounts        Account[]
+
+  @@unique([email])
+  @@unique([username])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  impersonatedBy String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  userId    String?
+  userName  String
+  action    String
+  target    String?
+  status    String
+  detail    String?
+  payload   Json?
+
+  @@index([createdAt])
+  @@index([userId])
+  @@map("audit_log")
+}
+
+model ApicHost {
+  id                  String              @id @default(cuid())
+  name                String
+  host                String
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  lastInterfaceSyncAt DateTime?
+  lastFaultSyncAt     DateTime?
+  lastHealthSyncAt    DateTime?
+  lastNodeSyncAt      DateTime?
+  resyncStartedAt     DateTime?
+  endpoints           Endpoint[]
+  interfaces          InterfaceSnapshot[]
+  faults              FaultSnapshot[]
+  faultCounts         FaultCountSample[]
+  healthScores        HealthScoreSnapshot[]
+  healthSamples       HealthScoreSample[]
+  nodes               NodeSnapshot[]
+  hardware            HardwareComponent[]
+  nodeSamples         NodeStatusSample[]
+
+  @@unique([host])
+  @@map("apic_host")
+}
+
+model Endpoint {
+  id          String    @id @default(cuid())
+  apicHostId  String
+  apicHost    ApicHost  @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  mac         String
+  ip          String
+  vlan        String
+  dn          String
+  node        String
+  interface   String
+  epgDescr    String    @default("")
+  isActive    Boolean   @default(true)
+  firstSeenAt DateTime  @default(now())
+  lastSeenAt  DateTime  @default(now())
+  clearedAt   DateTime?
+
+  @@index([apicHostId])
+  @@index([apicHostId, mac, ip])
+  @@map("endpoint")
+}
+
+model InterfaceSnapshot {
+  id            String   @id @default(cuid())
+  apicHostId    String
+  apicHost      ApicHost @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  dn            String
+  node          String
+  ifName        String
+  usage         String   @default("")
+  adminSt       String   @default("")
+  operSt        String   @default("")
+  operSpeed     String   @default("")
+  description   String   @default("")
+  lastLinkStChg DateTime?
+  firstSeenAt   DateTime @default(now())
+  lastSeenAt    DateTime @default(now())
+
+  samples InterfaceSample[]
+
+  @@unique([apicHostId, dn])
+  @@index([apicHostId])
+  @@map("interface_snapshot")
+}
+
+model InterfaceSample {
+  id          String            @id @default(cuid())
+  apicHostId  String
+  interfaceId String
+  interface   InterfaceSnapshot @relation(fields: [interfaceId], references: [id], onDelete: Cascade)
+  sampledAt   DateTime          @default(now())
+
+  adminSt   String
+  operSt    String
+  operSpeed String
+
+  rxBytes       BigInt
+  rxPkts        BigInt
+  rxErrors      BigInt
+  rxDiscards    BigInt
+  rxCrcErrors   BigInt
+  rxAlignErrors BigInt
+
+  txBytes    BigInt
+  txPkts     BigInt
+  txErrors   BigInt
+  txDiscards BigInt
+
+  dRxBytes       BigInt?
+  dRxErrors      BigInt?
+  dRxDiscards    BigInt?
+  dRxCrcErrors   BigInt?
+  dRxAlignErrors BigInt?
+  dTxBytes       BigInt?
+  dTxErrors      BigInt?
+  dTxDiscards    BigInt?
+
+  @@index([interfaceId, sampledAt])
+  @@index([apicHostId, sampledAt])
+  @@map("interface_sample")
+}
+
+model FaultSnapshot {
+  id             String    @id @default(cuid())
+  apicHostId     String
+  apicHost       ApicHost  @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  dn             String
+  code           String
+  severity       String
+  domain         String    @default("")
+  type           String    @default("")
+  cause          String    @default("")
+  affectedDn     String    @default("")
+  node           String?
+  descr          String    @default("")
+  ack            Boolean   @default(false)
+  created        DateTime?
+  lastTransition DateTime?
+  lifecycle      String    @default("active")
+  firstSeenAt    DateTime  @default(now())
+  lastSeenAt     DateTime  @default(now())
+  clearedAt      DateTime?
+
+  @@unique([apicHostId, dn])
+  @@index([apicHostId])
+  @@index([apicHostId, lifecycle])
+  @@map("fault_snapshot")
+}
+
+model FaultCountSample {
+  id         String   @id @default(cuid())
+  apicHostId String
+  apicHost   ApicHost @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  sampledAt  DateTime @default(now())
+
+  critical Int
+  major    Int
+  minor    Int
+  warning  Int
+  total    Int
+
+  @@index([apicHostId, sampledAt])
+  @@map("fault_count_sample")
+}
+
+model HealthScoreSnapshot {
+  id          String   @id @default(cuid())
+  apicHostId  String
+  apicHost    ApicHost @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  dn          String
+  scope       String
+  name        String   @default("")
+  node        String?
+  score       Int
+  twScore     Int?
+  prevScore   Int?
+  maxSeverity String?
+  present     Boolean  @default(true)
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  @@unique([apicHostId, dn])
+  @@index([apicHostId])
+  @@index([apicHostId, scope])
+  @@map("health_score_snapshot")
+}
+
+model HealthScoreSample {
+  id            String   @id @default(cuid())
+  apicHostId    String
+  apicHost      ApicHost @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  sampledAt     DateTime @default(now())
+  overall       Int
+  worstScore    Int
+  degradedCount Int
+
+  @@index([apicHostId, sampledAt])
+  @@map("health_score_sample")
+}
+
+model NodeSnapshot {
+  id          String   @id @default(cuid())
+  apicHostId  String
+  apicHost    ApicHost @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  dn          String
+  nodeId      String
+  name        String   @default("")
+  role        String   @default("")
+  model       String   @default("")
+  serial      String   @default("")
+  version     String?
+  fabricSt    String   @default("")
+  state       String?
+  podId       String?
+  uptime      String?
+  oobMgmtAddr String?
+  present     Boolean  @default(true)
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  @@unique([apicHostId, dn])
+  @@index([apicHostId])
+  @@index([apicHostId, role])
+  @@map("node_snapshot")
+}
+
+model HardwareComponent {
+  id          String   @id @default(cuid())
+  apicHostId  String
+  apicHost    ApicHost @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  dn          String
+  nodeId      String
+  type        String
+  name        String   @default("")
+  operSt      String   @default("")
+  healthy     Boolean  @default(true)
+  model       String   @default("")
+  serial      String   @default("")
+  present     Boolean  @default(true)
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  @@unique([apicHostId, dn])
+  @@index([apicHostId, nodeId])
+  @@index([apicHostId, type])
+  @@map("hardware_component")
+}
+
+model NodeStatusSample {
+  id               String   @id @default(cuid())
+  apicHostId       String
+  apicHost         ApicHost @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  sampledAt        DateTime @default(now())
+  nodesTotal       Int
+  nodesOnline      Int
+  componentsTotal  Int
+  componentsFailed Int
+
+  @@index([apicHostId, sampledAt])
+  @@map("node_status_sample")
+}

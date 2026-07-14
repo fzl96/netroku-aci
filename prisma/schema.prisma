@@ -5,7 +5,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -106,7 +106,7 @@ model ApicHost {
   lastFaultSyncAt     DateTime?
   lastHealthSyncAt    DateTime?
   lastNodeSyncAt      DateTime?
-  resyncStartedAt     DateTime?
+  lastEpgSyncAt       DateTime?
   endpoints           Endpoint[]
   interfaces          InterfaceSnapshot[]
   faults              FaultSnapshot[]
@@ -116,6 +116,7 @@ model ApicHost {
   nodes               NodeSnapshot[]
   hardware            HardwareComponent[]
   nodeSamples         NodeStatusSample[]
+  epgs                EpgSnapshot[]
 
   @@unique([host])
   @@map("apic_host")
@@ -139,6 +140,11 @@ model Endpoint {
 
   @@index([apicHostId])
   @@index([apicHostId, mac, ip])
+  @@index([apicHostId, lastSeenAt], name: "endpoint_host_last_seen_idx")
+  @@index([apicHostId, isActive], name: "endpoint_host_active_idx")
+  @@index([apicHostId, vlan], name: "endpoint_host_vlan_idx")
+  @@index([apicHostId, node], name: "endpoint_host_node_idx")
+  @@index([apicHostId, interface], name: "endpoint_host_interface_idx")
   @@map("endpoint")
 }
 
@@ -162,6 +168,7 @@ model InterfaceSnapshot {
 
   @@unique([apicHostId, dn])
   @@index([apicHostId])
+  @@index([apicHostId, node, ifName], name: "interface_snapshot_host_node_if_idx")
   @@map("interface_snapshot")
 }
 
@@ -226,6 +233,8 @@ model FaultSnapshot {
   @@unique([apicHostId, dn])
   @@index([apicHostId])
   @@index([apicHostId, lifecycle])
+  @@index([apicHostId, lifecycle, severity], name: "fault_snapshot_host_lifecycle_severity_idx")
+  @@index([apicHostId, lifecycle, node], name: "fault_snapshot_host_lifecycle_node_idx")
   @@map("fault_snapshot")
 }
 
@@ -264,6 +273,7 @@ model HealthScoreSnapshot {
   @@unique([apicHostId, dn])
   @@index([apicHostId])
   @@index([apicHostId, scope])
+  @@index([apicHostId, present, scope, score], name: "health_score_snapshot_host_present_scope_score_idx")
   @@map("health_score_snapshot")
 }
 
@@ -303,6 +313,8 @@ model NodeSnapshot {
   @@unique([apicHostId, dn])
   @@index([apicHostId])
   @@index([apicHostId, role])
+  @@index([apicHostId, present, role], name: "node_snapshot_host_present_role_idx")
+  @@index([apicHostId, present, fabricSt], name: "node_snapshot_host_present_fabric_idx")
   @@map("node_snapshot")
 }
 
@@ -325,6 +337,9 @@ model HardwareComponent {
   @@unique([apicHostId, dn])
   @@index([apicHostId, nodeId])
   @@index([apicHostId, type])
+  @@index([apicHostId, present, type], name: "hardware_component_host_present_type_idx")
+  @@index([apicHostId, present, healthy], name: "hardware_component_host_present_healthy_idx")
+  @@index([apicHostId, present, nodeId, type, healthy], name: "hardware_component_host_present_node_type_healthy_idx")
   @@map("hardware_component")
 }
 
@@ -341,3 +356,47 @@ model NodeStatusSample {
   @@index([apicHostId, sampledAt])
   @@map("node_status_sample")
 }
+
+model EpgSnapshot {
+  id                String   @id @default(cuid())
+  apicHostId        String
+  apicHost          ApicHost @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  dn                String
+  name              String
+  tenant            String
+  appProfile        String
+  description       String   @default("")
+  bridgeDomain      String   @default("")
+  pcTag             String   @default("")
+  preferredGroup    Boolean  @default(false)
+  isolation         Boolean  @default(false)
+  domains           String[]
+  providedContracts String[]
+  consumedContracts String[]
+  bindings          EpgPathBinding[]
+
+  @@unique([apicHostId, dn])
+  @@index([apicHostId, tenant])
+  @@map("epg_snapshot")
+}
+
+model EpgPathBinding {
+  id          String      @id @default(cuid())
+  apicHostId  String
+  epgId       String
+  epg         EpgSnapshot @relation(fields: [epgId], references: [id], onDelete: Cascade)
+  dn          String
+  pathTDn     String
+  pod         String      @default("")
+  node        String      @default("")
+  port        String      @default("")
+  pathType    String      @default("port")
+  encap       String      @default("")
+  mode        String      @default("trunk")
+
+  @@unique([apicHostId, dn])
+  @@index([apicHostId, node])
+  @@index([epgId])
+  @@map("epg_path_binding")
+}
+

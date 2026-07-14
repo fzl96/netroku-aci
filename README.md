@@ -13,12 +13,13 @@ A Next.js web app for bulk provisioning Cisco ACI access policy and fabric bindi
 
 ## Running It On Your Own System
 
-The app is a standard Next.js 16 project backed by a local SQLite database (via Prisma). The steps below cover a full setup from a clean machine. Commands are shown for **Bun**; the **Node/npm** equivalents are listed in the callout afterwards.
+The app is a standard Next.js 16 project backed by a local Postgres database (via Prisma). The steps below cover a full setup from a clean machine. Commands are shown for **Bun**; the **Node/npm** equivalents are listed in the callout afterwards.
 
 ### Prerequisites
 
 - **Bun** ≥ 1.1 ([install](https://bun.sh)) — or **Node.js** ≥ 20 with npm
 - **Git**
+- **Docker** with Docker Compose
 - An empty directory for the project
 
 > **Windows users:** Bun on Windows has a known compatibility issue with the TLS bypass library used to talk to self-signed APICs. Use **WSL2** or **Node.js** instead.
@@ -54,7 +55,7 @@ cp .env.example .env
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `DATABASE_URL` | yes | SQLite connection string. Keep `file:./dev.db` (resolved relative to `/prisma`). |
+| `DATABASE_URL` | yes | Postgres connection string. For local Docker, use `postgresql://netroku:netroku@localhost:5432/netroku?schema=public`. |
 | `BETTER_AUTH_SECRET` | yes | Session signing secret. Generate with `openssl rand -hex 32`. |
 | `BETTER_AUTH_URL` | yes | Base URL the app is served from (e.g. `http://localhost:3000`). |
 | `NEXT_PUBLIC_APP_URL` | yes | Public base URL used by the browser. |
@@ -64,29 +65,28 @@ cp .env.example .env
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | yes (for seeding) | First admin account created by the seed script. Password ≥ 8 chars. |
 | `SCHEDULER_TOKEN` | no | Bearer token an external scheduler must send to `POST /api/cron/resync`. Generate with `openssl rand -hex 32`. |
 
-### 5. Create the SQLite database file
-
-Create an empty `dev.db` in the `/prisma` directory (the migration step will populate the schema):
+### 5. Start Postgres
 
 ```bash
-touch prisma/dev.db
+docker compose up -d
 ```
 
-### 6. Apply the migrations
+### 6. Apply the migrations and generate the Prisma client
 
-This creates every table from the committed migration files:
+This creates every table from the committed migration files and generates the Prisma client:
 
 ```bash
-bun run prisma:deploy
+bun run db:setup
 ```
 
-### 7. Generate the Prisma client
+### 7. Optional: migrate legacy SQLite data
 
-```bash
-bun run prisma:generate
-```
+If you have an old `prisma/dev.db` to import:
 
-> Steps 6 and 7 are bundled in a single script: `bun run db:setup`.
+1. Generate the read-only SQLite client: `bunx prisma generate --schema=prisma/schema.sqlite.prisma`
+2. Run the copy: `bun run migrate:data`
+
+The script refuses to run if the destination tables are non-empty. Skip this step on a fresh install.
 
 ### 8. Seed the first admin user
 
@@ -112,6 +112,15 @@ bun run dev
 Open [http://localhost:3000](http://localhost:3000) and sign in with the seeded admin credentials.
 
 > **Using Node/npm instead of Bun:** replace `bun install` → `npm install`, `bun run dev` → `npm run dev`, `bun run build` → `npm run build`, `bun run start` → `npm run start`, and so on. Every command above maps to the matching `package.json` script.
+
+### Rollback to SQLite
+
+`prisma/dev.db` is left untouched by the migration. To revert:
+
+1. In `prisma/schema.prisma`, set `provider = "sqlite"`.
+2. Set `DATABASE_URL="file:./dev.db"` in `.env`.
+3. Restore the SQLite migrations from git history, or revert the cutover commit.
+4. Run `bun run prisma:generate`.
 
 ### Connecting an APIC
 
@@ -297,7 +306,7 @@ SERVERFARM,APP-SERVERFARM,SHARED-EPG,common,SHARED-BD,MSI-PHYS-DOM,common,MSI-CR
 
 ## Monitoring & Health Checks
 
-Beyond provisioning, the app polls each registered APIC and stores the results in SQLite so the dashboard and per-feature pages can render history and trends without hitting the controller on every page load.
+Beyond provisioning, the app polls each registered APIC and stores the results in Postgres so the dashboard and per-feature pages can render history and trends without hitting the controller on every page load.
 
 ### How a sync works
 
@@ -305,6 +314,8 @@ Every monitoring page has a **Resync** action that calls its own route handler (
 
 - **Snapshot tables** — the current state of each object, upserted on `(apicHostId, dn)`. A row's `firstSeenAt` / `lastSeenAt` (and `present` / `lifecycle` / `isActive`) track appearance and disappearance across syncs rather than being deleted.
 - **Sample tables** — a timestamped aggregate row appended on every sync, used to draw trend charts (e.g. `HealthScoreSample`, `FaultCountSample`, `NodeStatusSample`, `InterfaceSample`).
+
+The **EPGs** page uses a third shape: it holds no history at all. Each sync deletes and recreates every `EpgSnapshot` / `EpgPathBinding` row for the host in a single bulk-replace transaction, so the table is always a mirror of the current APIC state.
 
 An external scheduler can drive all features for one or more hosts at once via `POST /api/cron/resync` (authorized with the `SCHEDULER_TOKEN` bearer header). Every sync is written to the `AuditLog` table and surfaced on the **History** page.
 
@@ -316,6 +327,7 @@ An external scheduler can drive all features for one or more hosts at once via `
 |---|---|---|---|
 | **Dashboard** | _none directly_ — aggregates the snapshot/sample tables below | _(reads only)_ | reads `FaultCountSample`, `HealthScoreSample`, `NodeStatusSample`, `Endpoint`, `InterfaceSnapshot` |
 | **Endpoints** | `GET /api/node/class/fvCEp.json?rsp-subtree=children&rsp-subtree-class=fvIp` (endpoints + IPs), `GET /api/node/class/fvAEPg.json` (EPG descriptions) | `POST /api/endpoints/resync` | `Endpoint` (`mac`, `ip`, `vlan`, `dn`, `node`, `interface`, `epgDescr`, `isActive`) |
+| **EPGs** | `GET /api/node/class/fvAEPg.json?rsp-subtree=children&rsp-subtree-class=fvRsPathAtt,fvRsBd,fvRsDomAtt,fvRsProv,fvRsCons` (EPGs + BD/domain/contract relations + static path bindings) | `POST /api/epgs/resync` | `EpgSnapshot` (tenant, app profile, BD, pcTag, preferred group, isolation, domains, provided/consumed contracts) + `EpgPathBinding` (pod, node, port, path type, encap, mode) — bulk-replaced each sync |
 | **Interface Health** | `GET /api/node/class/l1PhysIf.json?rsp-subtree=full&rsp-subtree-class=ethpmPhysIf,rmonIfIn,rmonIfOut,rmonDot3Stats,rmonEtherStats` | `POST /api/interfaces/resync` | `InterfaceSnapshot` (admin/oper state, speed, usage) + `InterfaceSample` (rx/tx bytes, pkts, errors, discards, CRC/align errors, plus per-sync deltas) |
 | **Faults** | `GET /api/node/class/faultInst.json` | `POST /api/faults/resync` | `FaultSnapshot` (code, severity, domain, cause, affected DN, ack, lifecycle: active/cleared) + `FaultCountSample` (counts by severity) |
 | **Health Scores** | `GET /api/node/class/fabricHealthTotal.json` (overall fabric), `GET /api/node/class/topSystem.json?rsp-subtree-include=health` (per-node), `GET /api/node/class/fvTenant.json?rsp-subtree-include=health` (per-tenant) | `POST /api/health-scores/resync` | `HealthScoreSnapshot` (score, time-window score, previous score, scope, max severity) + `HealthScoreSample` (overall, worst, degraded count) |
@@ -366,12 +378,15 @@ These handlers query read-only APIC classes and persist the results (see [Monito
 | Route | Purpose |
 |---|---|
 | `POST /api/endpoints/resync` | Pull endpoints (`fvCEp`/`fvAEPg`) and upsert the `Endpoint` table |
+| `POST /api/epgs/resync` | Pull `fvAEPg` (with BD/domain/contract relations and static path bindings) and bulk-replace `EpgSnapshot` / `EpgPathBinding` |
 | `POST /api/interfaces/resync` | Pull `l1PhysIf` + rmon counters into `InterfaceSnapshot` / `InterfaceSample` |
 | `POST /api/faults/resync` | Pull `faultInst` into `FaultSnapshot` / `FaultCountSample` |
 | `POST /api/health-scores/resync` | Pull fabric/node/tenant health into `HealthScoreSnapshot` / `HealthScoreSample` |
 | `POST /api/nodes/resync` | Pull `fabricNode`/`topSystem`/`eqptPsu`/`eqptFan` into `NodeSnapshot` / `HardwareComponent` / `NodeStatusSample` |
 | `POST /api/cron/resync` | Scheduler entry point — runs all syncs for the supplied hosts (Bearer `SCHEDULER_TOKEN`) |
-| `GET /api/endpoints/export`, `GET /api/interfaces/export` | CSV export of the stored snapshots |
+| `POST /api/endpoints/export` | Excel (`.xlsx`) export of the stored endpoints, honouring the active filters and grouped by node or VLAN |
+| `POST /api/epgs/export` | Excel (`.xlsx`) export of the stored EPGs, grouped by EPG or by port |
+| `POST /api/interfaces/export` | CSV export of the stored interface samples |
 
 ## Running Tests
 

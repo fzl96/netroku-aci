@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { INPUT_CLS } from "@/lib/ui-classes";
+import { useRouter } from "next/navigation";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -22,6 +22,7 @@ export default function SignInPage() {
       setError(error.message ?? "Sign in failed");
       return;
     }
+    router.refresh();
     router.push("/dashboard");
   }
 

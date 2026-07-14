@@ -209,6 +209,26 @@ export async function fetchNodesFromApic(
 }
 
 const NODES_CHUNK_SIZE = 100
+const NODES_TRANSACTION_TIMEOUT_MS = 30_000
+
+type NodeSnapshotDelegate = Pick<typeof prisma.nodeSnapshot, 'upsert' | 'updateMany'>
+type HardwareComponentDelegate = Pick<typeof prisma.hardwareComponent, 'upsert' | 'updateMany'>
+type NodeStatusSampleDelegate = Pick<typeof prisma.nodeStatusSample, 'create'>
+type ApicHostDelegate = Pick<typeof prisma.apicHost, 'update'>
+
+interface NodeMutationClient {
+  nodeSnapshot: NodeSnapshotDelegate
+  hardwareComponent: HardwareComponentDelegate
+  nodeStatusSample: NodeStatusSampleDelegate
+  apicHost: ApicHostDelegate
+}
+
+export interface NodeWriteClient {
+  $transaction<T>(
+    fn: (tx: NodeMutationClient) => Promise<T>,
+    options?: { timeout?: number },
+  ): Promise<T>
+}
 
 export interface ResyncNodesArgs {
   apicHostId: string
@@ -243,79 +263,95 @@ export async function resyncNodes(args: ResyncNodesArgs): Promise<ResyncNodesRes
 
   const now = new Date()
 
-  // Phase 1: upsert NodeSnapshot rows (chunked).
-  for (let i = 0; i < uniqueNodes.length; i += NODES_CHUNK_SIZE) {
-    const chunk = uniqueNodes.slice(i, i + NODES_CHUNK_SIZE)
-    await prisma.$transaction(
-      chunk.map(n =>
-        prisma.nodeSnapshot.upsert({
-          where: { apicHostId_dn: { apicHostId, dn: n.dn } },
-          update: {
-            nodeId: n.nodeId, name: n.name, role: n.role, model: n.model,
-            serial: n.serial, version: n.version, fabricSt: n.fabricSt,
-            state: n.state, podId: n.podId, uptime: n.uptime,
-            oobMgmtAddr: n.oobMgmtAddr, present: true, lastSeenAt: now,
-          },
-          create: {
-            apicHostId, dn: n.dn, nodeId: n.nodeId, name: n.name, role: n.role,
-            model: n.model, serial: n.serial, version: n.version, fabricSt: n.fabricSt,
-            state: n.state, podId: n.podId, uptime: n.uptime, oobMgmtAddr: n.oobMgmtAddr,
-            present: true, firstSeenAt: now, lastSeenAt: now,
-          },
-        }),
-      ),
-    )
-  }
-  await prisma.nodeSnapshot.updateMany({
-    where: { apicHostId, present: true, dn: { notIn: uniqueNodes.map(n => n.dn) } },
-    data: { present: false },
-  })
-
-  // Phase 2: upsert HardwareComponent rows (chunked), with stored `healthy`.
-  for (let i = 0; i < uniqueComponents.length; i += NODES_CHUNK_SIZE) {
-    const chunk = uniqueComponents.slice(i, i + NODES_CHUNK_SIZE)
-    await prisma.$transaction(
-      chunk.map(c =>
-        prisma.hardwareComponent.upsert({
-          where: { apicHostId_dn: { apicHostId, dn: c.dn } },
-          update: {
-            nodeId: c.nodeId, type: c.type, name: c.name, operSt: c.operSt,
-            healthy: isComponentHealthy(c.type, c.operSt), model: c.model,
-            serial: c.serial, present: true, lastSeenAt: now,
-          },
-          create: {
-            apicHostId, dn: c.dn, nodeId: c.nodeId, type: c.type, name: c.name,
-            operSt: c.operSt, healthy: isComponentHealthy(c.type, c.operSt),
-            model: c.model, serial: c.serial, present: true,
-            firstSeenAt: now, lastSeenAt: now,
-          },
-        }),
-      ),
-    )
-  }
-  await prisma.hardwareComponent.updateMany({
-    where: { apicHostId, present: true, dn: { notIn: uniqueComponents.map(c => c.dn) } },
-    data: { present: false },
-  })
-
-  // Phase 3: record a status sample.
-  const summary = summarizeNodes(uniqueNodes, uniqueComponents)
-  await prisma.nodeStatusSample.create({
-    data: {
-      apicHostId, sampledAt: now,
-      nodesTotal: summary.nodesTotal, nodesOnline: summary.nodesOnline,
-      componentsTotal: summary.componentsTotal, componentsFailed: summary.componentsFailed,
-    },
-  })
-
-  await prisma.apicHost.update({
-    where: { id: apicHostId },
-    data: { lastNodeSyncAt: now },
-  })
+  const summary = await executeNodeResyncWrites(
+    prisma,
+    apicHostId,
+    uniqueNodes,
+    uniqueComponents,
+    now,
+  )
 
   return {
     syncedNodes: uniqueNodes.length,
     syncedComponents: uniqueComponents.length,
     nodesOnline: summary.nodesOnline,
   }
+}
+
+export async function executeNodeResyncWrites(
+  db: NodeWriteClient,
+  apicHostId: string,
+  uniqueNodes: NodeRow[],
+  uniqueComponents: ComponentRow[],
+  now: Date,
+): Promise<NodeSummary> {
+  return db.$transaction(async tx => {
+    for (let i = 0; i < uniqueNodes.length; i += NODES_CHUNK_SIZE) {
+      const chunk = uniqueNodes.slice(i, i + NODES_CHUNK_SIZE)
+      await Promise.all(
+        chunk.map(n =>
+          tx.nodeSnapshot.upsert({
+            where: { apicHostId_dn: { apicHostId, dn: n.dn } },
+            update: {
+              nodeId: n.nodeId, name: n.name, role: n.role, model: n.model,
+              serial: n.serial, version: n.version, fabricSt: n.fabricSt,
+              state: n.state, podId: n.podId, uptime: n.uptime,
+              oobMgmtAddr: n.oobMgmtAddr, present: true, lastSeenAt: now,
+            },
+            create: {
+              apicHostId, dn: n.dn, nodeId: n.nodeId, name: n.name, role: n.role,
+              model: n.model, serial: n.serial, version: n.version, fabricSt: n.fabricSt,
+              state: n.state, podId: n.podId, uptime: n.uptime, oobMgmtAddr: n.oobMgmtAddr,
+              present: true, firstSeenAt: now, lastSeenAt: now,
+            },
+          }),
+        ),
+      )
+    }
+    await tx.nodeSnapshot.updateMany({
+      where: { apicHostId, present: true, dn: { notIn: uniqueNodes.map(n => n.dn) } },
+      data: { present: false },
+    })
+
+    for (let i = 0; i < uniqueComponents.length; i += NODES_CHUNK_SIZE) {
+      const chunk = uniqueComponents.slice(i, i + NODES_CHUNK_SIZE)
+      await Promise.all(
+        chunk.map(c =>
+          tx.hardwareComponent.upsert({
+            where: { apicHostId_dn: { apicHostId, dn: c.dn } },
+            update: {
+              nodeId: c.nodeId, type: c.type, name: c.name, operSt: c.operSt,
+              healthy: isComponentHealthy(c.type, c.operSt), model: c.model,
+              serial: c.serial, present: true, lastSeenAt: now,
+            },
+            create: {
+              apicHostId, dn: c.dn, nodeId: c.nodeId, type: c.type, name: c.name,
+              operSt: c.operSt, healthy: isComponentHealthy(c.type, c.operSt),
+              model: c.model, serial: c.serial, present: true,
+              firstSeenAt: now, lastSeenAt: now,
+            },
+          }),
+        ),
+      )
+    }
+    await tx.hardwareComponent.updateMany({
+      where: { apicHostId, present: true, dn: { notIn: uniqueComponents.map(c => c.dn) } },
+      data: { present: false },
+    })
+
+    const summary = summarizeNodes(uniqueNodes, uniqueComponents)
+    await tx.nodeStatusSample.create({
+      data: {
+        apicHostId, sampledAt: now,
+        nodesTotal: summary.nodesTotal, nodesOnline: summary.nodesOnline,
+        componentsTotal: summary.componentsTotal, componentsFailed: summary.componentsFailed,
+      },
+    })
+    await tx.apicHost.update({
+      where: { id: apicHostId },
+      data: { lastNodeSyncAt: now },
+    })
+
+    return summary
+  }, { timeout: NODES_TRANSACTION_TIMEOUT_MS })
 }

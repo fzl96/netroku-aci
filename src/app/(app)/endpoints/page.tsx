@@ -3,7 +3,8 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getApicHosts } from '@/actions/apic-hosts'
-import { buildEndpointWhere, type EndpointStatusFilter } from '@/lib/endpoints/query'
+import { buildEndpointWhere, expandNodeOptions, type EndpointStatusFilter } from '@/lib/endpoints/query'
+import { groupEndpointsByPort, type EndpointPortSummary } from './sort'
 import { EndpointsClient } from './EndpointsClient'
 import type { Endpoint } from '@prisma/client'
 
@@ -24,14 +25,15 @@ function parsePageSize(param: string | undefined): PageSizeValue {
 export default async function EndpointsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ apic?: string; query?: string; page?: string; pageSize?: string; vlan?: string; node?: string; iface?: string; status?: string }>
+  searchParams: Promise<{ apic?: string; view?: string; query?: string; page?: string; pageSize?: string; vlan?: string; node?: string; iface?: string; status?: string }>
 }) {
   const session = await getSession()
   if (!session) redirect('/signin')
 
-  const { apic, query, page: pageParam, pageSize: pageSizeParam, vlan, node, iface, status } = await searchParams
+  const { apic, view: viewParam, query, page: pageParam, pageSize: pageSizeParam, vlan, node, iface, status } = await searchParams
   const apicHosts = await getApicHosts()
 
+  const view = viewParam === 'port' ? 'port' as const : 'endpoint' as const
   const page = Math.max(1, parseInt(pageParam ?? '1', 10) || 1)
   const pageSize = parsePageSize(pageSizeParam)
 
@@ -43,6 +45,7 @@ export default async function EndpointsPage({
     : []
 
   let endpoints: Endpoint[] = []
+  let ports: EndpointPortSummary[] = []
   let total = 0
   let activeTotal = 0
   let historicalTotal = 0
@@ -55,7 +58,7 @@ export default async function EndpointsPage({
       query,
       vlan: filterVlan,
       node: filterNode,
-      iface: filterIface,
+      iface: view === 'endpoint' ? filterIface : [],
       status: filterStatus,
     })
 
@@ -64,32 +67,46 @@ export default async function EndpointsPage({
 
     const hostWhere = { apicHostId: apic }
 
-    ;[
-      [endpoints, total],
-      [activeTotal, historicalTotal],
-      vlans, nodes, ifaces,
-    ] = await Promise.all([
-      Promise.all([
+    let fetchedDataPromise: Promise<[Endpoint[], EndpointPortSummary[], number]>
+    if (view === 'endpoint') {
+      fetchedDataPromise = Promise.all([
         prisma.endpoint.findMany({ where, orderBy: { lastSeenAt: 'desc' }, skip, take }),
         prisma.endpoint.count({ where }),
-      ]),
+      ]).then(([eps, cnt]) => [eps, [], cnt])
+    } else {
+      fetchedDataPromise = prisma.endpoint.findMany({ where }).then(rows => {
+        const grouped = groupEndpointsByPort(rows)
+        const sliced = take === undefined ? grouped : grouped.slice(skip, skip + take)
+        return [[], sliced, grouped.length]
+      })
+    }
+
+    let nodeRows: { node: string }[] = []
+    ;[
+      [endpoints, ports, total],
+      [activeTotal, historicalTotal],
+      vlans, nodeRows, ifaces,
+    ] = await Promise.all([
+      fetchedDataPromise,
       Promise.all([
         prisma.endpoint.count({ where: { ...hostWhere, isActive: true } }),
         prisma.endpoint.count({ where: { ...hostWhere, isActive: false } }),
       ]),
       prisma.endpoint.findMany({ where: hostWhere, select: { vlan: true }, distinct: ['vlan'], orderBy: { vlan: 'asc' } })
         .then(r => r.map(x => x.vlan).filter(Boolean) as string[]),
-      prisma.endpoint.findMany({ where: hostWhere, select: { node: true }, distinct: ['node'], orderBy: { node: 'asc' } })
-        .then(r => r.map(x => x.node).filter(Boolean) as string[]),
+      prisma.endpoint.findMany({ where: hostWhere, select: { node: true }, distinct: ['node'] }),
       prisma.endpoint.findMany({ where: hostWhere, select: { interface: true }, distinct: ['interface'], orderBy: { interface: 'asc' } })
         .then(r => r.map(x => x.interface).filter(Boolean) as string[]),
     ])
+
+    nodes = expandNodeOptions(nodeRows.map(r => r.node).filter(Boolean))
   }
 
   return (
     <EndpointsClient
-      apicHosts={apicHosts}
+      view={view}
       endpoints={endpoints}
+      ports={ports}
       selectedHostId={apic ?? ''}
       query={query ?? ''}
       filterVlan={filterVlan}
