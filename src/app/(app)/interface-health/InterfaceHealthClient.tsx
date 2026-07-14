@@ -41,11 +41,17 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ApicCredentialDialog } from '@/components/ApicCredentialDialog'
 import type { SelectedInterface } from './InterfaceErrorTrendDrawer'
+import type { CrcTrendPoint } from './crc-trend'
 
-// recharts is heavy and only needed once the trend drawer is opened, so it is
-// code-split out of the initial interface-health bundle.
+// recharts is heavy and only needed once the trend drawer is opened or CRC view is selected,
+// so it is code-split out of the initial interface-health bundle.
 const InterfaceErrorTrendDrawer = dynamic(
   () => import('./InterfaceErrorTrendDrawer').then((m) => m.InterfaceErrorTrendDrawer),
+  { ssr: false },
+)
+
+const InterfaceCrcTrendChart = dynamic(
+  () => import('./InterfaceCrcTrendChart').then((m) => m.InterfaceCrcTrendChart),
   { ssr: false },
 )
 
@@ -91,6 +97,8 @@ interface Props {
   sortKey: InterfaceSortKey | null
   sortDirection: InterfaceSortDirection
   counterMode: CounterMode
+  view?: 'all' | 'crc'
+  crcTrend?: CrcTrendPoint[]
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -121,24 +129,6 @@ function fmtCount(value: string | null): string {
 function fmtDelta(value: string | null): string {
   if (value === null) return 'Reset'
   return value
-}
-
-function fmtBytes(value: string | null): string {
-  if (value === null) return '—'
-  try {
-    const n = BigInt(value)
-    if (n === BigInt(0)) return '0'
-    const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
-    let unit = 0
-    let v = Number(n)
-    while (v >= 1024 && unit < units.length - 1) {
-      v /= 1024
-      unit++
-    }
-    return `${v.toFixed(v >= 100 || unit === 0 ? 0 : 1)} ${units[unit]}`
-  } catch {
-    return value
-  }
 }
 
 function isNonZero(value: string | null): boolean {
@@ -186,6 +176,8 @@ export function InterfaceHealthClient({
   sortKey,
   sortDirection,
   counterMode,
+  view = 'all',
+  crcTrend = [],
 }: Props) {
   const router = useRouter()
   const [selected, setSelected] = useState<SelectedInterface | null>(null)
@@ -194,7 +186,7 @@ export function InterfaceHealthClient({
   const [exporting, setExporting] = useState(false)
   const [isPending, startTransition] = useTransition()
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const lastDispatchedQuery = useRef(query)
+  const [lastDispatchedQuery, setLastDispatchedQuery] = useState(query)
   const [searchValue, setSearchValue] = useState(query)
   const [previousQuery, setPreviousQuery] = useState(query)
   const [jumpValue, setJumpValue] = useState('')
@@ -204,7 +196,7 @@ export function InterfaceHealthClient({
   // echo from our own debounced router.replace so in-flight typing isn't clobbered.
   if (query !== previousQuery) {
     setPreviousQuery(query)
-    if (query !== lastDispatchedQuery.current) {
+    if (query !== lastDispatchedQuery) {
       setSearchValue(query)
     }
   }
@@ -223,6 +215,7 @@ export function InterfaceHealthClient({
     sort?: InterfaceSortKey | null
     dir?: InterfaceSortDirection
     counterMode?: CounterMode
+    view?: 'all' | 'crc'
   }) {
     const params = new URLSearchParams()
     const apic = overrides.apic ?? selectedHostId
@@ -233,6 +226,7 @@ export function InterfaceHealthClient({
     const s = overrides.sort !== undefined ? overrides.sort : sortKey
     const d = overrides.dir ?? sortDirection
     const mode = overrides.counterMode ?? counterMode
+    const v = overrides.view ?? view
 
     if (apic) params.set('apic', apic)
     if (q.trim()) params.set('query', q.trim())
@@ -244,6 +238,7 @@ export function InterfaceHealthClient({
       if (d !== 'desc') params.set('dir', d)
     }
     if (mode !== 'delta') params.set('mode', mode)
+    if (v !== 'all') params.set('view', v)
     const qs = params.toString()
     return `/interface-health${qs ? `?${qs}` : ''}`
   }
@@ -254,11 +249,17 @@ export function InterfaceHealthClient({
     })
   }
 
+  function handleViewChange(v: 'all' | 'crc') {
+    startTransition(() => {
+      router.replace(buildUrl({ view: v, page: 1 }))
+    })
+  }
+
   function handleSearchChange(value: string) {
     setSearchValue(value)
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
-      lastDispatchedQuery.current = value.trim()
+      setLastDispatchedQuery(value.trim())
       startTransition(() => {
         router.replace(buildUrl({ query: value, page: 1 }))
       })
@@ -383,14 +384,6 @@ export function InterfaceHealthClient({
     {
       label: counterMode === 'delta' ? 'Align Δ' : 'Align',
       sortKey: 'rxAlignErrors',
-    },
-    {
-      label: counterMode === 'delta' ? 'Rx Δ' : 'Rx',
-      sortKey: 'rxBytes',
-    },
-    {
-      label: counterMode === 'delta' ? 'Tx Δ' : 'Tx',
-      sortKey: 'txBytes',
     },
     { label: 'Last link change' },
     { label: 'Sampled' },
@@ -560,6 +553,28 @@ export function InterfaceHealthClient({
                 </DropdownMenu>
 
                 <div className="inline-flex shrink-0 rounded-lg border border-border bg-muted p-0.5">
+                  {([
+                    { label: 'All', value: 'all' },
+                    { label: 'Counting CRC', value: 'crc' },
+                  ] as const).map(v => (
+                    <button
+                      key={v.value}
+                      type="button"
+                      aria-pressed={view === v.value}
+                      onClick={() => handleViewChange(v.value)}
+                      className={[
+                        'rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors',
+                        view === v.value
+                          ? 'bg-card text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground',
+                      ].join(' ')}
+                    >
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="inline-flex shrink-0 rounded-lg border border-border bg-muted p-0.5">
                   {(['delta', 'current'] as const).map(mode => (
                     <button
                       key={mode}
@@ -583,9 +598,14 @@ export function InterfaceHealthClient({
                 <span>
                   <span className="font-semibold text-foreground">{total}</span>{' '}
                   {total === 1 ? 'interface' : 'interfaces'}
+                  {view === 'crc' && ' (CRC delta in last 7d)'}
                 </span>
               </div>
             </div>
+
+            {view === 'crc' && (
+              <InterfaceCrcTrendChart trend={crcTrend} />
+            )}
 
             <div
               className={[
@@ -596,7 +616,12 @@ export function InterfaceHealthClient({
             >
               {rows.length === 0 ? (
                 <div className="px-4 py-14 text-center">
-                  {query || activeFilterCount > 0 ? (
+                  {view === 'crc' && !query && activeFilterCount === 0 ? (
+                    <>
+                      <p className="text-sm text-subtle">No interfaces with increasing CRC errors in the last 7 days</p>
+                      <p className="text-xs text-faint mt-1">All monitored interfaces are reporting zero CRC error increases</p>
+                    </>
+                  ) : query || activeFilterCount > 0 ? (
                     <>
                       <p className="text-sm text-subtle">No interfaces match the current filters</p>
                       <p className="text-xs text-faint mt-1">Try adjusting the search or filter values</p>
@@ -688,8 +713,6 @@ export function InterfaceHealthClient({
                             <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.rxAlignErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
                               {counterMode === 'delta' ? fmtDelta(visibleCounters.rxAlignErrors) : fmtCount(visibleCounters.rxAlignErrors)}
                             </td>
-                            <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{fmtBytes(visibleCounters.rxBytes)}</td>
-                            <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{fmtBytes(visibleCounters.txBytes)}</td>
                             <td className="px-4 py-2.5 tabular-nums text-faint whitespace-nowrap">{fmtDate(r.lastLinkStChg)}</td>
                             <td className="px-4 py-2.5 tabular-nums text-faint whitespace-nowrap">{fmtRelative(r.lastSampledAt)}</td>
                           </tr>

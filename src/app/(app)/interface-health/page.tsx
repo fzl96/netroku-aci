@@ -6,6 +6,7 @@ import { getApicHosts } from '@/actions/apic-hosts'
 import { InterfaceHealthClient, type InterfaceRowProps } from './InterfaceHealthClient'
 import type { CounterMode } from './counter-mode'
 import { parseInterfaceSortParams, sortInterfaceRows } from './sort'
+import { aggregateCrcTrend, type CrcTrendPoint } from './crc-trend'
 
 export const metadata: Metadata = {
   title: 'Interfaces',
@@ -33,6 +34,7 @@ export default async function InterfaceHealthPage({
     sort?: string
     dir?: string
     mode?: string
+    view?: string
   }>
 }) {
   const session = await getSession()
@@ -47,8 +49,11 @@ export default async function InterfaceHealthPage({
     sort,
     dir,
     mode,
+    view: viewParam,
   } = await searchParams
   const apicHosts = await getApicHosts()
+
+  const interfaceView = viewParam === 'crc' ? 'crc' : 'all'
 
   // Empty / missing node param = show all nodes. Comma-separated list otherwise.
   const nodeFilter = node
@@ -64,6 +69,7 @@ export default async function InterfaceHealthPage({
   let total = 0
   let lastSyncedAt: Date | null = null
   let availableNodes: string[] = []
+  let crcTrend: CrcTrendPoint[] = []
 
   if (apic && apicHosts.some(h => h.id === apic)) {
     const host = await prisma.apicHost.findUnique({
@@ -72,8 +78,26 @@ export default async function InterfaceHealthPage({
     })
     lastSyncedAt = host?.lastInterfaceSyncAt ?? null
 
+    const now = new Date()
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+
+    let crcInterfaceIds: string[] = []
+    if (interfaceView === 'crc') {
+      const crcSamples = await prisma.interfaceSample.findMany({
+        where: {
+          apicHostId: apic,
+          sampledAt: { gte: sevenDaysAgo },
+          dRxCrcErrors: { gt: BigInt(0) },
+        },
+        select: { interfaceId: true },
+        distinct: ['interfaceId'],
+      })
+      crcInterfaceIds = crcSamples.map(s => s.interfaceId)
+    }
+
     const where = {
       apicHostId: apic,
+      ...(interfaceView === 'crc' ? { id: { in: crcInterfaceIds } } : {}),
       ...(nodeFilter.length > 0 ? { node: { in: nodeFilter } } : {}),
       ...(query?.trim()
         ? {
@@ -90,7 +114,7 @@ export default async function InterfaceHealthPage({
     const skip = pageSize === 'all' ? 0 : (page - 1) * pageSize
     const take = pageSize === 'all' ? undefined : pageSize
 
-    const [snapshots, snapshotTotal, nodes] = await Promise.all([
+    const [snapshots, snapshotTotal, nodes, rawCrcSamples] = await Promise.all([
       prisma.interfaceSnapshot.findMany({
         where,
         orderBy: [{ node: 'asc' }, { ifName: 'asc' }],
@@ -116,9 +140,22 @@ export default async function InterfaceHealthPage({
         select: { node: true },
         distinct: ['node'],
       }),
+      prisma.interfaceSample.findMany({
+        where: {
+          apicHostId: apic,
+          sampledAt: { gte: sevenDaysAgo },
+          dRxCrcErrors: { gt: BigInt(0) },
+        },
+        select: {
+          sampledAt: true,
+          dRxCrcErrors: true,
+        },
+        orderBy: { sampledAt: 'asc' },
+      }),
     ])
 
     total = snapshotTotal
+    crcTrend = aggregateCrcTrend(rawCrcSamples)
 
     const sortedSnapshots = sortInterfaceRows(snapshots, interfaceSort ?? undefined)
     const visibleSnapshots = take === undefined
@@ -174,6 +211,9 @@ export default async function InterfaceHealthPage({
       sortKey={interfaceSort?.key ?? null}
       sortDirection={interfaceSort?.direction ?? 'desc'}
       counterMode={counterMode}
+      view={interfaceView}
+      crcTrend={crcTrend}
     />
   )
 }
+
