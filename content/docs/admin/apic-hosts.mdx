@@ -3,10 +3,39 @@ title: APIC Hosts
 description: Configuring APIC controller connections.
 ---
 
-Manage the APIC hosts that Netroku ACI connects to for fabric data.
+import { Callout } from 'fumadocs-ui/components/callout';
 
-## TODO
+APIC hosts are the Cisco APIC controllers that Netroku ACI connects to for fabric data. Each host entry stores a display name and the controller's IP address or hostname. Credentials are **not** stored — they are entered at the time of connection.
 
-- Adding a new APIC host
-- Credentials and authentication
-- Testing connectivity
+Managing APIC hosts requires an **admin** account.
+
+## Add a host
+
+1. Navigate to **APIC Hosts** in the sidebar.
+2. Click **Add host**.
+3. Fill in the two fields:
+
+| Field | Description | Limit |
+|---|---|---|
+| **Name** | A display label for this controller (e.g. `prod-apic-1`) | 64 characters |
+| **Host** | IP address or hostname of the APIC (e.g. `10.0.0.1` or `apic.internal`) | 253 characters |
+
+4. Click **Save**.
+
+<Callout type="info" title="TLS">
+Netroku ACI bypasses TLS certificate verification when talking to APIC controllers, so self-signed certificates work out of the box.
+</Callout>
+
+## Test connectivity
+
+Before using a host for data sync or provisioning, you can verify that the app can reach it:
+
+1. Open the host's edit dialog.
+2. Enter a username and password.
+3. Click **Test connection** — the app will attempt to authenticate against the APIC and report success or failure.
+
+This does not save credentials anywhere; the test is one-shot.
+
+## Edit or delete a host
+
+Click the edit (pencil) or delete (trash) icon next to any host in the table. Deleting a host removes it from Netroku ACI but does not affect the APIC itself or any data already synced to the database.
