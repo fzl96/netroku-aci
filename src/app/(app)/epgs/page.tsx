@@ -7,9 +7,8 @@ import {
   buildBindingWhere,
   expandNodeOptions,
   type EpgWithBindings,
-  type BindingWithEpg,
 } from '@/lib/epgs/query'
-import { sortBindingRows } from './sort'
+import { groupBindingsByPort, type EpgPortSummary } from './sort'
 import { EpgsClient } from './EpgsClient'
 
 const VALID_PAGE_SIZES = [10, 50, 100, 1000] as const
@@ -47,7 +46,7 @@ export default async function EpgsPage({
   const filterNode = parseList(params.node)
 
   let epgs: EpgWithBindings[] = []
-  let bindings: BindingWithEpg[] = []
+  let ports: EpgPortSummary[] = []
   let total = 0
   let tenants: string[] = []
   let aps: string[] = []
@@ -103,9 +102,9 @@ export default async function EpgsPage({
           epg: { select: { name: true, tenant: true, appProfile: true, dn: true } },
         },
       })
-      const sorted = sortBindingRows(allRows)
-      total = sorted.length
-      bindings = take === undefined ? sorted : sorted.slice(skip, skip + take)
+      const grouped = groupBindingsByPort(allRows)
+      total = grouped.length
+      ports = take === undefined ? grouped : grouped.slice(skip, skip + take)
     }
   }
 
@@ -114,7 +113,7 @@ export default async function EpgsPage({
       apicHosts={apicHosts}
       view={view}
       epgs={epgs}
-      bindings={bindings}
+      ports={ports}
       selectedHostId={apic ?? ''}
       query={params.query ?? ''}
       filterTenant={filterTenant}

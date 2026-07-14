@@ -10,7 +10,6 @@ import type { SafeApicHost } from '@/actions/apic-hosts'
 import {
   countActiveEpgFilterGroups,
   type EpgWithBindings,
-  type BindingWithEpg,
 } from '@/lib/epgs/query'
 import { DENSE_TABLE_HEAD_CLS, SEARCH_INPUT_CLS, TABLE_SCROLL_CLS } from '@/lib/ui-classes'
 import {
@@ -23,6 +22,8 @@ import {
 import { FilterSubmenu } from '@/components/FilterSubmenu'
 import { ApicCredentialDialog } from '@/components/ApicCredentialDialog'
 import { EpgDetailPanel } from './EpgDetailPanel'
+import { EpgPortDetailPanel } from './EpgPortDetailPanel'
+import type { EpgPortSummary } from './sort'
 
 type ViewValue = 'epg' | 'port'
 type PageSizeValue = 10 | 50 | 100 | 1000 | 'all'
@@ -43,7 +44,7 @@ interface Props {
   apicHosts: SafeApicHost[]
   view: ViewValue
   epgs: EpgWithBindings[]
-  bindings: BindingWithEpg[]
+  ports?: EpgPortSummary[]
   selectedHostId: string
   query: string
   filterTenant: string[]
@@ -59,7 +60,7 @@ interface Props {
 }
 
 export function EpgsClient({
-  apicHosts, view, epgs, bindings, selectedHostId, query,
+  apicHosts, view, epgs, ports = [], selectedHostId, query,
   filterTenant, filterAp, filterNode,
   tenants, aps, nodeOptions,
   page, total, pageSize, lastSyncAt,
@@ -73,11 +74,12 @@ export function EpgsClient({
   const [searchValue, setSearchValue] = useState(query)
   const [previousQuery, setPreviousQuery] = useState(query)
   const [selectedEpgId, setSelectedEpgId] = useState<string | null>(null)
+  const [selectedPort, setSelectedPort] = useState<EpgPortSummary | null>(null)
 
-  // Sync input on back/forward navigation, ignoring our own debounced echo.
+  // Sync input on back/forward navigation.
   if (query !== previousQuery) {
     setPreviousQuery(query)
-    if (query !== lastDispatchedQuery.current) setSearchValue(query)
+    setSearchValue(query)
   }
 
   const effectivePageSize = pageSize === 'all' ? Math.max(total, 1) : pageSize
@@ -89,7 +91,8 @@ export function EpgsClient({
   })
   const selectedHost = apicHosts.find(host => host.id === selectedHostId)
   const selectedEpg = epgs.find(e => e.id === selectedEpgId) ?? null
-  const noun = view === 'epg' ? 'EPGs' : 'bindings'
+  const noun = view === 'epg' ? 'EPGs' : 'ports'
+  const currentItemsCount = view === 'epg' ? epgs.length : ports.length
 
   function buildUrl(overrides: {
     apic?: string; view?: ViewValue; query?: string; page?: number; pageSize?: PageSizeValue
@@ -255,8 +258,8 @@ export function EpgsClient({
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      title="Filter EPGs"
-                      aria-label="Filter EPGs"
+                      title={`Filter ${noun}`}
+                      aria-label={`Filter ${noun}`}
                       disabled={isPending}
                       className={[
                         'relative flex size-9 shrink-0 items-center justify-center rounded-lg border transition-colors outline-none',
@@ -297,7 +300,7 @@ export function EpgsClient({
               'transition-opacity duration-150',
               isPending ? 'opacity-60 pointer-events-none' : 'opacity-100',
             ].join(' ')}>
-              {(view === 'epg' ? epgs.length : bindings.length) === 0 && !isPending ? (
+              {currentItemsCount === 0 && !isPending ? (
                 <div className="px-4 py-14 text-center">
                   {query || activeFilterGroupCount > 0 ? (
                     <>
@@ -355,26 +358,29 @@ export function EpgsClient({
                     <table className="w-full text-xs">
                       <thead>
                         <tr>
-                          {['Node', 'Port', 'Type', 'Encap', 'Mode', 'EPG', 'Tenant'].map(h => (
+                          {['Node', 'Port', 'Type', 'EPGs', 'Tenants', 'Encaps / VLANs', 'Mode'].map(h => (
                             <th key={h} className={DENSE_TABLE_HEAD_CLS}>{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {bindings.map(b => (
+                        {ports.map(port => (
                           <tr
-                            key={b.id}
-                            className="group border-b border-border-faint last:border-0 hover:bg-muted transition-colors duration-100"
+                            key={port.id}
+                            onClick={() => setSelectedPort(port)}
+                            className="group border-b border-border-faint last:border-0 hover:bg-muted transition-colors duration-100 cursor-pointer"
                           >
-                            <td className="px-4 py-2.5 tabular-nums text-foreground border-l-2 border-l-transparent group-hover:border-l-primary transition-colors duration-100">
-                              {b.node || '—'}
+                            <td className="px-4 py-2.5 tabular-nums font-medium text-foreground border-l-2 border-l-transparent group-hover:border-l-primary transition-colors duration-100">
+                              {port.node}
                             </td>
-                            <td className="px-4 py-2.5 font-mono text-muted-foreground max-w-[180px] truncate" title={b.port}>{b.port}</td>
-                            <td className="px-4 py-2.5 text-subtle uppercase text-[10px]">{b.pathType}</td>
-                            <td className="px-4 py-2.5 font-mono text-muted-foreground">{b.encap || '—'}</td>
-                            <td className="px-4 py-2.5 text-subtle">{b.mode}</td>
-                            <td className="px-4 py-2.5 font-mono text-foreground max-w-[200px] truncate" title={b.epg.dn}>{b.epg.name}</td>
-                            <td className="px-4 py-2.5 text-muted-foreground">{b.epg.tenant}</td>
+                            <td className="px-4 py-2.5 font-mono text-muted-foreground max-w-[180px] truncate" title={port.port}>{port.port}</td>
+                            <td className="px-4 py-2.5 text-subtle uppercase text-[10px]">{port.pathType}</td>
+                            <td className="px-4 py-2.5 tabular-nums">
+                              <span className="font-semibold text-foreground">{port.epgCount}</span>
+                            </td>
+                            <td className="px-4 py-2.5 text-muted-foreground max-w-[160px] truncate" title={port.tenants.join(', ')}>{port.tenants.join(', ') || '—'}</td>
+                            <td className="px-4 py-2.5 font-mono text-muted-foreground max-w-[180px] truncate" title={port.encaps.join(', ')}>{port.encaps.join(', ') || '—'}</td>
+                            <td className="px-4 py-2.5 text-subtle max-w-[120px] truncate" title={port.modes.join(', ')}>{port.modes.join(', ') || '—'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -439,6 +445,10 @@ export function EpgsClient({
 
       {selectedEpg && (
         <EpgDetailPanel epg={selectedEpg} onClose={() => setSelectedEpgId(null)} />
+      )}
+
+      {selectedPort && (
+        <EpgPortDetailPanel port={selectedPort} onClose={() => setSelectedPort(null)} />
       )}
 
       <ApicCredentialDialog
