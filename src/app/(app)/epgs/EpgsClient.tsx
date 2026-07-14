@@ -430,7 +430,8 @@ export function EpgsClient({
                             <td className="px-4 py-2.5 text-subtle max-w-[120px] truncate" title={port.modes.join(', ')}>{port.modes.join(', ') || '—'}</td>
                           </tr>
                         ))}
-                      </tbody>
+                        </tbody>
+                      )}
                     </table>
                   )}
                 </div>

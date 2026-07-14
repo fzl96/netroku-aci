@@ -699,7 +699,7 @@ export function InterfaceHealthClient({
                       </tr>
                     </thead>
                     {isPending ? (
-                      <TableSkeleton columns={HEAD_COLS.length} />
+                      <TableSkeleton columns={tableHeaders.length} />
                     ) : (
                       <tbody>
                         {rows.map((r, i) => {
