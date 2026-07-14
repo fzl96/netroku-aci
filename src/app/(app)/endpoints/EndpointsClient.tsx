@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { IconRefresh, IconSearch, IconChevronLeft, IconChevronRight, IconServer, IconFilter2, IconLoader } from '@tabler/icons-react'
-import type { SafeApicHost } from '@/actions/apic-hosts'
+import { useApicHosts } from '@/components/ApicHostsProvider'
 import type { Endpoint } from '@prisma/client'
 import { countActiveEndpointFilterGroups, type EndpointStatusFilter } from '@/lib/endpoints/query'
 import {
@@ -85,7 +85,6 @@ const PAGE_SIZE_OPTIONS: { label: string; value: PageSizeValue }[] = [
 ]
 
 interface Props {
-  apicHosts: SafeApicHost[]
   view: ViewValue
   endpoints: Endpoint[]
   ports?: EndpointPortSummary[]
@@ -106,7 +105,6 @@ interface Props {
 }
 
 export function EndpointsClient({
-  apicHosts,
   view,
   endpoints,
   ports = [],
@@ -125,6 +123,7 @@ export function EndpointsClient({
   activeTotal,
   historicalTotal,
 }: Props) {
+  const apicHosts = useApicHosts()
   const router = useRouter()
   const [syncing, setSyncing] = useState(false)
   const [credentialOpen, setCredentialOpen] = useState(false)

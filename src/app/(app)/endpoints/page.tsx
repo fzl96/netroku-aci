@@ -104,7 +104,6 @@ export default async function EndpointsPage({
 
   return (
     <EndpointsClient
-      apicHosts={apicHosts}
       view={view}
       endpoints={endpoints}
       ports={ports}

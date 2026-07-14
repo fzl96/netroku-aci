@@ -124,7 +124,6 @@ export default async function FaultsPage({
 
   return (
     <FaultsClient
-      apicHosts={apicHosts}
       selectedApic={apic ?? null}
       query={query ?? ''}
       severity={severityFilter ?? null}

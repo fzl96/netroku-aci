@@ -12,7 +12,7 @@ import {
   IconChevronRight,
   IconLoader,
 } from '@tabler/icons-react'
-import type { SafeApicHost } from '@/actions/apic-hosts'
+import { useApicHosts } from '@/components/ApicHostsProvider'
 import {
   DENSE_TABLE_HEAD_CLS,
   SEARCH_INPUT_CLS,
@@ -58,7 +58,6 @@ const SCOPE_LABEL: Record<Scope, string> = {
 }
 
 interface Props {
-  apicHosts: SafeApicHost[]
   selectedApic: string | null
   query: string
   scope: string | null
@@ -143,7 +142,6 @@ function TableSkeleton({ columns = 6 }: { columns?: number }) {
 }
 
 export function HealthScoresClient({
-  apicHosts,
   selectedApic,
   query,
   scope,
@@ -156,6 +154,7 @@ export function HealthScoresClient({
   pods,
   trend,
 }: Props) {
+  const apicHosts = useApicHosts()
   const router = useRouter()
   const selectedHostId = selectedApic ?? ''
   const [syncing, setSyncing] = useState(false)

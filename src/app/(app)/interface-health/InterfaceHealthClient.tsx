@@ -16,7 +16,7 @@ import {
   IconChevronUp,
   IconLoader,
 } from '@tabler/icons-react'
-import type { SafeApicHost } from '@/actions/apic-hosts'
+import { useApicHosts } from '@/components/ApicHostsProvider'
 import {
   DENSE_TABLE_HEAD_CLS,
   SEARCH_INPUT_CLS,
@@ -85,7 +85,6 @@ const PAGE_SIZE_OPTIONS: { label: string; value: PageSizeValue }[] = [
 ]
 
 interface Props {
-  apicHosts: SafeApicHost[]
   rows: InterfaceRowProps[]
   selectedHostId: string
   query: string
@@ -183,7 +182,6 @@ function TableSkeleton({ columns = 8 }: { columns?: number }) {
 }
 
 export function InterfaceHealthClient({
-  apicHosts,
   rows,
   selectedHostId,
   query,
@@ -199,6 +197,7 @@ export function InterfaceHealthClient({
   view = 'all',
   crcTrend = [],
 }: Props) {
+  const apicHosts = useApicHosts()
   const router = useRouter()
   const [selected, setSelected] = useState<SelectedInterface | null>(null)
   const [syncing, setSyncing] = useState(false)

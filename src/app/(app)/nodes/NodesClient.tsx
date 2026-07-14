@@ -12,7 +12,7 @@ import {
   IconServer,
   IconLoader,
 } from '@tabler/icons-react'
-import type { SafeApicHost } from '@/actions/apic-hosts'
+import { useApicHosts } from '@/components/ApicHostsProvider'
 import { isNodeOnline } from '@/lib/apic/node-status'
 import {
   DENSE_TABLE_HEAD_CLS,
@@ -78,7 +78,6 @@ const TYPE_LABEL: Record<(typeof TYPES)[number], string> = {
 }
 
 interface Props {
-  apicHosts: SafeApicHost[]
   selectedApic: string | null
   query: string
   view: View
@@ -186,7 +185,6 @@ function TableSkeleton({ columns = 9 }: { columns?: number }) {
 }
 
 export function NodesClient({
-  apicHosts,
   selectedApic,
   query,
   view,
@@ -203,6 +201,7 @@ export function NodesClient({
   componentsFailed,
   trend,
 }: Props) {
+  const apicHosts = useApicHosts()
   const router = useRouter()
   const selectedHostId = selectedApic ?? ''
   const [syncing, setSyncing] = useState(false)

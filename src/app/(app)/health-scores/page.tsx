@@ -118,7 +118,6 @@ export default async function HealthScoresPage({
 
   return (
     <HealthScoresClient
-      apicHosts={apicHosts}
       selectedApic={apic ?? null}
       query={query ?? ''}
       scope={scopeFilter ?? null}

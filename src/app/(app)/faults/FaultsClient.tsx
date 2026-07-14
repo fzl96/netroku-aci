@@ -14,7 +14,7 @@ import {
   IconCheck,
   IconLoader,
 } from '@tabler/icons-react'
-import type { SafeApicHost } from '@/actions/apic-hosts'
+import { useApicHosts } from '@/components/ApicHostsProvider'
 import {
   DENSE_TABLE_HEAD_CLS,
   SEARCH_INPUT_CLS,
@@ -74,7 +74,6 @@ const SEVERITY_LABEL: Record<Severity, string> = {
 }
 
 interface Props {
-  apicHosts: SafeApicHost[]
   selectedApic: string | null
   query: string
   severity: string | null
@@ -150,7 +149,6 @@ function TableSkeleton({ columns = 7 }: { columns?: number }) {
 }
 
 export function FaultsClient({
-  apicHosts,
   selectedApic,
   query,
   severity,
@@ -163,6 +161,7 @@ export function FaultsClient({
   lastSyncedAt,
   trend,
 }: Props) {
+  const apicHosts = useApicHosts()
   const router = useRouter()
   const selectedHostId = selectedApic ?? ''
   const [syncing, setSyncing] = useState(false)

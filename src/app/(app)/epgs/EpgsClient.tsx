@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import {
   IconRefresh, IconSearch, IconChevronLeft, IconChevronRight, IconServer, IconFilter2, IconLoader,
 } from '@tabler/icons-react'
-import type { SafeApicHost } from '@/actions/apic-hosts'
+import { useApicHosts } from '@/components/ApicHostsProvider'
 import {
   countActiveEpgFilterGroups,
   type EpgWithBindings,
@@ -41,7 +41,6 @@ function fmt(date: string | Date | null) {
 }
 
 interface Props {
-  apicHosts: SafeApicHost[]
   view: ViewValue
   epgs: EpgWithBindings[]
   ports?: EpgPortSummary[]
@@ -79,11 +78,12 @@ function TableSkeleton({ columns = 6 }: { columns?: number }) {
 }
 
 export function EpgsClient({
-  apicHosts, view, epgs, ports = [], selectedHostId, query,
+  view, epgs, ports = [], selectedHostId, query,
   filterTenant, filterAp, filterNode,
   tenants, aps, nodeOptions,
   page, total, pageSize, lastSyncAt,
 }: Props) {
+  const apicHosts = useApicHosts()
   const router = useRouter()
   const [syncing, setSyncing] = useState(false)
   const [credentialOpen, setCredentialOpen] = useState(false)

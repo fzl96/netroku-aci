@@ -110,7 +110,6 @@ export default async function EpgsPage({
 
   return (
     <EpgsClient
-      apicHosts={apicHosts}
       view={view}
       epgs={epgs}
       ports={ports}

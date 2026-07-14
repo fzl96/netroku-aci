@@ -198,7 +198,6 @@ export default async function InterfaceHealthPage({
 
   return (
     <InterfaceHealthClient
-      apicHosts={apicHosts}
       rows={rows}
       selectedHostId={apic ?? ''}
       query={query ?? ''}

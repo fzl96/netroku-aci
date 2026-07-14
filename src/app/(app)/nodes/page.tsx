@@ -177,7 +177,6 @@ export default async function NodesPage({
 
   return (
     <NodesClient
-      apicHosts={apicHosts}
       selectedApic={apic ?? null}
       query={query ?? ''}
       view={view}
