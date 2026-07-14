@@ -209,7 +209,19 @@ export function EpgsClient({
       </div>
 
       <div className="px-8 py-6 space-y-4">
-        {!selectedHostId ? (
+        {isPending ? (
+          <div className="flex flex-col items-center justify-center py-28 text-center animate-fade-up">
+            <div className="w-14 h-14 rounded-2xl bg-card border border-border flex items-center justify-center shadow-sm mb-4">
+              <IconLoader size={24} className="animate-spin text-primary" />
+            </div>
+            <h2 className="font-serif text-base font-semibold text-foreground mb-1">
+              Loading APIC host data…
+            </h2>
+            <p className="text-xs text-subtle">
+              Fetching EPG inventory from the selected host
+            </p>
+          </div>
+        ) : !selectedHostId ? (
           <div className="flex flex-col items-center justify-center py-28 text-center">
             <div className="relative mb-6">
               <div className="w-14 h-14 rounded-2xl bg-card border border-border flex items-center justify-center shadow-sm">
