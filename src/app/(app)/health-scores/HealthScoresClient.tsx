@@ -269,28 +269,23 @@ export function HealthScoresClient({
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="relative inline-flex items-center">
-              <select
-                value={selectedHostId}
-                onChange={e => handleHostChange(e.target.value)}
-                disabled={isPending}
-                className={[
-                  'text-xs bg-muted border border-border rounded-lg',
-                  'px-3 py-2 text-foreground outline-none',
-                  'focus:border-primary focus:ring-2 focus:ring-primary/10',
-                  'min-w-[180px]',
-                  isPending ? 'opacity-70 cursor-wait pr-8' : '',
-                ].join(' ')}
-              >
-                <option value="">Select APIC host…</option>
-                {apicHosts.map(h => (
-                  <option key={h.id} value={h.id}>{h.name} ({h.host})</option>
-                ))}
-              </select>
-              {isPending && (
-                <IconLoader size={14} className="absolute right-2.5 animate-spin text-primary pointer-events-none" />
-              )}
-            </div>
+            <select
+              value={selectedHostId}
+              onChange={e => handleHostChange(e.target.value)}
+              disabled={isPending}
+              className={[
+                'text-xs bg-muted border border-border rounded-lg',
+                'px-3 py-2 text-foreground outline-none',
+                'focus:border-primary focus:ring-2 focus:ring-primary/10',
+                'min-w-[180px]',
+                'disabled:opacity-60 disabled:cursor-not-allowed transition-opacity',
+              ].join(' ')}
+            >
+              <option value="">Select APIC host…</option>
+              {apicHosts.map(h => (
+                <option key={h.id} value={h.id}>{h.name} ({h.host})</option>
+              ))}
+            </select>
 
             <button
               onClick={() => setCredentialOpen(true)}
@@ -340,28 +335,23 @@ export function HealthScoresClient({
                 : 'Choose a host to view its health scores.'}
             </p>
             {apicHosts.length > 0 && (
-              <div className="relative inline-flex items-center">
-                <select
-                  value={selectedHostId}
-                  onChange={e => handleHostChange(e.target.value)}
-                  disabled={isPending}
-                  className={[
-                    'text-xs bg-muted border border-border rounded-lg',
-                    'px-3 py-2 text-foreground outline-none cursor-pointer',
-                    'focus:border-primary focus:ring-2 focus:ring-primary/10',
-                    'min-w-[220px] transition-colors',
-                    isPending ? 'opacity-70 cursor-wait pr-8' : '',
-                  ].join(' ')}
-                >
-                  <option value="">Select APIC host…</option>
-                  {apicHosts.map(h => (
-                    <option key={h.id} value={h.id}>{h.name} ({h.host})</option>
-                  ))}
-                </select>
-                {isPending && (
-                  <IconLoader size={14} className="absolute right-2.5 animate-spin text-primary pointer-events-none" />
-                )}
-              </div>
+              <select
+                value={selectedHostId}
+                onChange={e => handleHostChange(e.target.value)}
+                disabled={isPending}
+                className={[
+                  'text-xs bg-muted border border-border rounded-lg',
+                  'px-3 py-2 text-foreground outline-none cursor-pointer',
+                  'focus:border-primary focus:ring-2 focus:ring-primary/10',
+                  'min-w-[220px] transition-colors',
+                  'disabled:opacity-60 disabled:cursor-not-allowed transition-opacity',
+                ].join(' ')}
+              >
+                <option value="">Select APIC host…</option>
+                {apicHosts.map(h => (
+                  <option key={h.id} value={h.id}>{h.name} ({h.host})</option>
+                ))}
+              </select>
             )}
           </div>
         ) : (
