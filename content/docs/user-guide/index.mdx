@@ -13,10 +13,13 @@ The sidebar lists every page. All monitoring pages are available to both **admin
 
 All data displayed in Netroku ACI comes from snapshots stored in the database — nothing is fetched live from APIC on page load. Data stays current through the [Scheduled Resync](/docs/admin/scheduled-resync) mechanism. Each monitoring page also has a manual **Resync** button that pulls fresh data on demand (requires entering APIC credentials).
 
+For a full walkthrough of which APIC endpoints are queried and how their responses are stored and displayed, see [How Data Flows](/docs/user-guide/data-pipeline).
+
 If a page shows dashes or zeros, the most likely cause is that a resync has not been run yet for that APIC host.
 
 ## Pages in this section
 
+- [How Data Flows](/docs/user-guide/data-pipeline) — the full path from APIC REST query to stored snapshot to rendered page
 - [Dashboard](/docs/user-guide/dashboard) — global posture, headline stats, and per-host coverage at a glance
 - [Endpoints](/docs/user-guide/endpoints) — learned MAC/IP endpoint inventory with VLAN, node, interface, and EPG context
 - [EPGs](/docs/user-guide/epgs) — End Point Group inventory with bridge domain, contract, and static port binding details

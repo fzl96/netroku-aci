@@ -2,6 +2,7 @@
   "title": "User Guide",
   "pages": [
     "index",
+    "data-pipeline",
     "dashboard",
     "endpoints",
     "epgs",

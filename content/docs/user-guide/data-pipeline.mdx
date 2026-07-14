@@ -1,0 +1,120 @@
+---
+title: How Data Flows
+description: How Netroku ACI fetches data from APIC, stores it, and displays it.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Every number, table, and chart in Netroku ACI comes from data that was pulled from APIC during a **resync** and written to the application's own database. Page loads never talk to APIC — they read the stored copy. This page explains the full path: which APIC endpoints are queried, how the responses are stored, and how the stored data reaches the screen.
+
+## Overview
+
+```
+APIC controller  ──(1) HTTPS REST query──▶  Netroku resync job
+                                                   │
+                                            (2) parse imdata
+                                                   │
+                                                   ▼
+                                            PostgreSQL database
+                                                   │
+                                            (3) Prisma query
+                                                   ▼
+                                            Monitoring page (server-rendered)
+```
+
+1. A resync authenticates to APIC and issues one or more read-only REST queries.
+2. The raw response is parsed into flat rows and reconciled into the database.
+3. When you open a page, the server reads those rows straight from PostgreSQL and renders them — no live APIC call.
+
+Resyncs run either on a schedule (see [Scheduled Resync](/docs/admin/scheduled-resync)) or on demand via the **Resync** button on each monitoring page.
+
+## 1. Fetching from APIC
+
+### Authentication
+
+Netroku talks to APIC's REST API over HTTPS. Each resync first logs in:
+
+```
+POST https://<apic-host>/api/aaaLogin.json
+{ "aaaUser": { "attributes": { "name": "<user>", "pwd": "<password>" } } }
+```
+
+APIC returns a session token, which Netroku sends as an `APIC-cookie` header on every subsequent query. Because APIC controllers typically present self-signed certificates, certificate verification is not enforced for these internal calls.
+
+<Callout type="info" title="Read-only is enough">
+All monitoring queries are `GET` requests against APIC's managed-object tree. A read-only APIC account has every permission the resync needs.
+</Callout>
+
+### Queries per dataset
+
+Each monitoring page is backed by one or more APIC class queries (`/api/node/class/<class>.json`). The `rsp-subtree` and `rsp-subtree-include` parameters ask APIC to return related child objects in the same response, so a page's data can be assembled from a single query where possible.
+
+| Page | APIC query | What it returns |
+|---|---|---|
+| **Endpoints** | `fvCEp?rsp-subtree=children&rsp-subtree-class=fvIp,fvRsCEpToPathEp` + `fvAEPg` | Learned MAC/IP endpoints with their IP children and fabric-path relations, plus EPG descriptions |
+| **EPGs** | `fvAEPg?rsp-subtree=children&rsp-subtree-class=fvRsPathAtt,fvRsBd,fvRsDomAtt,fvRsProv,fvRsCons` | Each EPG with its static port bindings, bridge domain, domains, and provided/consumed contracts |
+| **Faults** | `faultInst` | Every active fault instance in the fabric |
+| **Health Scores** | `fabricHealthTotal`, `topSystem?rsp-subtree-include=health`, `fvTenant?rsp-subtree-include=health` | Fabric-wide, per-node, and per-tenant health scores |
+| **Interface Health** | `l1PhysIf` | Physical interface admin/oper state and error counters |
+| **Nodes** | `fabricNode`, `topSystem`, `eqptPsu`, `eqptFan` | Node inventory, reachability, and PSU/fan hardware status |
+
+APIC wraps every response in an `imdata` array of managed objects. Netroku parses that array into flat rows — for example, an `fvCEp` endpoint with two `fvIp` children becomes two endpoint rows, one per IP address.
+
+## 2. Storing the data
+
+Parsed rows are written to PostgreSQL. Netroku uses three storage patterns depending on what the data needs to express.
+
+### Snapshot tables (current state)
+
+Faults, EPGs, interfaces, health scores, and nodes are stored as **snapshots**. On each resync Netroku *upserts* every object returned by APIC, then marks any object that was present before but is now missing as gone:
+
+- Faults use a `lifecycle` field — objects absent from the latest fetch are flipped from `active` to `cleared`.
+- Interfaces, health scores, and nodes use a `present` flag that is set false when an object disappears.
+
+This means a page always reflects the most recent resync: newly-appeared objects show up, and objects that were remediated or removed drop out (or move to a cleared state) rather than lingering.
+
+### Placement history (endpoints)
+
+Endpoints are special — an endpoint can *move* between nodes, interfaces, VLANs, or EPGs, and that history is worth keeping. Instead of overwriting, each endpoint row carries `isActive`, `firstSeenAt`, `lastSeenAt`, and `clearedAt`. On resync Netroku compares the fetched endpoints against the currently-active rows and:
+
+- **Unchanged** endpoints have their `lastSeenAt` bumped.
+- **Moved** endpoints get the old row marked inactive (`clearedAt` stamped) and a new active row inserted at the new location.
+- **Departed** endpoints (no longer learned by the fabric) are marked inactive.
+
+The reconcile runs inside a single database transaction guarded by a per-host lock, so two overlapping resyncs can't corrupt the active set.
+
+### Time-series samples (trends)
+
+To power trend charts, some resyncs also append a **sample** row capturing totals at that moment:
+
+- `FaultCountSample` — fault counts by severity (feeds the Faults trend chart)
+- `HealthScoreSample` — health score over time
+- `InterfaceSample` — interface counter samples
+- `NodeStatusSample` — node reachability over time
+
+Snapshot tables answer "what is the state right now"; sample tables answer "how has it changed over time".
+
+Each resync also records an entry in the audit log — visible under **History** — noting which host was synced, how many records changed, and whether it succeeded.
+
+<Callout type="info" title="Everything is scoped to a host">
+Every stored row is tagged with its `apicHostId`. That is why each page has an APIC host selector: switching hosts simply changes which host's stored rows are queried.
+</Callout>
+
+## 3. Displaying the data
+
+Monitoring pages are **server-rendered**. When you open a page, the server:
+
+1. Reads the selected APIC host from the URL (`?apic=<hostId>`), defaulting to the first configured host.
+2. Applies your filters (search text, severity, node, pagination) as database query conditions.
+3. Reads the matching snapshot or sample rows from PostgreSQL and renders the table and charts.
+
+No APIC request happens on page load, so pages are fast and stay available even if APIC is temporarily unreachable. The trade-off is that data is only as fresh as the last resync — each page shows a "last synced" timestamp so you can tell how current it is.
+
+If a page shows dashes or zeros, the most likely cause is simply that no resync has run yet for that host.
+
+## Keeping data current
+
+Because display reads stored data, freshness depends entirely on how often resyncs run:
+
+- **Scheduled** — an external scheduler calls `POST /api/cron/resync` on your chosen interval and refreshes every dataset for every configured host. See [Scheduled Resync](/docs/admin/scheduled-resync).
+- **On demand** — the **Resync** button on any monitoring page pulls a fresh snapshot for that one dataset immediately (you'll be prompted for APIC credentials).
