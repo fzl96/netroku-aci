@@ -95,7 +95,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       },
       {
         href: "/docs",
-        label: "Docs",
+        label: "Documentation",
         icon: <IconBook size={15} stroke={1.75} />,
       },
     ],
