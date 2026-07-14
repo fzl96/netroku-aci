@@ -63,6 +63,7 @@ import {
   IconLayoutDashboard,
   IconHistory,
   IconTopologyStar3,
+  IconBook,
 } from "@tabler/icons-react";
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
@@ -91,6 +92,11 @@ const NAV: { group: string; items: NavItem[] }[] = [
         href: "/dashboard",
         label: "Dashboard",
         icon: <IconLayoutDashboard size={15} stroke={1.75} />,
+      },
+      {
+        href: "/docs",
+        label: "Docs",
+        icon: <IconBook size={15} stroke={1.75} />,
       },
     ],
   },
