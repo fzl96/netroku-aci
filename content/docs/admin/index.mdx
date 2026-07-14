@@ -3,9 +3,19 @@ title: Admin & Setup
 description: Deployment, configuration, and user management.
 ---
 
-This section covers deploying and configuring Netroku ACI.
+This section covers everything needed to deploy and configure Netroku ACI — from first-time setup to managing users and scheduled syncs.
 
-## TODO
+## Prerequisites
 
-- Prerequisites
-- Quick start checklist
+Before you begin, make sure you have the following installed:
+
+- **Bun** ≥ 1.1 ([bun.sh](https://bun.sh)) **or** **Node.js** ≥ 20 ([nodejs.org](https://nodejs.org))
+- **Git**
+- **Docker** with Docker Compose — only required if you plan to run the database locally
+
+## What's in this section
+
+- [Deployment](/docs/admin/deployment) — install dependencies, configure environment variables, set up the database, and run the app
+- [APIC Hosts](/docs/admin/apic-hosts) — add and manage the Cisco APIC controllers Netroku ACI connects to
+- [Scheduled Resync](/docs/admin/scheduled-resync) — configure automatic data synchronisation to keep endpoint and fabric data current
+- [Users](/docs/admin/users) — create user accounts and manage role-based access
