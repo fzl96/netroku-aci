@@ -1,0 +1,289 @@
+---
+title: Workflows (Deployers)
+description: Push and roll back ACI fabric configuration from a CSV using the guided deploy workflows.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+The **Workflows** section of the sidebar holds Netroku ACI's *deployers* — guided, CSV-driven tools that push configuration changes into the ACI fabric and roll them back again. Unlike the monitoring pages, which only read stored snapshots, workflows make **live, write** calls to an APIC controller.
+
+Every workflow follows the same three-step model — **Upload → Review → Deploy** — so once you have used one, you know them all.
+
+<Callout type="warn" title="These change your fabric">
+Deploy and Rollback push real configuration to a live APIC. Always review the validation results in step 2 before deploying, and start with a small CSV when trying a workflow for the first time.
+</Callout>
+
+## Available workflows
+
+| Workflow | What it manages | Modes |
+|---|---|---|
+| **Bridge Domains → L2 Only** | Layer-2 bridge domains (BD + VRF) | Deploy · Rollback |
+| **Bridge Domains → L3** | Layer-3 bridge domains (BD, VRF, subnet, L3Out) | Deploy · Rollback |
+| **EPG** | End Point Groups and their contract associations | Deploy · Rollback |
+| **Static Ports** | Static VLAN/port bindings on EPGs | Deploy · Rollback |
+| **Interface Selectors** | Access port selectors and their IPG assignments | Deploy · Rollback |
+
+Each workflow has a **Deploy** page (create/add objects) and a **Rollback** page (remove the same objects). They share an identical interface; only the direction of the change differs.
+
+## The connection step
+
+Workflows do **not** reuse the stored APIC hosts from the monitoring side. When you open any workflow you are first asked to **Connect to a fabric**:
+
+1. Enter the APIC **Host** (IP or hostname), **Username**, and **Password**.
+2. Netroku logs in to APIC (`/api/aaaLogin.json`) and receives a session token.
+3. On success the header shows a green **Connected** badge with the host.
+
+The session token lives only in your browser tab for the duration of the workflow and is sent with each validate/deploy request — it is never written to the database. Click **Disconnect** in the header to drop the session and connect to a different fabric.
+
+<Callout type="info" title="Use an account with write access">
+Monitoring resyncs work with a read-only APIC account, but deployers create and delete managed objects. The account you connect with here needs write permission for the objects you are changing.
+</Callout>
+
+## Step 1 — Upload
+
+Drag a CSV onto the drop zone (or click to browse). The file is parsed and validated **in your browser** before anything is sent to APIC. Each workflow lists its required columns directly on the upload card.
+
+Validation at this stage is purely structural — required columns present, values in range, no duplicate rows. If any row fails, the upload is rejected and every problem is listed with its row number and the offending field, so you can fix the file and re-upload. Only a fully valid file advances to step 2.
+
+See [CSV formats](#csv-formats) below for the exact columns each workflow expects.
+
+## Step 2 — Review
+
+Once the CSV is accepted, Netroku checks every row against the **current state of the fabric** by calling APIC. Each row comes back with a status:
+
+**In Deploy mode:**
+
+| Status | Meaning |
+|---|---|
+| **Deploy** | The object does not exist yet — it will be created. |
+| **Skipped / Exists** | The object is already present in the fabric — it will be left untouched. |
+| **Error** | APIC could not be queried for this row, or a referenced parent (tenant, EPG, profile…) is missing. Shown with the reason. |
+
+**In Rollback mode:**
+
+| Status | Meaning |
+|---|---|
+| **Rollback** | The object exists and will be removed. |
+| **Not found** | The object is already absent — nothing to remove. |
+| **Error** | The row could not be checked against APIC. |
+
+Only **actionable** rows (Deploy or Rollback) are pushed in the next step; existing/missing rows are safely skipped, which makes the workflows idempotent — re-running the same CSV will not create duplicates. Review the table, then click the **Deploy** / **Rollback** button to continue. You can also go back and **Change CSV** without losing your connection.
+
+## Step 3 — Deploy / Rollback
+
+The actionable rows are sent to APIC one dataset at a time, and each row reports its own result:
+
+- **Success** — the object was created (Deploy) or removed (Rollback).
+- **Failure** — APIC rejected the change; the error message from APIC is shown against that row.
+
+A partial result is possible: some rows can succeed while others fail. Because the review step is idempotent, you can fix the failing rows and re-run the same file — already-applied rows will simply show as *Exists* / *Not found* and be skipped.
+
+When finished you can **Upload another** CSV (keeping the connection) or **Disconnect**.
+
+<Callout type="info" title="Everything is audited">
+Every deploy and rollback is written to the audit log with the acting user, target fabric, per-row success/failure counts, and the submitted rows. Review them under **History** in the sidebar.
+</Callout>
+
+## CSV formats
+
+All workflows read UTF-8 CSV files **with a header row**. Column order does not matter; column names do. Extra columns are ignored.
+
+### Static Ports
+
+Binds a VLAN to a port, port-channel, or vPC on an EPG.
+
+Required columns:
+
+```
+tenant, ap, epg, vlan, node1, node2, port_type, interface_or_ipg, mode, immediacy
+```
+
+| Column | Notes |
+|---|---|
+| `tenant`, `ap`, `epg` | Target tenant, application profile, and EPG (must already exist) |
+| `vlan` | Access VLAN, `1`–`4094` |
+| `node1` | Leaf node ID |
+| `node2` | Second leaf node ID — **required** for `vpc`, must be **blank** for `pc`/`port` |
+| `port_type` | `vpc`, `pc`, or `port` |
+| `interface_or_ipg` | Interface (e.g. `1/10`) for `port`, or the IPG/policy-group name for `pc`/`vpc` |
+| `mode` | `regular`, `native`, or `untagged` |
+| `immediacy` | `immediate` or `lazy` |
+
+### Interface Selectors
+
+Creates an access port selector on an interface profile and links it to an IPG.
+
+Required columns:
+
+```
+interface_profile, selector_name, port, ipg_name, ipg_type
+```
+
+| Column | Notes |
+|---|---|
+| `interface_profile` | Existing interface profile to add the selector to |
+| `selector_name` | Selector name — letters, numbers, hyphens, underscores only (no slashes) |
+| `port` | Port in `card/port` form, e.g. `1/10` |
+| `ipg_name` | Interface policy group to attach |
+| `ipg_type` | `port`, `pc`, or `vpc` |
+| `description` | Optional free-text description |
+
+### Bridge Domains — L2 Only
+
+Required columns:
+
+```
+tenant, bd, vrf
+```
+
+Optional: `bd_desc`.
+
+| Column | Notes |
+|---|---|
+| `tenant` | Tenant that owns the bridge domain |
+| `bd` | Bridge domain name |
+| `vrf` | VRF to associate the BD with |
+| `bd_desc` | Optional description |
+
+### Bridge Domains — L3
+
+Required columns:
+
+```
+tenant, bd, vrf, subnet, l3out
+```
+
+Optional: `bd_desc`.
+
+| Column | Notes |
+|---|---|
+| `tenant`, `bd`, `vrf` | As above |
+| `subnet` | Subnet/gateway to configure on the BD (e.g. `10.1.1.1/24`) |
+| `l3out` | L3Out to associate for external routing |
+| `bd_desc` | Optional description |
+
+### EPG
+
+Creates EPGs and, optionally, their bridge-domain and contract associations.
+
+Required columns:
+
+```
+tenant, anp, epg, bd
+```
+
+Optional: `bd_tenant`, `contract_tenant`, `phys_domain`, `cons_contract`, `prov_contract`, `epg_desc`.
+
+| Column | Notes |
+|---|---|
+| `tenant` | Tenant that owns the EPG |
+| `anp` | Application profile (the column may also be named `ap`) |
+| `epg` | EPG name |
+| `bd` | Bridge domain to bind the EPG to |
+| `bd_tenant` | Tenant the BD lives in — defaults to `tenant` when blank; `common` is supported for shared lookup |
+| `contract_tenant` | Tenant the contracts live in — same defaulting rules as `bd_tenant` |
+| `phys_domain` | Physical domain to attach |
+| `cons_contract` / `prov_contract` | Consumed / provided contracts — multiple may be comma-separated |
+| `epg_desc` | Optional description |
+
+<Callout type="info">
+The exact required/optional columns are always shown on the upload card of each workflow, so you can confirm them without leaving the page.
+</Callout>
+
+## Under the hood: how validation and push work
+
+This section explains what the Review and Deploy steps actually do against APIC. All of it happens server-side using the session token from your connection — the browser never talks to APIC directly.
+
+### The shared mechanics
+
+Netroku models everything through APIC's **managed object (MO)** REST API. Every object has a **distinguished name (DN)**, e.g. `uni/tn-PROD/ap-WEB/epg-APP`. Two primitives do all the work:
+
+- **Read** — a `GET /api/node/mo/<dn>.json` (sometimes with `?query-target=children` to fetch an object's relations). APIC returns an `imdata` array; a `404` or an empty `imdata` means the object does not exist.
+- **Write** — a `POST` of an MO JSON body to the object's path. Creates/updates use `status: "created,modified"` (an idempotent upsert); removals use `status: "deleted"`.
+
+**Validation (Review)** issues only reads. For each row it walks a chain of existence checks in order and stops at the first problem, returning `deploy`/`exists`/`error` (or `rollback`/`missing`/`error` for rollbacks). Rows are validated concurrently, up to **10 at a time**.
+
+**Push (Deploy/Rollback)** issues the writes, **only for the rows the review marked actionable** — up to **5 rows at a time**. Each row reports its own success/failure independently, so a run can be partial. Because writes are upserts and the review skips already-present objects, re-running the same CSV is safe.
+
+The parent-existence checks are what make the workflows safe: APIC will happily create a binding that references a missing EPG or node in ways that are hard to spot, so Netroku refuses those rows up front rather than pushing them.
+
+### Static Ports
+
+**Validation** (per row, in order):
+
+1. **EPG exists** — `GET uni/tn-<tenant>/ap-<ap>/epg-<epg>`. Missing → `error`.
+2. **Node(s) exist** — `GET topology/pod-1/node-<id>` for `node1` (and `node2` for a vPC). Missing → `error`.
+3. **Port / IPG exists** — for a `port`, the leaf interface path; for `pc`/`vpc`, the `accbundle-<ipg>` policy group. Missing → `error`.
+4. **VLAN conflict** — queries `fvRsPathAtt` filtered to the same path (`tDn`) and `encap=vlan-<vlan>`. If any binding other than the one we would create already uses that VLAN on that port → `error: VLAN already in use`.
+5. **Binding state** — `GET` the target `fvRsPathAtt`. `404`/empty → `deploy`; present → `exists`.
+
+**Push** — a single `POST` of an `fvRsPathAtt` to the EPG, e.g.:
+
+```json
+{ "fvRsPathAtt": { "attributes": {
+  "dn": "uni/tn-PROD/ap-WEB/epg-APP/rspathAtt-[topology/pod-1/paths-101/pathep-[eth1/10]]",
+  "encap": "vlan-100", "mode": "regular", "instrImedcy": "immediate"
+} } }
+```
+
+vPCs target `protpaths-<n1>-<n2>` and `pc`/`vpc` reference the IPG. **Rollback** re-posts the same `fvRsPathAtt` with `status: "deleted"`; its validation just checks whether the binding exists (`rollback`) or not (`missing`).
+
+### Interface Selectors
+
+**Validation:**
+
+1. **Interface profile exists** — `GET uni/infra/accportprof-<profile>`. Missing → `error`.
+2. **IPG exists** — `accportgrp-<ipg>` for `port`, `accbundle-<ipg>` for `pc`/`vpc`. Missing → `error`.
+3. **Port-range conflict** — fetches every `infraPortBlk` under the profile and fails if a *different* selector already covers the same `card/port` → `error`.
+4. **Selector state** — reads the selector's children. Absent → `deploy`. Present: if its port block **and** its IPG reference (`infraRsAccBaseGrp.tDn`) both match the CSV → `exists`; otherwise → `error: already exists with different port/IPG` (Netroku will not silently repoint a selector).
+
+**Push** — one `POST` of an `infraHPortS` (type `range`) carrying two children: an `infraPortBlk` for the `card/port`, and an `infraRsAccBaseGrp` pointing at the IPG DN. **Rollback** posts the `infraHPortS` with `status: "deleted"`, removing the selector and its block.
+
+### Bridge Domains — L2
+
+**Validation:** tenant exists → VRF (`ctx-<vrf>`) exists → BD exists? `exists` : `deploy`.
+
+**Push** — one `POST` of an `fvBD` configured for pure L2 (`unicastRoute: no`, `unkMacUcastAct: flood`, `arpFlood: true`) with a child `fvRsCtx` binding the VRF.
+
+### Bridge Domains — L3
+
+**Validation:** tenant → VRF → **L3Out** (`out-<l3out>`) → BD. If the BD is absent → `deploy`. If it exists, Netroku reads its children and:
+
+- fails with `error` if it is already bound to a **different VRF**;
+- otherwise reports `exists` only when both the **subnet** and the **L3Out attachment** are already present; if either is missing it returns `deploy` with a note that the missing pieces will be added.
+
+**Push** — three sequential `POST`s, aborting the row at the first failure: the `fvBD` (routed: `unicastRoute: yes`, `unkMacUcastAct: proxy`) → an `fvSubnet` for the gateway (`scope: public`) → an `fvRsBDToOut` attaching the L3Out.
+
+**Rollback** (L2 and L3 share this): validation reads the BD and confirms it matches the CSV before allowing removal (a mismatch is an `error`, protecting against deleting the wrong BD). The push posts the `fvBD` with `status: "deleted"`, which removes the BD and its subnets/relations.
+
+### EPG
+
+The EPG workflow is the most involved because one row can touch a tenant, application profile, bridge domain, physical domain, and any number of contracts — potentially across **different tenants** or the shared `common` tenant.
+
+**Validation** (per row, in order):
+
+1. **Tenant** exists → **application profile** (`ap-<anp>`) exists.
+2. **Bridge domain** exists in its effective tenant (`bd_tenant`, defaulting to `tenant`; `common` supported). If `bd_tenant` is `common` but a BD of the same name also exists in the row's tenant, Netroku returns `error` — an ambiguous binding — and asks you to disambiguate.
+3. **Physical domain** (`uni/phys-<name>`) exists, if one is given.
+4. **Each contract** exists in its effective tenant (`contract_tenant`, same defaulting and `common` ambiguity guard).
+5. **EPG state** — absent → `deploy`. Present: if it is bound to a **different BD** → `error`; otherwise Netroku compares the requested contracts and physical-domain relation against what is already attached and returns `exists` only if nothing is missing, else `deploy` (the missing relations will be added).
+
+**Push** — rows are grouped by EPG identity so a shared EPG is created once, then each row's relations are added:
+
+1. `POST` an `fvAEPg` with a child `fvRsBd` binding the bridge domain.
+2. If `phys_domain` is set, `POST` an `fvRsDomAtt`.
+3. For each contract, `POST` an `fvRsCons` (consumed) or `fvRsProv` (provided) relation. Per-row contract errors are collected, so one bad contract does not fail the whole EPG.
+
+**Rollback** is scoped to what the CSV names:
+
+- If the row lists contracts, only those **contract relations** are removed (`fvRsCons`/`fvRsProv` with `status: "deleted"`) — the EPG itself is left in place.
+- If the row lists no contracts, the **entire EPG** is deleted (`fvAEPg` with `status: "deleted"`).
+
+Validation confirms the EPG (and, for contract rollbacks, the specific relations) actually exist before anything is removed.
+
+## Tips
+
+- **Dry-run mentally with Review.** The review table tells you exactly what will change before anything is pushed. If a row you expect to deploy shows *Exists*, the object is already there.
+- **Fix and re-run safely.** Workflows are idempotent — re-uploading a CSV after fixing a few rows will only act on the rows that still need it.
+- **Match the fabric.** Referenced parents (tenants, EPGs, interface profiles, VRFs) must already exist. Missing parents surface as *Error* rows in review.
+- **Keep an audit trail.** Use **History** to confirm what was deployed, by whom, and against which fabric.

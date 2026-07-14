@@ -8,6 +8,7 @@
     "epgs",
     "faults",
     "health-scores",
-    "interface-health"
+    "interface-health",
+    "workflows"
   ]
 }
