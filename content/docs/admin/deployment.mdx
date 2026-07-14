@@ -97,7 +97,7 @@ docker compose up -d
 
 Set `DATABASE_URL` in your `.env` to:
 
-```env
+```bash
 DATABASE_URL="postgresql://netroku:netroku@localhost:5432/netroku?schema=public"
 ```
 
@@ -106,13 +106,13 @@ DATABASE_URL="postgresql://netroku:netroku@localhost:5432/netroku?schema=public"
 
 If you have an existing PostgreSQL instance, set `DATABASE_URL` in `.env` using this format:
 
-```env
+```bash
 DATABASE_URL="postgresql://<user>:<password>@<host>:<port>/<dbname>?schema=public"
 ```
 
 For example:
 
-```env
+```bash
 DATABASE_URL="postgresql://admin:s3cr3t@db.internal:5432/netroku?schema=public"
 ```
 
