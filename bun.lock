@@ -9,7 +9,6 @@
         "@hookform/resolvers": "^5.2.2",
         "@prisma/client": "6",
         "@tabler/icons-react": "^3.41.1",
-        "@types/mdx": "^2.0.14",
         "@types/papaparse": "^5.5.2",
         "better-auth": "^1.6.9",
         "class-variance-authority": "^0.7.1",
@@ -41,6 +40,7 @@
       },
       "devDependencies": {
         "@tailwindcss/postcss": "^4",
+        "@types/mdx": "^2.0.14",
         "@types/node": "^20",
         "@types/react": "^19",
         "@types/react-dom": "^19",

@@ -13,7 +13,9 @@ export function shouldRedirectUnauthenticated(
   const isAuthPage = AUTH_PAGES.includes(pathname);
   const isPublicPage =
     PUBLIC_PAGES.includes(pathname) ||
-    PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+    PUBLIC_PREFIXES.some(
+      (prefix) => pathname === prefix || pathname.startsWith(prefix + "/"),
+    );
 
   return !session && !isAuthPage && !isPublicPage;
 }
