@@ -43,6 +43,8 @@ export default async function NodesPage({
     await searchParams
   const apicHosts = await getApicHosts()
 
+  if (!apic && apicHosts.length > 0) redirect(`/nodes?apic=${apicHosts[0].id}`)
+
   const view = viewParam === 'components' ? 'components' : 'nodes'
   const roleFilter = (VALID_ROLES as readonly string[]).includes(role ?? '') ? (role as string) : undefined
   const typeFilter = (VALID_TYPES as readonly string[]).includes(type ?? '') ? (type as string) : undefined

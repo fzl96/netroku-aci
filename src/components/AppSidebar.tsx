@@ -37,6 +37,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { useApicHosts } from "@/components/ApicHostsProvider";
 
 // Suppress the full leaf-active treatment (bg pill + left bar) for parent
 // containers — they only need to look "expanded", not "current page".
@@ -79,6 +80,7 @@ type NavItem = {
   children?: NavChild[];
   adminOnly?: boolean;
   action?: "logout";
+  apicParam?: true;
 };
 
 const NAV: { group: string; items: NavItem[] }[] = [
@@ -105,31 +107,37 @@ const NAV: { group: string; items: NavItem[] }[] = [
         href: "/endpoints",
         label: "Endpoints",
         icon: <IconDeviceDesktopSearch size={15} stroke={1.75} />,
+        apicParam: true,
       },
       {
         href: "/epgs",
         label: "EPG",
         icon: <IconTopologyStar3 size={15} stroke={1.75} />,
+        apicParam: true,
       },
       {
         href: "/interface-health",
         label: "Interfaces",
         icon: <IconActivity size={15} stroke={1.75} />,
+        apicParam: true,
       },
       {
         href: "/faults",
         label: "Faults",
         icon: <IconAlertTriangle size={15} stroke={1.75} />,
+        apicParam: true,
       },
       {
         href: "/health-scores",
         label: "Health Scores",
         icon: <IconActivityHeartbeat size={15} stroke={1.75} />,
+        apicParam: true,
       },
       {
         href: "/nodes",
         label: "Nodes",
         icon: <IconServer2 size={15} stroke={1.75} />,
+        apicParam: true,
       },
     ],
   },
@@ -224,6 +232,8 @@ export function AppSidebar({ role }: { role: 'admin' | 'member' }) {
   const { setTheme } = useTheme();
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const apicHosts = useApicHosts();
+  const defaultApicId = apicHosts[0]?.id;
   const nav = NAV.map(section => ({
     ...section,
     items: section.items.filter(item => !item.adminOnly || role === 'admin'),
@@ -395,7 +405,7 @@ export function AppSidebar({ role }: { role: 'admin' | 'member' }) {
                       </SidebarMenuButton>
                     ) : (
                       <SidebarMenuButton asChild isActive={groupActive}>
-                        <Link href={item.href ?? "/"}>
+                        <Link href={item.apicParam && defaultApicId ? `${item.href}?apic=${defaultApicId}` : (item.href ?? "/")}>
                           {item.icon}
                           <span>{item.label}</span>
                         </Link>

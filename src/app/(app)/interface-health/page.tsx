@@ -53,6 +53,8 @@ export default async function InterfaceHealthPage({
   } = await searchParams
   const apicHosts = await getApicHosts()
 
+  if (!apic && apicHosts.length > 0) redirect(`/interface-health?apic=${apicHosts[0].id}`)
+
   const interfaceView = viewParam === 'crc' ? 'crc' : 'all'
 
   // Empty / missing node param = show all nodes. Comma-separated list otherwise.
