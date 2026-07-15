@@ -777,7 +777,9 @@ export function InterfaceHealthClient({
                                 <div className="text-[10px] text-faint font-normal mt-0.5">
                                   {r.dRxCrcErrors === null
                                     ? 'reset'
-                                    : `+${r.dRxCrcErrors} last poll`}
+                                    : isNonZero(r.dRxCrcErrors)
+                                      ? `+${r.dRxCrcErrors} last poll`
+                                      : '0 last poll'}
                                 </div>
                               </td>
                             ) : (
