@@ -41,6 +41,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ApicCredentialDialog } from '@/components/ApicCredentialDialog'
+import {
+  DataCard,
+  DataCardHeader,
+  DataCardTitle,
+  DataCardBody,
+  DataCardRow,
+} from '@/components/ui/data-card'
 import type { SelectedInterface } from './InterfaceErrorTrendDrawer'
 import type { CrcTrendPoint } from './crc-trend'
 
@@ -426,7 +433,7 @@ export function InterfaceHealthClient({
   return (
     <div className="min-h-full bg-background">
       <div className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur-sm">
-        <div className="px-8 h-16 flex items-center justify-between gap-4">
+        <div className="px-4 md:px-8 py-3 md:py-0 md:h-16 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <h1 className="font-serif text-[18px] font-semibold text-foreground">Interfaces</h1>
             <p className="text-xs text-subtle mt-0.5">
@@ -439,7 +446,7 @@ export function InterfaceHealthClient({
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full md:w-auto">
             <select
               value={selectedHostId}
               onChange={e => handleHostChange(e.target.value)}
@@ -448,7 +455,7 @@ export function InterfaceHealthClient({
                 'text-xs bg-muted border border-border rounded-lg',
                 'px-3 py-2 text-foreground outline-none',
                 'focus:border-primary focus:ring-2 focus:ring-primary/10',
-                'min-w-[180px]',
+                'flex-1 md:flex-none md:min-w-[180px]',
                 'disabled:opacity-60 disabled:cursor-not-allowed transition-opacity',
               ].join(' ')}
             >
@@ -491,7 +498,7 @@ export function InterfaceHealthClient({
         </div>
       </div>
 
-      <div className="px-8 py-6 space-y-4">
+      <div className="px-4 md:px-8 py-4 md:py-6 space-y-4">
         {!selectedHostId && !isPending ? (
           <div className="flex flex-col items-center justify-center py-28 text-center">
             <div className="relative mb-6">
@@ -530,9 +537,9 @@ export function InterfaceHealthClient({
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="relative w-56 shrink-0">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0 w-full md:w-auto">
+                <div className="relative flex-1 md:w-56 md:flex-none">
                   <IconSearch
                     size={13}
                     stroke={1.75}
@@ -668,7 +675,7 @@ export function InterfaceHealthClient({
 
             <div
               className={[
-                'bg-card border border-border rounded-2xl overflow-hidden shadow-sm',
+                'hidden md:block bg-card border border-border rounded-2xl overflow-hidden shadow-sm',
                 'transition-opacity duration-150',
                 isPending ? 'opacity-60 pointer-events-none' : 'opacity-100',
               ].join(' ')}
@@ -802,8 +809,88 @@ export function InterfaceHealthClient({
               )}
             </div>
 
+            {/* Mobile card list */}
+            <div
+              className={[
+                'space-y-2 md:hidden transition-opacity duration-150',
+                isPending ? 'opacity-60 pointer-events-none' : 'opacity-100',
+              ].join(' ')}
+            >
+              {rows.length === 0 && !isPending ? (
+                <div className="rounded-2xl border border-border bg-card px-4 py-14 text-center">
+                  {view === 'crc' && !query && activeFilterCount === 0 ? (
+                    <>
+                      <p className="text-sm text-subtle">No interfaces with increasing CRC errors in the last {window === '30d' ? '30 days' : '7 days'}</p>
+                      <p className="text-xs text-faint mt-1">All monitored interfaces report zero CRC error increases</p>
+                    </>
+                  ) : query || activeFilterCount > 0 ? (
+                    <>
+                      <p className="text-sm text-subtle">No interfaces match the current filters</p>
+                      <p className="text-xs text-faint mt-1">Try adjusting the search or filter values</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-subtle">No interfaces synced yet</p>
+                      <p className="text-xs text-faint mt-1">Tap <strong>Resync</strong> to pull the latest data from APIC</p>
+                    </>
+                  )}
+                </div>
+              ) : (
+                rows.map(r => {
+                  const visibleCounters = selectVisibleCounters(r, counterMode)
+                  const crcValue = view === 'crc' ? r.crcWindowTotal : visibleCounters.rxCrcErrors
+                  const fmtCounter = (v: string | null) =>
+                    counterMode === 'delta' && view !== 'crc' ? fmtDelta(v) : fmtCount(v)
+                  return (
+                    <DataCard
+                      key={r.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() =>
+                        setSelected({
+                          id: r.id,
+                          node: r.node,
+                          ifName: r.ifName,
+                          description: r.description,
+                          operSt: r.operSt,
+                        })
+                      }
+                    >
+                      <DataCardHeader trailing={<OperStBadge st={r.operSt} />}>
+                        <DataCardTitle className="font-mono">{r.ifName}</DataCardTitle>
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                          Node {r.node || '—'}
+                          {r.description ? ` · ${r.description}` : ''}
+                        </p>
+                      </DataCardHeader>
+                      <DataCardBody>
+                        <DataCardRow label="Speed" value={r.operSpeed || '—'} />
+                        <DataCardRow
+                          label="RX / TX err"
+                          value={
+                            <span className={isNonZero(visibleCounters.rxErrors) || isNonZero(visibleCounters.txErrors) ? 'text-danger font-semibold' : ''}>
+                              {fmtCounter(visibleCounters.rxErrors)} / {fmtCounter(visibleCounters.txErrors)}
+                            </span>
+                          }
+                        />
+                        <DataCardRow
+                          label={view === 'crc' ? 'CRC (window)' : 'CRC err'}
+                          value={
+                            <span className={isNonZero(crcValue) ? 'text-danger font-semibold' : ''}>
+                              {fmtCounter(crcValue)}
+                            </span>
+                          }
+                        />
+                        <DataCardRow label="Sampled" value={fmtRelative(r.lastSampledAt)} />
+                      </DataCardBody>
+                    </DataCard>
+                  )
+                })
+              )}
+            </div>
+
             {total > 0 && (
-              <div className="flex items-center justify-between pt-1 gap-4">
+              <div className="flex flex-wrap items-center justify-between pt-1 gap-3">
                 <p className="text-xs text-subtle shrink-0">
                   {pageSize === 'all'
                     ? `Showing all ${total} interfaces`
@@ -811,7 +898,7 @@ export function InterfaceHealthClient({
                 </p>
 
                 <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5">
+                  <div className="hidden md:flex items-center gap-1.5">
                     <span className="text-xs text-faint">Per page</span>
                     <select
                       value={String(pageSize)}
@@ -827,7 +914,7 @@ export function InterfaceHealthClient({
 
                   {pageSize !== 'all' && totalPages > 1 && (
                     <>
-                      <div className="w-px h-4 bg-border" />
+                      <div className="hidden md:block w-px h-4 bg-border" />
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => handlePage(page - 1)}
@@ -851,9 +938,9 @@ export function InterfaceHealthClient({
                           <IconChevronRight size={12} stroke={1.75} />
                         </button>
 
-                        <div className="w-px h-4 bg-border" />
+                        <div className="hidden md:block w-px h-4 bg-border" />
 
-                        <form onSubmit={handleJump} className="flex items-center gap-1">
+                        <form onSubmit={handleJump} className="hidden md:flex items-center gap-1">
                           <input
                             type="number"
                             min={1}

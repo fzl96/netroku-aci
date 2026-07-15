@@ -30,6 +30,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ApicCredentialDialog } from '@/components/ApicCredentialDialog'
+import {
+  DataCard,
+  DataCardHeader,
+  DataCardTitle,
+  DataCardBody,
+  DataCardRow,
+} from '@/components/ui/data-card'
 import type { TrendPoint } from './FaultsTrendChart'
 
 const FaultsTrendChart = dynamic(() => import('./FaultsTrendChart'), {
@@ -292,7 +299,7 @@ export function FaultsClient({
   return (
     <div className="min-h-full bg-background">
       <div className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur-sm">
-        <div className="px-8 h-16 flex items-center justify-between gap-4">
+        <div className="px-4 md:px-8 py-3 md:py-0 md:h-16 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <h1 className="font-serif text-[18px] font-semibold text-foreground">Faults</h1>
             <p className="text-xs text-subtle mt-0.5">
@@ -305,7 +312,7 @@ export function FaultsClient({
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full md:w-auto">
             <select
               value={selectedHostId}
               onChange={e => handleHostChange(e.target.value)}
@@ -314,7 +321,7 @@ export function FaultsClient({
                 'text-xs bg-muted border border-border rounded-lg',
                 'px-3 py-2 text-foreground outline-none',
                 'focus:border-primary focus:ring-2 focus:ring-primary/10',
-                'min-w-[180px]',
+                'flex-1 md:flex-none md:min-w-[180px]',
                 'disabled:opacity-60 disabled:cursor-not-allowed transition-opacity',
               ].join(' ')}
             >
@@ -342,7 +349,7 @@ export function FaultsClient({
         </div>
       </div>
 
-      <div className="px-8 py-6 space-y-4">
+      <div className="px-4 md:px-8 py-4 md:py-6 space-y-4">
         {!selectedHostId && !isPending ? (
           <div className="flex flex-col items-center justify-center py-28 text-center">
             <div className="relative mb-6">
@@ -383,9 +390,9 @@ export function FaultsClient({
           <>
             {trend.length > 0 && <FaultsTrendChart trend={trend} />}
 
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="relative w-56 shrink-0">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0 w-full md:w-auto">
+                <div className="relative flex-1 md:w-56 md:flex-none">
                   <IconSearch
                     size={13}
                     stroke={1.75}
@@ -470,7 +477,7 @@ export function FaultsClient({
 
             <div
               className={[
-                'bg-card border border-border rounded-2xl overflow-hidden shadow-sm',
+                'hidden md:block bg-card border border-border rounded-2xl overflow-hidden shadow-sm',
                 'transition-opacity duration-150',
                 isPending ? 'opacity-60 pointer-events-none' : 'opacity-100',
               ].join(' ')}
@@ -546,8 +553,56 @@ export function FaultsClient({
               )}
             </div>
 
+            {/* Mobile card list */}
+            <div
+              className={[
+                'space-y-2 md:hidden transition-opacity duration-150',
+                isPending ? 'opacity-60 pointer-events-none' : 'opacity-100',
+              ].join(' ')}
+            >
+              {rows.length === 0 ? (
+                <div className="rounded-2xl border border-border bg-card px-4 py-14 text-center">
+                  {query || severity || activeFilterCount > 0 ? (
+                    <>
+                      <p className="text-sm text-subtle">No faults match the current filters</p>
+                      <p className="text-xs text-faint mt-1">Try adjusting the search or filter values</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-subtle">No active faults</p>
+                      <p className="text-xs text-faint mt-1">
+                        Tap <strong>Resync</strong> to pull the latest data from APIC
+                      </p>
+                    </>
+                  )}
+                </div>
+              ) : (
+                rows.map(r => (
+                  <DataCard key={r.id}>
+                    <DataCardHeader trailing={<SeverityBadge severity={r.severity} />}>
+                      <DataCardTitle className="font-mono">{r.code}</DataCardTitle>
+                      {r.descr && (
+                        <p className="mt-1 text-xs leading-snug text-muted-foreground line-clamp-2">
+                          {r.descr}
+                        </p>
+                      )}
+                    </DataCardHeader>
+                    <DataCardBody>
+                      <DataCardRow
+                        label="Affected"
+                        value={<span className="font-mono">{r.node || r.affectedDn || '—'}</span>}
+                      />
+                      <DataCardRow label="Domain" value={r.domain || '—'} />
+                      <DataCardRow label="Created" value={fmtRelative(r.created)} />
+                      <DataCardRow label="Ack" value={r.ack ? 'Yes' : 'No'} />
+                    </DataCardBody>
+                  </DataCard>
+                ))
+              )}
+            </div>
+
             {total > 0 && (
-              <div className="flex items-center justify-between pt-1 gap-4">
+              <div className="flex flex-wrap items-center justify-between pt-1 gap-3">
                 <p className="text-xs text-subtle shrink-0">
                   {pageSize === 'all'
                     ? `Showing all ${total} faults`
@@ -555,7 +610,7 @@ export function FaultsClient({
                 </p>
 
                 <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5">
+                  <div className="hidden md:flex items-center gap-1.5">
                     <span className="text-xs text-faint">Per page</span>
                     <select
                       value={String(pageSize)}
@@ -571,7 +626,7 @@ export function FaultsClient({
 
                   {pageSize !== 'all' && totalPages > 1 && (
                     <>
-                      <div className="w-px h-4 bg-border" />
+                      <div className="hidden md:block w-px h-4 bg-border" />
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => handlePage(page - 1)}
@@ -595,9 +650,9 @@ export function FaultsClient({
                           <IconChevronRight size={12} stroke={1.75} />
                         </button>
 
-                        <div className="w-px h-4 bg-border" />
+                        <div className="hidden md:block w-px h-4 bg-border" />
 
-                        <form onSubmit={handleJump} className="flex items-center gap-1">
+                        <form onSubmit={handleJump} className="hidden md:flex items-center gap-1">
                           <input
                             type="number"
                             min={1}
