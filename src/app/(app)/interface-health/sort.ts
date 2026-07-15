@@ -14,6 +14,11 @@ export type InterfaceSortKey =
 export type InterfaceSortDirection = 'asc' | 'desc'
 export type InterfaceSortMode = 'delta' | 'current'
 
+/** Column sort keys usable by the table header — includes the CRC-view-only
+ *  windowed-total key, which is resolved in page.tsx rather than by
+ *  sortInterfaceRows. */
+export type TableSortKey = InterfaceSortKey | 'crcWindowTotal'
+
 export interface InterfaceSort {
   key: InterfaceSortKey
   direction: InterfaceSortDirection

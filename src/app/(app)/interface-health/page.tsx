@@ -7,6 +7,7 @@ import { InterfaceHealthClient, type InterfaceRowProps } from './InterfaceHealth
 import type { CounterMode } from './counter-mode'
 import { parseInterfaceSortParams, sortInterfaceRows } from './sort'
 import { aggregateCrcTrend, type CrcTrendPoint } from './crc-trend'
+import { sumCrcByInterface, sortByCrcWindowTotal } from './crc-window'
 
 export const metadata: Metadata = {
   title: 'Interfaces',
@@ -35,6 +36,7 @@ export default async function InterfaceHealthPage({
     dir?: string
     mode?: string
     view?: string
+    window?: string
   }>
 }) {
   const session = await getSession()
@@ -50,12 +52,15 @@ export default async function InterfaceHealthPage({
     dir,
     mode,
     view: viewParam,
+    window: windowParam,
   } = await searchParams
   const apicHosts = await getApicHosts()
 
   if (!apic && apicHosts.length > 0) redirect(`/interface-health?apic=${apicHosts[0].id}`)
 
   const interfaceView = viewParam === 'crc' ? 'crc' : 'all'
+  const crcWindow: '7d' | '30d' = windowParam === '30d' ? '30d' : '7d'
+  const windowDays = crcWindow === '30d' ? 30 : 7
 
   // Empty / missing node param = show all nodes. Comma-separated list otherwise.
   const nodeFilter = node
@@ -72,6 +77,8 @@ export default async function InterfaceHealthPage({
   let lastSyncedAt: Date | null = null
   let availableNodes: string[] = []
   let crcTrend: CrcTrendPoint[] = []
+  let crcTotalSortActive = false
+  let crcSortDirection: 'asc' | 'desc' = 'desc'
 
   if (apic && apicHosts.some(h => h.id === apic)) {
     const host = await prisma.apicHost.findUnique({
@@ -81,20 +88,25 @@ export default async function InterfaceHealthPage({
     lastSyncedAt = host?.lastInterfaceSyncAt ?? null
 
     const now = new Date()
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+    const windowStart = new Date(now.getTime() - windowDays * 24 * 60 * 60 * 1000)
 
     let crcInterfaceIds: string[] = []
+    let crcTotals = new Map<string, bigint>()
     if (interfaceView === 'crc') {
-      const crcSamples = await prisma.interfaceSample.findMany({
+      // One window fetch feeds both the aggregate trend chart and the
+      // per-port windowed totals; the qualifying id set is just the map keys.
+      const rawCrcSamples = await prisma.interfaceSample.findMany({
         where: {
           apicHostId: apic,
-          sampledAt: { gte: sevenDaysAgo },
+          sampledAt: { gte: windowStart },
           dRxCrcErrors: { gt: BigInt(0) },
         },
-        select: { interfaceId: true },
-        distinct: ['interfaceId'],
+        select: { interfaceId: true, sampledAt: true, dRxCrcErrors: true },
+        orderBy: { sampledAt: 'asc' },
       })
-      crcInterfaceIds = crcSamples.map(s => s.interfaceId)
+      crcTrend = aggregateCrcTrend(rawCrcSamples)
+      crcTotals = sumCrcByInterface(rawCrcSamples)
+      crcInterfaceIds = [...crcTotals.keys()]
     }
 
     const where = {
@@ -116,7 +128,7 @@ export default async function InterfaceHealthPage({
     const skip = pageSize === 'all' ? 0 : (page - 1) * pageSize
     const take = pageSize === 'all' ? undefined : pageSize
 
-    const [snapshots, snapshotTotal, nodes, rawCrcSamples] = await Promise.all([
+    const [snapshots, snapshotTotal, nodes] = await Promise.all([
       prisma.interfaceSnapshot.findMany({
         where,
         orderBy: [{ node: 'asc' }, { ifName: 'asc' }],
@@ -142,24 +154,19 @@ export default async function InterfaceHealthPage({
         select: { node: true },
         distinct: ['node'],
       }),
-      prisma.interfaceSample.findMany({
-        where: {
-          apicHostId: apic,
-          sampledAt: { gte: sevenDaysAgo },
-          dRxCrcErrors: { gt: BigInt(0) },
-        },
-        select: {
-          sampledAt: true,
-          dRxCrcErrors: true,
-        },
-        orderBy: { sampledAt: 'asc' },
-      }),
     ])
 
     total = snapshotTotal
-    crcTrend = aggregateCrcTrend(rawCrcSamples)
 
-    const sortedSnapshots = sortInterfaceRows(snapshots, interfaceSort ?? undefined)
+    // In the CRC view, absence of an explicit sample-column sort (or an
+    // explicit crcWindowTotal sort) means rank by windowed CRC total desc.
+    crcTotalSortActive =
+      interfaceView === 'crc' &&
+      (interfaceSort === null || sort === 'crcWindowTotal')
+    crcSortDirection = dir === 'asc' ? 'asc' : 'desc'
+    const sortedSnapshots = crcTotalSortActive
+      ? sortByCrcWindowTotal(snapshots, crcTotals, crcSortDirection)
+      : sortInterfaceRows(snapshots, interfaceSort ?? undefined)
     const visibleSnapshots = take === undefined
       ? sortedSnapshots
       : sortedSnapshots.slice(skip, skip + take)
@@ -192,6 +199,10 @@ export default async function InterfaceHealthPage({
         dTxBytes: latest?.dTxBytes?.toString() ?? null,
         dTxErrors: latest?.dTxErrors?.toString() ?? null,
         dTxDiscards: latest?.dTxDiscards?.toString() ?? null,
+        crcWindowTotal:
+          interfaceView === 'crc'
+            ? (crcTotals.get(s.id) ?? BigInt(0)).toString()
+            : null,
       }
     })
 
@@ -209,10 +220,11 @@ export default async function InterfaceHealthPage({
       page={page}
       total={total}
       pageSize={pageSize}
-      sortKey={interfaceSort?.key ?? null}
-      sortDirection={interfaceSort?.direction ?? 'desc'}
+      sortKey={crcTotalSortActive ? 'crcWindowTotal' : interfaceSort?.key ?? null}
+      sortDirection={crcTotalSortActive ? crcSortDirection : interfaceSort?.direction ?? 'desc'}
       counterMode={counterMode}
       view={interfaceView}
+      window={crcWindow}
       crcTrend={crcTrend}
     />
   )
