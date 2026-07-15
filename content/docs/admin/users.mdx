@@ -1,0 +1,49 @@
+---
+title: Users
+description: User management and roles.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Netroku ACI has two roles: **admin** and **member**. Only admins can create and delete users or manage APIC hosts. Members have read-only access to monitoring data.
+
+The first admin account is created during setup via the `seed:admin` script. All subsequent accounts are created from within the app.
+
+## Roles
+
+| Role | Capabilities |
+|---|---|
+| **admin** | Full access: monitoring data, APIC host management, user management, audit log |
+| **member** | Read-only access to monitoring data (dashboard, endpoints, EPGs, faults, health scores, interfaces) |
+
+## Create a user
+
+1. Navigate to **Settings → Users** (admin only).
+2. Click **Add user**.
+3. Fill in the fields:
+
+| Field | Rules |
+|---|---|
+| **Username** | 3–30 characters |
+| **Password** | Minimum 8 characters |
+| **Role** | `admin` or `member` |
+
+4. Click **Save**.
+
+<Callout type="info">
+Netroku ACI does not use email addresses for login. Usernames are used directly. An internal placeholder email (`username@local.test`) is generated automatically and is never exposed to the user.
+</Callout>
+
+## Delete a user
+
+Click the delete icon next to any user in the table. You cannot delete your own account.
+
+## Passwords and sessions
+
+There is no password reset flow in the UI. If a user forgets their password, an admin must delete the account and recreate it.
+
+Sessions expire automatically. There is no "remember me" option — users are prompted to log in again after their session expires.
+
+<Callout type="warn" title="HTTPS and secure cookies">
+Set `SECURE_COOKIES=true` in `.env` only when the app is served exclusively over HTTPS. Enabling it on an HTTP-only setup will break login.
+</Callout>

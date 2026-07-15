@@ -13,12 +13,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <TooltipProvider>
       <SidebarProvider>
-        <AppSidebar role={role} />
-        <main className="flex-1 overflow-y-auto bg-background">
-          <ApicHostsProvider hosts={apicHosts}>
+        <ApicHostsProvider hosts={apicHosts}>
+          <AppSidebar role={role} />
+          <main className="flex-1 overflow-y-auto bg-background">
             {children}
-          </ApicHostsProvider>
-        </main>
+          </main>
+        </ApicHostsProvider>
       </SidebarProvider>
     </TooltipProvider>
   )

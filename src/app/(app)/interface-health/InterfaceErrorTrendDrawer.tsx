@@ -1,7 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ReferenceArea,
+  ReferenceLine,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import {
   Sheet,
   SheetContent,
@@ -21,6 +29,9 @@ import {
   DEFAULT_ERROR_TREND_RANGE,
   ERROR_TREND_RANGES,
   ERROR_TREND_SERIES,
+  findGapSegments,
+  findResetTimestamps,
+  insertGapBreaks,
   type ErrorTrendPoint,
   type ErrorTrendRange,
 } from './error-trend'
@@ -37,6 +48,12 @@ const chartConfig: ChartConfig = Object.fromEntries(
   ERROR_TREND_SERIES.map((s) => [s.key, { label: s.label, color: s.color }]),
 )
 
+// CRC is the series this view exists for, so it is the only one shown by
+// default; the rest start hidden and can be toggled on via the legend.
+const DEFAULT_VISIBLE_KEY = 'dRxCrcErrors'
+const defaultHidden = () =>
+  new Set(ERROR_TREND_SERIES.map((s) => s.key).filter((k) => k !== DEFAULT_VISIBLE_KEY))
+
 export function InterfaceErrorTrendDrawer({
   selected,
   onClose,
@@ -47,7 +64,7 @@ export function InterfaceErrorTrendDrawer({
   const [range, setRange] = useState<ErrorTrendRange>(DEFAULT_ERROR_TREND_RANGE)
   const [data, setData] = useState<ErrorTrendPoint[] | null>(null)
   const [loading, setLoading] = useState(false)
-  const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const [hidden, setHidden] = useState<Set<string>>(defaultHidden)
   const [error, setError] = useState(false)
 
   const selectedId = selected?.id ?? null
@@ -58,7 +75,7 @@ export function InterfaceErrorTrendDrawer({
     if (selectedId) {
       setLoading(true)
       setData(null)
-      setHidden(new Set())
+      setHidden(defaultHidden())
       setError(false)
     }
   }
@@ -96,6 +113,15 @@ export function InterfaceErrorTrendDrawer({
 
   const isEmpty = !data || data.length === 0
 
+  // Resets are detected on the raw series; monitoring gaps get a synthetic null
+  // filler inserted so the line breaks across them instead of bridging.
+  const resetTimestamps = useMemo(() => (data ? findResetTimestamps(data) : []), [data])
+  const gaps = useMemo(() => (data ? findGapSegments(data) : []), [data])
+  const displayData = useMemo(
+    () => (data ? insertGapBreaks(data, gaps) : []),
+    [data, gaps],
+  )
+
   return (
     <Sheet
       open={selected !== null}
@@ -129,8 +155,14 @@ export function InterfaceErrorTrendDrawer({
           ))}
         </ToggleGroup>
 
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          Each bar is the number of new errors counted since the previous sample —
+          a per-interval change, not a running total. Taller bars mean more errors
+          in that interval; no bar means none. Click a label below to show or hide a series.
+        </p>
+
         {/* Clickable legend — toggles each series on/off */}
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2">
           {ERROR_TREND_SERIES.map((s) => {
             const off = hidden.has(s.key)
             return (
@@ -140,19 +172,42 @@ export function InterfaceErrorTrendDrawer({
                 aria-pressed={!off}
                 onClick={() => toggleSeries(s.key)}
                 className={[
-                  'flex items-center gap-1.5 text-xs transition-opacity',
-                  off ? 'opacity-40' : 'opacity-100',
+                  'flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+                  off
+                    ? 'border-border bg-transparent text-muted-foreground hover:text-foreground'
+                    : 'border-transparent bg-muted text-foreground shadow-sm',
                 ].join(' ')}
               >
                 <span
                   className="h-2 w-2 rounded-full"
-                  style={{ background: `var(--color-${s.key})` }}
+                  style={
+                    off
+                      ? { boxShadow: `inset 0 0 0 1.5px var(--color-${s.key})` }
+                      : { background: `var(--color-${s.key})` }
+                  }
                 />
                 {s.label}
               </button>
             )
           })}
         </div>
+
+        {(resetTimestamps.length > 0 || gaps.length > 0) && (
+          <div className="flex flex-wrap gap-4 text-[11px] text-muted-foreground">
+            {resetTimestamps.length > 0 && (
+              <span className="flex items-center gap-1.5">
+                <span className="h-3 w-0 border-l border-dashed border-muted-foreground/60" />
+                Counter reset
+              </span>
+            )}
+            {gaps.length > 0 && (
+              <span className="flex items-center gap-1.5">
+                <span className="h-3 w-3 rounded-sm bg-muted-foreground/10" />
+                No data (missing samples)
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="min-h-0 flex-1">
           {loading ? (
@@ -169,8 +224,29 @@ export function InterfaceErrorTrendDrawer({
             </div>
           ) : (
             <ChartContainer config={chartConfig} className="h-full w-full">
-              <LineChart data={data} margin={{ left: 8, right: 16, top: 8, bottom: 4 }}>
+              <BarChart data={displayData} margin={{ left: 8, right: 16, top: 8, bottom: 4 }}>
                 <CartesianGrid vertical={false} />
+                {/* Monitoring gaps: shaded band between the last and first good sample. */}
+                {gaps.map((g) => (
+                  <ReferenceArea
+                    key={`gap-${g.mid}`}
+                    x1={g.x1}
+                    x2={g.x2}
+                    fill="var(--muted-foreground)"
+                    fillOpacity={0.08}
+                    ifOverflow="extendDomain"
+                  />
+                ))}
+                {/* Counter resets: dashed vertical rule at the reset timestamp. */}
+                {resetTimestamps.map((ts) => (
+                  <ReferenceLine
+                    key={`reset-${ts}`}
+                    x={ts}
+                    stroke="var(--muted-foreground)"
+                    strokeDasharray="3 3"
+                    strokeOpacity={0.5}
+                  />
+                ))}
                 <XAxis
                   dataKey="sampledAt"
                   tickLine={false}
@@ -197,17 +273,15 @@ export function InterfaceErrorTrendDrawer({
                   }
                 />
                 {ERROR_TREND_SERIES.map((s) => (
-                  <Line
+                  <Bar
                     key={s.key}
-                    type="monotone"
                     dataKey={s.key}
-                    stroke={`var(--color-${s.key})`}
-                    dot={false}
-                    connectNulls={false}
+                    fill={`var(--color-${s.key})`}
+                    radius={2}
                     hide={hidden.has(s.key)}
                   />
                 ))}
-              </LineChart>
+              </BarChart>
             </ChartContainer>
           )}
         </div>

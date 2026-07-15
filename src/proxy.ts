@@ -3,14 +3,20 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 
 const AUTH_PAGES = ["/signin"];
-const PUBLIC_PAGES = ["/"];
+const PUBLIC_PREFIXES = ["/docs"];
+// Docs are public, and their Cmd/Ctrl+K search calls /api/search — keep it reachable without a session.
+const PUBLIC_PAGES = ["/", "/api/search"];
 
 export function shouldRedirectUnauthenticated(
   session: unknown,
   pathname: string,
 ) {
   const isAuthPage = AUTH_PAGES.includes(pathname);
-  const isPublicPage = PUBLIC_PAGES.includes(pathname);
+  const isPublicPage =
+    PUBLIC_PAGES.includes(pathname) ||
+    PUBLIC_PREFIXES.some(
+      (prefix) => pathname === prefix || pathname.startsWith(prefix + "/"),
+    );
 
   return !session && !isAuthPage && !isPublicPage;
 }

@@ -41,6 +41,8 @@ export default async function FaultsPage({
     await searchParams
   const apicHosts = await getApicHosts()
 
+  if (!apic && apicHosts.length > 0) redirect(`/faults?apic=${apicHosts[0].id}`)
+
   const severityFilter = (VALID_SEVERITIES as readonly string[]).includes(severity ?? '')
     ? (severity as string)
     : undefined

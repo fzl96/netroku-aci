@@ -39,6 +39,8 @@ export default async function HealthScoresPage({
   const { apic, query, scope, page: pageParam, pageSize: pageSizeParam } = await searchParams
   const apicHosts = await getApicHosts()
 
+  if (!apic && apicHosts.length > 0) redirect(`/health-scores?apic=${apicHosts[0].id}`)
+
   const scopeFilter = (VALID_SCOPES as readonly string[]).includes(scope ?? '')
     ? (scope as string)
     : undefined

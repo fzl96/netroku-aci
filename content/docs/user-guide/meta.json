@@ -1,0 +1,14 @@
+{
+  "title": "User Guide",
+  "pages": [
+    "index",
+    "data-pipeline",
+    "dashboard",
+    "endpoints",
+    "epgs",
+    "faults",
+    "health-scores",
+    "interface-health",
+    "workflows"
+  ]
+}

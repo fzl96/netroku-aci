@@ -33,6 +33,8 @@ export default async function EndpointsPage({
   const { apic, view: viewParam, query, page: pageParam, pageSize: pageSizeParam, vlan, node, iface, status } = await searchParams
   const apicHosts = await getApicHosts()
 
+  if (!apic && apicHosts.length > 0) redirect(`/endpoints?apic=${apicHosts[0].id}`)
+
   const view = viewParam === 'port' ? 'port' as const : 'endpoint' as const
   const page = Math.max(1, parseInt(pageParam ?? '1', 10) || 1)
   const pageSize = parsePageSize(pageSizeParam)

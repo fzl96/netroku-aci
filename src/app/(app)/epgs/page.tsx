@@ -39,6 +39,8 @@ export default async function EpgsPage({
   const params = await searchParams
   const apicHosts = await getApicHosts()
 
+  if (!params.apic && apicHosts.length > 0) redirect(`/epgs?apic=${apicHosts[0].id}`)
+
   const view = params.view === 'port' ? 'port' as const : 'epg' as const
   const page = Math.max(1, parseInt(params.page ?? '1', 10) || 1)
   const pageSize = parsePageSize(params.pageSize)

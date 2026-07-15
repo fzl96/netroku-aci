@@ -1,0 +1,56 @@
+---
+title: Endpoints
+description: Viewing and filtering learned endpoints.
+---
+
+The endpoints page shows all learned endpoints (`fvCEp`) pulled from the ACI fabric. Endpoints are stored with their last-seen timestamp, so historical records stay in the database even after an endpoint goes inactive.
+
+## Views
+
+The page has two views, selectable from the toolbar:
+
+**Endpoint view** — one row per learned endpoint.
+
+| Column | Description |
+|---|---|
+| MAC | MAC address of the endpoint |
+| IP | IP address (may be empty for MAC-only endpoints) |
+| VLAN | Encapsulation VLAN |
+| Node | Leaf node where the endpoint was last seen |
+| Interface | Physical interface on that node |
+| EPG Description | EPG the endpoint belongs to |
+| First Seen | When the endpoint was first recorded in the database |
+| Last Seen | Most recent time APIC reported this endpoint as active |
+| Status | **Active** (present in latest sync) or **Historical** (not in latest sync) |
+
+**Port view** — one row per port, aggregating all endpoints seen on that interface.
+
+| Column | Description |
+|---|---|
+| Node | Leaf node |
+| Interface | Physical interface |
+| Endpoints | Number of endpoints seen on this port |
+| VLANs | Number of distinct VLANs |
+| EPG Description | EPG associated with the port |
+| Last Seen | Most recent endpoint activity on this port |
+
+## Search and filters
+
+- **Search bar** — filters by MAC, IP, or VLAN (endpoint view) or by node, port, MAC, or IP (port view)
+- **VLAN filter** — multi-select; shows only endpoints on the selected VLANs
+- **Node filter** — multi-select; shows only endpoints on the selected leaf nodes
+- **Interface filter** — (endpoint view only) multi-select; filters by physical interface
+- **Status filter** — show Active only, Historical only, or both
+
+## Export
+
+Click **Export** to download an Excel file (`.xlsx`) of the current filtered result set. The export dialog lets you choose how to group the data:
+
+- **By node** — one sheet per leaf node
+- **By VLAN** — one sheet per VLAN
+
+The export honours the active search and filter state.
+
+## Resync
+
+Click **Resync** to pull a fresh endpoint snapshot from APIC. A credential dialog will prompt for a username and password for the selected APIC host. The page refreshes automatically after the sync completes.

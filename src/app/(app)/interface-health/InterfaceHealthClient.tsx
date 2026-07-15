@@ -29,7 +29,7 @@ import {
 } from './counter-mode'
 import type {
   InterfaceSortDirection,
-  InterfaceSortKey,
+  TableSortKey,
 } from './sort'
 import {
   DropdownMenu,
@@ -73,6 +73,8 @@ export interface InterfaceRowProps extends CounterFields {
   // BigInts serialised as decimal strings — see page.tsx / counter-mode.ts
   dRxDiscards: string | null
   dTxDiscards: string | null
+  // Sum of positive CRC deltas over the active window (CRC view only); null in the All view.
+  crcWindowTotal: string | null
 }
 
 type PageSizeValue = 10 | 50 | 100 | 1000 | 'all'
@@ -94,10 +96,11 @@ interface Props {
   page: number
   total: number
   pageSize: PageSizeValue
-  sortKey: InterfaceSortKey | null
+  sortKey: TableSortKey | null
   sortDirection: InterfaceSortDirection
   counterMode: CounterMode
   view?: 'all' | 'crc'
+  window?: '7d' | '30d'
   crcTrend?: CrcTrendPoint[]
 }
 
@@ -195,6 +198,7 @@ export function InterfaceHealthClient({
   sortDirection,
   counterMode,
   view = 'all',
+  window = '7d',
   crcTrend = [],
 }: Props) {
   const apicHosts = useApicHosts()
@@ -231,10 +235,11 @@ export function InterfaceHealthClient({
     node?: string[]
     page?: number
     pageSize?: PageSizeValue
-    sort?: InterfaceSortKey | null
+    sort?: TableSortKey | null
     dir?: InterfaceSortDirection
     counterMode?: CounterMode
     view?: 'all' | 'crc'
+    window?: '7d' | '30d'
   }) {
     const params = new URLSearchParams()
     const apic = overrides.apic ?? selectedHostId
@@ -246,6 +251,7 @@ export function InterfaceHealthClient({
     const d = overrides.dir ?? sortDirection
     const mode = overrides.counterMode ?? counterMode
     const v = overrides.view ?? view
+    const win = overrides.window ?? window
 
     if (apic) params.set('apic', apic)
     if (q.trim()) params.set('query', q.trim())
@@ -258,6 +264,7 @@ export function InterfaceHealthClient({
     }
     if (mode !== 'delta') params.set('mode', mode)
     if (v !== 'all') params.set('view', v)
+    if (v === 'crc' && win !== '7d') params.set('window', win)
     const qs = params.toString()
     return `/interface-health${qs ? `?${qs}` : ''}`
   }
@@ -271,6 +278,12 @@ export function InterfaceHealthClient({
   function handleViewChange(v: 'all' | 'crc') {
     startTransition(() => {
       router.replace(buildUrl({ view: v, page: 1 }))
+    })
+  }
+
+  function handleWindowChange(w: '7d' | '30d') {
+    startTransition(() => {
+      router.replace(buildUrl({ window: w, page: 1 }))
     })
   }
 
@@ -312,7 +325,7 @@ export function InterfaceHealthClient({
     })
   }
 
-  function handleSort(key: InterfaceSortKey) {
+  function handleSort(key: TableSortKey) {
     const nextDirection: InterfaceSortDirection =
       sortKey === key && sortDirection === 'desc' ? 'asc' : 'desc'
     startTransition(() => {
@@ -381,7 +394,7 @@ export function InterfaceHealthClient({
 
   const activeFilterCount = filterNode.length > 0 ? 1 : 0
   const loading = isPending || syncing
-  const tableHeaders: ({ label: string; sortKey?: InterfaceSortKey })[] = [
+  const tableHeaders: ({ label: string; sortKey?: TableSortKey })[] = [
     { label: 'Node' },
     { label: 'Interface' },
     { label: 'Description' },
@@ -396,10 +409,12 @@ export function InterfaceHealthClient({
       label: counterMode === 'delta' ? 'Tx err Δ' : 'Tx err',
       sortKey: 'txErrors',
     },
-    {
-      label: counterMode === 'delta' ? 'CRC Δ' : 'CRC',
-      sortKey: 'rxCrcErrors',
-    },
+    view === 'crc'
+      ? { label: `CRC (${window})`, sortKey: 'crcWindowTotal' as TableSortKey }
+      : {
+          label: counterMode === 'delta' ? 'CRC Δ' : 'CRC',
+          sortKey: 'rxCrcErrors' as TableSortKey,
+        },
     {
       label: counterMode === 'delta' ? 'Align Δ' : 'Align',
       sortKey: 'rxAlignErrors',
@@ -615,13 +630,34 @@ export function InterfaceHealthClient({
                     </button>
                   ))}
                 </div>
+
+                {view === 'crc' && (
+                  <div className="inline-flex shrink-0 rounded-lg border border-border bg-muted p-0.5">
+                    {(['7d', '30d'] as const).map(w => (
+                      <button
+                        key={w}
+                        type="button"
+                        aria-pressed={window === w}
+                        onClick={() => handleWindowChange(w)}
+                        className={[
+                          'rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors',
+                          window === w
+                            ? 'bg-card text-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground',
+                        ].join(' ')}
+                      >
+                        {w}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-3 shrink-0 text-xs text-subtle">
                 <span>
                   <span className="font-semibold text-foreground">{total}</span>{' '}
                   {total === 1 ? 'interface' : 'interfaces'}
-                  {view === 'crc' && ' (CRC delta in last 7d)'}
+                  {view === 'crc' && ` (CRC increase in last ${window})`}
                 </span>
               </div>
             </div>
@@ -641,7 +677,7 @@ export function InterfaceHealthClient({
                 <div className="px-4 py-14 text-center">
                   {view === 'crc' && !query && activeFilterCount === 0 ? (
                     <>
-                      <p className="text-sm text-subtle">No interfaces with increasing CRC errors in the last 7 days</p>
+                      <p className="text-sm text-subtle">No interfaces with increasing CRC errors in the last {window === '30d' ? '30 days' : '7 days'}</p>
                       <p className="text-xs text-faint mt-1">All monitored interfaces are reporting zero CRC error increases</p>
                     </>
                   ) : query || activeFilterCount > 0 ? (
@@ -733,9 +769,24 @@ export function InterfaceHealthClient({
                             <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.txErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
                               {counterMode === 'delta' ? fmtDelta(visibleCounters.txErrors) : fmtCount(visibleCounters.txErrors)}
                             </td>
-                            <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.rxCrcErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
-                              {counterMode === 'delta' ? fmtDelta(visibleCounters.rxCrcErrors) : fmtCount(visibleCounters.rxCrcErrors)}
-                            </td>
+                            {view === 'crc' ? (
+                              <td className="px-4 py-2.5 tabular-nums">
+                                <div className={isNonZero(r.crcWindowTotal) ? 'text-danger font-semibold' : 'text-faint'}>
+                                  {fmtCount(r.crcWindowTotal)}
+                                </div>
+                                <div className="text-[10px] text-faint font-normal mt-0.5">
+                                  {r.dRxCrcErrors === null
+                                    ? 'reset'
+                                    : isNonZero(r.dRxCrcErrors)
+                                      ? `+${r.dRxCrcErrors} last poll`
+                                      : '0 last poll'}
+                                </div>
+                              </td>
+                            ) : (
+                              <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.rxCrcErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
+                                {counterMode === 'delta' ? fmtDelta(visibleCounters.rxCrcErrors) : fmtCount(visibleCounters.rxCrcErrors)}
+                              </td>
+                            )}
                             <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.rxAlignErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
                               {counterMode === 'delta' ? fmtDelta(visibleCounters.rxAlignErrors) : fmtCount(visibleCounters.rxAlignErrors)}
                             </td>

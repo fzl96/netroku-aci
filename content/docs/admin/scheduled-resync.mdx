@@ -1,0 +1,78 @@
+---
+title: Scheduled Resync
+description: Configuring automatic data synchronization.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Netroku ACI does not have a built-in scheduler. Instead, it exposes a single HTTP endpoint that an external scheduler (a cron job, systemd timer, or any task runner) calls on whatever interval you choose. Each call pulls fresh data from the specified APIC controllers and updates the database.
+
+## The resync endpoint
+
+```
+POST /api/cron/resync
+Authorization: Bearer <SCHEDULER_TOKEN>
+Content-Type: application/json
+```
+
+**Request body:**
+
+```json
+{
+  "hosts": [
+    {
+      "apicHostId": "<id from APIC Hosts page>",
+      "username": "apic-readonly-user",
+      "password": "s3cr3t"
+    }
+  ]
+}
+```
+
+You can include multiple host entries in one call. Each entry is processed in sequence.
+
+**What gets synced per host:**
+
+- Endpoints (`fvCEp` / `fvAEPg`)
+- EPGs and static port bindings
+- Physical interfaces and counter samples
+- Faults
+- Fabric / node / tenant health scores
+- Nodes, PSUs, and fan modules
+
+## Authentication
+
+Set `SCHEDULER_TOKEN` in `.env` to a random secret:
+
+```bash
+openssl rand -hex 32
+```
+
+Every call to `/api/cron/resync` must include this token as a Bearer token in the `Authorization` header. Calls without a valid token are rejected with `401`. If `SCHEDULER_TOKEN` is not set, the endpoint returns `503`.
+
+<Callout type="warn" title="Credentials in the request body">
+The APIC username and password are sent in the request body on every sync call. Use a read-only APIC account for scheduled resyncs and ensure the request is made over HTTPS or a trusted internal network.
+</Callout>
+
+## Finding your APIC host ID
+
+The `apicHostId` is the internal database ID of the host entry. You can find it by opening the **APIC Hosts** page — the ID is shown in the URL when you edit a host, or you can retrieve it from the API.
+
+## Setting up a cron job
+
+Example: sync every 15 minutes using a Unix cron job.
+
+```bash
+*/15 * * * * curl -s -X POST https://your-app/api/cron/resync \
+  -H "Authorization: Bearer <SCHEDULER_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"hosts":[{"apicHostId":"<id>","username":"<user>","password":"<pass>"}]}'
+```
+
+Replace `your-app`, `<SCHEDULER_TOKEN>`, `<id>`, `<user>`, and `<pass>` with your values.
+
+## Monitoring sync results
+
+Every resync call is recorded in the audit log. Navigate to **History** in the sidebar to see a timestamped list of sync operations, including which host was synced, how many records were updated, and whether the sync succeeded or failed.
+
+The endpoint also returns a JSON response with per-dataset results that you can log from your scheduler.
