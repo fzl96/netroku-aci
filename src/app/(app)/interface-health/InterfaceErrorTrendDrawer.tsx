@@ -1,7 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceArea,
+  ReferenceLine,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import {
   Sheet,
   SheetContent,
@@ -21,6 +29,10 @@ import {
   DEFAULT_ERROR_TREND_RANGE,
   ERROR_TREND_RANGES,
   ERROR_TREND_SERIES,
+  findGapSegments,
+  findResetTimestamps,
+  insertGapBreaks,
+  type ErrorTrendKey,
   type ErrorTrendPoint,
   type ErrorTrendRange,
 } from './error-trend'
@@ -36,6 +48,34 @@ export interface SelectedInterface {
 const chartConfig: ChartConfig = Object.fromEntries(
   ERROR_TREND_SERIES.map((s) => [s.key, { label: s.label, color: s.color }]),
 )
+
+interface DotProps {
+  cx?: number
+  cy?: number
+  index?: number
+  dataKey?: string | number | ((obj: unknown) => unknown)
+  stroke?: string
+}
+
+// Render a dot only for an *isolated* valid point — one whose neighbours are
+// both null — so a lone measurement between two resets/gaps reads as real data
+// instead of vanishing (a single point has no line segment to draw).
+function makeIsolatedDot(series: ErrorTrendPoint[]) {
+  function IsolatedDot({ cx, cy, index, dataKey, stroke }: DotProps) {
+    const key = `${String(dataKey)}-${index}`
+    if (cx == null || cy == null || index == null || typeof dataKey !== 'string') {
+      return <g key={key} />
+    }
+    const k = dataKey as ErrorTrendKey
+    const prev = series[index - 1]?.[k]
+    const next = series[index + 1]?.[k]
+    const isolated =
+      (prev === null || prev === undefined) && (next === null || next === undefined)
+    if (!isolated) return <g key={key} />
+    return <circle key={key} cx={cx} cy={cy} r={2.5} fill={stroke} />
+  }
+  return IsolatedDot
+}
 
 export function InterfaceErrorTrendDrawer({
   selected,
@@ -96,6 +136,15 @@ export function InterfaceErrorTrendDrawer({
 
   const isEmpty = !data || data.length === 0
 
+  // Resets are detected on the raw series; monitoring gaps get a synthetic null
+  // filler inserted so the line breaks across them instead of bridging.
+  const resetTimestamps = useMemo(() => (data ? findResetTimestamps(data) : []), [data])
+  const gaps = useMemo(() => (data ? findGapSegments(data) : []), [data])
+  const displayData = useMemo(
+    () => (data ? insertGapBreaks(data, gaps) : []),
+    [data, gaps],
+  )
+
   return (
     <Sheet
       open={selected !== null}
@@ -154,6 +203,23 @@ export function InterfaceErrorTrendDrawer({
           })}
         </div>
 
+        {(resetTimestamps.length > 0 || gaps.length > 0) && (
+          <div className="flex flex-wrap gap-4 text-[11px] text-muted-foreground">
+            {resetTimestamps.length > 0 && (
+              <span className="flex items-center gap-1.5">
+                <span className="h-3 w-0 border-l border-dashed border-muted-foreground/60" />
+                Counter reset
+              </span>
+            )}
+            {gaps.length > 0 && (
+              <span className="flex items-center gap-1.5">
+                <span className="h-3 w-3 rounded-sm bg-muted-foreground/10" />
+                No data (missing samples)
+              </span>
+            )}
+          </div>
+        )}
+
         <div className="min-h-0 flex-1">
           {loading ? (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -169,8 +235,29 @@ export function InterfaceErrorTrendDrawer({
             </div>
           ) : (
             <ChartContainer config={chartConfig} className="h-full w-full">
-              <LineChart data={data} margin={{ left: 8, right: 16, top: 8, bottom: 4 }}>
+              <LineChart data={displayData} margin={{ left: 8, right: 16, top: 8, bottom: 4 }}>
                 <CartesianGrid vertical={false} />
+                {/* Monitoring gaps: shaded band between the last and first good sample. */}
+                {gaps.map((g) => (
+                  <ReferenceArea
+                    key={`gap-${g.mid}`}
+                    x1={g.x1}
+                    x2={g.x2}
+                    fill="var(--muted-foreground)"
+                    fillOpacity={0.08}
+                    ifOverflow="extendDomain"
+                  />
+                ))}
+                {/* Counter resets: dashed vertical rule at the reset timestamp. */}
+                {resetTimestamps.map((ts) => (
+                  <ReferenceLine
+                    key={`reset-${ts}`}
+                    x={ts}
+                    stroke="var(--muted-foreground)"
+                    strokeDasharray="3 3"
+                    strokeOpacity={0.5}
+                  />
+                ))}
                 <XAxis
                   dataKey="sampledAt"
                   tickLine={false}
@@ -202,7 +289,7 @@ export function InterfaceErrorTrendDrawer({
                     type="monotone"
                     dataKey={s.key}
                     stroke={`var(--color-${s.key})`}
-                    dot={false}
+                    dot={makeIsolatedDot(displayData)}
                     connectNulls={false}
                     hide={hidden.has(s.key)}
                   />
