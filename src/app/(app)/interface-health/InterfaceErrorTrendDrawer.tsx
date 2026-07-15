@@ -48,6 +48,11 @@ const chartConfig: ChartConfig = Object.fromEntries(
   ERROR_TREND_SERIES.map((s) => [s.key, { label: s.label, color: s.color }]),
 )
 
+// CRC is the series this view exists for, so it is the only one shown by
+// default; the rest start hidden and can be toggled on via the legend.
+const DEFAULT_VISIBLE_KEY = 'dRxCrcErrors'
+const defaultHidden = () =>
+  new Set(ERROR_TREND_SERIES.map((s) => s.key).filter((k) => k !== DEFAULT_VISIBLE_KEY))
 
 export function InterfaceErrorTrendDrawer({
   selected,
@@ -59,7 +64,7 @@ export function InterfaceErrorTrendDrawer({
   const [range, setRange] = useState<ErrorTrendRange>(DEFAULT_ERROR_TREND_RANGE)
   const [data, setData] = useState<ErrorTrendPoint[] | null>(null)
   const [loading, setLoading] = useState(false)
-  const [hidden, setHidden] = useState<Set<string>>(new Set())
+  const [hidden, setHidden] = useState<Set<string>>(defaultHidden)
   const [error, setError] = useState(false)
 
   const selectedId = selected?.id ?? null
@@ -70,7 +75,7 @@ export function InterfaceErrorTrendDrawer({
     if (selectedId) {
       setLoading(true)
       setData(null)
-      setHidden(new Set())
+      setHidden(defaultHidden())
       setError(false)
     }
   }
@@ -153,11 +158,11 @@ export function InterfaceErrorTrendDrawer({
         <p className="text-[11px] leading-relaxed text-muted-foreground">
           Each bar is the number of new errors counted since the previous sample —
           a per-interval change, not a running total. Taller bars mean more errors
-          in that interval; no bar means none. Click a label below to hide a series.
+          in that interval; no bar means none. Click a label below to show or hide a series.
         </p>
 
         {/* Clickable legend — toggles each series on/off */}
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2">
           {ERROR_TREND_SERIES.map((s) => {
             const off = hidden.has(s.key)
             return (
@@ -167,13 +172,19 @@ export function InterfaceErrorTrendDrawer({
                 aria-pressed={!off}
                 onClick={() => toggleSeries(s.key)}
                 className={[
-                  'flex items-center gap-1.5 text-xs transition-opacity',
-                  off ? 'opacity-40' : 'opacity-100',
+                  'flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+                  off
+                    ? 'border-border bg-transparent text-muted-foreground hover:text-foreground'
+                    : 'border-transparent bg-muted text-foreground shadow-sm',
                 ].join(' ')}
               >
                 <span
                   className="h-2 w-2 rounded-full"
-                  style={{ background: `var(--color-${s.key})` }}
+                  style={
+                    off
+                      ? { boxShadow: `inset 0 0 0 1.5px var(--color-${s.key})` }
+                      : { background: `var(--color-${s.key})` }
+                  }
                 />
                 {s.label}
               </button>
