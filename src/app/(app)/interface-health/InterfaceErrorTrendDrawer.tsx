@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
-  Line,
-  LineChart,
   ReferenceArea,
   ReferenceLine,
   XAxis,
@@ -32,7 +32,6 @@ import {
   findGapSegments,
   findResetTimestamps,
   insertGapBreaks,
-  type ErrorTrendKey,
   type ErrorTrendPoint,
   type ErrorTrendRange,
 } from './error-trend'
@@ -49,33 +48,6 @@ const chartConfig: ChartConfig = Object.fromEntries(
   ERROR_TREND_SERIES.map((s) => [s.key, { label: s.label, color: s.color }]),
 )
 
-interface DotProps {
-  cx?: number
-  cy?: number
-  index?: number
-  dataKey?: string | number | ((obj: unknown) => unknown)
-  stroke?: string
-}
-
-// Render a dot only for an *isolated* valid point — one whose neighbours are
-// both null — so a lone measurement between two resets/gaps reads as real data
-// instead of vanishing (a single point has no line segment to draw).
-function makeIsolatedDot(series: ErrorTrendPoint[]) {
-  function IsolatedDot({ cx, cy, index, dataKey, stroke }: DotProps) {
-    const key = `${String(dataKey)}-${index}`
-    if (cx == null || cy == null || index == null || typeof dataKey !== 'string') {
-      return <g key={key} />
-    }
-    const k = dataKey as ErrorTrendKey
-    const prev = series[index - 1]?.[k]
-    const next = series[index + 1]?.[k]
-    const isolated =
-      (prev === null || prev === undefined) && (next === null || next === undefined)
-    if (!isolated) return <g key={key} />
-    return <circle key={key} cx={cx} cy={cy} r={2.5} fill={stroke} />
-  }
-  return IsolatedDot
-}
 
 export function InterfaceErrorTrendDrawer({
   selected,
@@ -235,7 +207,7 @@ export function InterfaceErrorTrendDrawer({
             </div>
           ) : (
             <ChartContainer config={chartConfig} className="h-full w-full">
-              <LineChart data={displayData} margin={{ left: 8, right: 16, top: 8, bottom: 4 }}>
+              <BarChart data={displayData} margin={{ left: 8, right: 16, top: 8, bottom: 4 }}>
                 <CartesianGrid vertical={false} />
                 {/* Monitoring gaps: shaded band between the last and first good sample. */}
                 {gaps.map((g) => (
@@ -284,17 +256,15 @@ export function InterfaceErrorTrendDrawer({
                   }
                 />
                 {ERROR_TREND_SERIES.map((s) => (
-                  <Line
+                  <Bar
                     key={s.key}
-                    type="monotone"
                     dataKey={s.key}
-                    stroke={`var(--color-${s.key})`}
-                    dot={makeIsolatedDot(displayData)}
-                    connectNulls={false}
+                    fill={`var(--color-${s.key})`}
+                    radius={2}
                     hide={hidden.has(s.key)}
                   />
                 ))}
-              </LineChart>
+              </BarChart>
             </ChartContainer>
           )}
         </div>
