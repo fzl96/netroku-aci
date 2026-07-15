@@ -20,6 +20,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ApicCredentialDialog } from '@/components/ApicCredentialDialog'
+import {
+  DataCard,
+  DataCardHeader,
+  DataCardTitle,
+  DataCardBody,
+  DataCardRow,
+} from '@/components/ui/data-card'
 import { FilterSubmenu } from '@/components/FilterSubmenu'
 import { ExportEndpointsDialog } from './ExportEndpointsDialog'
 import { PortDetailPanel } from './PortDetailPanel'
@@ -249,13 +256,13 @@ export function EndpointsClient({
     <div className="min-h-full bg-background">
       {/* Page header */}
       <div className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur-sm">
-        <div className="px-8 h-16 flex items-center justify-between gap-4">
+        <div className="px-4 md:px-8 py-3 md:py-0 md:h-16 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <h1 className="font-serif text-[18px] font-semibold text-foreground">Endpoints</h1>
             <p className="text-xs text-subtle mt-0.5">ACI fabric endpoint inventory</p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full md:w-auto">
             <select
               value={selectedHostId}
               onChange={e => handleHostChange(e.target.value)}
@@ -264,7 +271,7 @@ export function EndpointsClient({
                 'text-xs bg-muted border border-border rounded-lg',
                 'px-3 py-2 text-foreground outline-none',
                 'focus:border-primary focus:ring-2 focus:ring-primary/10',
-                'min-w-[180px]',
+                'flex-1 md:flex-none md:min-w-[180px]',
                 'disabled:opacity-60 disabled:cursor-not-allowed transition-opacity',
               ].join(' ')}
             >
@@ -305,7 +312,7 @@ export function EndpointsClient({
         </div>
       </div>
 
-      <div className="px-8 py-6 space-y-4">
+      <div className="px-4 md:px-8 py-4 md:py-6 space-y-4">
         {!selectedHostId && !isPending ? (
           <div className="flex flex-col items-center justify-center py-28 text-center">
             <div className="relative mb-6">
@@ -347,8 +354,8 @@ export function EndpointsClient({
         ) : (
           <>
             {/* View toggle + search + filters + stats row */}
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2 min-w-0">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2 min-w-0 w-full md:w-auto">
                 {/* View toggle */}
                 <div className="flex rounded-lg border border-border overflow-hidden shrink-0">
                   {([['endpoint', 'By Endpoint'], ['port', 'By Port']] as const).map(([v, label]) => (
@@ -369,7 +376,7 @@ export function EndpointsClient({
                 </div>
 
                 {/* Search */}
-                <div className="relative w-56 shrink-0">
+                <div className="relative flex-1 min-w-[140px] md:w-56 md:flex-none">
                   <IconSearch
                     size={13}
                     stroke={1.75}
@@ -438,10 +445,10 @@ export function EndpointsClient({
               </div>
             </div>
 
-            {/* Table */}
+            {/* Table (desktop) */}
             <div
               className={[
-                'bg-card border border-border rounded-2xl overflow-hidden shadow-sm',
+                'hidden md:block bg-card border border-border rounded-2xl overflow-hidden shadow-sm',
                 'transition-opacity duration-150',
                 isPending ? 'opacity-60 pointer-events-none' : 'opacity-100',
               ].join(' ')}
@@ -529,9 +536,74 @@ export function EndpointsClient({
               )}
             </div>
 
+            {/* Mobile card list */}
+            <div
+              className={[
+                'space-y-2 md:hidden transition-opacity duration-150',
+                isPending ? 'opacity-60 pointer-events-none' : 'opacity-100',
+              ].join(' ')}
+            >
+              {currentItemsCount === 0 && !isPending ? (
+                <div className="rounded-2xl border border-border bg-card px-4 py-14 text-center">
+                  {query || filterVlan.length > 0 || filterNode.length > 0 || (view === 'endpoint' && filterIface.length > 0) || filterStatus.length > 0 ? (
+                    <>
+                      <p className="text-sm text-subtle">No {noun} match the current filters</p>
+                      <p className="text-xs text-faint mt-1">Try adjusting the search or filter values</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-subtle">No {noun} found</p>
+                      <p className="text-xs text-faint mt-1">Tap <strong>Resync</strong> to pull the latest data from the APIC</p>
+                    </>
+                  )}
+                </div>
+              ) : view === 'endpoint' ? (
+                endpoints.map(ep => (
+                  <DataCard key={ep.id}>
+                    <DataCardHeader trailing={<Badge active={ep.isActive} />}>
+                      <DataCardTitle className="font-mono">{ep.mac}</DataCardTitle>
+                      <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground">{ep.ip || '—'}</p>
+                    </DataCardHeader>
+                    <DataCardBody>
+                      <DataCardRow label="VLAN / Node" value={`${ep.vlan} · ${ep.node || '—'}`} />
+                      <DataCardRow label="Interface" value={<span className="font-mono">{ep.interface || '—'}</span>} />
+                      <DataCardRow label="EPG" value={ep.epgDescr || '—'} />
+                      <DataCardRow label="Last seen" value={fmt(ep.lastSeenAt)} />
+                    </DataCardBody>
+                  </DataCard>
+                ))
+              ) : (
+                ports.map(port => (
+                  <DataCard
+                    key={port.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedPort(port)}
+                  >
+                    <DataCardHeader
+                      trailing={
+                        <span className="text-xs tabular-nums text-foreground">
+                          <span className="font-semibold">{port.endpointCount}</span>
+                          <span className="ml-1 text-[11px] text-subtle">({port.activeCount} active)</span>
+                        </span>
+                      }
+                    >
+                      <DataCardTitle className="font-mono">Node {port.node}</DataCardTitle>
+                      <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground">{port.interface}</p>
+                    </DataCardHeader>
+                    <DataCardBody>
+                      <DataCardRow label="VLANs" value={port.vlans.join(', ') || '—'} />
+                      <DataCardRow label="EPG" value={port.epgDescrs.join(', ') || '—'} />
+                      <DataCardRow label="Last seen" value={fmt(port.lastSeenAt)} />
+                    </DataCardBody>
+                  </DataCard>
+                ))
+              )}
+            </div>
+
             {/* Pagination */}
             {total > 0 && (
-              <div className="flex items-center justify-between pt-1 gap-4">
+              <div className="flex flex-wrap items-center justify-between pt-1 gap-3">
                 <p className="text-xs text-subtle shrink-0">
                   {pageSize === 'all'
                     ? `Showing all ${total} ${noun}`
@@ -540,7 +612,7 @@ export function EndpointsClient({
 
                 <div className="flex items-center gap-2">
                   {/* Page size selector */}
-                  <div className="flex items-center gap-1.5">
+                  <div className="hidden md:flex items-center gap-1.5">
                     <span className="text-xs text-faint">Per page</span>
                     <select
                       value={String(pageSize)}
@@ -557,7 +629,7 @@ export function EndpointsClient({
                   {/* Prev / page indicator / jump / next */}
                   {pageSize !== 'all' && totalPages > 1 && (
                     <>
-                      <div className="w-px h-4 bg-border" />
+                      <div className="hidden md:block w-px h-4 bg-border" />
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => handlePage(page - 1)}
@@ -581,9 +653,9 @@ export function EndpointsClient({
                           <IconChevronRight size={12} stroke={1.75} />
                         </button>
 
-                        <div className="w-px h-4 bg-border" />
+                        <div className="hidden md:block w-px h-4 bg-border" />
 
-                        <form onSubmit={handleJump} className="flex items-center gap-1">
+                        <form onSubmit={handleJump} className="hidden md:flex items-center gap-1">
                           <input
                             type="number"
                             min={1}

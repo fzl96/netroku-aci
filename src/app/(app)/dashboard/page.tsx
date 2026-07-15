@@ -23,6 +23,13 @@ import {
   TABLE_SCROLL_CLS,
 } from '@/lib/ui-classes'
 import {
+  DataCard,
+  DataCardHeader,
+  DataCardTitle,
+  DataCardBody,
+  DataCardRow,
+} from '@/components/ui/data-card'
+import {
   buildAttentionItems,
   classifyPosture,
   formatRelativeFreshness,
@@ -640,7 +647,7 @@ export default async function DashboardPage() {
               </div>
             </div>
 
-            <div className={`mt-4 ${TABLE_SCROLL_CLS}`}>
+            <div className={`mt-4 hidden md:block ${TABLE_SCROLL_CLS}`}>
               <table className="w-full min-w-[760px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-border text-xs text-muted-foreground">
@@ -698,6 +705,46 @@ export default async function DashboardPage() {
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile card list */}
+            <div className="mt-4 space-y-2 md:hidden">
+              {hostSummaries.length > 0 ? hostSummaries.map(host => (
+                <DataCard key={host.id}>
+                  <DataCardHeader
+                    trailing={
+                      <span className={`text-sm font-semibold ${toneTextClass(host.healthScore === null ? 'unknown' : host.healthScore < 70 ? 'critical' : host.healthScore < 90 ? 'warning' : 'healthy')}`}>
+                        {formatScore(host.healthScore)}
+                      </span>
+                    }
+                  >
+                    <DataCardTitle>{host.name}</DataCardTitle>
+                    <p className="mt-0.5 truncate text-xs text-subtle">{host.host}</p>
+                  </DataCardHeader>
+                  <DataCardBody>
+                    <DataCardRow label="Endpoints" value={`${formatNumber(host.activeEndpoints)} active`} />
+                    <DataCardRow
+                      label="Faults (crit/maj)"
+                      value={
+                        <>
+                          <span className={host.criticalFaults > 0 ? 'text-error' : ''}>{formatNumber(host.criticalFaults)}</span>
+                          <span className="mx-1 text-subtle">/</span>
+                          <span className={host.majorFaults > 0 ? 'text-warning' : ''}>{formatNumber(host.majorFaults)}</span>
+                        </>
+                      }
+                    />
+                    <DataCardRow
+                      label="Nodes"
+                      value={host.nodesTotal === 0 ? '—' : `${host.nodesOnline}/${host.nodesTotal} online`}
+                    />
+                    <DataCardRow label="Freshest data" value={formatRelativeFreshness(host.freshest, now)} />
+                  </DataCardBody>
+                </DataCard>
+              )) : (
+                <div className="rounded-2xl border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
+                  No APIC hosts configured yet.
+                </div>
+              )}
             </div>
           </section>
         </div>
