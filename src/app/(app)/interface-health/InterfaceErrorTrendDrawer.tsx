@@ -150,6 +150,12 @@ export function InterfaceErrorTrendDrawer({
           ))}
         </ToggleGroup>
 
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          Each bar is the number of new errors counted since the previous sample —
+          a per-interval change, not a running total. Taller bars mean more errors
+          in that interval; no bar means none. Click a label below to hide a series.
+        </p>
+
         {/* Clickable legend — toggles each series on/off */}
         <div className="flex flex-wrap gap-3">
           {ERROR_TREND_SERIES.map((s) => {
