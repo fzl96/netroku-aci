@@ -15,7 +15,11 @@ import {
   SEARCH_INPUT_CLS,
   TABLE_SCROLL_CLS,
 } from '@/lib/ui-classes'
-import { buildHistoryPayloadCsvExport } from './export-utils'
+import {
+  buildHistoryPayloadCsvExport,
+  buildHistoryPayloadSummary,
+  formatHistoryPayloadSummary,
+} from './export-utils'
 
 const PAGE_SIZE = 20
 
@@ -196,12 +200,17 @@ export function HistoryClient({ initialLogs }: { initialLogs: AuditLogEntry[] })
                     const hasPayload = log.payload != null
                     const isOpen = expanded.has(log.id)
                     const when = new Date(log.createdAt)
-                    const csvExport = buildHistoryPayloadCsvExport({
+                    const csvExport = isOpen ? buildHistoryPayloadCsvExport({
                       action: log.action,
                       target: log.target,
                       payload: log.payload,
                       createdAt: when,
-                    })
+                    }) : null
+                    const payloadSummary = isOpen ? buildHistoryPayloadSummary({
+                      action: log.action,
+                      target: log.target,
+                      payload: log.payload,
+                    }) : null
                     return (
                       <Fragment key={log.id}>
                         <tr
@@ -255,8 +264,11 @@ export function HistoryClient({ initialLogs }: { initialLogs: AuditLogEntry[] })
                         {hasPayload && isOpen && (
                           <tr className="border-b border-border-faint bg-muted/40">
                             <td colSpan={6} className="px-4 py-3">
-                              {csvExport && (
-                                <div className="mb-2 flex justify-end">
+                              {csvExport && payloadSummary && (
+                                <div className="mb-2 flex items-center justify-between gap-3">
+                                  <span className="text-[11px] text-faint tabular-nums">
+                                    {formatHistoryPayloadSummary(payloadSummary)}
+                                  </span>
                                   <button
                                     type="button"
                                     onClick={() => {
