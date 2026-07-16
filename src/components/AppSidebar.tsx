@@ -335,7 +335,7 @@ export function AppSidebar({ role }: { role: "admin" | "member" }) {
     <Sidebar>
       <SidebarHeader className="h-16 flex-row items-center border-b border-sidebar-border/60 px-3 py-0">
         <div className="flex items-center gap-3">
-          <Link href="/">
+          <Link href="/" className="flex items-center gap-3">
             <Image
               src="/brand-icon.png"
               alt=""
