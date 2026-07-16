@@ -53,17 +53,17 @@ Copy the example and fill in the values:
 cp .env.example .env
 ```
 
-| Variable | Required | Purpose |
-|---|---|---|
-| `DATABASE_URL` | yes | Postgres connection string. For local Docker, use `postgresql://netroku:netroku@localhost:5432/netroku?schema=public`. |
-| `BETTER_AUTH_SECRET` | yes | Session signing secret. Generate with `openssl rand -hex 32`. |
-| `BETTER_AUTH_URL` | yes | Base URL the app is served from (e.g. `http://localhost:3000`). |
-| `NEXT_PUBLIC_APP_URL` | yes | Public base URL used by the browser. |
-| `TRUSTED_ORIGINS` | yes | Comma-separated origins Better Auth accepts (add LAN IPs / Tailscale hosts here). |
-| `SECURE_COOKIES` | no | Set to `true` **only** when served exclusively over HTTPS. Leave blank for HTTP/LAN. |
-| `ENCRYPTION_KEY` | yes | 64-char hex (32 bytes) used by `src/lib/crypto.ts`. Generate with `openssl rand -hex 32`. |
-| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | yes (for seeding) | First admin account created by the seed script. Password ≥ 8 chars. |
-| `SCHEDULER_TOKEN` | no | Bearer token an external scheduler must send to `POST /api/cron/resync`. Generate with `openssl rand -hex 32`. |
+| Variable                            | Required          | Purpose                                                                                                                |
+| ----------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                      | yes               | Postgres connection string. For local Docker, use `postgresql://netroku:netroku@localhost:5432/netroku?schema=public`. |
+| `BETTER_AUTH_SECRET`                | yes               | Session signing secret. Generate with `openssl rand -hex 32`.                                                          |
+| `BETTER_AUTH_URL`                   | yes               | Base URL the app is served from (e.g. `http://localhost:3000`).                                                        |
+| `NEXT_PUBLIC_APP_URL`               | yes               | Public base URL used by the browser.                                                                                   |
+| `TRUSTED_ORIGINS`                   | yes               | Comma-separated origins Better Auth accepts (add LAN IPs / Tailscale hosts here).                                      |
+| `SECURE_COOKIES`                    | no                | Set to `true` **only** when served exclusively over HTTPS. Leave blank for HTTP/LAN.                                   |
+| `ENCRYPTION_KEY`                    | yes               | 64-char hex (32 bytes) used by `src/lib/crypto.ts`. Generate with `openssl rand -hex 32`.                              |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | yes (for seeding) | First admin account created by the seed script. Password ≥ 8 chars.                                                    |
+| `SCHEDULER_TOKEN`                   | no                | Bearer token an external scheduler must send to `POST /api/cron/resync`. Generate with `openssl rand -hex 32`.         |
 
 ### 5. Start Postgres
 
@@ -137,6 +137,7 @@ The app never bundles APIC credentials. After signing in:
 Bulk deploy/rollback `fvRsPathAtt` bindings (VLAN/port bindings on EPGs).
 
 ### Validation checks (per row)
+
 1. EPG exists in APIC
 2. Leaf nodes are registered in the fabric
 3. Port / IPG exists in the fabric
@@ -145,18 +146,18 @@ Bulk deploy/rollback `fvRsPathAtt` bindings (VLAN/port bindings on EPGs).
 
 ### CSV Format
 
-| Column | Description | Example |
-|---|---|---|
-| `tenant` | Tenant name | `serverfarm` |
-| `ap` | Application Profile name | `DC2-SERVERFARM-AP` |
-| `epg` | EPG name | `VLAN1411_EPG` |
-| `vlan` | VLAN encap (1–4094) | `1411` |
-| `node1` | Primary leaf node ID | `3101` |
-| `node2` | Secondary leaf node ID (vpc only, blank otherwise) | `3102` |
-| `port_type` | `vpc`, `pc`, or `port` | `vpc` |
-| `interface_or_ipg` | IPG name (vpc/pc) or interface (port) | `DC2-SVR-LEAF-3101-3102-VPC-IPG` |
-| `mode` | `regular` (tagged), `native`, or `untagged` | `regular` |
-| `immediacy` | `immediate` or `lazy` | `immediate` |
+| Column             | Description                                        | Example                          |
+| ------------------ | -------------------------------------------------- | -------------------------------- |
+| `tenant`           | Tenant name                                        | `serverfarm`                     |
+| `ap`               | Application Profile name                           | `DC2-SERVERFARM-AP`              |
+| `epg`              | EPG name                                           | `VLAN1411_EPG`                   |
+| `vlan`             | VLAN encap (1–4094)                                | `1411`                           |
+| `node1`            | Primary leaf node ID                               | `3101`                           |
+| `node2`            | Secondary leaf node ID (vpc only, blank otherwise) | `3102`                           |
+| `port_type`        | `vpc`, `pc`, or `port`                             | `vpc`                            |
+| `interface_or_ipg` | IPG name (vpc/pc) or interface (port)              | `DC2-SVR-LEAF-3101-3102-VPC-IPG` |
+| `mode`             | `regular` (tagged), `native`, or `untagged`        | `regular`                        |
+| `immediacy`        | `immediate` or `lazy`                              | `immediate`                      |
 
 ### Example
 
@@ -175,6 +176,7 @@ TenantA,App1-AP,Mgmt-EPG,999,103,,port,1/10,untagged,immediate
 Bulk deploy/rollback `infraHPortS` + `infraPortBlk` + `infraRsAccBaseGrp` objects — the access policy that binds a physical port on a leaf to an IPG. One row = one port = one selector.
 
 ### Validation checks (per row)
+
 1. Interface profile exists in APIC
 2. IPG exists at the correct DN for the declared type
 3. Port not already claimed by another selector on the same profile
@@ -183,14 +185,14 @@ Bulk deploy/rollback `infraHPortS` + `infraPortBlk` + `infraRsAccBaseGrp` object
 
 ### CSV Format
 
-| Column | Description | Example |
-|---|---|---|
-| `interface_profile` | Existing `infraAccPortP` name | `leaf101-intf-prof` |
-| `selector_name` | Unique per profile — no slashes | `eth1-1` |
-| `port` | Cisco notation `card/port` | `1/1` |
-| `ipg_name` | Interface Policy Group name | `leaf101-ipg` |
-| `ipg_type` | `port`, `pc`, or `vpc` | `port` |
-| `description` | Optional — applied to both selector and port block | `Uplink to spine` |
+| Column              | Description                                        | Example             |
+| ------------------- | -------------------------------------------------- | ------------------- |
+| `interface_profile` | Existing `infraAccPortP` name                      | `leaf101-intf-prof` |
+| `selector_name`     | Unique per profile — no slashes                    | `eth1-1`            |
+| `port`              | Cisco notation `card/port`                         | `1/1`               |
+| `ipg_name`          | Interface Policy Group name                        | `leaf101-ipg`       |
+| `ipg_type`          | `port`, `pc`, or `vpc`                             | `port`              |
+| `description`       | Optional — applied to both selector and port block | `Uplink to spine`   |
 
 > **Note:** `selector_name` must contain only letters, numbers, hyphens, and underscores. Slashes are not valid in APIC RN values.
 
@@ -211,20 +213,20 @@ Bulk deploy and rollback bridge domains from CSV. L2-only rows create or delete 
 
 ### L2 Only Defaults
 
-| Attribute | Value |
-|---|---|
-| `unkMacUcastAct` | `flood` |
-| `arpFlood` | `true` |
-| `unicastRoute` | `no` |
-| `mac` | `00:22:BD:F8:19:FF` |
+| Attribute        | Value               |
+| ---------------- | ------------------- |
+| `unkMacUcastAct` | `flood`             |
+| `arpFlood`       | `true`              |
+| `unicastRoute`   | `no`                |
+| `mac`            | `00:22:BD:F8:19:FF` |
 
 ### L2 Only CSV Format
 
-| Column | Description | Example |
-|---|---|---|
-| `tenant` | Existing tenant name | `TenantA` |
-| `bd` | Bridge Domain name | `VLAN1411-BD` |
-| `vrf` | Existing VRF name | `TenantA-VRF` |
+| Column    | Description          | Example            |
+| --------- | -------------------- | ------------------ |
+| `tenant`  | Existing tenant name | `TenantA`          |
+| `bd`      | Bridge Domain name   | `VLAN1411-BD`      |
+| `vrf`     | Existing VRF name    | `TenantA-VRF`      |
 | `bd_desc` | Optional description | `L2 bridge domain` |
 
 ```csv
@@ -234,24 +236,24 @@ TenantA,VLAN1411-BD,TenantA-VRF,L2 bridge domain
 
 ### L3 Defaults
 
-| Attribute | Value |
-|---|---|
-| `unkMacUcastAct` | `proxy` |
-| `arpFlood` | `false` |
-| `unicastRoute` | `yes` |
-| `mac` | `00:22:BD:F8:19:FF` |
-| Subnet `scope` | `public` |
+| Attribute        | Value               |
+| ---------------- | ------------------- |
+| `unkMacUcastAct` | `proxy`             |
+| `arpFlood`       | `false`             |
+| `unicastRoute`   | `yes`               |
+| `mac`            | `00:22:BD:F8:19:FF` |
+| Subnet `scope`   | `public`            |
 
 ### L3 CSV Format
 
-| Column | Description | Example |
-|---|---|---|
-| `tenant` | Existing tenant name | `TenantA` |
-| `bd` | Bridge Domain name | `VLAN1411-BD` |
-| `vrf` | Existing VRF name | `TenantA-VRF` |
-| `subnet` | Bridge Domain gateway subnet in IPv4 CIDR form | `10.14.11.1/24` |
-| `l3out` | Existing L3Out name in the same tenant | `WAN-L3OUT` |
-| `bd_desc` | Optional description | `L3 bridge domain` |
+| Column    | Description                                    | Example            |
+| --------- | ---------------------------------------------- | ------------------ |
+| `tenant`  | Existing tenant name                           | `TenantA`          |
+| `bd`      | Bridge Domain name                             | `VLAN1411-BD`      |
+| `vrf`     | Existing VRF name                              | `TenantA-VRF`      |
+| `subnet`  | Bridge Domain gateway subnet in IPv4 CIDR form | `10.14.11.1/24`    |
+| `l3out`   | Existing L3Out name in the same tenant         | `WAN-L3OUT`        |
+| `bd_desc` | Optional description                           | `L3 bridge domain` |
 
 ```csv
 tenant,bd,vrf,subnet,l3out,bd_desc
@@ -280,18 +282,18 @@ For rollback, rows with contract columns remove only the selected consumed/provi
 
 ### CSV Format
 
-| Column | Description | Example |
-|---|---|---|
-| `tenant` | Existing tenant name | `TenantA` |
-| `anp` | Existing Application Profile / ANP name (`ap` is also accepted) | `APP-A` |
-| `epg` | EPG name to create, update, or remove | `WEB-EPG` |
-| `bd_tenant` | Optional BD tenant. Empty defaults to `tenant`; only `common` is supported for shared BD lookup | `common` |
-| `bd` | Existing Bridge Domain name to bind | `WEB-BD` |
-| `phys_domain` | Optional physical domain to bind to the EPG (`physdom` is also accepted) | `MSI-PHYS-DOM` |
-| `contract_tenant` | Optional contract tenant. Empty defaults to `tenant`; only `common` is supported for shared contract lookup | `common` |
-| `cons_contract` | Optional comma-separated consumed contracts | `WEB-CONTRACT,API-CONTRACT` |
-| `prov_contract` | Optional comma-separated provided contracts | `DB-CONTRACT` |
-| `epg_desc` | Optional EPG description | `Web frontend EPG` |
+| Column            | Description                                                                                                 | Example                     |
+| ----------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------- |
+| `tenant`          | Existing tenant name                                                                                        | `TenantA`                   |
+| `anp`             | Existing Application Profile / ANP name (`ap` is also accepted)                                             | `APP-A`                     |
+| `epg`             | EPG name to create, update, or remove                                                                       | `WEB-EPG`                   |
+| `bd_tenant`       | Optional BD tenant. Empty defaults to `tenant`; only `common` is supported for shared BD lookup             | `common`                    |
+| `bd`              | Existing Bridge Domain name to bind                                                                         | `WEB-BD`                    |
+| `phys_domain`     | Optional physical domain to bind to the EPG (`physdom` is also accepted)                                    | `MSI-PHYS-DOM`              |
+| `contract_tenant` | Optional contract tenant. Empty defaults to `tenant`; only `common` is supported for shared contract lookup | `common`                    |
+| `cons_contract`   | Optional comma-separated consumed contracts                                                                 | `WEB-CONTRACT,API-CONTRACT` |
+| `prov_contract`   | Optional comma-separated provided contracts                                                                 | `DB-CONTRACT`               |
+| `epg_desc`        | Optional EPG description                                                                                    | `Web frontend EPG`          |
 
 ### Example
 
@@ -323,17 +325,17 @@ An external scheduler can drive all features for one or more hosts at once via `
 
 ### Page → APIC endpoint → storage
 
-| Page | APIC class endpoint(s) queried | Resync route | Stored in |
-|---|---|---|---|
-| **Dashboard** | _none directly_ — aggregates the snapshot/sample tables below | _(reads only)_ | reads `FaultCountSample`, `HealthScoreSample`, `NodeStatusSample`, `Endpoint`, `InterfaceSnapshot` |
-| **Endpoints** | `GET /api/node/class/fvCEp.json?rsp-subtree=children&rsp-subtree-class=fvIp` (endpoints + IPs), `GET /api/node/class/fvAEPg.json` (EPG descriptions) | `POST /api/endpoints/resync` | `Endpoint` (`mac`, `ip`, `vlan`, `dn`, `node`, `interface`, `epgDescr`, `isActive`) |
-| **EPGs** | `GET /api/node/class/fvAEPg.json?rsp-subtree=children&rsp-subtree-class=fvRsPathAtt,fvRsBd,fvRsDomAtt,fvRsProv,fvRsCons` (EPGs + BD/domain/contract relations + static path bindings) | `POST /api/epgs/resync` | `EpgSnapshot` (tenant, app profile, BD, pcTag, preferred group, isolation, domains, provided/consumed contracts) + `EpgPathBinding` (pod, node, port, path type, encap, mode) — bulk-replaced each sync |
-| **Interface Health** | `GET /api/node/class/l1PhysIf.json?rsp-subtree=full&rsp-subtree-class=ethpmPhysIf,rmonIfIn,rmonIfOut,rmonDot3Stats,rmonEtherStats` | `POST /api/interfaces/resync` | `InterfaceSnapshot` (admin/oper state, speed, usage) + `InterfaceSample` (rx/tx bytes, pkts, errors, discards, CRC/align errors, plus per-sync deltas) |
-| **Faults** | `GET /api/node/class/faultInst.json` | `POST /api/faults/resync` | `FaultSnapshot` (code, severity, domain, cause, affected DN, ack, lifecycle: active/cleared) + `FaultCountSample` (counts by severity) |
-| **Health Scores** | `GET /api/node/class/fabricHealthTotal.json` (overall fabric), `GET /api/node/class/topSystem.json?rsp-subtree-include=health` (per-node), `GET /api/node/class/fvTenant.json?rsp-subtree-include=health` (per-tenant) | `POST /api/health-scores/resync` | `HealthScoreSnapshot` (score, time-window score, previous score, scope, max severity) + `HealthScoreSample` (overall, worst, degraded count) |
-| **Nodes** | `GET /api/node/class/fabricNode.json` (inventory), `GET /api/node/class/topSystem.json` (state/uptime/mgmt addr), `GET /api/node/class/eqptPsu.json` (PSUs), `GET /api/node/class/eqptFan.json` (fans) | `POST /api/nodes/resync` | `NodeSnapshot` (role, model, serial, version, fabric state, uptime) + `HardwareComponent` (PSU/fan oper state + health) + `NodeStatusSample` (nodes total/online, components total/failed) |
-| **History** | _none_ — read-only view of sync and admin activity | _(reads only)_ | `AuditLog` |
-| **APIC Hosts** | _none_ — `aaaLogin` test on save | _(CRUD)_ | `ApicHost` (name, host, last-sync timestamps per feature) |
+| Page                 | APIC class endpoint(s) queried                                                                                                                                                                                         | Resync route                     | Stored in                                                                                                                                                                                               |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Dashboard**        | _none directly_ — aggregates the snapshot/sample tables below                                                                                                                                                          | _(reads only)_                   | reads `FaultCountSample`, `HealthScoreSample`, `NodeStatusSample`, `Endpoint`, `InterfaceSnapshot`                                                                                                      |
+| **Endpoints**        | `GET /api/node/class/fvCEp.json?rsp-subtree=children&rsp-subtree-class=fvIp` (endpoints + IPs), `GET /api/node/class/fvAEPg.json` (EPG descriptions)                                                                   | `POST /api/endpoints/resync`     | `Endpoint` (`mac`, `ip`, `vlan`, `dn`, `node`, `interface`, `epgDescr`, `isActive`)                                                                                                                     |
+| **EPGs**             | `GET /api/node/class/fvAEPg.json?rsp-subtree=children&rsp-subtree-class=fvRsPathAtt,fvRsBd,fvRsDomAtt,fvRsProv,fvRsCons` (EPGs + BD/domain/contract relations + static path bindings)                                  | `POST /api/epgs/resync`          | `EpgSnapshot` (tenant, app profile, BD, pcTag, preferred group, isolation, domains, provided/consumed contracts) + `EpgPathBinding` (pod, node, port, path type, encap, mode) — bulk-replaced each sync |
+| **Interface Health** | `GET /api/node/class/l1PhysIf.json?rsp-subtree=full&rsp-subtree-class=ethpmPhysIf,rmonIfIn,rmonIfOut,rmonDot3Stats,rmonEtherStats`                                                                                     | `POST /api/interfaces/resync`    | `InterfaceSnapshot` (admin/oper state, speed, usage) + `InterfaceSample` (rx/tx bytes, pkts, errors, discards, CRC/align errors, plus per-sync deltas)                                                  |
+| **Faults**           | `GET /api/node/class/faultInst.json`                                                                                                                                                                                   | `POST /api/faults/resync`        | `FaultSnapshot` (code, severity, domain, cause, affected DN, ack, lifecycle: active/cleared) + `FaultCountSample` (counts by severity)                                                                  |
+| **Health Scores**    | `GET /api/node/class/fabricHealthTotal.json` (overall fabric), `GET /api/node/class/topSystem.json?rsp-subtree-include=health` (per-node), `GET /api/node/class/fvTenant.json?rsp-subtree-include=health` (per-tenant) | `POST /api/health-scores/resync` | `HealthScoreSnapshot` (score, time-window score, previous score, scope, max severity) + `HealthScoreSample` (overall, worst, degraded count)                                                            |
+| **Nodes**            | `GET /api/node/class/fabricNode.json` (inventory), `GET /api/node/class/topSystem.json` (state/uptime/mgmt addr), `GET /api/node/class/eqptPsu.json` (PSUs), `GET /api/node/class/eqptFan.json` (fans)                 | `POST /api/nodes/resync`         | `NodeSnapshot` (role, model, serial, version, fabric state, uptime) + `HardwareComponent` (PSU/fan oper state + health) + `NodeStatusSample` (nodes total/online, components total/failed)              |
+| **History**          | _none_ — read-only view of sync and admin activity                                                                                                                                                                     | _(reads only)_                   | `AuditLog`                                                                                                                                                                                              |
+| **APIC Hosts**       | _none_ — `aaaLogin` test on save                                                                                                                                                                                       | _(CRUD)_                         | `ApicHost` (name, host, last-sync timestamps per feature)                                                                                                                                               |
 
 All monitoring queries use the read-only `GET /api/node/class/<class>.json` form of the APIC REST API; the provisioning routes below use `GET`/`POST`/`DELETE` against `/api/node/mo/<dn>.json`.
 
@@ -347,46 +349,46 @@ Browser → Next.js API routes (proxy) → Cisco APIC
 
 All APIC traffic is proxied through Next.js route handlers to avoid CORS. The APIC session token is held in React state — never stored in cookies or localStorage.
 
-| Route | Purpose |
-|---|---|
-| `POST /api/apic/connect` | Authenticate, return session token |
-| `POST /api/apic/validate` | Validate static port rows against APIC |
-| `POST /api/apic/deploy` | Deploy static port rows |
-| `POST /api/apic/validate-rollback` | Check which static port rows exist |
-| `POST /api/apic/rollback` | Remove static port bindings |
-| `POST /api/apic/interface-selectors/validate` | Validate selector rows against APIC |
-| `POST /api/apic/interface-selectors/deploy` | Deploy interface selectors |
-| `POST /api/apic/interface-selectors/validate-rollback` | Check which selectors exist |
-| `POST /api/apic/interface-selectors/rollback` | Remove interface selectors |
-| `POST /api/apic/bridge-domains/l2/validate` | Validate L2-only Bridge Domain rows |
-| `POST /api/apic/bridge-domains/l2/deploy` | Deploy L2-only Bridge Domains |
-| `POST /api/apic/bridge-domains/l2/validate-rollback` | Check which L2-only Bridge Domains exist and match rollback intent |
-| `POST /api/apic/bridge-domains/l2/rollback` | Remove L2-only Bridge Domains |
-| `POST /api/apic/bridge-domains/l3/validate` | Validate L3 Bridge Domain rows |
-| `POST /api/apic/bridge-domains/l3/deploy` | Deploy L3 Bridge Domains, subnets, and L3Out attachment |
-| `POST /api/apic/bridge-domains/l3/validate-rollback` | Check which L3 Bridge Domains exist and match rollback intent |
-| `POST /api/apic/bridge-domains/l3/rollback` | Remove L3 Bridge Domains |
-| `POST /api/apic/bridge-domains/epgs/validate` | Validate EPG rows, Bridge Domain binding, and optional contracts |
-| `POST /api/apic/bridge-domains/epgs/deploy` | Deploy EPGs and attach consumed/provided contracts |
-| `POST /api/apic/bridge-domains/epgs/rollback/validate` | Check which EPGs or contract relations can be removed |
-| `POST /api/apic/bridge-domains/epgs/rollback` | Delete EPGs or remove selected consumed/provided contract relations |
+| Route                                                  | Purpose                                                             |
+| ------------------------------------------------------ | ------------------------------------------------------------------- |
+| `POST /api/apic/connect`                               | Authenticate, return session token                                  |
+| `POST /api/apic/validate`                              | Validate static port rows against APIC                              |
+| `POST /api/apic/deploy`                                | Deploy static port rows                                             |
+| `POST /api/apic/validate-rollback`                     | Check which static port rows exist                                  |
+| `POST /api/apic/rollback`                              | Remove static port bindings                                         |
+| `POST /api/apic/interface-selectors/validate`          | Validate selector rows against APIC                                 |
+| `POST /api/apic/interface-selectors/deploy`            | Deploy interface selectors                                          |
+| `POST /api/apic/interface-selectors/validate-rollback` | Check which selectors exist                                         |
+| `POST /api/apic/interface-selectors/rollback`          | Remove interface selectors                                          |
+| `POST /api/apic/bridge-domains/l2/validate`            | Validate L2-only Bridge Domain rows                                 |
+| `POST /api/apic/bridge-domains/l2/deploy`              | Deploy L2-only Bridge Domains                                       |
+| `POST /api/apic/bridge-domains/l2/validate-rollback`   | Check which L2-only Bridge Domains exist and match rollback intent  |
+| `POST /api/apic/bridge-domains/l2/rollback`            | Remove L2-only Bridge Domains                                       |
+| `POST /api/apic/bridge-domains/l3/validate`            | Validate L3 Bridge Domain rows                                      |
+| `POST /api/apic/bridge-domains/l3/deploy`              | Deploy L3 Bridge Domains, subnets, and L3Out attachment             |
+| `POST /api/apic/bridge-domains/l3/validate-rollback`   | Check which L3 Bridge Domains exist and match rollback intent       |
+| `POST /api/apic/bridge-domains/l3/rollback`            | Remove L3 Bridge Domains                                            |
+| `POST /api/apic/bridge-domains/epgs/validate`          | Validate EPG rows, Bridge Domain binding, and optional contracts    |
+| `POST /api/apic/bridge-domains/epgs/deploy`            | Deploy EPGs and attach consumed/provided contracts                  |
+| `POST /api/apic/bridge-domains/epgs/rollback/validate` | Check which EPGs or contract relations can be removed               |
+| `POST /api/apic/bridge-domains/epgs/rollback`          | Delete EPGs or remove selected consumed/provided contract relations |
 
 ### Monitoring / sync routes
 
 These handlers query read-only APIC classes and persist the results (see [Monitoring & Health Checks](#monitoring--health-checks)).
 
-| Route | Purpose |
-|---|---|
-| `POST /api/endpoints/resync` | Pull endpoints (`fvCEp`/`fvAEPg`) and upsert the `Endpoint` table |
-| `POST /api/epgs/resync` | Pull `fvAEPg` (with BD/domain/contract relations and static path bindings) and bulk-replace `EpgSnapshot` / `EpgPathBinding` |
-| `POST /api/interfaces/resync` | Pull `l1PhysIf` + rmon counters into `InterfaceSnapshot` / `InterfaceSample` |
-| `POST /api/faults/resync` | Pull `faultInst` into `FaultSnapshot` / `FaultCountSample` |
-| `POST /api/health-scores/resync` | Pull fabric/node/tenant health into `HealthScoreSnapshot` / `HealthScoreSample` |
-| `POST /api/nodes/resync` | Pull `fabricNode`/`topSystem`/`eqptPsu`/`eqptFan` into `NodeSnapshot` / `HardwareComponent` / `NodeStatusSample` |
-| `POST /api/cron/resync` | Scheduler entry point — runs all syncs for the supplied hosts (Bearer `SCHEDULER_TOKEN`) |
-| `POST /api/endpoints/export` | Excel (`.xlsx`) export of the stored endpoints, honouring the active filters and grouped by node or VLAN |
-| `POST /api/epgs/export` | Excel (`.xlsx`) export of the stored EPGs, grouped by EPG or by port |
-| `POST /api/interfaces/export` | CSV export of the stored interface samples |
+| Route                            | Purpose                                                                                                                      |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `POST /api/endpoints/resync`     | Pull endpoints (`fvCEp`/`fvAEPg`) and upsert the `Endpoint` table                                                            |
+| `POST /api/epgs/resync`          | Pull `fvAEPg` (with BD/domain/contract relations and static path bindings) and bulk-replace `EpgSnapshot` / `EpgPathBinding` |
+| `POST /api/interfaces/resync`    | Pull `l1PhysIf` + rmon counters into `InterfaceSnapshot` / `InterfaceSample`                                                 |
+| `POST /api/faults/resync`        | Pull `faultInst` into `FaultSnapshot` / `FaultCountSample`                                                                   |
+| `POST /api/health-scores/resync` | Pull fabric/node/tenant health into `HealthScoreSnapshot` / `HealthScoreSample`                                              |
+| `POST /api/nodes/resync`         | Pull `fabricNode`/`topSystem`/`eqptPsu`/`eqptFan` into `NodeSnapshot` / `HardwareComponent` / `NodeStatusSample`             |
+| `POST /api/cron/resync`          | Scheduler entry point — runs all syncs for the supplied hosts (Bearer `SCHEDULER_TOKEN`)                                     |
+| `POST /api/endpoints/export`     | Excel (`.xlsx`) export of the stored endpoints, honouring the active filters and grouped by node or VLAN                     |
+| `POST /api/epgs/export`          | Excel (`.xlsx`) export of the stored EPGs, grouped by EPG or by port                                                         |
+| `POST /api/interfaces/export`    | CSV export of the stored interface samples                                                                                   |
 
 ## Running Tests
 
@@ -402,3 +404,5 @@ Tests cover path construction, CSV validation, and the parallel runner.
 - The EPG workflow creates EPGs and binds them to existing Bridge Domains; static port binding still expects the target EPG to exist first
 - For static ports, the EPG must have a **physical domain attached** with the target VLANs in its VLAN pool
 - APIC session tokens expire after **600 seconds** (10 minutes) by default — reconnect if validation or deploy starts returning 401 errors
+
+## CI
