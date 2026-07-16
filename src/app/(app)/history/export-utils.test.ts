@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'bun:test'
-import { buildHistoryPayloadCsvExport } from './export-utils'
+import {
+  buildHistoryPayloadCsvExport,
+  buildHistoryPayloadSummary,
+  formatHistoryPayloadSummary,
+} from './export-utils'
 
 const createdAt = new Date('2026-07-15T10:36:19.000Z')
 
@@ -162,5 +166,89 @@ describe('buildHistoryPayloadCsvExport', () => {
     },
   ])('does not export an unsupported or malformed history payload %#', input => {
     expect(buildHistoryPayloadCsvExport({ ...input, createdAt })).toBeNull()
+  })
+})
+
+describe('buildHistoryPayloadSummary', () => {
+  it('counts Static Port EPGs by tenant, application profile, and EPG', () => {
+    const summary = buildHistoryPayloadSummary({
+      action: 'deploy',
+      target: 'static-ports @ apic.example',
+      payload: [
+        { tenant: 'TenantA', ap: 'APP-A', epg: 'WEB', interface_or_ipg: 'eth1/1' },
+        { tenant: 'TenantA', ap: 'APP-A', epg: 'WEB', interface_or_ipg: 'eth1/2' },
+        { tenant: 'TenantA', ap: 'APP-B', epg: 'WEB', interface_or_ipg: 'eth1/3' },
+        { tenant: 'TenantB', ap: 'APP-A', epg: 'WEB', interface_or_ipg: 'eth1/4' },
+      ],
+    })
+
+    expect(summary).toEqual({ rowCount: 4, uniqueCount: 3, objectLabel: 'EPG' })
+    expect(formatHistoryPayloadSummary(summary!)).toBe('4 rows · 3 unique EPGs in payload')
+  })
+
+  it.each([
+    {
+      target: 'bridge-domains:l2 @ apic.example',
+      payload: [
+        { tenant: 'TenantA', bd: 'BD-A' },
+        { tenant: 'TenantA', bd: 'BD-A' },
+        { tenant: 'TenantB', bd: 'BD-A' },
+      ],
+      expected: { rowCount: 3, uniqueCount: 2, objectLabel: 'bridge domain' as const },
+    },
+    {
+      target: 'bridge-domains:l3 @ apic.example',
+      payload: [{ tenant: 'TenantA', bd: 'BD-A' }],
+      expected: { rowCount: 1, uniqueCount: 1, objectLabel: 'bridge domain' as const },
+    },
+    {
+      target: 'epg @ apic.example',
+      payload: [
+        { tenant: 'TenantA', anp: 'APP-A', epg: 'WEB' },
+        { tenant: 'TenantA', anp: 'APP-A', epg: 'WEB' },
+        { tenant: 'TenantA', anp: 'APP-A', epg: 'DB' },
+      ],
+      expected: { rowCount: 3, uniqueCount: 2, objectLabel: 'EPG' as const },
+    },
+    {
+      target: 'epg:provider @ apic.example',
+      payload: [
+        { tenant: 'TenantA', anp: 'APP-A', epg: 'WEB', contract: 'DNS' },
+        { tenant: 'TenantA', anp: 'APP-A', epg: 'WEB', contract: 'NTP' },
+      ],
+      expected: { rowCount: 2, uniqueCount: 1, objectLabel: 'EPG' as const },
+    },
+    {
+      target: 'interface-selectors @ apic.example',
+      payload: [
+        { interface_profile: 'leaf101', selector_name: 'eth1-1' },
+        { interface_profile: 'leaf101', selector_name: 'eth1-1' },
+        { interface_profile: 'leaf102', selector_name: 'eth1-1' },
+      ],
+      expected: { rowCount: 3, uniqueCount: 2, objectLabel: 'interface selector' as const },
+    },
+  ])('summarizes unique objects for $target', ({ target, payload, expected }) => {
+    expect(buildHistoryPayloadSummary({ action: 'rollback', target, payload })).toEqual(expected)
+  })
+
+  it('formats singular row and object grammar', () => {
+    expect(formatHistoryPayloadSummary({
+      rowCount: 1,
+      uniqueCount: 1,
+      objectLabel: 'bridge domain',
+    })).toBe('1 row · 1 unique bridge domain in payload')
+  })
+
+  it('does not summarize unsupported or malformed payloads', () => {
+    expect(buildHistoryPayloadSummary({
+      action: 'resync.nodes',
+      target: 'static-ports @ apic.example',
+      payload: [{ tenant: 'TenantA', ap: 'APP-A', epg: 'WEB' }],
+    })).toBeNull()
+    expect(buildHistoryPayloadSummary({
+      action: 'deploy',
+      target: 'static-ports @ apic.example',
+      payload: [],
+    })).toBeNull()
   })
 })

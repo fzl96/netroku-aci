@@ -1,10 +1,10 @@
-# History Payload CSV Export Implementation Plan
+# History Payload CSV Export and Summary Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a History-row action that downloads Deploy and Rollback payloads in each originating workflow's canonical CSV upload format.
+**Goal:** Add History payload summaries and a row action that downloads Deploy and Rollback payloads in each originating workflow's canonical CSV upload format.
 
-**Architecture:** A pure `export-utils.ts` module identifies the audit workflow from `target`, maps stored payload rows into explicit upload columns, serializes them with Papa Parse, and returns CSV text plus a filename. `HistoryClient.tsx` renders the action only when that helper confirms the entry is exportable and performs a browser Blob download.
+**Architecture:** A pure `export-utils.ts` module identifies the audit workflow from `target`, derives workflow-scoped unique-object summaries, maps stored payload rows into explicit upload columns, serializes them with Papa Parse, and returns CSV text plus a filename. `HistoryClient.tsx` renders the summary and action only when the helper confirms the entry is supported, and performs a browser Blob download.
 
 **Tech Stack:** TypeScript, React 19, Next.js 16, Papa Parse, Bun test, Tabler Icons
 
@@ -15,6 +15,7 @@
 - Preserve the existing expanded JSON payload.
 - Do not add an API route or database change.
 - Do not render an export action for empty, malformed, or unsupported payloads.
+- Count unique workflow objects by their parent-scoped identity and describe them neutrally as objects `in payload`.
 
 ---
 
@@ -199,3 +200,80 @@ Expected: exits 0 and Next.js reports a successful production build.
 Run: `git status --short && git log -3 --oneline`
 
 Expected: only intentional plan/spec or implementation state is present, and the feature commits are visible.
+
+### Task 4: Workflow-aware payload summary
+
+**Files:**
+- Modify: `src/app/(app)/history/export-utils.ts`
+- Modify: `src/app/(app)/history/export-utils.test.ts`
+- Modify: `src/app/(app)/history/HistoryClient.tsx`
+
+**Interfaces:**
+- Consumes: the same action, target, and validated payload rows used by `buildHistoryPayloadCsvExport`.
+- Produces: `buildHistoryPayloadSummary(input): HistoryPayloadSummary | null`, where the summary contains a row count, unique-object count, and a display label.
+
+- [ ] **Step 1: Write failing summary tests**
+
+Add tests proving that repeated Static Port rows sharing `tenant + ap + epg` count as one EPG, while equal EPG names under different tenants or application profiles count separately. Add table-driven assertions for Bridge Domain (`tenant + bd`), EPG (`tenant + anp + epg`), and Interface Selector (`interface_profile + selector_name`) targets.
+
+```ts
+expect(buildHistoryPayloadSummary({
+  action: 'deploy',
+  target: 'static-ports @ apic.example',
+  payload: [
+    { tenant: 'TenantA', ap: 'APP-A', epg: 'WEB', interface_or_ipg: 'eth1/1' },
+    { tenant: 'TenantA', ap: 'APP-A', epg: 'WEB', interface_or_ipg: 'eth1/2' },
+  ],
+})).toEqual({
+  rowCount: 2,
+  uniqueCount: 1,
+  objectLabel: 'EPG',
+})
+```
+
+- [ ] **Step 2: Run the focused test and verify RED**
+
+Run: `bun test 'src/app/(app)/history/export-utils.test.ts'`
+
+Expected: FAIL because `buildHistoryPayloadSummary` is not exported.
+
+- [ ] **Step 3: Implement the minimal summary builder**
+
+Extend each workflow configuration with an `identity(row)` function and singular `objectLabel`. Reuse the exporter's action, workflow, non-empty-array, and plain-object eligibility rules. Return:
+
+```ts
+export type HistoryPayloadSummary = {
+  rowCount: number
+  uniqueCount: number
+  objectLabel: 'EPG' | 'bridge domain' | 'interface selector'
+}
+```
+
+Static Ports use `tenant + ap + epg`; both Bridge Domain targets use `tenant + bd`; all EPG targets use `tenant + anp + epg`; Interface Selectors use `interface_profile + selector_name`.
+
+- [ ] **Step 4: Run the focused test and verify GREEN**
+
+Run: `bun test 'src/app/(app)/history/export-utils.test.ts'`
+
+Expected: all summary and CSV tests pass with zero failures.
+
+- [ ] **Step 5: Add the summary to the expanded History panel**
+
+Calculate the summary alongside `csvExport`. Replace the export-only toolbar with a left/right toolbar: summary text on the left and **Export CSV** on the right. Render `<row count> row(s) · <unique count> unique <object label(s)> in payload`, applying `s` only when the corresponding count is not one. Keep the JSON `<pre>` unchanged.
+
+- [ ] **Step 6: Verify and commit**
+
+Run:
+
+```bash
+bun test 'src/app/(app)/history/export-utils.test.ts'
+bunx eslint 'src/app/(app)/history/HistoryClient.tsx' 'src/app/(app)/history/export-utils.ts' 'src/app/(app)/history/export-utils.test.ts'
+bun run build
+```
+
+Expected: all focused tests and changed-file lint pass, and the production build exits 0.
+
+```bash
+git add 'src/app/(app)/history/HistoryClient.tsx' 'src/app/(app)/history/export-utils.ts' 'src/app/(app)/history/export-utils.test.ts'
+git commit -m "feat: summarize history payload objects"
+```

@@ -1,8 +1,8 @@
-# History Payload CSV Export
+# History Payload CSV Export and Summary
 
 ## Goal
 
-Allow users to download the submitted CSV rows stored in Deploy and Rollback history entries. The downloaded file must recreate the originating workflow's upload format rather than expose internal parsed-row fields.
+Allow users to inspect and download the submitted CSV rows stored in Deploy and Rollback history entries. The panel must summarize unique workflow objects in the payload, and the downloaded file must recreate the originating workflow's upload format rather than expose internal parsed-row fields.
 
 ## User Experience
 
@@ -11,6 +11,8 @@ Allow users to download the submitted CSV rows stored in Deploy and Rollback his
 - Use a descriptive filename containing the workflow, action, and audit date, for example `static-ports-deploy-2026-07-15.csv`.
 - Keep the existing JSON payload visible and unchanged.
 - Do not show the export button for non-array payloads, empty arrays, non-Deploy/Rollback actions, or payloads whose workflow cannot be identified.
+- For supported payloads, show a compact summary above the JSON with the total row count and unique object count, while keeping **Export CSV** aligned on the right.
+- Use neutral wording such as `54 unique EPGs in payload`. Audit history does not store per-row results, so this remains accurate for successful, partial, and failed operations.
 
 ## Architecture
 
@@ -19,6 +21,17 @@ Implement a pure client-side export module next to the History UI. It accepts an
 `HistoryClient` remains responsible only for rendering and triggering the browser download. It will use a Blob, object URL, and temporary anchor, then revoke the object URL.
 
 No API route or database change is required because the complete audited payload is already authorized and loaded by the History page.
+
+## Payload Summary
+
+The same pure client-side module will derive a summary from supported non-empty payload arrays. Object identities are scoped by their parent objects so equal names in different tenants or profiles are not merged.
+
+- Static Ports: count unique `tenant + ap + epg` identities and label them `unique EPGs`.
+- Bridge Domains L2/L3: count unique `tenant + bd` identities and label them `unique bridge domains`.
+- EPG and EPG consumer/provider workflows: count unique `tenant + anp + epg` identities and label them `unique EPGs`.
+- Interface Selectors: count unique `interface_profile + selector_name` identities and label them `unique interface selectors`.
+
+The visible format is `<row count> rows · <unique count> <object label> in payload`, with singular grammar for one row or one object. Malformed, empty, non-Deploy/Rollback, or unsupported payloads have no summary.
 
 ## Workflow Mappings
 
@@ -47,5 +60,8 @@ Add focused unit tests before implementation that verify:
 - L2, L3, and contract workflow targets select their correct mappings.
 - Deploy and Rollback filenames include the workflow, action, and date.
 - Unsupported actions, targets, and malformed payloads produce no export.
+- Static Port rows with repeated bindings for one tenant/application/EPG produce one unique EPG.
+- Same-named EPGs or bridge domains under different parents remain distinct.
+- Each supported workflow receives the correct object label and singular/plural grammar.
 
 After implementation, run the focused tests, the full test suite, lint, and production build. Verify the History interaction in the in-app browser when a runnable local environment and representative audit data are available.
