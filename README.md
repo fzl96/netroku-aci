@@ -404,5 +404,3 @@ Tests cover path construction, CSV validation, and the parallel runner.
 - The EPG workflow creates EPGs and binds them to existing Bridge Domains; static port binding still expects the target EPG to exist first
 - For static ports, the EPG must have a **physical domain attached** with the target VLANs in its VLAN pool
 - APIC session tokens expire after **600 seconds** (10 minutes) by default — reconnect if validation or deploy starts returning 401 errors
-
-## CI
