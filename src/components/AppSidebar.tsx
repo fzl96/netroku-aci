@@ -232,7 +232,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function AppSidebar({ role }: { role: 'admin' | 'member' }) {
+export function AppSidebar({ role }: { role: "admin" | "member" }) {
   const pathname = usePathname();
   const router = useRouter();
   const { setTheme } = useTheme();
@@ -240,10 +240,10 @@ export function AppSidebar({ role }: { role: 'admin' | 'member' }) {
   const [logoutOpen, setLogoutOpen] = useState(false);
   const apicHosts = useApicHosts();
   const defaultApicId = apicHosts[0]?.id;
-  const nav = NAV.map(section => ({
+  const nav = NAV.map((section) => ({
     ...section,
-    items: section.items.filter(item => !item.adminOnly || role === 'admin'),
-  })).filter(section => section.items.length > 0);
+    items: section.items.filter((item) => !item.adminOnly || role === "admin"),
+  })).filter((section) => section.items.length > 0);
 
   function isActive(href?: string) {
     if (!href) return false;
@@ -335,27 +335,31 @@ export function AppSidebar({ role }: { role: 'admin' | 'member' }) {
     <Sidebar>
       <SidebarHeader className="h-16 flex-row items-center border-b border-sidebar-border/60 px-3 py-0">
         <div className="flex items-center gap-3">
-          <Image
-            src="/brand-icon.png"
-            alt=""
-            width={36}
-            height={36}
-            aria-hidden
-            className="h-9 w-9 shrink-0"
-          />
-          <div className="min-w-0">
-            <p className="text-[12.5px] font-semibold leading-none tracking-tight text-sidebar-foreground">
-              Netroku ACI
-            </p>
-            <p className="mt-[5px] text-[10px] leading-none text-sidebar-foreground/55"></p>
-          </div>
+          <Link href="/">
+            <Image
+              src="/brand-icon.png"
+              alt=""
+              width={36}
+              height={36}
+              aria-hidden
+              className="h-9 w-9 shrink-0"
+            />
+            <div className="min-w-0">
+              <p className="text-[12.5px] font-semibold leading-none tracking-tight text-sidebar-foreground">
+                Netroku ACI
+              </p>
+              <p className="mt-[5px] text-[10px] leading-none text-sidebar-foreground/55"></p>
+            </div>
+          </Link>
         </div>
       </SidebarHeader>
 
       <SidebarContent>
         {nav.map((section) => (
           <SidebarGroup key={section.group}>
-            {section.group && <SidebarGroupLabel>{section.group}</SidebarGroupLabel>}
+            {section.group && (
+              <SidebarGroupLabel>{section.group}</SidebarGroupLabel>
+            )}
             <SidebarMenu>
               {section.items.map((item) => {
                 const groupActive =
@@ -407,11 +411,19 @@ export function AppSidebar({ role }: { role: 'admin' | 'member' }) {
                         className="text-sidebar-foreground/75 hover:text-sidebar-foreground"
                       >
                         {item.icon}
-                        <span>{loggingOut ? "Logging out..." : item.label}</span>
+                        <span>
+                          {loggingOut ? "Logging out..." : item.label}
+                        </span>
                       </SidebarMenuButton>
                     ) : (
                       <SidebarMenuButton asChild isActive={groupActive}>
-                        <Link href={item.apicParam && defaultApicId ? `${item.href}?apic=${defaultApicId}` : (item.href ?? "/")}>
+                        <Link
+                          href={
+                            item.apicParam && defaultApicId
+                              ? `${item.href}?apic=${defaultApicId}`
+                              : (item.href ?? "/")
+                          }
+                        >
                           {item.icon}
                           <span>{item.label}</span>
                         </Link>
