@@ -102,8 +102,8 @@ describe('buildHistoryPayloadCsvExport', () => {
     })
 
     expect(result?.csv).toBe(
-      'tenant,anp,epg,bd,bd_tenant,contract_tenant,phys_domain,cons_contract,prov_contract,epg_desc\r\n' +
-      'TenantA,APP-A,WEB-EPG,BD-A,TenantA,common,phys-a,"DNS,NTP",WEB,',
+      'tenant,anp,epg,bd_tenant,bd,phys_domain,contract_tenant,cons_contract,prov_contract,epg_desc\r\n' +
+      'TenantA,APP-A,WEB-EPG,TenantA,BD-A,phys-a,common,"DNS,NTP",WEB,',
     )
   })
 
@@ -129,8 +129,8 @@ describe('buildHistoryPayloadCsvExport', () => {
     expect(result).toEqual({
       filename: `epg-${role}-rollback-2026-07-15.csv`,
       csv:
-        'tenant,anp,epg,bd,bd_tenant,contract_tenant,phys_domain,contract,epg_desc\r\n' +
-        'TenantA,APP-A,WEB-EPG,BD-A,TenantA,common,,DNS,',
+        'tenant,anp,epg,bd_tenant,bd,phys_domain,contract_tenant,contract,epg_desc\r\n' +
+        'TenantA,APP-A,WEB-EPG,TenantA,BD-A,,common,DNS,',
     })
   })
 

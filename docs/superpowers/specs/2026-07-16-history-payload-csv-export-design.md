@@ -28,8 +28,8 @@ The exporter will use explicit column mappings instead of JSON object key order.
 - Interface Selectors: `interface_profile,selector_name,port,ipg_name,ipg_type,description`
 - Bridge Domains L2: `tenant,bd,vrf,bd_desc`
 - Bridge Domains L3: `tenant,bd,vrf,subnet,l3out,bd_desc`
-- EPG: `tenant,anp,epg,bd,bd_tenant,contract_tenant,phys_domain,cons_contract,prov_contract,epg_desc`
-- EPG consumer/provider contract workflows: `tenant,anp,epg,bd,bd_tenant,contract_tenant,phys_domain,contract,epg_desc`
+- EPG: `tenant,anp,epg,bd_tenant,bd,phys_domain,contract_tenant,cons_contract,prov_contract,epg_desc`
+- EPG consumer/provider contract workflows: `tenant,anp,epg,bd_tenant,bd,phys_domain,contract_tenant,contract,epg_desc`
 
 Internal fields such as `rowIndex`, `card`, and `port_num` are never exported. Missing optional values and `null` values become empty cells. EPG `consContracts` and `provContracts` arrays become comma-separated `cons_contract` and `prov_contract` cell values. Papa Parse performs CSV escaping and serialization.
 

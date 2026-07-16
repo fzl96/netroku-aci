@@ -74,8 +74,8 @@ static-ports: tenant,ap,epg,vlan,node1,node2,port_type,interface_or_ipg,mode,imm
 interface-selectors: interface_profile,selector_name,port,ipg_name,ipg_type,description
 bridge-domains:l2: tenant,bd,vrf,bd_desc
 bridge-domains:l3: tenant,bd,vrf,subnet,l3out,bd_desc
-epg: tenant,anp,epg,bd,bd_tenant,contract_tenant,phys_domain,cons_contract,prov_contract,epg_desc
-epg:consumer and epg:provider: tenant,anp,epg,bd,bd_tenant,contract_tenant,phys_domain,contract,epg_desc
+epg: tenant,anp,epg,bd_tenant,bd,phys_domain,contract_tenant,cons_contract,prov_contract,epg_desc
+epg:consumer and epg:provider: tenant,anp,epg,bd_tenant,bd,phys_domain,contract_tenant,contract,epg_desc
 ```
 
 Return `null` unless the action is Deploy/Rollback, the target prefix is supported, and payload is a non-empty array of non-null non-array objects.
