@@ -87,6 +87,16 @@ export function sortPortRows(rows: EndpointPortSummary[], key: PortSortKey, dire
   return stableSort(rows, direction, (a, b) => compareValues(portValue(a, key), portValue(b, key)))
 }
 
+export function nextSortState<K extends string>(
+  currentKey: K | undefined,
+  currentDirection: SortDirection | undefined,
+  nextKey: K,
+): { key: K; direction: SortDirection } {
+  return currentKey === nextKey && currentDirection === 'asc'
+    ? { key: nextKey, direction: 'desc' }
+    : { key: nextKey, direction: 'asc' }
+}
+
 /** Group endpoints into unique ports (node + interface) and natural sort by node then interface. */
 export function groupEndpointsByPort(endpoints: Endpoint[]): EndpointPortSummary[] {
   const map = new Map<string, EndpointPortSummary>()

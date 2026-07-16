@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import type { Endpoint } from '@prisma/client'
-import { groupEndpointsByPort, sortEndpointRows, sortPortRows } from './sort'
+import { groupEndpointsByPort, nextSortState, sortEndpointRows, sortPortRows } from './sort'
 
 function endpoint(overrides: Partial<Endpoint> = {}): Endpoint {
   return {
@@ -74,5 +74,13 @@ describe('sortPortRows', () => {
 
     expect(sortPortRows(rows, 'interface', 'asc').map(row => row.interface)).toEqual(['eth1/2', 'eth1/10'])
     expect(sortPortRows(rows, 'endpointCount', 'desc').map(row => row.interface)).toEqual(['eth1/2', 'eth1/10'])
+  })
+})
+
+describe('nextSortState', () => {
+  it('starts new columns ascending and toggles the active column direction', () => {
+    expect(nextSortState(undefined, undefined, 'mac')).toEqual({ key: 'mac', direction: 'asc' })
+    expect(nextSortState('mac', 'asc', 'mac')).toEqual({ key: 'mac', direction: 'desc' })
+    expect(nextSortState('mac', 'desc', 'node')).toEqual({ key: 'node', direction: 'asc' })
   })
 })
