@@ -4,6 +4,7 @@ import { Fragment, useMemo, useState } from 'react'
 import {
   IconChevronLeft,
   IconChevronRight,
+  IconDownload,
   IconHistory,
   IconSearch,
 } from '@tabler/icons-react'
@@ -14,6 +15,7 @@ import {
   SEARCH_INPUT_CLS,
   TABLE_SCROLL_CLS,
 } from '@/lib/ui-classes'
+import { buildHistoryPayloadCsvExport } from './export-utils'
 
 const PAGE_SIZE = 20
 
@@ -194,6 +196,12 @@ export function HistoryClient({ initialLogs }: { initialLogs: AuditLogEntry[] })
                     const hasPayload = log.payload != null
                     const isOpen = expanded.has(log.id)
                     const when = new Date(log.createdAt)
+                    const csvExport = buildHistoryPayloadCsvExport({
+                      action: log.action,
+                      target: log.target,
+                      payload: log.payload,
+                      createdAt: when,
+                    })
                     return (
                       <Fragment key={log.id}>
                         <tr
@@ -247,6 +255,31 @@ export function HistoryClient({ initialLogs }: { initialLogs: AuditLogEntry[] })
                         {hasPayload && isOpen && (
                           <tr className="border-b border-border-faint bg-muted/40">
                             <td colSpan={6} className="px-4 py-3">
+                              {csvExport && (
+                                <div className="mb-2 flex justify-end">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const blob = new Blob([csvExport.csv], {
+                                        type: 'text/csv;charset=utf-8',
+                                      })
+                                      const url = URL.createObjectURL(blob)
+                                      const link = document.createElement('a')
+                                      link.href = url
+                                      link.download = csvExport.filename
+                                      document.body.appendChild(link)
+                                      link.click()
+                                      link.remove()
+                                      URL.revokeObjectURL(url)
+                                    }}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                    title="Export this payload in its original CSV format"
+                                  >
+                                    <IconDownload size={13} stroke={1.75} />
+                                    Export CSV
+                                  </button>
+                                </div>
+                              )}
                               <pre className="max-h-80 overflow-auto rounded-lg border border-border bg-background p-3 text-[11px] leading-relaxed text-foreground">
                                 {JSON.stringify(log.payload, null, 2)}
                               </pre>

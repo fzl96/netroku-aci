@@ -118,8 +118,17 @@ export function buildHistoryPayloadCsvExport(input: {
   payload: unknown
   createdAt: Date | string
 }): HistoryPayloadCsvExport | null {
+  if (input.action !== 'deploy' && input.action !== 'rollback') return null
+
   const workflow = workflowFromTarget(input.target)
-  if (!workflow || !Array.isArray(input.payload)) return null
+  if (
+    !workflow ||
+    !Array.isArray(input.payload) ||
+    input.payload.length === 0 ||
+    !input.payload.every(row => typeof row === 'object' && row !== null && !Array.isArray(row))
+  ) {
+    return null
+  }
 
   const rows = input.payload as PayloadRow[]
   const fields = workflow.columns.map(column => column.header)

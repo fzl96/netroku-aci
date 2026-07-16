@@ -133,4 +133,34 @@ describe('buildHistoryPayloadCsvExport', () => {
         'TenantA,APP-A,WEB-EPG,BD-A,TenantA,common,,DNS,',
     })
   })
+
+  it.each([
+    {
+      action: 'resync.nodes',
+      target: 'static-ports @ apic.example',
+      payload: [{ tenant: 'TenantA' }],
+    },
+    {
+      action: 'deploy',
+      target: 'unknown-workflow @ apic.example',
+      payload: [{ tenant: 'TenantA' }],
+    },
+    {
+      action: 'deploy',
+      target: 'static-ports @ apic.example',
+      payload: [],
+    },
+    {
+      action: 'deploy',
+      target: 'static-ports @ apic.example',
+      payload: 'not an array',
+    },
+    {
+      action: 'rollback',
+      target: 'static-ports @ apic.example',
+      payload: [{ tenant: 'TenantA' }, 42],
+    },
+  ])('does not export an unsupported or malformed history payload %#', input => {
+    expect(buildHistoryPayloadCsvExport({ ...input, createdAt })).toBeNull()
+  })
 })
