@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { IconRefresh, IconSearch, IconChevronLeft, IconChevronRight, IconServer, IconFilter2, IconLoader } from '@tabler/icons-react'
+import { IconRefresh, IconSearch, IconChevronLeft, IconChevronRight, IconChevronUp, IconChevronDown, IconServer, IconFilter2 } from '@tabler/icons-react'
 import { useApicHosts } from '@/components/ApicHostsProvider'
 import type { Endpoint } from '@prisma/client'
 import { countActiveEndpointFilterGroups, type EndpointStatusFilter } from '@/lib/endpoints/query'
@@ -30,7 +30,15 @@ import {
 import { FilterSubmenu } from '@/components/FilterSubmenu'
 import { ExportEndpointsDialog } from './ExportEndpointsDialog'
 import { PortDetailPanel } from './PortDetailPanel'
-import type { EndpointPortSummary } from './sort'
+import {
+  nextSortState,
+  sortEndpointRows,
+  sortPortRows,
+  type EndpointPortSummary,
+  type EndpointSortKey,
+  type PortSortKey,
+  type SortDirection,
+} from './sort'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -91,6 +99,57 @@ const PAGE_SIZE_OPTIONS: { label: string; value: PageSizeValue }[] = [
   { label: 'All', value: 'all' },
 ]
 
+const ENDPOINT_HEADERS: { label: string; key: EndpointSortKey }[] = [
+  { label: 'MAC', key: 'mac' },
+  { label: 'IP', key: 'ip' },
+  { label: 'VLAN', key: 'vlan' },
+  { label: 'Node', key: 'node' },
+  { label: 'Interface', key: 'interface' },
+  { label: 'EPG Description', key: 'epgDescr' },
+  { label: 'First Seen', key: 'firstSeenAt' },
+  { label: 'Last Seen', key: 'lastSeenAt' },
+  { label: 'Status', key: 'status' },
+]
+
+const PORT_HEADERS: { label: string; key: PortSortKey }[] = [
+  { label: 'Node', key: 'node' },
+  { label: 'Interface', key: 'interface' },
+  { label: 'Endpoints', key: 'endpointCount' },
+  { label: 'VLANs', key: 'vlans' },
+  { label: 'EPG Description', key: 'epgDescrs' },
+  { label: 'Last Seen', key: 'lastSeenAt' },
+]
+
+function SortableHeader<K extends string>({
+  label,
+  sortKey,
+  sort,
+  onSort,
+}: {
+  label: string
+  sortKey: K
+  sort: { key: K; direction: SortDirection } | null
+  onSort: (key: K) => void
+}) {
+  const active = sort?.key === sortKey
+  const direction = active ? sort.direction : undefined
+  const nextDirection = direction === 'asc' ? 'descending' : 'ascending'
+
+  return (
+    <th className={DENSE_TABLE_HEAD_CLS} aria-sort={direction === undefined ? 'none' : direction === 'asc' ? 'ascending' : 'descending'}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        aria-label={`Sort by ${label} ${nextDirection}`}
+        className="inline-flex items-center gap-1 -my-1 py-1 text-left hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded"
+      >
+        {label}
+        {active && (direction === 'asc' ? <IconChevronUp size={13} stroke={2} /> : <IconChevronDown size={13} stroke={2} />)}
+      </button>
+    </th>
+  )
+}
+
 interface Props {
   view: ViewValue
   endpoints: Endpoint[]
@@ -141,6 +200,8 @@ export function EndpointsClient({
   const [previousQuery, setPreviousQuery] = useState(query)
   const [jumpValue, setJumpValue] = useState('')
   const [selectedPort, setSelectedPort] = useState<EndpointPortSummary | null>(null)
+  const [endpointSort, setEndpointSort] = useState<{ key: EndpointSortKey; direction: SortDirection } | null>(null)
+  const [portSort, setPortSort] = useState<{ key: PortSortKey; direction: SortDirection } | null>(null)
 
   // Sync input when query changes via back/forward navigation.
   if (query !== previousQuery) {
@@ -162,6 +223,16 @@ export function EndpointsClient({
   const selectedHost = apicHosts.find(host => host.id === selectedHostId)
   const noun = view === 'endpoint' ? 'endpoints' : 'ports'
   const currentItemsCount = view === 'endpoint' ? endpoints.length : ports.length
+  const displayedEndpoints = endpointSort ? sortEndpointRows(endpoints, endpointSort.key, endpointSort.direction) : endpoints
+  const displayedPorts = portSort ? sortPortRows(ports, portSort.key, portSort.direction) : ports
+
+  function handleEndpointSort(key: EndpointSortKey) {
+    setEndpointSort(current => nextSortState(current?.key, current?.direction, key))
+  }
+
+  function handlePortSort(key: PortSortKey) {
+    setPortSort(current => nextSortState(current?.key, current?.direction, key))
+  }
 
   function buildUrl(overrides: { apic?: string; view?: ViewValue; query?: string; page?: number; pageSize?: PageSizeValue; vlan?: string[]; node?: string[]; iface?: string[]; status?: string[] }) {
     const params = new URLSearchParams()
@@ -474,17 +545,13 @@ export function EndpointsClient({
                   <table className="w-full text-xs">
                     <thead>
                       <tr>
-                        {(view === 'endpoint'
-                          ? ['MAC', 'IP', 'VLAN', 'Node', 'Interface', 'EPG Description', 'First Seen', 'Last Seen', 'Status']
-                          : ['Node', 'Interface', 'Endpoints', 'VLANs', 'EPG Description', 'Last Seen']
-                        ).map(h => (
-                          <th
-                            key={h}
-                            className={DENSE_TABLE_HEAD_CLS}
-                          >
-                            {h}
-                          </th>
-                        ))}
+                        {view === 'endpoint'
+                          ? ENDPOINT_HEADERS.map(header => (
+                            <SortableHeader key={header.key} label={header.label} sortKey={header.key} sort={endpointSort} onSort={handleEndpointSort} />
+                          ))
+                          : PORT_HEADERS.map(header => (
+                            <SortableHeader key={header.key} label={header.label} sortKey={header.key} sort={portSort} onSort={handlePortSort} />
+                          ))}
                       </tr>
                     </thead>
                     {isPending ? (
@@ -492,7 +559,7 @@ export function EndpointsClient({
                     ) : (
                       <tbody>
                         {view === 'endpoint' ? (
-                          endpoints.map((ep, index) => (
+                          displayedEndpoints.map((ep, index) => (
                             <tr
                               key={ep.id}
                               className="group border-b border-border-faint last:border-0 hover:bg-muted transition-colors duration-100 animate-fade-up"
@@ -510,7 +577,7 @@ export function EndpointsClient({
                             </tr>
                           ))
                         ) : (
-                          ports.map((port, index) => (
+                          displayedPorts.map((port, index) => (
                             <tr
                               key={port.id}
                               onClick={() => setSelectedPort(port)}
@@ -558,7 +625,7 @@ export function EndpointsClient({
                   )}
                 </div>
               ) : view === 'endpoint' ? (
-                endpoints.map(ep => (
+                displayedEndpoints.map(ep => (
                   <DataCard key={ep.id}>
                     <DataCardHeader trailing={<Badge active={ep.isActive} />}>
                       <DataCardTitle className="font-mono">{ep.mac}</DataCardTitle>
@@ -573,7 +640,7 @@ export function EndpointsClient({
                   </DataCard>
                 ))
               ) : (
-                ports.map(port => (
+                displayedPorts.map(port => (
                   <DataCard
                     key={port.id}
                     role="button"
