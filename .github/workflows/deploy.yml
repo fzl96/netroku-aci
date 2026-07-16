@@ -13,19 +13,6 @@ jobs:
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
 
-      - name: Debug SSH connectivity
-        continue-on-error: true
-        env:
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_USER: ${{ secrets.SERVER_USER }}
-          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
-        run: |
-          key_file="$(mktemp)"
-          trap 'rm -f "$key_file"' EXIT
-          printf '%s\n' "$SERVER_SSH_KEY" > "$key_file"
-          chmod 600 "$key_file"
-          timeout 35s ssh -vvv -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=25 -i "$key_file" "$SERVER_USER@$SERVER_HOST" exit
-
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
