@@ -15,7 +15,13 @@ describe('buildEndpointWhere', () => {
     })).toEqual({
       apicHostId: 'host-1',
       vlan: { in: ['vlan-100'] },
-      node: { in: ['101'] },
+      AND: [{
+        OR: [
+          { node: '101' },
+          { node: { startsWith: '101-' } },
+          { node: { endsWith: '-101' } },
+        ],
+      }],
       interface: { in: ['eth1/1'] },
       isActive: true,
     })

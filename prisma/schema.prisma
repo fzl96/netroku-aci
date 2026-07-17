@@ -103,16 +103,10 @@ model ApicHost {
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
   lastInterfaceSyncAt DateTime?
-  lastFaultSyncAt     DateTime?
-  lastHealthSyncAt    DateTime?
   lastNodeSyncAt      DateTime?
   lastEpgSyncAt       DateTime?
   endpoints           Endpoint[]
   interfaces          InterfaceSnapshot[]
-  faults              FaultSnapshot[]
-  faultCounts         FaultCountSample[]
-  healthScores        HealthScoreSnapshot[]
-  healthSamples       HealthScoreSample[]
   nodes               NodeSnapshot[]
   hardware            HardwareComponent[]
   nodeSamples         NodeStatusSample[]
@@ -207,87 +201,6 @@ model InterfaceSample {
   @@index([interfaceId, sampledAt])
   @@index([apicHostId, sampledAt])
   @@map("interface_sample")
-}
-
-model FaultSnapshot {
-  id             String    @id @default(cuid())
-  apicHostId     String
-  apicHost       ApicHost  @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
-  dn             String
-  code           String
-  severity       String
-  domain         String    @default("")
-  type           String    @default("")
-  cause          String    @default("")
-  affectedDn     String    @default("")
-  node           String?
-  descr          String    @default("")
-  ack            Boolean   @default(false)
-  created        DateTime?
-  lastTransition DateTime?
-  lifecycle      String    @default("active")
-  firstSeenAt    DateTime  @default(now())
-  lastSeenAt     DateTime  @default(now())
-  clearedAt      DateTime?
-
-  @@unique([apicHostId, dn])
-  @@index([apicHostId])
-  @@index([apicHostId, lifecycle])
-  @@index([apicHostId, lifecycle, severity], name: "fault_snapshot_host_lifecycle_severity_idx")
-  @@index([apicHostId, lifecycle, node], name: "fault_snapshot_host_lifecycle_node_idx")
-  @@map("fault_snapshot")
-}
-
-model FaultCountSample {
-  id         String   @id @default(cuid())
-  apicHostId String
-  apicHost   ApicHost @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
-  sampledAt  DateTime @default(now())
-
-  critical Int
-  major    Int
-  minor    Int
-  warning  Int
-  total    Int
-
-  @@index([apicHostId, sampledAt])
-  @@map("fault_count_sample")
-}
-
-model HealthScoreSnapshot {
-  id          String   @id @default(cuid())
-  apicHostId  String
-  apicHost    ApicHost @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
-  dn          String
-  scope       String
-  name        String   @default("")
-  node        String?
-  score       Int
-  twScore     Int?
-  prevScore   Int?
-  maxSeverity String?
-  present     Boolean  @default(true)
-  firstSeenAt DateTime @default(now())
-  lastSeenAt  DateTime @default(now())
-
-  @@unique([apicHostId, dn])
-  @@index([apicHostId])
-  @@index([apicHostId, scope])
-  @@index([apicHostId, present, scope, score], name: "health_score_snapshot_host_present_scope_score_idx")
-  @@map("health_score_snapshot")
-}
-
-model HealthScoreSample {
-  id            String   @id @default(cuid())
-  apicHostId    String
-  apicHost      ApicHost @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
-  sampledAt     DateTime @default(now())
-  overall       Int
-  worstScore    Int
-  degradedCount Int
-
-  @@index([apicHostId, sampledAt])
-  @@map("health_score_sample")
 }
 
 model NodeSnapshot {

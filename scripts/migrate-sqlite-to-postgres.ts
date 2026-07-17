@@ -80,30 +80,6 @@ async function main() {
     () => pg.interfaceSnapshot.count(),
   )
   await copyTable(
-    'faultSnapshot',
-    () => sqlite.faultSnapshot.findMany(),
-    rows => pg.faultSnapshot.createMany({ data: rows as Prisma.FaultSnapshotCreateManyInput[] }),
-    () => pg.faultSnapshot.count(),
-  )
-  await copyTable(
-    'faultCountSample',
-    () => sqlite.faultCountSample.findMany(),
-    rows => pg.faultCountSample.createMany({ data: rows as Prisma.FaultCountSampleCreateManyInput[] }),
-    () => pg.faultCountSample.count(),
-  )
-  await copyTable(
-    'healthScoreSnapshot',
-    () => sqlite.healthScoreSnapshot.findMany(),
-    rows => pg.healthScoreSnapshot.createMany({ data: rows as Prisma.HealthScoreSnapshotCreateManyInput[] }),
-    () => pg.healthScoreSnapshot.count(),
-  )
-  await copyTable(
-    'healthScoreSample',
-    () => sqlite.healthScoreSample.findMany(),
-    rows => pg.healthScoreSample.createMany({ data: rows as Prisma.HealthScoreSampleCreateManyInput[] }),
-    () => pg.healthScoreSample.count(),
-  )
-  await copyTable(
     'nodeSnapshot',
     () => sqlite.nodeSnapshot.findMany(),
     rows => pg.nodeSnapshot.createMany({ data: rows as Prisma.NodeSnapshotCreateManyInput[] }),

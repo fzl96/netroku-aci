@@ -2,8 +2,6 @@ import { prisma } from '@/lib/prisma'
 import { recordAudit } from '@/lib/audit'
 import { resyncEndpoints } from '@/lib/apic/endpoints'
 import { resyncInterfaces } from '@/lib/apic/interfaces'
-import { resyncFaults } from '@/lib/apic/faults'
-import { resyncHealthScores } from '@/lib/apic/health-scores'
 import { resyncNodes } from '@/lib/apic/nodes'
 import { resyncEpgs } from '@/lib/apic/epg-resync'
 import {
@@ -116,53 +114,6 @@ export async function POST(request: Request) {
         : `synced ${interfaces.synced} (total ${interfaces.total})`,
     })
 
-    // Faults
-    let faults: DatasetResult
-    try {
-      faults = await resyncFaults({
-        apicHostId,
-        host: apicHost.host,
-        username: trimmedUser,
-        password,
-      })
-    } catch (err) {
-      faults = { error: errorMessage(err, 'Failed to resync faults') }
-    }
-    result.faults = faults
-    await recordAudit({
-      userId: null,
-      userName: 'scheduler',
-      action: 'resync.faults',
-      target: `${apicHost.name} (${apicHost.host})`,
-      status: 'error' in faults ? 'failure' : 'success',
-      detail: 'error' in faults
-        ? faults.error
-        : `synced ${faults.synced} (total ${faults.total})`,
-    })
-
-    // Health scores
-    let healthScores: DatasetResult
-    try {
-      healthScores = await resyncHealthScores({
-        apicHostId,
-        host: apicHost.host,
-        username: trimmedUser,
-        password,
-      })
-    } catch (err) {
-      healthScores = { error: errorMessage(err, 'Failed to resync health scores') }
-    }
-    result.healthScores = healthScores
-    await recordAudit({
-      userId: null,
-      userName: 'scheduler',
-      action: 'resync.health',
-      target: `${apicHost.name} (${apicHost.host})`,
-      status: 'error' in healthScores ? 'failure' : 'success',
-      detail: 'error' in healthScores
-        ? healthScores.error
-        : `synced ${healthScores.synced} (total ${healthScores.total})`,
-    })
 
     // Nodes & hardware
     let nodes: DatasetResult

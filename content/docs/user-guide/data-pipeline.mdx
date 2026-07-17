@@ -53,8 +53,6 @@ Each monitoring page is backed by one or more APIC class queries (`/api/node/cla
 |---|---|---|
 | **Endpoints** | `fvCEp?rsp-subtree=children&rsp-subtree-class=fvIp,fvRsCEpToPathEp` + `fvAEPg` | Learned MAC/IP endpoints with their IP children and fabric-path relations, plus EPG descriptions |
 | **EPGs** | `fvAEPg?rsp-subtree=children&rsp-subtree-class=fvRsPathAtt,fvRsBd,fvRsDomAtt,fvRsProv,fvRsCons` | Each EPG with its static port bindings, bridge domain, domains, and provided/consumed contracts |
-| **Faults** | `faultInst` | Every active fault instance in the fabric |
-| **Health Scores** | `fabricHealthTotal`, `topSystem?rsp-subtree-include=health`, `fvTenant?rsp-subtree-include=health` | Fabric-wide, per-node, and per-tenant health scores |
 | **Interface Health** | `l1PhysIf` | Physical interface admin/oper state and error counters |
 | **Nodes** | `fabricNode`, `topSystem`, `eqptPsu`, `eqptFan` | Node inventory, reachability, and PSU/fan hardware status |
 
@@ -66,10 +64,9 @@ Parsed rows are written to PostgreSQL. Netroku uses three storage patterns depen
 
 ### Snapshot tables (current state)
 
-Faults, EPGs, interfaces, health scores, and nodes are stored as **snapshots**. On each resync Netroku *upserts* every object returned by APIC, then marks any object that was present before but is now missing as gone:
+EPGs, interfaces, and nodes are stored as **snapshots**. On each resync Netroku *upserts* every object returned by APIC, then marks any object that was present before but is now missing as gone:
 
-- Faults use a `lifecycle` field — objects absent from the latest fetch are flipped from `active` to `cleared`.
-- Interfaces, health scores, and nodes use a `present` flag that is set false when an object disappears.
+- Interfaces and nodes use a `present` flag that is set false when an object disappears.
 
 This means a page always reflects the most recent resync: newly-appeared objects show up, and objects that were remediated or removed drop out (or move to a cleared state) rather than lingering.
 
@@ -87,8 +84,6 @@ The reconcile runs inside a single database transaction guarded by a per-host lo
 
 To power trend charts, some resyncs also append a **sample** row capturing totals at that moment:
 
-- `FaultCountSample` — fault counts by severity (feeds the Faults trend chart)
-- `HealthScoreSample` — health score over time
 - `InterfaceSample` — interface counter samples
 - `NodeStatusSample` — node reachability over time
 

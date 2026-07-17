@@ -6,8 +6,6 @@
     "dashboard",
     "endpoints",
     "epgs",
-    "faults",
-    "health-scores",
     "interface-health",
     "workflows"
   ]

@@ -7,34 +7,25 @@ import {
 } from './summary'
 
 describe('classifyPosture', () => {
-  test('returns critical when critical faults exist', () => {
+  test('returns critical when failed hardware exists', () => {
     expect(classifyPosture({
-      criticalFaults: 1,
-      majorFaults: 0,
-      failedHardware: 0,
-      worstHealthScore: 100,
+      failedHardware: 1,
       offlineNodes: 0,
       noisyInterfaces: 0,
     }).tone).toBe('critical')
   })
 
-  test('returns warning for degraded health without critical blockers', () => {
+  test('returns warning for noisy interfaces without critical blockers', () => {
     expect(classifyPosture({
-      criticalFaults: 0,
-      majorFaults: 1,
       failedHardware: 0,
-      worstHealthScore: 78,
       offlineNodes: 0,
-      noisyInterfaces: 0,
+      noisyInterfaces: 2,
     }).tone).toBe('warning')
   })
 
   test('returns healthy when no risk signals are present', () => {
     expect(classifyPosture({
-      criticalFaults: 0,
-      majorFaults: 0,
       failedHardware: 0,
-      worstHealthScore: 96,
       offlineNodes: 0,
       noisyInterfaces: 0,
     }).tone).toBe('healthy')
@@ -44,20 +35,15 @@ describe('classifyPosture', () => {
 describe('buildAttentionItems', () => {
   test('orders the most severe risks first and omits zero-count items', () => {
     const items = buildAttentionItems({
-      criticalFaults: 2,
-      majorFaults: 5,
       failedHardware: 1,
-      offlineNodes: 0,
-      degradedHealthObjects: 3,
+      offlineNodes: 2,
       noisyInterfaces: 4,
       downInterfaces: 0,
     })
 
     expect(items.map(item => item.key)).toEqual([
-      'critical-faults',
       'failed-hardware',
-      'major-faults',
-      'degraded-health',
+      'offline-nodes',
       'interface-errors',
     ])
   })
