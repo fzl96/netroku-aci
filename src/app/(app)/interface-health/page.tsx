@@ -8,6 +8,9 @@ import type { CounterMode } from './counter-mode'
 import { parseInterfaceSortParams, sortInterfaceRows } from './sort'
 import { aggregateCrcTrend, type CrcTrendPoint } from './crc-trend'
 import { sumCrcByInterface, sortByCrcWindowTotal } from './crc-window'
+import { isRecentLinkStateChange } from './state-changes'
+import { buildInterfaceSnapshotWhere } from './interface-query'
+import { queryStateChangedInterfaceIds } from './state-change-query'
 
 export const metadata: Metadata = {
   title: 'Interfaces',
@@ -58,7 +61,13 @@ export default async function InterfaceHealthPage({
 
   if (!apic && apicHosts.length > 0) redirect(`/interface-health?apic=${apicHosts[0].id}`)
 
-  const interfaceView = viewParam === 'crc' ? 'crc' : 'all'
+  const interfaceView: 'all' | 'crc' | 'state-changed' =
+    viewParam === 'crc'
+      ? 'crc'
+      : viewParam === 'state-changed'
+      ? 'state-changed'
+      : 'all'
+
   const crcWindow: '7d' | '30d' = windowParam === '30d' ? '30d' : '7d'
   const windowDays = crcWindow === '30d' ? 30 : 7
 
@@ -109,21 +118,24 @@ export default async function InterfaceHealthPage({
       crcInterfaceIds = [...crcTotals.keys()]
     }
 
-    const where = {
-      apicHostId: apic,
-      ...(interfaceView === 'crc' ? { id: { in: crcInterfaceIds } } : {}),
-      ...(nodeFilter.length > 0 ? { node: { in: nodeFilter } } : {}),
-      ...(query?.trim()
-        ? {
-            OR: [
-              { ifName: { contains: query.trim(), mode: 'insensitive' as const } },
-              { node: { contains: query.trim(), mode: 'insensitive' as const } },
-              { description: { contains: query.trim(), mode: 'insensitive' as const } },
-              { dn: { contains: query.trim(), mode: 'insensitive' as const } },
-            ],
-          }
-        : {}),
+    let stateChangedInterfaceIds: string[] = []
+    if (interfaceView === 'state-changed') {
+      stateChangedInterfaceIds = await queryStateChangedInterfaceIds(
+        (sql) => prisma.$queryRaw<Array<{ interfaceId: string }>>(sql),
+        apic,
+        windowStart,
+      )
     }
+
+    const where = buildInterfaceSnapshotWhere({
+      apicHostId: apic,
+      view: interfaceView,
+      windowStart,
+      stateChangedInterfaceIds,
+      crcInterfaceIds,
+      nodeFilter,
+      query,
+    })
 
     const skip = pageSize === 'all' ? 0 : (page - 1) * pageSize
     const take = pageSize === 'all' ? undefined : pageSize
@@ -203,6 +215,7 @@ export default async function InterfaceHealthPage({
           interfaceView === 'crc'
             ? (crcTotals.get(s.id) ?? BigInt(0)).toString()
             : null,
+        hasRecentStateChange: isRecentLinkStateChange(s.lastLinkStChg, windowStart),
       }
     })
 
@@ -229,4 +242,3 @@ export default async function InterfaceHealthPage({
     />
   )
 }
-
