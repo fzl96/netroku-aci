@@ -1,107 +1,71 @@
 import { apicFetch } from './client'
-import { buildMoPath, buildEpgPath, buildPortPath, buildNodePath, buildEncapConflictQuery, buildPathSegment } from './paths'
+import { buildEpgDn, buildMoDn, buildMoPath, buildPathSegment } from './paths'
 import { runParallel } from './parallel'
-import { createApicReader, type ApicGetResult, type ApicReader } from './read-cache'
+import {
+  bindingLookupKey,
+  loadStaticPortSnapshot,
+  type SnapshotRead,
+  type StaticPortSnapshotLoader,
+} from './static-port-snapshot'
 import type { ParsedRow, ValidationResult, DeployResult } from './types'
 
-type Imdata<T = unknown> = { imdata: T[] }
-
-function networkError(result: ApicGetResult<unknown>): string | null {
-  return !result.ok && result.status === 0 ? result.error : null
+function snapshotError<T>(result: SnapshotRead<T>, label: string): string | null {
+  if (result.ok) return null
+  if (result.status === 0) return result.error
+  return `${label} snapshot failed (APIC ${result.status}): ${result.error}`
 }
 
 export async function validateDeployRows(
   rows: ParsedRow[],
   apicHost: string,
   apicToken: string,
-  reader: ApicReader = createApicReader(apicHost, apicToken),
+  loadSnapshot: StaticPortSnapshotLoader = loadStaticPortSnapshot,
 ): Promise<ValidationResult[]> {
-  const epgStates = await reader.getMany<Imdata>(rows.map(buildEpgPath))
-  const epgEligibleRows = rows.filter(row => {
-    const state = epgStates.get(buildEpgPath(row))
-    return state?.ok === true && state.data.imdata.length > 0
+  const snapshot = await loadSnapshot(apicHost, apicToken, {
+    nodes: true,
+    bundles: rows.some(row => row.port_type === 'pc' || row.port_type === 'vpc'),
+    physicalPaths: rows.some(row => row.port_type === 'port'),
   })
-
-  const nodeStates = await reader.getMany<Imdata>(epgEligibleRows.flatMap(row =>
-    (row.port_type === 'vpc' ? [row.node1, row.node2!] : [row.node1]).map(buildNodePath)
-  ))
-  const nodeEligibleRows = epgEligibleRows.filter(row => {
-    const nodeIds = row.port_type === 'vpc' ? [row.node1, row.node2!] : [row.node1]
-    return nodeIds.every(nodeId => {
-      const state = nodeStates.get(buildNodePath(nodeId))
-      return state?.ok === true && state.data.imdata.length > 0
-    })
-  })
-
-  const portStates = await reader.getMany<Imdata>(nodeEligibleRows.map(buildPortPath))
-  const portEligibleRows = nodeEligibleRows.filter(row => {
-    const state = portStates.get(buildPortPath(row))
-    return state?.ok === true && state.data.imdata.length > 0
-  })
-
-  type ConflictData = Imdata<{ fvRsPathAtt: { attributes: { dn: string } } }>
-  const conflictStates = await reader.getMany<ConflictData>(portEligibleRows.map(buildEncapConflictQuery))
-  const targetEligibleRows = portEligibleRows.filter(row => {
-    const state = conflictStates.get(buildEncapConflictQuery(row))
-    if (!state?.ok) return state?.status !== 0
-    const ourDn = `uni/tn-${row.tenant}/ap-${row.ap}/epg-${row.epg}/rspathAtt-[${buildPathSegment(row)}]`
-    return !state.data.imdata.some(item => item.fvRsPathAtt?.attributes?.dn !== ourDn)
-  })
-  const targetStates = await reader.getMany<Imdata>(targetEligibleRows.map(buildMoPath))
 
   return rows.map(row => {
-    const epgState = epgStates.get(buildEpgPath(row))!
-    const epgNetworkError = networkError(epgState)
-    if (epgNetworkError) return { rowIndex: row.rowIndex, status: 'error', message: epgNetworkError }
-    if (epgState.status === 404 || (epgState.ok && epgState.data.imdata.length === 0)) {
+    const epgError = snapshotError(snapshot.epgBindings, 'EPG/binding')
+    if (epgError) return { rowIndex: row.rowIndex, status: 'error', message: epgError }
+    if (!snapshot.epgBindings.ok) throw new Error('unreachable')
+    const index = snapshot.epgBindings.value
+    if (!index.epgDns.has(buildEpgDn(row))) {
       return { rowIndex: row.rowIndex, status: 'error', message: `EPG not found: ${row.tenant}/${row.ap}/${row.epg}` }
     }
-    if (!epgState.ok) {
-      return { rowIndex: row.rowIndex, status: 'error', message: `EPG check failed (APIC ${epgState.status}): ${epgState.error}` }
-    }
 
+    const nodeError = snapshotError(snapshot.nodes, 'Node')
+    if (nodeError) return { rowIndex: row.rowIndex, status: 'error', message: nodeError }
+    if (!snapshot.nodes.ok) throw new Error('unreachable')
     const nodeIds = row.port_type === 'vpc' ? [row.node1, row.node2!] : [row.node1]
-    const nodeNetworkError = nodeIds
-      .map(nodeId => networkError(nodeStates.get(buildNodePath(nodeId))!))
-      .find((message): message is string => message !== null)
-    if (nodeNetworkError) return { rowIndex: row.rowIndex, status: 'error', message: nodeNetworkError }
-    const missingNodes = nodeIds.filter(nodeId => {
-      const state = nodeStates.get(buildNodePath(nodeId))!
-      return !state.ok || state.data.imdata.length === 0
-    })
+    const missingNodes = nodeIds.filter(nodeId => !snapshot.nodes.value.has(nodeId))
     if (missingNodes.length > 0) {
       return { rowIndex: row.rowIndex, status: 'error', message: `Node(s) not found in fabric: ${missingNodes.join(', ')}` }
     }
 
-    const portState = portStates.get(buildPortPath(row))!
-    const portNetworkError = networkError(portState)
-    if (portNetworkError) return { rowIndex: row.rowIndex, status: 'error', message: portNetworkError }
-    if (portState.status === 404 || (portState.ok && portState.data.imdata.length === 0)) {
+    const portState = row.port_type === 'port' ? snapshot.physicalPaths : snapshot.bundles
+    const portError = snapshotError(portState, 'Port')
+    if (portError) return { rowIndex: row.rowIndex, status: 'error', message: portError }
+    if (!portState.ok) throw new Error('unreachable')
+    const portExists = row.port_type === 'port'
+      ? portState.value.has(buildPathSegment(row))
+      : portState.value.has(row.interface_or_ipg)
+    if (!portExists) {
       return { rowIndex: row.rowIndex, status: 'error', message: `Port/IPG not found in fabric: ${row.interface_or_ipg}` }
     }
-    if (!portState.ok) {
-      return { rowIndex: row.rowIndex, status: 'error', message: `Port check failed (APIC ${portState.status}): ${portState.error}` }
+
+    const intendedDn = buildMoDn(row)
+    const conflictDns = index.bindingDnsByPathAndEncap.get(
+      bindingLookupKey(buildPathSegment(row), `vlan-${row.vlan}`),
+    ) ?? []
+    const conflictDn = conflictDns.find(dn => dn !== intendedDn)
+    if (conflictDn) {
+      return { rowIndex: row.rowIndex, status: 'error', message: `VLAN ${row.vlan} already in use on this port by: ${conflictDn}` }
     }
 
-    const conflictState = conflictStates.get(buildEncapConflictQuery(row))!
-    const conflictNetworkError = networkError(conflictState)
-    if (conflictNetworkError) return { rowIndex: row.rowIndex, status: 'error', message: conflictNetworkError }
-    if (conflictState.ok) {
-      const ourDn = `uni/tn-${row.tenant}/ap-${row.ap}/epg-${row.epg}/rspathAtt-[${buildPathSegment(row)}]`
-      const conflict = conflictState.data.imdata.find(item => item.fvRsPathAtt?.attributes?.dn !== ourDn)
-      if (conflict) {
-        return { rowIndex: row.rowIndex, status: 'error', message: `VLAN ${row.vlan} already in use on this port by: ${conflict.fvRsPathAtt.attributes.dn}` }
-      }
-    }
-
-    const targetState = targetStates.get(buildMoPath(row))!
-    const targetNetworkError = networkError(targetState)
-    if (targetNetworkError) return { rowIndex: row.rowIndex, status: 'error', message: targetNetworkError }
-    if (targetState.status === 404) return { rowIndex: row.rowIndex, status: 'deploy' }
-    if (!targetState.ok) {
-      return { rowIndex: row.rowIndex, status: 'error', message: `APIC ${targetState.status}: ${targetState.error}` }
-    }
-    return { rowIndex: row.rowIndex, status: targetState.data.imdata.length > 0 ? 'exists' : 'deploy' }
+    return { rowIndex: row.rowIndex, status: index.bindingsByDn.has(intendedDn) ? 'exists' : 'deploy' }
   })
 }
 
@@ -112,8 +76,7 @@ export async function deployRows(
 ): Promise<DeployResult[]> {
   return runParallel<ParsedRow, DeployResult>(rows, 5, async (row) => {
     const moPath = buildMoPath(row)
-    const pathSeg = buildPathSegment(row)
-    const dn = `uni/tn-${row.tenant}/ap-${row.ap}/epg-${row.epg}/rspathAtt-[${pathSeg}]`
+    const dn = buildMoDn(row)
     const payload = JSON.stringify({
       fvRsPathAtt: {
         attributes: { dn, encap: `vlan-${row.vlan}`, mode: row.mode, instrImedcy: row.immediacy },
@@ -143,8 +106,7 @@ export async function rollbackRows(
 ): Promise<DeployResult[]> {
   return runParallel<ParsedRow, DeployResult>(rows, 5, async (row) => {
     const moPath = buildMoPath(row)
-    const pathSeg = buildPathSegment(row)
-    const dn = `uni/tn-${row.tenant}/ap-${row.ap}/epg-${row.epg}/rspathAtt-[${pathSeg}]`
+    const dn = buildMoDn(row)
     const payload = JSON.stringify({
       fvRsPathAtt: { attributes: { dn, status: 'deleted' } },
     })
@@ -169,15 +131,21 @@ export async function validateRollbackRows(
   rows: ParsedRow[],
   apicHost: string,
   apicToken: string,
-  reader: ApicReader = createApicReader(apicHost, apicToken),
+  loadSnapshot: StaticPortSnapshotLoader = loadStaticPortSnapshot,
 ): Promise<ValidationResult[]> {
-  const targetStates = await reader.getMany<Imdata>(rows.map(buildMoPath))
+  const snapshot = await loadSnapshot(apicHost, apicToken, {
+    nodes: false,
+    bundles: false,
+    physicalPaths: false,
+  })
+
   return rows.map(row => {
-    const state = targetStates.get(buildMoPath(row))!
-    const error = networkError(state)
+    const error = snapshotError(snapshot.epgBindings, 'EPG/binding')
     if (error) return { rowIndex: row.rowIndex, status: 'error', message: error }
-    if (state.status === 404) return { rowIndex: row.rowIndex, status: 'missing' }
-    if (!state.ok) return { rowIndex: row.rowIndex, status: 'error', message: `APIC ${state.status}: ${state.error}` }
-    return { rowIndex: row.rowIndex, status: state.data.imdata.length === 0 ? 'missing' : 'rollback' }
+    if (!snapshot.epgBindings.ok) throw new Error('unreachable')
+    return {
+      rowIndex: row.rowIndex,
+      status: snapshot.epgBindings.value.bindingsByDn.has(buildMoDn(row)) ? 'rollback' : 'missing',
+    }
   })
 }
