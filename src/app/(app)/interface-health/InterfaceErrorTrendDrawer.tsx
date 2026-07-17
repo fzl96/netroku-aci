@@ -40,6 +40,11 @@ import {
   type ErrorTrendPoint,
   type ErrorTrendRange,
 } from './error-trend'
+import {
+  makeDrawerRequestKey,
+  resolveDrawerRequest,
+  type DrawerRequestResult,
+} from './drawer-request-state'
 
 export interface SelectedInterface {
   id: string
@@ -83,72 +88,70 @@ export function InterfaceErrorTrendDrawer({
 }) {
   const [drawerMode, setDrawerMode] = useState<'errors' | 'status'>('errors')
   const [range, setRange] = useState<ErrorTrendRange>(DEFAULT_ERROR_TREND_RANGE)
-  
-  // Errors view states
-  const [errorData, setErrorData] = useState<ErrorTrendPoint[] | null>(null)
-  const [errorLoading, setErrorLoading] = useState(false)
-  const [hidden, setHidden] = useState<Set<string>>(defaultHidden)
-  const [errorFailed, setErrorFailed] = useState(false)
 
-  // Status view states
-  const [statusData, setStatusData] = useState<InterfaceStatusDetails | null>(null)
-  const [statusLoading, setStatusLoading] = useState(false)
-  const [statusFailed, setStatusFailed] = useState(false)
+  const [errorResult, setErrorResult] = useState<DrawerRequestResult<ErrorTrendPoint[]> | null>(null)
+  const [statusResult, setStatusResult] = useState<DrawerRequestResult<InterfaceStatusDetails> | null>(null)
+  const [hidden, setHidden] = useState<Set<string>>(defaultHidden)
   const [onlyChanges, setOnlyChanges] = useState(false)
 
   const selectedId = selected?.id ?? null
+  const errorRequestKey = selectedId
+    ? makeDrawerRequestKey('errors', selectedId, range)
+    : null
+  const statusRequestKey = selectedId
+    ? makeDrawerRequestKey('status', selectedId, range)
+    : null
+  const {
+    data: errorData,
+    loading: errorLoading,
+    failed: errorFailed,
+  } = resolveDrawerRequest(errorRequestKey, errorResult)
+  const {
+    data: statusData,
+    loading: statusLoading,
+    failed: statusFailed,
+  } = resolveDrawerRequest(statusRequestKey, statusResult)
+
   const [prevSelectedId, setPrevSelectedId] = useState<string | null>(null)
 
   if (selectedId !== prevSelectedId) {
     setPrevSelectedId(selectedId)
     if (selectedId) {
-      setErrorLoading(true)
-      setErrorData(null)
       setHidden(defaultHidden())
-      setErrorFailed(false)
-
-      setStatusLoading(true)
-      setStatusData(null)
-      setStatusFailed(false)
     }
   }
 
-  // Fetch error samples when error view is active or selectedId/range changes
   useEffect(() => {
     if (!selectedId) return
     let cancelled = false
 
     if (drawerMode === 'errors') {
-      setErrorLoading(true)
+      const requestKey = makeDrawerRequestKey('errors', selectedId, range)
       getInterfaceErrorSamples(selectedId, range)
         .then((rows) => {
-          if (!cancelled) setErrorData(rows)
+          if (!cancelled) {
+            setErrorResult({ key: requestKey, data: rows, failed: false })
+          }
         })
         .catch((err) => {
           console.error(err)
           if (!cancelled) {
-            setErrorFailed(true)
-            setErrorData([])
+            setErrorResult({ key: requestKey, data: null, failed: true })
           }
-        })
-        .finally(() => {
-          if (!cancelled) setErrorLoading(false)
         })
     } else {
-      setStatusLoading(true)
+      const requestKey = makeDrawerRequestKey('status', selectedId, range)
       getInterfaceStatusDetails(selectedId, range)
         .then((data) => {
-          if (!cancelled) setStatusData(data)
+          if (!cancelled) {
+            setStatusResult({ key: requestKey, data, failed: false })
+          }
         })
         .catch((err) => {
           console.error(err)
           if (!cancelled) {
-            setStatusFailed(true)
-            setStatusData(null)
+            setStatusResult({ key: requestKey, data: null, failed: true })
           }
-        })
-        .finally(() => {
-          if (!cancelled) setStatusLoading(false)
         })
     }
 
