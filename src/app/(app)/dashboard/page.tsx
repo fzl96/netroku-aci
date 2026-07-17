@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import {
   IconActivity,
-  IconActivityHeartbeat,
   IconAlertTriangle,
   IconArrowUpRight,
   IconCheck,
@@ -42,25 +41,13 @@ export const metadata: Metadata = {
   description: 'Global Netroku ACI operations dashboard.',
 }
 
-type Severity = 'critical' | 'major' | 'minor' | 'warning'
-
-const SEVERITIES: Severity[] = ['critical', 'major', 'minor', 'warning']
-
 function formatNumber(value: number): string {
   return new Intl.NumberFormat('en-US').format(value)
-}
-
-function formatScore(value: number | null): string {
-  return value === null ? '-' : String(value)
 }
 
 function percent(value: number, total: number): string {
   if (total === 0) return '-'
   return `${Math.round((value / total) * 100)}%`
-}
-
-function minNumber(values: number[]): number | null {
-  return values.length > 0 ? Math.min(...values) : null
 }
 
 function maxDate(values: Array<Date | null>): Date | null {
@@ -86,16 +73,6 @@ function toneSurfaceClass(tone: PostureTone): string {
   return 'border-border bg-muted text-muted-foreground'
 }
 
-function severityCount(
-  rows: Array<{ apicHostId: string; severity: string; _count: { _all: number } }>,
-  severity: Severity,
-  hostId?: string,
-): number {
-  return rows
-    .filter(row => row.severity === severity && (!hostId || row.apicHostId === hostId))
-    .reduce((sum, row) => sum + row._count._all, 0)
-}
-
 function endpointCount(
   rows: Array<{ apicHostId: string; isActive: boolean; _count: { _all: number } }>,
   isActive: boolean,
@@ -119,8 +96,6 @@ export default async function DashboardPage() {
     endpointFreshnessRows,
     interfaceStateRows,
     latestInterfaceSamples,
-    faultRows,
-    healthRows,
     nodes,
     hardware,
   ] = await Promise.all([
@@ -131,8 +106,6 @@ export default async function DashboardPage() {
         name: true,
         host: true,
         lastInterfaceSyncAt: true,
-        lastFaultSyncAt: true,
-        lastHealthSyncAt: true,
         lastNodeSyncAt: true,
       },
     }),
@@ -172,19 +145,6 @@ export default async function DashboardPage() {
         dTxDiscards: true,
         dRxCrcErrors: true,
         dRxAlignErrors: true,
-      },
-    }),
-    prisma.faultSnapshot.groupBy({
-      by: ['apicHostId', 'severity'],
-      where: { lifecycle: 'active' },
-      _count: { _all: true },
-    }),
-    prisma.healthScoreSnapshot.findMany({
-      where: { present: true },
-      select: {
-        apicHostId: true,
-        scope: true,
-        score: true,
       },
     }),
     prisma.nodeSnapshot.findMany({
@@ -227,27 +187,6 @@ export default async function DashboardPage() {
   const downInterfaces = interfaceSummary.operDown
   const noisyInterfaces = interfaceSummary.noisy
 
-  const faultCounts = SEVERITIES.reduce<Record<Severity, number>>(
-    (acc, severity) => ({ ...acc, [severity]: severityCount(faultRows, severity) }),
-    { critical: 0, major: 0, minor: 0, warning: 0 },
-  )
-  const totalActiveFaults = SEVERITIES
-    .reduce((sum, severity) => sum + faultCounts[severity], 0)
-
-  const fabricScore = minNumber(
-    healthRows
-      .filter(row => row.scope === 'fabric')
-      .map(row => row.score),
-  )
-  const nodeTenantScores = healthRows
-    .filter(row => row.scope === 'node' || row.scope === 'tenant')
-    .map(row => row.score)
-  const worstNodeTenantScore = minNumber(nodeTenantScores)
-  const worstHealthScore = worstNodeTenantScore ?? fabricScore
-  const degradedHealthObjects = healthRows
-    .filter(row => (row.scope === 'node' || row.scope === 'tenant') && row.score < 90)
-    .length
-
   const nodesTotal = nodes.length
   const nodesOnline = nodes.filter(isNodeOnline).length
   const offlineNodes = Math.max(0, nodesTotal - nodesOnline)
@@ -259,19 +198,13 @@ export default async function DashboardPage() {
   const failedFan = hardware.filter(row => row.type === 'fan' && !row.healthy).length
 
   const posture = classifyPosture({
-    criticalFaults: faultCounts.critical,
-    majorFaults: faultCounts.major,
     failedHardware,
-    worstHealthScore,
     offlineNodes,
     noisyInterfaces,
   })
   const attentionItems = buildAttentionItems({
-    criticalFaults: faultCounts.critical,
-    majorFaults: faultCounts.major,
     failedHardware,
     offlineNodes,
-    degradedHealthObjects,
     noisyInterfaces,
     downInterfaces,
   })
@@ -280,33 +213,15 @@ export default async function DashboardPage() {
     endpointFreshnessRows.map(row => row._max.lastSeenAt),
   )
   const latestInterfaceSyncAt = maxDate(hosts.map(host => host.lastInterfaceSyncAt))
-  const latestFaultSyncAt = maxDate(hosts.map(host => host.lastFaultSyncAt))
-  const latestHealthSyncAt = maxDate(hosts.map(host => host.lastHealthSyncAt))
   const latestNodeSyncAt = maxDate(hosts.map(host => host.lastNodeSyncAt))
   const latestAnySyncAt = maxDate([
     latestEndpointSeenAt,
     latestInterfaceSyncAt,
-    latestFaultSyncAt,
-    latestHealthSyncAt,
     latestNodeSyncAt,
   ])
   const now = new Date()
 
   const headlineStats = [
-    {
-      label: 'Critical faults',
-      value: formatNumber(faultCounts.critical),
-      detail: `${formatNumber(faultCounts.major)} major`,
-      href: '/faults',
-      tone: faultCounts.critical > 0 ? 'critical' : faultCounts.major > 0 ? 'warning' : 'healthy',
-    },
-    {
-      label: 'Health score',
-      value: formatScore(fabricScore),
-      detail: `worst ${formatScore(worstHealthScore)}`,
-      href: '/health-scores',
-      tone: worstHealthScore === null ? 'unknown' : worstHealthScore < 70 ? 'critical' : worstHealthScore < 90 ? 'warning' : 'healthy',
-    },
     {
       label: 'Nodes online',
       value: nodesTotal === 0 ? '-' : `${nodesOnline}/${nodesTotal}`,
@@ -365,26 +280,6 @@ export default async function DashboardPage() {
       tone: noisyInterfaces > 0 || downInterfaces > 0 ? 'warning' : totalInterfaces === 0 ? 'unknown' : 'healthy',
     },
     {
-      title: 'Faults',
-      href: '/faults',
-      icon: <IconAlertTriangle size={17} stroke={1.75} />,
-      value: formatNumber(totalActiveFaults),
-      label: 'active faults',
-      detail: `${formatNumber(faultCounts.critical)} critical / ${formatNumber(faultCounts.major)} major`,
-      footer: `${formatNumber(faultCounts.minor)} minor, ${formatNumber(faultCounts.warning)} warning`,
-      tone: faultCounts.critical > 0 ? 'critical' : faultCounts.major > 0 ? 'warning' : 'healthy',
-    },
-    {
-      title: 'Health Scores',
-      href: '/health-scores',
-      icon: <IconActivityHeartbeat size={17} stroke={1.75} />,
-      value: formatScore(fabricScore),
-      label: 'global fabric score',
-      detail: `worst node/tenant ${formatScore(worstNodeTenantScore)}`,
-      footer: `${formatNumber(degradedHealthObjects)} degraded objects`,
-      tone: worstHealthScore === null ? 'unknown' : worstHealthScore < 70 ? 'critical' : worstHealthScore < 90 ? 'warning' : 'healthy',
-    },
-    {
       title: 'Nodes & Hardware',
       href: '/nodes',
       icon: <IconServer2 size={17} stroke={1.75} />,
@@ -408,23 +303,10 @@ export default async function DashboardPage() {
   const freshness = [
     { label: 'Endpoints', date: latestEndpointSeenAt },
     { label: 'Interfaces', date: latestInterfaceSyncAt },
-    { label: 'Faults', date: latestFaultSyncAt },
-    { label: 'Health', date: latestHealthSyncAt },
     { label: 'Nodes', date: latestNodeSyncAt },
   ]
 
   const hostSummaries = hosts.map((host) => {
-    const hostHealth = healthRows.filter(row => row.apicHostId === host.id)
-    const hostFabricScore = minNumber(
-      hostHealth
-        .filter(row => row.scope === 'fabric')
-        .map(row => row.score),
-    )
-    const hostWorst = minNumber(
-      hostHealth
-        .filter(row => row.scope === 'node' || row.scope === 'tenant')
-        .map(row => row.score),
-    ) ?? hostFabricScore
     const hostNodes = nodes.filter(row => row.apicHostId === host.id)
     const hostOnlineNodes = hostNodes.filter(isNodeOnline).length
     const hostFailedHardware = hardware
@@ -435,17 +317,12 @@ export default async function DashboardPage() {
     return {
       ...host,
       activeEndpoints: endpointCount(endpointStatusRows, true, host.id),
-      criticalFaults: severityCount(faultRows, 'critical', host.id),
-      majorFaults: severityCount(faultRows, 'major', host.id),
-      healthScore: hostWorst,
       nodesOnline: hostOnlineNodes,
       nodesTotal: hostNodes.length,
       failedHardware: hostFailedHardware,
       freshest: maxDate([
         hostLatestEndpoint,
         host.lastInterfaceSyncAt,
-        host.lastFaultSyncAt,
-        host.lastHealthSyncAt,
         host.lastNodeSyncAt,
       ]),
     }
@@ -493,37 +370,20 @@ export default async function DashboardPage() {
                   {posture.detail}
                 </h2>
                 <p className="mt-4 max-w-lg text-sm leading-6 text-muted-foreground">
-                  Fabric health, active faults, interface counters, endpoint inventory,
-                  node state, and hardware are summarized here before operators
-                  drill into the detailed pages.
+                  Interface counters, endpoint inventory, node state, and hardware are summarized here before operators drill into the detailed pages.
                 </p>
-              </div>
-              <div className="mt-6 grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-xs text-muted-foreground">Fabric score</p>
-                  <p className={`mt-1 text-2xl font-semibold ${toneTextClass(metricCards[3].tone)}`}>
-                    {formatScore(fabricScore)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Worst object</p>
-                  <p className={`mt-1 text-2xl font-semibold ${toneTextClass(posture.tone)}`}>
-                    {formatScore(worstHealthScore)}
-                  </p>
-                </div>
               </div>
             </div>
 
-            <div className="grid border-t border-border lg:grid-cols-3 lg:border-l lg:border-t-0">
+            <div className="grid border-t border-border sm:grid-cols-2 lg:border-l lg:border-t-0">
               {headlineStats.map((stat, index) => (
                 <Link
                   key={stat.label}
                   href={stat.href}
                   className={[
                     'group min-h-32 p-5 transition-colors hover:bg-muted/40',
-                    index % 3 !== 0 ? 'lg:border-l lg:border-border' : '',
-                    index > 2 ? 'border-t border-border' : index > 0 ? 'border-t border-border sm:border-t-0' : '',
-                    index % 2 !== 0 ? 'sm:border-l sm:border-border lg:border-l' : '',
+                    index % 2 !== 0 ? 'sm:border-l sm:border-border' : '',
+                    index > 1 ? 'border-t border-border' : index > 0 ? 'border-t border-border sm:border-t-0' : '',
                   ].filter(Boolean).join(' ')}
                 >
                   <div className="flex items-center justify-between gap-3">
@@ -544,7 +404,7 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
           {metricCards.map(card => (
             <Link
               key={card.title}
@@ -632,7 +492,7 @@ export default async function DashboardPage() {
                   APIC host coverage
                 </h2>
                 <p className="mt-0.5 text-xs text-subtle">
-                  Host-level inventory, health, and sync freshness
+                  Host-level inventory and sync freshness
                 </p>
               </div>
               <div className="flex flex-wrap gap-1.5">
@@ -648,13 +508,11 @@ export default async function DashboardPage() {
             </div>
 
             <div className={`mt-4 hidden md:block ${TABLE_SCROLL_CLS}`}>
-              <table className="w-full min-w-[760px] text-left text-sm">
+              <table className="w-full min-w-[600px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-border text-xs text-muted-foreground">
                     <th className={`${DASHBOARD_TABLE_HEAD_CLS} py-2 pr-4`}>Host</th>
                     <th className={`${DASHBOARD_TABLE_HEAD_CLS} px-4 py-2`}>Endpoints</th>
-                    <th className={`${DASHBOARD_TABLE_HEAD_CLS} px-4 py-2`}>Faults</th>
-                    <th className={`${DASHBOARD_TABLE_HEAD_CLS} px-4 py-2`}>Health</th>
                     <th className={`${DASHBOARD_TABLE_HEAD_CLS} px-4 py-2`}>Nodes</th>
                     <th className={`${DASHBOARD_TABLE_HEAD_CLS} py-2 pl-4`}>Freshest data</th>
                   </tr>
@@ -669,18 +527,6 @@ export default async function DashboardPage() {
                       <td className="px-4 py-3 text-foreground">
                         {formatNumber(host.activeEndpoints)}
                         <span className="ml-1 text-xs text-subtle">active</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={host.criticalFaults > 0 ? 'text-error' : 'text-muted-foreground'}>
-                          {formatNumber(host.criticalFaults)}
-                        </span>
-                        <span className="mx-1 text-subtle">/</span>
-                        <span className={host.majorFaults > 0 ? 'text-warning' : 'text-muted-foreground'}>
-                          {formatNumber(host.majorFaults)}
-                        </span>
-                      </td>
-                      <td className={`px-4 py-3 font-medium ${toneTextClass(host.healthScore === null ? 'unknown' : host.healthScore < 70 ? 'critical' : host.healthScore < 90 ? 'warning' : 'healthy')}`}>
-                        {formatScore(host.healthScore)}
                       </td>
                       <td className="px-4 py-3">
                         <span className={host.nodesTotal > 0 && host.nodesOnline === host.nodesTotal ? 'text-success' : host.nodesTotal === 0 ? 'text-muted-foreground' : 'text-warning'}>
@@ -698,7 +544,7 @@ export default async function DashboardPage() {
                     </tr>
                   )) : (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                      <td colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
                         No APIC hosts configured yet.
                       </td>
                     </tr>
@@ -711,28 +557,12 @@ export default async function DashboardPage() {
             <div className="mt-4 space-y-2 md:hidden">
               {hostSummaries.length > 0 ? hostSummaries.map(host => (
                 <DataCard key={host.id}>
-                  <DataCardHeader
-                    trailing={
-                      <span className={`text-sm font-semibold ${toneTextClass(host.healthScore === null ? 'unknown' : host.healthScore < 70 ? 'critical' : host.healthScore < 90 ? 'warning' : 'healthy')}`}>
-                        {formatScore(host.healthScore)}
-                      </span>
-                    }
-                  >
+                  <DataCardHeader>
                     <DataCardTitle>{host.name}</DataCardTitle>
                     <p className="mt-0.5 truncate text-xs text-subtle">{host.host}</p>
                   </DataCardHeader>
                   <DataCardBody>
                     <DataCardRow label="Endpoints" value={`${formatNumber(host.activeEndpoints)} active`} />
-                    <DataCardRow
-                      label="Faults (crit/maj)"
-                      value={
-                        <>
-                          <span className={host.criticalFaults > 0 ? 'text-error' : ''}>{formatNumber(host.criticalFaults)}</span>
-                          <span className="mx-1 text-subtle">/</span>
-                          <span className={host.majorFaults > 0 ? 'text-warning' : ''}>{formatNumber(host.majorFaults)}</span>
-                        </>
-                      }
-                    />
                     <DataCardRow
                       label="Nodes"
                       value={host.nodesTotal === 0 ? '—' : `${host.nodesOnline}/${host.nodesTotal} online`}
@@ -749,7 +579,7 @@ export default async function DashboardPage() {
           </section>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-5">
+        <div className="mt-4 grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-3">
           <Link href="/endpoints" className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:border-foreground/20 hover:text-foreground">
             <IconDeviceDesktopSearch size={14} stroke={1.75} />
             Endpoint inventory
@@ -757,14 +587,6 @@ export default async function DashboardPage() {
           <Link href="/interface-health" className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:border-foreground/20 hover:text-foreground">
             <IconPlugConnected size={14} stroke={1.75} />
             Interface counters
-          </Link>
-          <Link href="/faults" className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:border-foreground/20 hover:text-foreground">
-            <IconAlertTriangle size={14} stroke={1.75} />
-            Active faults
-          </Link>
-          <Link href="/health-scores" className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:border-foreground/20 hover:text-foreground">
-            <IconActivityHeartbeat size={14} stroke={1.75} />
-            Health scores
           </Link>
           <Link href="/nodes" className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:border-foreground/20 hover:text-foreground">
             <IconServer2 size={14} stroke={1.75} />

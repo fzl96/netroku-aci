@@ -70,12 +70,6 @@ function SkeletonTableRow() {
         <Skeleton className="h-4 w-20" />
       </td>
       <td className="px-4 py-3">
-        <Skeleton className="h-4 w-16" />
-      </td>
-      <td className="px-4 py-3">
-        <Skeleton className="h-4 w-12" />
-      </td>
-      <td className="px-4 py-3">
         <Skeleton className="h-4 w-20" />
       </td>
       <td className="py-3 pl-4">
@@ -121,26 +115,15 @@ export default function DashboardLoading() {
                   <Skeleton className="h-4 w-2/3 max-w-sm" />
                 </div>
               </div>
-              <div className="mt-6 grid grid-cols-2 gap-4">
-                <div>
-                  <Skeleton className="h-3 w-20" />
-                  <Skeleton className="mt-2 h-8 w-14" />
-                </div>
-                <div>
-                  <Skeleton className="h-3 w-20" />
-                  <Skeleton className="mt-2 h-8 w-14" />
-                </div>
-              </div>
             </div>
 
-            <div className="grid border-t border-border sm:grid-cols-2 lg:grid-cols-3 lg:border-l lg:border-t-0">
-              {Array.from({ length: 6 }, (_, index) => (
+            <div className="grid border-t border-border sm:grid-cols-2 lg:border-l lg:border-t-0">
+              {Array.from({ length: 4 }, (_, index) => (
                 <div
                   key={index}
                   className={[
-                    index % 3 !== 0 ? 'lg:border-l lg:border-border' : '',
-                    index > 2 ? 'border-t border-border' : index > 0 ? 'border-t border-border sm:border-t-0' : '',
-                    index % 2 !== 0 ? 'sm:border-l sm:border-border lg:border-l' : '',
+                    index % 2 !== 0 ? 'sm:border-l sm:border-border' : '',
+                    index > 1 ? 'border-t border-border' : index > 0 ? 'border-t border-border sm:border-t-0' : '',
                   ].filter(Boolean).join(' ')}
                 >
                   <SkeletonMetric />
@@ -150,8 +133,8 @@ export default function DashboardLoading() {
           </div>
         </section>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
-          {Array.from({ length: 5 }, (_, index) => (
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+          {Array.from({ length: 3 }, (_, index) => (
             <SkeletonCard key={index} />
           ))}
         </div>
@@ -179,22 +162,22 @@ export default function DashboardLoading() {
                 <Skeleton className="mt-2 h-3 w-56" />
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {Array.from({ length: 5 }, (_, index) => (
+                {Array.from({ length: 3 }, (_, index) => (
                   <Skeleton key={index} className="h-7 w-24 rounded-lg" />
                 ))}
               </div>
             </div>
 
             <div className={`mt-4 ${TABLE_SCROLL_CLS}`}>
-              <table className="w-full min-w-[760px] text-left text-sm">
+              <table className="w-full min-w-[600px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-border">
-                    {['Host', 'Endpoints', 'Faults', 'Health', 'Nodes', 'Freshest data'].map((heading, index) => (
+                    {['Host', 'Endpoints', 'Nodes', 'Freshest data'].map((heading, index) => (
                       <th
                         key={heading}
                         className={[
                           `${DASHBOARD_TABLE_HEAD_CLS} py-2`,
-                          index === 0 ? 'pr-4' : index === 5 ? 'pl-4' : 'px-4',
+                          index === 0 ? 'pr-4' : index === 3 ? 'pl-4' : 'px-4',
                         ].join(' ')}
                       >
                         <Skeleton className="h-3 w-20" />
@@ -212,8 +195,8 @@ export default function DashboardLoading() {
           </section>
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
-          {Array.from({ length: 5 }, (_, index) => (
+        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {Array.from({ length: 3 }, (_, index) => (
             <Skeleton key={index} className="h-9 rounded-lg" />
           ))}
         </div>

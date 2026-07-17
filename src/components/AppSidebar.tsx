@@ -54,8 +54,6 @@ import {
   IconRouter,
   IconDeviceDesktopSearch,
   IconActivity,
-  IconAlertTriangle,
-  IconActivityHeartbeat,
   IconServer2,
   IconUsers,
   IconSettings,
@@ -125,18 +123,6 @@ const NAV: { group: string; items: NavItem[] }[] = [
         href: "/interface-health",
         label: "Interfaces",
         icon: <IconActivity size={15} stroke={1.75} />,
-        apicParam: true,
-      },
-      {
-        href: "/faults",
-        label: "Faults",
-        icon: <IconAlertTriangle size={15} stroke={1.75} />,
-        apicParam: true,
-      },
-      {
-        href: "/health-scores",
-        label: "Health Scores",
-        icon: <IconActivityHeartbeat size={15} stroke={1.75} />,
         apicParam: true,
       },
       {

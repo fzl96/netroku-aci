@@ -11,19 +11,12 @@ describe('buildEpgWhere', () => {
     const where = buildEpgWhere('h1', {
       tenant: ['t1'],
       ap: ['ap1'],
-      presence: ['present'],
       query: 'web',
     })
     expect(where.apicHostId).toBe('h1')
     expect(where.tenant).toEqual({ in: ['t1'] })
     expect(where.appProfile).toEqual({ in: ['ap1'] })
-    expect(where.present).toBe(true)
     expect(where.OR).toBeDefined()
-  })
-
-  it('omits present when both or no presence values selected', () => {
-    expect(buildEpgWhere('h1', { presence: [] }).present).toBeUndefined()
-    expect(buildEpgWhere('h1', { presence: ['present', 'absent'] }).present).toBeUndefined()
   })
 })
 
@@ -50,7 +43,7 @@ describe('buildBindingWhere', () => {
 describe('countActiveEpgFilterGroups', () => {
   it('counts non-empty filter groups', () => {
     expect(countActiveEpgFilterGroups({})).toBe(0)
-    expect(countActiveEpgFilterGroups({ tenant: ['t'], node: ['101'], presence: [] })).toBe(2)
+    expect(countActiveEpgFilterGroups({ tenant: ['t'], node: ['101'] })).toBe(2)
   })
 })
 

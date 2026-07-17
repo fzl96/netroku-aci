@@ -3,29 +3,24 @@ title: Dashboard
 description: The main dashboard overview page.
 ---
 
-The dashboard is the landing page after sign-in. It aggregates data from all configured APIC hosts into a single operations view — no per-page navigation needed to get a health snapshot.
+The dashboard is the landing page after sign-in. It aggregates data from all configured APIC hosts into a single operations view — no per-page navigation needed to get an operations snapshot.
 
 ## Global posture
 
-The top-left banner summarises the overall fabric state as one of four labels:
+The top-left banner summarises the overall fabric state:
 
 | Label | Meaning |
 |---|---|
 | **Stable** | No active risk signals |
-| **Degraded** | Major faults, noisy interfaces, or health scores below 90 |
-| **Needs attention** | Critical faults, failed hardware, offline nodes, or health score below 70 |
-| **No health data** | Health scores have not been synced yet |
-
-Below the label, the **fabric score** and **worst object score** are shown as numbers (0–100). These come from the health scores dataset.
+| **Degraded** | Interfaces with error counters |
+| **Needs attention** | Failed hardware or offline nodes |
 
 ## Headline stats
 
-Six clickable stat tiles sit to the right of the posture banner. Each links to the relevant detail page:
+Four clickable stat tiles sit to the right of the posture banner. Each links to the relevant detail page:
 
 | Stat | Detail shown | Links to |
 |---|---|---|
-| Critical faults | Major fault count | Faults |
-| Health score | Worst node/tenant score | Health Scores |
 | Nodes online | Online/total ratio | Nodes |
 | Failed hardware | Failed PSU / fan breakdown | Nodes (components view) |
 | Active endpoints | Total learned count | Endpoints |
@@ -35,25 +30,20 @@ Tiles are colour-coded: green for healthy, amber for warning, red for critical, 
 
 ## Metric cards
 
-Below the headline strip, five cards give a more detailed breakdown:
+Below the headline strip, three cards give a more detailed breakdown:
 
 - **Endpoints** — active count, historical count, unique VLAN count, node/interface spread
 - **Interfaces** — total tracked, interfaces with recent errors, oper-down and admin-down counts
-- **Faults** — total active, critical/major split, minor/warning split
-- **Health Scores** — global fabric score, worst node/tenant score, degraded object count
 - **Nodes & Hardware** — online/total nodes, failed component count, leaf/spine/controller breakdown
 
 ## Attention required
 
 Lists only the items that need action, ordered by severity:
 
-1. Critical faults
-2. Failed hardware (PSU or fan)
-3. Offline nodes
-4. Major faults
-5. Degraded health objects (score below 90)
-6. Interfaces with error counters
-7. Operationally down interfaces
+1. Failed hardware (PSU or fan)
+2. Offline nodes
+3. Interfaces with error counters
+4. Operationally down interfaces
 
 If nothing needs attention, a green "No active attention items" banner is shown instead.
 
@@ -61,13 +51,11 @@ If nothing needs attention, a green "No active attention items" banner is shown 
 
 A table on the right shows one row per configured APIC host with:
 - Active endpoint count
-- Critical / major fault counts
-- Worst health score for that host
 - Nodes online ratio
 - Failed hardware count
 - Age of the freshest data from that host
 
-The freshness chips above the table show how long ago each dataset (Endpoints, Interfaces, Faults, Health, Nodes) was last synced across all hosts.
+The freshness chips above the table show how long ago each dataset (Endpoints, Interfaces, Nodes) was last synced across all hosts.
 
 ## Data freshness
 
