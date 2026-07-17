@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import type { ParsedRow, ValidationResult, RowStatus } from '@/lib/apic/types'
 import { MUTED_TABLE_HEAD_CLS } from '@/lib/ui-classes'
 import { cn } from '@/lib/utils'
+import { paginateReviewItems } from '@/components/review-pagination'
 
 type Mode = 'deploy' | 'rollback'
 type Feature =
@@ -162,6 +163,55 @@ function IssueRow({ label, result, skippedLabel }: IssueRowProps) {
   )
 }
 
+interface ReviewPaginationControlsProps {
+  label: string
+  page: number
+  totalPages: number
+  rangeStart: number
+  rangeEnd: number
+  totalItems: number
+  onPageChange: (page: number) => void
+}
+
+function ReviewPaginationControls({
+  label,
+  page,
+  totalPages,
+  rangeStart,
+  rangeEnd,
+  totalItems,
+  onPageChange,
+}: ReviewPaginationControlsProps) {
+  if (totalPages <= 1) return null
+
+  return (
+    <div className="flex items-center justify-between gap-3 border-t border-subtle px-3 py-2 text-xs text-subtle">
+      <span>
+        {rangeStart}–{rangeEnd} of {totalItems} {label}
+      </span>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onPageChange(page - 1)}
+          disabled={page === 1}
+          className="rounded-md border border-subtle px-2.5 py-1 text-muted-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Previous
+        </button>
+        <span className="tabular-nums">Page {page} of {totalPages}</span>
+        <button
+          type="button"
+          onClick={() => onPageChange(page + 1)}
+          disabled={page === totalPages}
+          className="rounded-md border border-subtle px-2.5 py-1 text-muted-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
   rows,
   apicHost,
@@ -183,6 +233,8 @@ export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
   const [loading, setLoading]     = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [issuesOpen, setIssuesOpen] = useState(false)
+  const [tablePage, setTablePage] = useState(1)
+  const [issuePage, setIssuePage] = useState(1)
 
   useEffect(() => {
     if (rows.length === 0) return
@@ -192,6 +244,8 @@ export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
       setLoading(true)
       setFetchError(null)
       setIssuesOpen(false)
+      setTablePage(1)
+      setIssuePage(1)
 
       fetch(endpoint, {
         method:  'POST',
@@ -230,6 +284,12 @@ export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
   const errorCount   = issueRows.filter(x => x.result.status === 'error').length
   const skippedCount = issueRows.filter(x => x.result.status === cfg.skippedStatus).length
   const hasIssues    = issueRows.length > 0
+  const orderedIssueRows = [
+    ...issueRows.filter(x => x.result.status === 'error'),
+    ...issueRows.filter(x => x.result.status === cfg.skippedStatus),
+  ]
+  const tablePagination = paginateReviewItems(rows, tablePage)
+  const issuePagination = paginateReviewItems(orderedIssueRows, issuePage)
 
   if (loading) {
     return (
@@ -310,11 +370,11 @@ export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, i) => (
+            {tablePagination.items.map((row, i) => (
               <tr key={row.rowIndex} className="border-b border-border-faint even:bg-muted">
                 {cols.map(c => (
                   <td key={c.header} className={`px-3 py-2 ${c.className ?? 'text-foreground'}`}>
-                    {c.cell(row, i)}
+                    {c.cell(row, tablePagination.rangeStart - 1 + i)}
                   </td>
                 ))}
               </tr>
@@ -322,6 +382,15 @@ export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
           </tbody>
         </table>
       </div>
+      <ReviewPaginationControls
+        label="rows"
+        page={tablePagination.page}
+        totalPages={tablePagination.totalPages}
+        rangeStart={tablePagination.rangeStart}
+        rangeEnd={tablePagination.rangeEnd}
+        totalItems={rows.length}
+        onPageChange={setTablePage}
+      />
 
       {/* Results area */}
       {results && (
@@ -372,7 +441,10 @@ export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
                 <div className="overflow-hidden rounded-lg border border-subtle">
                   <button
                     type="button"
-                    onClick={() => setIssuesOpen((o) => !o)}
+                    onClick={() => {
+                      if (issuesOpen) setIssuePage(1)
+                      setIssuesOpen(!issuesOpen)
+                    }}
                     className="flex w-full items-center justify-between px-3.5 py-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted"
                   >
                     <span className="font-medium">
@@ -391,35 +463,29 @@ export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
                     </span>
                   </button>
 
-                  <div
-                    className={cn(
-                      'overflow-hidden transition-[max-height] duration-200 ease-in-out',
-                      issuesOpen ? 'max-h-[9999px]' : 'max-h-0',
-                    )}
-                  >
-                    <div className="px-3.5 pt-0.5 pb-1">
-                      {issueRows
-                        .filter((x) => x.result.status === 'error')
-                        .map(({ row, result }) => (
-                          <IssueRow
-                            key={row.rowIndex}
-                            label={labelFn(row)}
-                            result={result}
-                            skippedLabel={cfg.skippedLabel}
-                          />
-                        ))}
-                      {issueRows
-                        .filter((x) => x.result.status === cfg.skippedStatus)
-                        .map(({ row, result }) => (
-                          <IssueRow
-                            key={row.rowIndex}
-                            label={labelFn(row)}
-                            result={result}
-                            skippedLabel={cfg.skippedLabel}
-                          />
-                        ))}
+                  {issuesOpen && (
+                    <div>
+                      <div className="px-3.5 pt-0.5 pb-1">
+                        {issuePagination.items.map(({ row, result }) => (
+                            <IssueRow
+                              key={row.rowIndex}
+                              label={labelFn(row)}
+                              result={result}
+                              skippedLabel={cfg.skippedLabel}
+                            />
+                          ))}
+                      </div>
+                      <ReviewPaginationControls
+                        label="issues"
+                        page={issuePagination.page}
+                        totalPages={issuePagination.totalPages}
+                        rangeStart={issuePagination.rangeStart}
+                        rangeEnd={issuePagination.rangeEnd}
+                        totalItems={orderedIssueRows.length}
+                        onPageChange={setIssuePage}
+                      />
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </>
