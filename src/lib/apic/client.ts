@@ -1,7 +1,14 @@
 import https from "node:https";
 
 // APIC commonly uses self-signed certificates — skip verification for internal tooling
-const insecureAgent = new https.Agent({ rejectUnauthorized: false });
+export const apicAgent = new https.Agent({
+  rejectUnauthorized: false,
+  keepAlive: true,
+  keepAliveMsecs: 1_000,
+  maxSockets: 20,
+  maxFreeSockets: 10,
+  scheduling: "lifo",
+});
 
 export interface ApicRequestInit {
   method?: string;
@@ -33,7 +40,7 @@ export async function apicFetch(
         path: parsed.pathname + parsed.search,
         method,
         headers,
-        agent: insecureAgent,
+        agent: apicAgent,
       },
       (res) => {
         const chunks: Buffer[] = [];

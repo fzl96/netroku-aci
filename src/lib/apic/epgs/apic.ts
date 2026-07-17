@@ -1,5 +1,6 @@
 import { apicFetch } from '@/lib/apic/client'
 import { runParallel } from '@/lib/apic/parallel'
+import { createApicReader, type ApicReader } from '@/lib/apic/read-cache'
 import {
   buildAppProfilePath,
   buildBridgeDomainPath,
@@ -32,29 +33,36 @@ import type {
 } from './types'
 import { effectiveBridgeDomainTenant, effectiveContractTenant } from './types'
 
-async function moExists(host: string, path: string, token: string): Promise<{ exists?: boolean; error?: string }> {
-  const res = await apicFetch(host, path, { token })
-  if (res.status === 404) return { exists: false }
-  if (!res.ok) {
-    const text = await res.text()
-    return { error: `APIC ${res.status}: ${text.slice(0, 200)}` }
-  }
-  const data = await res.json() as { imdata: unknown[] }
-  return { exists: data.imdata.length > 0 }
+async function moExists(reader: ApicReader, path: string): Promise<{ exists?: boolean; error?: string }> {
+  const result = await reader.get<{ imdata: unknown[] }>(path)
+  if (result.status === 404) return { exists: false }
+  if (!result.ok && result.status === 0) throw new Error(result.error)
+  if (!result.ok) return { error: `APIC ${result.status}: ${result.error}` }
+  return { exists: result.data.imdata.length > 0 }
 }
 
 async function readEpgChildren(
+  reader: ApicReader,
+  row: ParsedAnyEpgRow,
+): Promise<{ children?: EpgChild[]; error?: string }> {
+  const result = await reader.get<{ imdata: EpgChild[] }>(buildEpgChildrenPath(row))
+  if (!result.ok && result.status === 0) throw new Error(result.error)
+  if (!result.ok) return { error: `EPG children check failed (APIC ${result.status}): ${result.error}` }
+  return { children: result.data.imdata }
+}
+
+async function readEpgChildrenDirect(
   host: string,
   token: string,
   row: ParsedAnyEpgRow,
 ): Promise<{ children?: EpgChild[]; error?: string }> {
-  const childrenRes = await apicFetch(host, buildEpgChildrenPath(row), { token })
-  if (!childrenRes.ok) {
-    const text = await childrenRes.text()
-    return { error: `EPG children check failed (APIC ${childrenRes.status}): ${text.slice(0, 200)}` }
+  const response = await apicFetch(host, buildEpgChildrenPath(row), { token })
+  if (!response.ok) {
+    const text = await response.text()
+    return { error: `EPG children check failed (APIC ${response.status}): ${text.slice(0, 200)}` }
   }
-  const childrenData = await childrenRes.json() as { imdata: EpgChild[] }
-  return { children: childrenData.imdata }
+  const data = await response.json() as { imdata: EpgChild[] }
+  return { children: data.imdata }
 }
 
 async function postApic(
@@ -92,16 +100,15 @@ function legacyContractRowsToEpgRows(rows: ParsedEpgContractRow[], role: EpgCont
 
 async function validateBridgeDomainForEpg(
   row: ParsedEpgRow,
-  apicHost: string,
-  apicToken: string,
+  reader: ApicReader,
 ): Promise<EpgValidationResult | null> {
   const bdTenant = effectiveBridgeDomainTenant(row)
-  const bd = await moExists(apicHost, buildBridgeDomainPath(bdTenant, row.bd), apicToken)
+  const bd = await moExists(reader, buildBridgeDomainPath(bdTenant, row.bd))
   if (bd.error) return { rowIndex: row.rowIndex, status: 'error', message: `Bridge domain check failed: ${bd.error}` }
   if (!bd.exists) return { rowIndex: row.rowIndex, status: 'error', message: `Bridge domain not found: ${bdTenant}/${row.bd}` }
 
   if (bdTenant === 'common' && row.tenant !== 'common') {
-    const localBd = await moExists(apicHost, buildBridgeDomainPath(row.tenant, row.bd), apicToken)
+    const localBd = await moExists(reader, buildBridgeDomainPath(row.tenant, row.bd))
     if (localBd.error) return { rowIndex: row.rowIndex, status: 'error', message: `Bridge domain ambiguity check failed: ${localBd.error}` }
     if (localBd.exists) {
       return {
@@ -117,12 +124,11 @@ async function validateBridgeDomainForEpg(
 
 async function validatePhysicalDomainForEpg(
   row: ParsedEpgRow,
-  apicHost: string,
-  apicToken: string,
+  reader: ApicReader,
 ): Promise<EpgValidationResult | null> {
   if (!row.phys_domain) return null
 
-  const physDomain = await moExists(apicHost, buildPhysicalDomainPath(row.phys_domain), apicToken)
+  const physDomain = await moExists(reader, buildPhysicalDomainPath(row.phys_domain))
   if (physDomain.error) return { rowIndex: row.rowIndex, status: 'error', message: `Physical domain check failed: ${physDomain.error}` }
   if (!physDomain.exists) return { rowIndex: row.rowIndex, status: 'error', message: `Physical domain not found: ${row.phys_domain}` }
 
@@ -132,16 +138,15 @@ async function validatePhysicalDomainForEpg(
 async function validateContractForEpg(
   row: ParsedEpgRow,
   contractName: string,
-  apicHost: string,
-  apicToken: string,
+  reader: ApicReader,
 ): Promise<EpgValidationResult | null> {
   const contractTenant = effectiveContractTenant(row)
-  const contract = await moExists(apicHost, buildContractPath(contractTenant, contractName), apicToken)
+  const contract = await moExists(reader, buildContractPath(contractTenant, contractName))
   if (contract.error) return { rowIndex: row.rowIndex, status: 'error', message: `Contract check failed: ${contract.error}` }
   if (!contract.exists) return { rowIndex: row.rowIndex, status: 'error', message: `Contract not found: ${contractTenant}/${contractName}` }
 
   if (contractTenant === 'common' && row.tenant !== 'common') {
-    const localContract = await moExists(apicHost, buildContractPath(row.tenant, contractName), apicToken)
+    const localContract = await moExists(reader, buildContractPath(row.tenant, contractName))
     if (localContract.error) return { rowIndex: row.rowIndex, status: 'error', message: `Contract ambiguity check failed: ${localContract.error}` }
     if (localContract.exists) {
       return {
@@ -170,28 +175,29 @@ export async function validateEpgOnlyDeployRows(
   rows: ParsedEpgRow[],
   apicHost: string,
   apicToken: string,
+  reader: ApicReader = createApicReader(apicHost, apicToken),
 ): Promise<EpgValidationResult[]> {
   return runParallel<ParsedEpgRow, EpgValidationResult>(rows, 10, async (row) => {
     try {
-      const tenant = await moExists(apicHost, buildTenantPath(row.tenant), apicToken)
+      const tenant = await moExists(reader, buildTenantPath(row.tenant))
       if (tenant.error) return { rowIndex: row.rowIndex, status: 'error', message: `Tenant check failed: ${tenant.error}` }
       if (!tenant.exists) return { rowIndex: row.rowIndex, status: 'error', message: `Tenant not found: ${row.tenant}` }
 
-      const anp = await moExists(apicHost, buildAppProfilePath(row.tenant, row.anp), apicToken)
+      const anp = await moExists(reader, buildAppProfilePath(row.tenant, row.anp))
       if (anp.error) return { rowIndex: row.rowIndex, status: 'error', message: `ANP check failed: ${anp.error}` }
       if (!anp.exists) return { rowIndex: row.rowIndex, status: 'error', message: `ANP not found: ${row.tenant}/${row.anp}` }
 
-      const bdError = await validateBridgeDomainForEpg(row, apicHost, apicToken)
+      const bdError = await validateBridgeDomainForEpg(row, reader)
       if (bdError) return bdError
 
-      const physDomainError = await validatePhysicalDomainForEpg(row, apicHost, apicToken)
+      const physDomainError = await validatePhysicalDomainForEpg(row, reader)
       if (physDomainError) return physDomainError
 
-      const epg = await moExists(apicHost, buildEpgPath(row), apicToken)
+      const epg = await moExists(reader, buildEpgPath(row))
       if (epg.error) return { rowIndex: row.rowIndex, status: 'error', message: `EPG check failed: ${epg.error}` }
       if (!epg.exists) return { rowIndex: row.rowIndex, status: 'deploy' }
 
-      const childrenState = await readEpgChildren(apicHost, apicToken, row)
+      const childrenState = await readEpgChildren(reader, row)
       if (childrenState.error) return { rowIndex: row.rowIndex, status: 'error', message: childrenState.error }
       const mismatch = validateEpgState(row, childrenState.children ?? [])
       if (mismatch) return { rowIndex: row.rowIndex, status: 'error', message: mismatch }
@@ -215,33 +221,34 @@ export async function validateEpgDeployRows(
   rows: ParsedEpgRow[],
   apicHost: string,
   apicToken: string,
+  reader: ApicReader = createApicReader(apicHost, apicToken),
 ): Promise<EpgValidationResult[]> {
   return runParallel<ParsedEpgRow, EpgValidationResult>(rows, 10, async (row) => {
     try {
-      const tenant = await moExists(apicHost, buildTenantPath(row.tenant), apicToken)
+      const tenant = await moExists(reader, buildTenantPath(row.tenant))
       if (tenant.error) return { rowIndex: row.rowIndex, status: 'error', message: `Tenant check failed: ${tenant.error}` }
       if (!tenant.exists) return { rowIndex: row.rowIndex, status: 'error', message: `Tenant not found: ${row.tenant}` }
 
-      const anp = await moExists(apicHost, buildAppProfilePath(row.tenant, row.anp), apicToken)
+      const anp = await moExists(reader, buildAppProfilePath(row.tenant, row.anp))
       if (anp.error) return { rowIndex: row.rowIndex, status: 'error', message: `ANP check failed: ${anp.error}` }
       if (!anp.exists) return { rowIndex: row.rowIndex, status: 'error', message: `ANP not found: ${row.tenant}/${row.anp}` }
 
-      const bdError = await validateBridgeDomainForEpg(row, apicHost, apicToken)
+      const bdError = await validateBridgeDomainForEpg(row, reader)
       if (bdError) return bdError
 
-      const physDomainError = await validatePhysicalDomainForEpg(row, apicHost, apicToken)
+      const physDomainError = await validatePhysicalDomainForEpg(row, reader)
       if (physDomainError) return physDomainError
 
       for (const contractName of uniqueContracts(row)) {
-        const contractError = await validateContractForEpg(row, contractName, apicHost, apicToken)
+        const contractError = await validateContractForEpg(row, contractName, reader)
         if (contractError) return contractError
       }
 
-      const epg = await moExists(apicHost, buildEpgPath(row), apicToken)
+      const epg = await moExists(reader, buildEpgPath(row))
       if (epg.error) return { rowIndex: row.rowIndex, status: 'error', message: `EPG check failed: ${epg.error}` }
       if (!epg.exists) return { rowIndex: row.rowIndex, status: 'deploy' }
 
-      const childrenState = await readEpgChildren(apicHost, apicToken, row)
+      const childrenState = await readEpgChildren(reader, row)
       if (childrenState.error) return { rowIndex: row.rowIndex, status: 'error', message: childrenState.error }
       const children = childrenState.children ?? []
       const existingBd = epgBridgeDomainName(children)
@@ -405,14 +412,15 @@ export async function validateEpgRollbackRows(
   rows: ParsedEpgRow[],
   apicHost: string,
   apicToken: string,
+  reader: ApicReader = createApicReader(apicHost, apicToken),
 ): Promise<EpgValidationResult[]> {
   return runParallel<ParsedEpgRow, EpgValidationResult>(rows, 10, async (row) => {
     try {
-      const epg = await moExists(apicHost, buildEpgPath(row), apicToken)
+      const epg = await moExists(reader, buildEpgPath(row))
       if (epg.error) return { rowIndex: row.rowIndex, status: 'error', message: `EPG check failed: ${epg.error}` }
       if (!epg.exists) return { rowIndex: row.rowIndex, status: 'missing' }
 
-      const childrenState = await readEpgChildren(apicHost, apicToken, row)
+      const childrenState = await readEpgChildren(reader, row)
       if (childrenState.error) return { rowIndex: row.rowIndex, status: 'error', message: childrenState.error }
 
       const children = childrenState.children ?? []
@@ -447,7 +455,7 @@ export async function rollbackEpgRows(
     try {
       const contracts = requestedContracts(row)
       if (contracts.length > 0) {
-        const childrenState = await readEpgChildren(apicHost, apicToken, row)
+        const childrenState = await readEpgChildrenDirect(apicHost, apicToken, row)
         if (childrenState.error) return { rowIndex: row.rowIndex, success: false, message: childrenState.error }
         const children = childrenState.children ?? []
         const mismatch = validateEpgState(row, children)

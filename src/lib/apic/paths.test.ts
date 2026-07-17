@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test'
-import { buildPathSegment, buildMoPath } from './paths'
+import { buildEpgDn, buildMoDn, buildPathSegment, buildMoPath } from './paths'
 import type { ParsedRow } from './types'
 
 const base: Omit<ParsedRow, 'port_type' | 'node2' | 'interface_or_ipg'> = {
@@ -42,6 +42,25 @@ describe('buildMoPath', () => {
     const row: ParsedRow = { ...base, port_type: 'port', node2: null, interface_or_ipg: 'eth1/1' }
     expect(buildMoPath(row)).toBe(
       '/api/node/mo/uni/tn-TenantA/ap-App1/epg-Web-EPG/rspathAtt-[topology/pod-1/paths-101/pathep-[eth1/1]].json'
+    )
+  })
+})
+
+describe('managed object DNs', () => {
+  const row: ParsedRow = {
+    ...base,
+    port_type: 'vpc',
+    node2: 102,
+    interface_or_ipg: 'myVPC_IPG',
+  }
+
+  it('builds the EPG DN', () => {
+    expect(buildEpgDn(row)).toBe('uni/tn-TenantA/ap-App1/epg-Web-EPG')
+  })
+
+  it('builds the static binding DN', () => {
+    expect(buildMoDn(row)).toBe(
+      'uni/tn-TenantA/ap-App1/epg-Web-EPG/rspathAtt-[topology/pod-1/protpaths-101-102/pathep-[myVPC_IPG]]',
     )
   })
 })
