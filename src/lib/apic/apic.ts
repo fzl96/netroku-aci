@@ -1,12 +1,14 @@
 import { apicFetch } from './client'
 import { buildEpgDn, buildMoDn, buildMoPath, buildPathSegment } from './paths'
 import { runParallel } from './parallel'
+import { validateDeployRowsExact, validateRollbackRowsExact } from './static-port-exact'
 import {
   bindingLookupKey,
   loadStaticPortSnapshot,
   type SnapshotRead,
   type StaticPortSnapshotLoader,
 } from './static-port-snapshot'
+import { selectStaticPortValidationStrategy } from './static-port-strategy'
 import type { ParsedRow, ValidationResult, DeployResult } from './types'
 
 function snapshotError<T>(result: SnapshotRead<T>, label: string): string | null {
@@ -16,6 +18,16 @@ function snapshotError<T>(result: SnapshotRead<T>, label: string): string | null
 }
 
 export async function validateDeployRows(
+  rows: ParsedRow[],
+  apicHost: string,
+  apicToken: string,
+): Promise<ValidationResult[]> {
+  return selectStaticPortValidationStrategy(rows.length) === 'snapshot'
+    ? validateDeployRowsFromSnapshot(rows, apicHost, apicToken)
+    : validateDeployRowsExact(rows, apicHost, apicToken)
+}
+
+export async function validateDeployRowsFromSnapshot(
   rows: ParsedRow[],
   apicHost: string,
   apicToken: string,
@@ -129,6 +141,16 @@ export async function rollbackRows(
 }
 
 export async function validateRollbackRows(
+  rows: ParsedRow[],
+  apicHost: string,
+  apicToken: string,
+): Promise<ValidationResult[]> {
+  return selectStaticPortValidationStrategy(rows.length) === 'snapshot'
+    ? validateRollbackRowsFromSnapshot(rows, apicHost, apicToken)
+    : validateRollbackRowsExact(rows, apicHost, apicToken)
+}
+
+export async function validateRollbackRowsFromSnapshot(
   rows: ParsedRow[],
   apicHost: string,
   apicToken: string,

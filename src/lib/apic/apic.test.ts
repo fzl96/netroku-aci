@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'bun:test'
-import { validateDeployRows, validateRollbackRows } from './apic'
+import {
+  validateDeployRowsFromSnapshot,
+  validateRollbackRowsFromSnapshot,
+} from './apic'
 import { buildEpgDn, buildMoDn, buildPathSegment } from './paths'
 import {
   bindingLookupKey,
@@ -79,7 +82,7 @@ describe('static-port snapshot validation', () => {
   it('returns deploy for an absent binding and exists for an exact binding', async () => {
     const index = epgIndex([vpcRow, directRow], [directRow])
 
-    const results = await validateDeployRows(
+    const results = await validateDeployRowsFromSnapshot(
       [vpcRow, directRow],
       'apic.local',
       'token',
@@ -104,7 +107,7 @@ describe('static-port snapshot validation', () => {
       [conflictDn],
     )
 
-    const [result] = await validateDeployRows(
+    const [result] = await validateDeployRowsFromSnapshot(
       [vpcRow],
       'apic.local',
       'token',
@@ -127,7 +130,7 @@ describe('static-port snapshot validation', () => {
       epgBindings: ok(epgIndex([missingNode, missingBundle, missingPhysical])),
     })
 
-    const results = await validateDeployRows(
+    const results = await validateDeployRowsFromSnapshot(
       [missingEpg, missingNode, missingBundle, missingPhysical],
       'apic.local',
       'token',
@@ -145,7 +148,7 @@ describe('static-port snapshot validation', () => {
   it('returns rollback only for exact bindings', async () => {
     const index = epgIndex([vpcRow, directRow], [vpcRow])
 
-    const results = await validateRollbackRows(
+    const results = await validateRollbackRowsFromSnapshot(
       [vpcRow, directRow],
       'apic.local',
       'token',
@@ -163,7 +166,7 @@ describe('static-port snapshot validation', () => {
       epgBindings: { ok: false, status: 503, error: 'inventory unavailable' },
     })
 
-    const [result] = await validateDeployRows(
+    const [result] = await validateDeployRowsFromSnapshot(
       [vpcRow],
       'apic.local',
       'token',
@@ -186,7 +189,7 @@ describe('static-port snapshot validation', () => {
     const requirementsCalls: StaticPortSnapshotRequirements[] = []
     const value = snapshot({ epgBindings: ok(epgIndex(rows)) })
 
-    const results = await validateDeployRows(
+    const results = await validateDeployRowsFromSnapshot(
       rows,
       'apic.local',
       'token',
@@ -202,8 +205,8 @@ describe('static-port snapshot validation', () => {
     const calls: StaticPortSnapshotRequirements[] = []
     const loader = loaderFor(snapshot(), calls)
 
-    await validateDeployRows([vpcRow], 'apic.local', 'token', loader)
-    await validateDeployRows([directRow], 'apic.local', 'token', loader)
+    await validateDeployRowsFromSnapshot([vpcRow], 'apic.local', 'token', loader)
+    await validateDeployRowsFromSnapshot([directRow], 'apic.local', 'token', loader)
 
     expect(calls).toEqual([
       { nodes: true, bundles: true, physicalPaths: false },
@@ -214,7 +217,7 @@ describe('static-port snapshot validation', () => {
   it('requests only EPG and binding state for rollback', async () => {
     const calls: StaticPortSnapshotRequirements[] = []
 
-    await validateRollbackRows(
+    await validateRollbackRowsFromSnapshot(
       [vpcRow],
       'apic.local',
       'token',
