@@ -152,10 +152,10 @@ function addEpgPage(index: EpgBindingIndex, imdata: EpgMo[]): void {
 
     for (const child of epg.children ?? []) {
       const attributes = child.fvRsPathAtt?.attributes
-      const dn = attributes?.dn
       const tDn = attributes?.tDn
       const encap = attributes?.encap
-      if (!dn || !tDn || !encap) continue
+      if (!tDn || !encap) continue
+      const dn = attributes?.dn || `${epgDn}/rspathAtt-[${tDn}]`
 
       index.bindingsByDn.set(dn, { tDn, encap })
       const key = bindingLookupKey(tDn, encap)
@@ -170,8 +170,8 @@ function addNodePage(index: Set<number>, imdata: NodeMo[]): void {
   for (const item of imdata) {
     const attributes = item.fabricNode?.attributes
     if (!attributes) continue
-    const fromDn = attributes.dn?.match(/node-(\d+)\b/)?.[1]
-    const nodeId = Number(attributes.id ?? fromDn)
+    const podOneNodeId = attributes.dn?.match(/^topology\/pod-1\/node-(\d+)$/)?.[1]
+    const nodeId = Number(podOneNodeId)
     if (Number.isSafeInteger(nodeId)) index.add(nodeId)
   }
 }

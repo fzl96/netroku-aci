@@ -38,7 +38,7 @@ describe('loadStaticPortSnapshot', () => {
               attributes: { dn: epgDn },
               children: [{
                 fvRsPathAtt: {
-                  attributes: { dn: bindingDn, tDn: pathDn, encap: 'vlan-100' },
+                  attributes: { tDn: pathDn, encap: 'vlan-100' },
                 },
               }],
             },
@@ -47,10 +47,11 @@ describe('loadStaticPortSnapshot', () => {
       }
       if (path.startsWith(NODE_BASE)) {
         return Response.json({
-          totalCount: '2',
+          totalCount: '3',
           imdata: [
             { fabricNode: { attributes: { id: '101', dn: 'topology/pod-1/node-101' } } },
             { fabricNode: { attributes: { dn: 'topology/pod-1/node-102' } } },
+            { fabricNode: { attributes: { id: '103', dn: 'topology/pod-2/node-103' } } },
           ],
         })
       }
