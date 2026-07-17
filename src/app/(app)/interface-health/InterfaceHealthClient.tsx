@@ -82,6 +82,7 @@ export interface InterfaceRowProps extends CounterFields {
   dTxDiscards: string | null
   // Sum of positive CRC deltas over the active window (CRC view only); null in the All view.
   crcWindowTotal: string | null
+  hasRecentStateChange?: boolean
 }
 
 type PageSizeValue = 10 | 50 | 100 | 1000 | 'all'
@@ -106,7 +107,7 @@ interface Props {
   sortKey: TableSortKey | null
   sortDirection: InterfaceSortDirection
   counterMode: CounterMode
-  view?: 'all' | 'crc'
+  view?: 'all' | 'crc' | 'state-changed'
   window?: '7d' | '30d'
   crcTrend?: CrcTrendPoint[]
 }
@@ -150,8 +151,20 @@ function isNonZero(value: string | null): boolean {
   }
 }
 
-function OperStBadge({ st }: { st: string }) {
-  const up = st === 'up'
+export function OperStBadge({ st, adminSt }: { st: string; adminSt?: string }) {
+  const up = st.toLowerCase() === 'up'
+  const adminUp = adminSt?.toLowerCase() === 'up'
+  const operDown = !up && (adminUp || st.length > 0)
+
+  if (operDown) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">
+        <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-red-500" />
+        {st || 'down'}
+      </span>
+    )
+  }
+
   return (
     <span
       className={[
@@ -245,7 +258,7 @@ export function InterfaceHealthClient({
     sort?: TableSortKey | null
     dir?: InterfaceSortDirection
     counterMode?: CounterMode
-    view?: 'all' | 'crc'
+    view?: 'all' | 'crc' | 'state-changed'
     window?: '7d' | '30d'
   }) {
     const params = new URLSearchParams()
@@ -271,7 +284,7 @@ export function InterfaceHealthClient({
     }
     if (mode !== 'delta') params.set('mode', mode)
     if (v !== 'all') params.set('view', v)
-    if (v === 'crc' && win !== '7d') params.set('window', win)
+    if ((v === 'crc' || v === 'state-changed') && win !== '7d') params.set('window', win)
     const qs = params.toString()
     return `/interface-health${qs ? `?${qs}` : ''}`
   }
@@ -282,7 +295,7 @@ export function InterfaceHealthClient({
     })
   }
 
-  function handleViewChange(v: 'all' | 'crc') {
+  function handleViewChange(v: 'all' | 'crc' | 'state-changed') {
     startTransition(() => {
       router.replace(buildUrl({ view: v, page: 1 }))
     })
@@ -601,6 +614,7 @@ export function InterfaceHealthClient({
                   {([
                     { label: 'All', value: 'all' },
                     { label: 'Counting CRC', value: 'crc' },
+                    { label: 'State Changes', value: 'state-changed' },
                   ] as const).map(v => (
                     <button
                       key={v.value}
@@ -638,7 +652,7 @@ export function InterfaceHealthClient({
                   ))}
                 </div>
 
-                {view === 'crc' && (
+                {(view === 'crc' || view === 'state-changed') && (
                   <div className="inline-flex shrink-0 rounded-lg border border-border bg-muted p-0.5">
                     {(['7d', '30d'] as const).map(w => (
                       <button
@@ -664,7 +678,11 @@ export function InterfaceHealthClient({
                 <span>
                   <span className="font-semibold text-foreground">{total}</span>{' '}
                   {total === 1 ? 'interface' : 'interfaces'}
-                  {view === 'crc' && ` (CRC increase in last ${window})`}
+                  {view === 'crc'
+                    ? ` (CRC increase in last ${window})`
+                    : view === 'state-changed'
+                    ? ` (state changed in last ${window})`
+                    : ''}
                 </span>
               </div>
             </div>
@@ -768,7 +786,7 @@ export function InterfaceHealthClient({
                             <td className="px-4 py-2.5 font-mono text-foreground">{r.ifName}</td>
                             <td className="px-4 py-2.5 text-muted-foreground">{r.description || '—'}</td>
                             <td className="px-4 py-2.5 text-muted-foreground">{r.adminSt || '—'}</td>
-                            <td className="px-4 py-2.5"><OperStBadge st={r.operSt} /></td>
+                            <td className="px-4 py-2.5"><OperStBadge st={r.operSt} adminSt={r.adminSt} /></td>
                             <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{r.operSpeed || '—'}</td>
                             <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.rxErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
                               {counterMode === 'delta' ? fmtDelta(visibleCounters.rxErrors) : fmtCount(visibleCounters.rxErrors)}
@@ -797,7 +815,16 @@ export function InterfaceHealthClient({
                             <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.rxAlignErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
                               {counterMode === 'delta' ? fmtDelta(visibleCounters.rxAlignErrors) : fmtCount(visibleCounters.rxAlignErrors)}
                             </td>
-                            <td className="px-4 py-2.5 tabular-nums text-faint whitespace-nowrap">{fmtDate(r.lastLinkStChg)}</td>
+                            <td className="px-4 py-2.5 tabular-nums whitespace-nowrap">
+                              {r.hasRecentStateChange ? (
+                                <span className="inline-flex items-center gap-1.5 font-medium text-amber-600 dark:text-amber-400">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                                  {fmtDate(r.lastLinkStChg)}
+                                </span>
+                              ) : (
+                                <span className="text-faint">{fmtDate(r.lastLinkStChg)}</span>
+                              )}
+                            </td>
                             <td className="px-4 py-2.5 tabular-nums text-faint whitespace-nowrap">{fmtRelative(r.lastSampledAt)}</td>
                           </tr>
                         )
@@ -856,7 +883,7 @@ export function InterfaceHealthClient({
                         })
                       }
                     >
-                      <DataCardHeader trailing={<OperStBadge st={r.operSt} />}>
+                      <DataCardHeader trailing={<OperStBadge st={r.operSt} adminSt={r.adminSt} />}>
                         <DataCardTitle className="font-mono">{r.ifName}</DataCardTitle>
                         <p className="mt-0.5 truncate text-xs text-muted-foreground">
                           Node {r.node || '—'}

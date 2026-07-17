@@ -8,6 +8,7 @@ import type { CounterMode } from './counter-mode'
 import { parseInterfaceSortParams, sortInterfaceRows } from './sort'
 import { aggregateCrcTrend, type CrcTrendPoint } from './crc-trend'
 import { sumCrcByInterface, sortByCrcWindowTotal } from './crc-window'
+import { findStateChangedInterfaceIds, isRecentLinkStateChange } from './state-changes'
 
 export const metadata: Metadata = {
   title: 'Interfaces',
@@ -58,7 +59,13 @@ export default async function InterfaceHealthPage({
 
   if (!apic && apicHosts.length > 0) redirect(`/interface-health?apic=${apicHosts[0].id}`)
 
-  const interfaceView = viewParam === 'crc' ? 'crc' : 'all'
+  const interfaceView: 'all' | 'crc' | 'state-changed' =
+    viewParam === 'crc'
+      ? 'crc'
+      : viewParam === 'state-changed'
+      ? 'state-changed'
+      : 'all'
+
   const crcWindow: '7d' | '30d' = windowParam === '30d' ? '30d' : '7d'
   const windowDays = crcWindow === '30d' ? 30 : 7
 
@@ -109,9 +116,29 @@ export default async function InterfaceHealthPage({
       crcInterfaceIds = [...crcTotals.keys()]
     }
 
+    let stateChangedInterfaceIds: string[] = []
+    if (interfaceView === 'state-changed') {
+      const windowStatusSamples = await prisma.interfaceSample.findMany({
+        where: {
+          apicHostId: apic,
+          sampledAt: { gte: windowStart },
+        },
+        select: { interfaceId: true, sampledAt: true, adminSt: true, operSt: true },
+      })
+      stateChangedInterfaceIds = Array.from(findStateChangedInterfaceIds(windowStatusSamples))
+    }
+
     const where = {
       apicHostId: apic,
       ...(interfaceView === 'crc' ? { id: { in: crcInterfaceIds } } : {}),
+      ...(interfaceView === 'state-changed'
+        ? {
+            OR: [
+              { lastLinkStChg: { gte: windowStart } },
+              { id: { in: stateChangedInterfaceIds } },
+            ],
+          }
+        : {}),
       ...(nodeFilter.length > 0 ? { node: { in: nodeFilter } } : {}),
       ...(query?.trim()
         ? {
@@ -203,6 +230,7 @@ export default async function InterfaceHealthPage({
           interfaceView === 'crc'
             ? (crcTotals.get(s.id) ?? BigInt(0)).toString()
             : null,
+        hasRecentStateChange: isRecentLinkStateChange(s.lastLinkStChg, windowStart),
       }
     })
 
