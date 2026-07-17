@@ -1,30 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
-  findStateChangedInterfaceIds,
   isRecentLinkStateChange,
   isOperDown,
 } from './state-changes'
 
 describe('state-changes helpers', () => {
-  describe('findStateChangedInterfaceIds', () => {
-    it('detects operSt or adminSt changes between samples', () => {
-      const now = new Date()
-      const t1 = new Date(now.getTime() - 60000)
-      const t2 = new Date(now.getTime() - 30000)
-
-      const samples = [
-        { interfaceId: 'if-1', sampledAt: t1, adminSt: 'up', operSt: 'up' },
-        { interfaceId: 'if-1', sampledAt: t2, adminSt: 'up', operSt: 'down' }, // changed
-        { interfaceId: 'if-2', sampledAt: t1, adminSt: 'up', operSt: 'up' },
-        { interfaceId: 'if-2', sampledAt: t2, adminSt: 'up', operSt: 'up' }, // unchanged
-      ]
-
-      const changed = findStateChangedInterfaceIds(samples)
-      expect(changed.has('if-1')).toBe(true)
-      expect(changed.has('if-2')).toBe(false)
-    })
-  })
-
   describe('isRecentLinkStateChange', () => {
     it('returns true if lastLinkStChg is after windowStart', () => {
       const now = new Date()

@@ -1,10 +1,3 @@
-export interface InterfaceStatusSample {
-  interfaceId: string
-  sampledAt: Date
-  adminSt: string
-  operSt: string
-}
-
 export interface StatusHistorySample {
   id: string
   sampledAt: string
@@ -61,38 +54,6 @@ export function serializeStatusSamples(
   })
 
   return baseline ? serialized.slice(1) : serialized
-}
-
-/**
- * Identify interface IDs that had a change in adminSt or operSt across consecutive samples.
- */
-export function findStateChangedInterfaceIds(samples: InterfaceStatusSample[]): Set<string> {
-  const changedIds = new Set<string>()
-  const samplesByInterface = new Map<string, InterfaceStatusSample[]>()
-
-  for (const sample of samples) {
-    const list = samplesByInterface.get(sample.interfaceId) ?? []
-    list.push(sample)
-    samplesByInterface.set(sample.interfaceId, list)
-  }
-
-  for (const [interfaceId, list] of samplesByInterface.entries()) {
-    // Sort ascending by sampledAt
-    list.sort((a, b) => a.sampledAt.getTime() - b.sampledAt.getTime())
-    for (let i = 1; i < list.length; i++) {
-      const prev = list[i - 1]
-      const curr = list[i]
-      if (
-        prev.adminSt.toLowerCase() !== curr.adminSt.toLowerCase() ||
-        prev.operSt.toLowerCase() !== curr.operSt.toLowerCase()
-      ) {
-        changedIds.add(interfaceId)
-        break
-      }
-    }
-  }
-
-  return changedIds
 }
 
 /**

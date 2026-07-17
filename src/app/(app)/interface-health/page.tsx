@@ -8,8 +8,9 @@ import type { CounterMode } from './counter-mode'
 import { parseInterfaceSortParams, sortInterfaceRows } from './sort'
 import { aggregateCrcTrend, type CrcTrendPoint } from './crc-trend'
 import { sumCrcByInterface, sortByCrcWindowTotal } from './crc-window'
-import { findStateChangedInterfaceIds, isRecentLinkStateChange } from './state-changes'
+import { isRecentLinkStateChange } from './state-changes'
 import { buildInterfaceSnapshotWhere } from './interface-query'
+import { queryStateChangedInterfaceIds } from './state-change-query'
 
 export const metadata: Metadata = {
   title: 'Interfaces',
@@ -119,14 +120,11 @@ export default async function InterfaceHealthPage({
 
     let stateChangedInterfaceIds: string[] = []
     if (interfaceView === 'state-changed') {
-      const windowStatusSamples = await prisma.interfaceSample.findMany({
-        where: {
-          apicHostId: apic,
-          sampledAt: { gte: windowStart },
-        },
-        select: { interfaceId: true, sampledAt: true, adminSt: true, operSt: true },
-      })
-      stateChangedInterfaceIds = Array.from(findStateChangedInterfaceIds(windowStatusSamples))
+      stateChangedInterfaceIds = await queryStateChangedInterfaceIds(
+        (sql) => prisma.$queryRaw<Array<{ interfaceId: string }>>(sql),
+        apic,
+        windowStart,
+      )
     }
 
     const where = buildInterfaceSnapshotWhere({
