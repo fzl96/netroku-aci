@@ -39,8 +39,9 @@ export async function validateDeployRows(
     const nodeError = snapshotError(snapshot.nodes, 'Node')
     if (nodeError) return { rowIndex: row.rowIndex, status: 'error', message: nodeError }
     if (!snapshot.nodes.ok) throw new Error('unreachable')
+    const availableNodeIds = snapshot.nodes.value
     const nodeIds = row.port_type === 'vpc' ? [row.node1, row.node2!] : [row.node1]
-    const missingNodes = nodeIds.filter(nodeId => !snapshot.nodes.value.has(nodeId))
+    const missingNodes = nodeIds.filter(nodeId => !availableNodeIds.has(nodeId))
     if (missingNodes.length > 0) {
       return { rowIndex: row.rowIndex, status: 'error', message: `Node(s) not found in fabric: ${missingNodes.join(', ')}` }
     }
