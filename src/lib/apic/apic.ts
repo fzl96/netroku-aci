@@ -1,12 +1,14 @@
 import { apicFetch } from './client'
 import { buildEpgDn, buildMoDn, buildMoPath, buildPathSegment } from './paths'
 import { runParallel } from './parallel'
+import { validateDeployRowsExact, validateRollbackRowsExact } from './static-port-exact'
 import {
   bindingLookupKey,
   loadStaticPortSnapshot,
   type SnapshotRead,
   type StaticPortSnapshotLoader,
 } from './static-port-snapshot'
+import { selectStaticPortValidationStrategy } from './static-port-strategy'
 import type { ParsedRow, ValidationResult, DeployResult } from './types'
 
 function snapshotError<T>(result: SnapshotRead<T>, label: string): string | null {
@@ -15,7 +17,38 @@ function snapshotError<T>(result: SnapshotRead<T>, label: string): string | null
   return `${label} snapshot failed (APIC ${result.status}): ${result.error}`
 }
 
+type StaticPortValidationBackend = (
+  rows: ParsedRow[],
+  apicHost: string,
+  apicToken: string,
+) => Promise<ValidationResult[]>
+
+export interface StaticPortValidationBackends {
+  exact: StaticPortValidationBackend
+  snapshot: StaticPortValidationBackend
+}
+
+const deployValidationBackends: StaticPortValidationBackends = {
+  exact: validateDeployRowsExact,
+  snapshot: validateDeployRowsFromSnapshot,
+}
+
+const rollbackValidationBackends: StaticPortValidationBackends = {
+  exact: validateRollbackRowsExact,
+  snapshot: validateRollbackRowsFromSnapshot,
+}
+
 export async function validateDeployRows(
+  rows: ParsedRow[],
+  apicHost: string,
+  apicToken: string,
+  backends: StaticPortValidationBackends = deployValidationBackends,
+): Promise<ValidationResult[]> {
+  const strategy = selectStaticPortValidationStrategy(rows.length)
+  return backends[strategy](rows, apicHost, apicToken)
+}
+
+export async function validateDeployRowsFromSnapshot(
   rows: ParsedRow[],
   apicHost: string,
   apicToken: string,
@@ -129,6 +162,16 @@ export async function rollbackRows(
 }
 
 export async function validateRollbackRows(
+  rows: ParsedRow[],
+  apicHost: string,
+  apicToken: string,
+  backends: StaticPortValidationBackends = rollbackValidationBackends,
+): Promise<ValidationResult[]> {
+  const strategy = selectStaticPortValidationStrategy(rows.length)
+  return backends[strategy](rows, apicHost, apicToken)
+}
+
+export async function validateRollbackRowsFromSnapshot(
   rows: ParsedRow[],
   apicHost: string,
   apicToken: string,
