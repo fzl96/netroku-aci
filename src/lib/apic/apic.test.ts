@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'bun:test'
 import {
+  validateDeployRows,
   validateDeployRowsFromSnapshot,
+  validateRollbackRows,
   validateRollbackRowsFromSnapshot,
 } from './apic'
 import { buildEpgDn, buildMoDn, buildPathSegment } from './paths'
@@ -12,7 +14,7 @@ import {
   type StaticPortSnapshotLoader,
   type StaticPortSnapshotRequirements,
 } from './static-port-snapshot'
-import type { ParsedRow } from './types'
+import type { ParsedRow, ValidationResult } from './types'
 
 const vpcRow: ParsedRow = {
   rowIndex: 1,
@@ -225,5 +227,53 @@ describe('static-port snapshot validation', () => {
     )
 
     expect(calls).toEqual([{ nodes: false, bundles: false, physicalPaths: false }])
+  })
+})
+
+describe('public static-port validation dispatch', () => {
+  function rowsOf(count: number): ParsedRow[] {
+    return Array.from({ length: count }, (_, index) => ({
+      ...vpcRow,
+      rowIndex: index + 1,
+    }))
+  }
+
+  function backends() {
+    const calls = { exact: 0, snapshot: 0 }
+    return {
+      calls,
+      value: {
+        exact: async (rows: ParsedRow[]): Promise<ValidationResult[]> => {
+          calls.exact += 1
+          return rows.map(row => ({ rowIndex: row.rowIndex, status: 'deploy' }))
+        },
+        snapshot: async (rows: ParsedRow[]): Promise<ValidationResult[]> => {
+          calls.snapshot += 1
+          return rows.map(row => ({ rowIndex: row.rowIndex, status: 'deploy' }))
+        },
+      },
+    }
+  }
+
+  it('routes 100 deploy and rollback rows only to exact validation', async () => {
+    const deploy = backends()
+    const rollback = backends()
+
+    await validateDeployRows(rowsOf(100), 'invalid host', 'token', deploy.value)
+    await validateRollbackRows(rowsOf(100), 'invalid host', 'token', rollback.value)
+
+    expect(deploy.calls).toEqual({ exact: 1, snapshot: 0 })
+    expect(rollback.calls).toEqual({ exact: 1, snapshot: 0 })
+  })
+
+  it('routes 101 deploy and rollback rows only to snapshot validation', async () => {
+    const deploy = backends()
+    const rollback = backends()
+
+    await validateDeployRows(rowsOf(101), 'invalid host', 'token', deploy.value)
+    await validateRollbackRows(rowsOf(101), 'invalid host', 'token', rollback.value)
+
+    expect(deploy.calls).toEqual({ exact: 0, snapshot: 1 })
+    expect(rollback.calls).toEqual({ exact: 0, snapshot: 1 })
   })
 })
