@@ -14,7 +14,6 @@ import {
   IconChevronRight,
   IconChevronDown,
   IconChevronUp,
-  IconLoader,
 } from '@tabler/icons-react'
 import { useApicHosts } from '@/components/ApicHostsProvider'
 import {
