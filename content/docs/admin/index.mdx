@@ -9,6 +9,9 @@ This section covers everything needed to deploy and configure Netroku ACI — fr
 
 Before you begin, make sure you have the following installed:
 
+> [!IMPORTANT]
+> **The machine running Netroku ACI must have network connectivity to the Cisco APIC management interface over HTTPS.** Without access to the APIC, Netroku ACI cannot retrieve or synchronize fabric data, and its core functionality will not work.
+
 - **Bun** ≥ 1.1 ([bun.sh](https://bun.sh)) **or** **Node.js** ≥ 20 ([nodejs.org](https://nodejs.org))
 - **Git**
 - **Docker** with Docker Compose — only required if you plan to run the database locally
