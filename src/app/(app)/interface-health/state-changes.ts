@@ -14,6 +14,14 @@ export interface StatusHistorySample {
   isStateChange: boolean
 }
 
+export interface RawStatusHistorySample {
+  id: string
+  sampledAt: Date
+  adminSt: string
+  operSt: string
+  operSpeed: string
+}
+
 export interface InterfaceStatusDetails {
   id: string
   node: string
@@ -31,30 +39,28 @@ export interface InterfaceStatusDetails {
 }
 
 export function serializeStatusSamples(
-  samples: Array<{
-    id: string
-    sampledAt: Date
-    adminSt: string
-    operSt: string
-    operSpeed: string
-  }>,
+  samples: RawStatusHistorySample[],
+  baseline: RawStatusHistorySample | null = null,
 ): StatusHistorySample[] {
-  return samples.map((s, idx) => {
-    const prev = idx > 0 ? samples[idx - 1] : null
-    const isStateChange = prev
-      ? prev.adminSt.toLowerCase() !== s.adminSt.toLowerCase() ||
-        prev.operSt.toLowerCase() !== s.operSt.toLowerCase()
+  const comparisonSamples = baseline ? [baseline, ...samples] : samples
+  const serialized = comparisonSamples.map((sample, index) => {
+    const previous = index > 0 ? comparisonSamples[index - 1] : null
+    const isStateChange = previous
+      ? previous.adminSt.toLowerCase() !== sample.adminSt.toLowerCase() ||
+        previous.operSt.toLowerCase() !== sample.operSt.toLowerCase()
       : false
 
     return {
-      id: s.id,
-      sampledAt: s.sampledAt.toISOString(),
-      adminSt: s.adminSt,
-      operSt: s.operSt,
-      operSpeed: s.operSpeed,
+      id: sample.id,
+      sampledAt: sample.sampledAt.toISOString(),
+      adminSt: sample.adminSt,
+      operSt: sample.operSt,
+      operSpeed: sample.operSpeed,
       isStateChange,
     }
   })
+
+  return baseline ? serialized.slice(1) : serialized
 }
 
 /**
