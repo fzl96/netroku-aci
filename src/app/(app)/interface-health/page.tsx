@@ -9,6 +9,7 @@ import { parseInterfaceSortParams, sortInterfaceRows } from './sort'
 import { aggregateCrcTrend, type CrcTrendPoint } from './crc-trend'
 import { sumCrcByInterface, sortByCrcWindowTotal } from './crc-window'
 import { findStateChangedInterfaceIds, isRecentLinkStateChange } from './state-changes'
+import { buildInterfaceSnapshotWhere } from './interface-query'
 
 export const metadata: Metadata = {
   title: 'Interfaces',
@@ -128,29 +129,15 @@ export default async function InterfaceHealthPage({
       stateChangedInterfaceIds = Array.from(findStateChangedInterfaceIds(windowStatusSamples))
     }
 
-    const where = {
+    const where = buildInterfaceSnapshotWhere({
       apicHostId: apic,
-      ...(interfaceView === 'crc' ? { id: { in: crcInterfaceIds } } : {}),
-      ...(interfaceView === 'state-changed'
-        ? {
-            OR: [
-              { lastLinkStChg: { gte: windowStart } },
-              { id: { in: stateChangedInterfaceIds } },
-            ],
-          }
-        : {}),
-      ...(nodeFilter.length > 0 ? { node: { in: nodeFilter } } : {}),
-      ...(query?.trim()
-        ? {
-            OR: [
-              { ifName: { contains: query.trim(), mode: 'insensitive' as const } },
-              { node: { contains: query.trim(), mode: 'insensitive' as const } },
-              { description: { contains: query.trim(), mode: 'insensitive' as const } },
-              { dn: { contains: query.trim(), mode: 'insensitive' as const } },
-            ],
-          }
-        : {}),
-    }
+      view: interfaceView,
+      windowStart,
+      stateChangedInterfaceIds,
+      crcInterfaceIds,
+      nodeFilter,
+      query,
+    })
 
     const skip = pageSize === 'all' ? 0 : (page - 1) * pageSize
     const take = pageSize === 'all' ? undefined : pageSize
@@ -257,4 +244,3 @@ export default async function InterfaceHealthPage({
     />
   )
 }
-
