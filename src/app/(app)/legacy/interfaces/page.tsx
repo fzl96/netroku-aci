@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { buildLegacyInterfaceWhere, serializeLegacyInterfaceSample, type LegacyInterfacePresence } from '@/lib/legacy-ui/interfaces'
-import { parseLegacyPage, parseLegacyPageSize } from '@/lib/legacy-ui/query'
+import { buildLegacyInterfaceWhere, legacyInterfaceOrderBy, serializeLegacyInterfaceSample, type LegacyInterfacePresence } from '@/lib/legacy-ui/interfaces'
+import { parseLegacyDirection, parseLegacyPage, parseLegacyPageSize } from '@/lib/legacy-ui/query'
 import { LegacyInterfacesClient, type LegacyInterfaceRow } from './LegacyInterfacesClient'
 
 export const metadata: Metadata = {
@@ -18,6 +18,9 @@ interface PageParams {
   admin?: string
   oper?: string
   presence?: string
+  counter?: string
+  sort?: string
+  dir?: string
   page?: string
   pageSize?: string
 }
@@ -42,7 +45,7 @@ export default async function LegacyInterfacesPage({ searchParams }: { searchPar
   const [snapshots, total, allCount, downCount, absentCount, withHistory, devices, stateRows] = await Promise.all([
     prisma.legacyInterfaceSnapshot.findMany({
       where,
-      orderBy: [{ device: { hostname: 'asc' } }, { ifName: 'asc' }],
+      orderBy: legacyInterfaceOrderBy(params.sort, parseLegacyDirection(params.dir)),
       skip: (page - 1) * pageSize,
       take: pageSize,
       include: {
@@ -89,6 +92,8 @@ export default async function LegacyInterfacesPage({ searchParams }: { searchPar
     filters={{
       query: params.query ?? '', site: params.site ?? '', device: params.device ?? '',
       admin: params.admin ?? '', oper: params.oper ?? '', presence,
+      counter: params.counter === 'delta' ? 'delta' : 'raw',
+      sort: params.sort ?? 'lastSeen', dir: parseLegacyDirection(params.dir),
     }}
     options={{
       sites: unique(devices.map(device => device.site)),

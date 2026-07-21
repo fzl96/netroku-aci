@@ -64,6 +64,24 @@ export function serializeLegacyInterfaceSample(sample: LegacyInterfaceSampleInpu
   }
 }
 
+const INTERFACE_SORT_FIELDS = {
+  ifName: 'ifName',
+  admin: 'adminSt',
+  oper: 'operSt',
+  speed: 'speed',
+  lastSeen: 'lastSeenAt',
+} as const
+
+export function legacyInterfaceOrderBy(
+  sort: string | undefined,
+  direction: 'asc' | 'desc',
+): Prisma.LegacyInterfaceSnapshotOrderByWithRelationInput[] {
+  const field = INTERFACE_SORT_FIELDS[sort as keyof typeof INTERFACE_SORT_FIELDS]
+  return field
+    ? [{ [field]: direction }, { id: 'asc' }]
+    : [{ lastSeenAt: 'desc' }, { id: 'asc' }]
+}
+
 export function safeLegacyCounterNumber(value: string | null): number | null {
   if (value === null) return null
   const exact = BigInt(value)

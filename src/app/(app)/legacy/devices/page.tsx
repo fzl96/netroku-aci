@@ -41,5 +41,5 @@ export default async function LegacyDevicesPage({ searchParams }: { searchParams
     lastEndpointSyncAt: serializeLegacyDate(record.lastEndpointSyncAt),
   }))
 
-  return <LegacyDevicesClient rows={rows} total={total} page={page} pageSize={pageSize} query={params.query ?? ''} site={params.site ?? ''} deviceType={params.deviceType ?? ''} siteOptions={siteOptions.map(row => row.site)} typeOptions={typeOptions.map(row => row.deviceType)} summaries={{ total: totalDevices, sites: siteRows.length, withHealth, incomplete }} />
+  return <LegacyDevicesClient rows={rows} total={total} page={page} pageSize={pageSize} query={params.query ?? ''} site={params.site ?? ''} deviceType={params.deviceType ?? ''} sort={params.sort ?? 'lastSeenAt'} dir={parseLegacyDirection(params.dir)} siteOptions={siteOptions.map(row => row.site)} typeOptions={typeOptions.map(row => row.deviceType)} summaries={{ total: totalDevices, sites: siteRows.length, withHealth, incomplete }} />
 }

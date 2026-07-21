@@ -42,6 +42,8 @@ export function LegacyDevicesClient({
   query,
   site,
   deviceType,
+  sort,
+  dir,
   siteOptions,
   typeOptions,
   summaries,
@@ -53,6 +55,8 @@ export function LegacyDevicesClient({
   query: string
   site: string
   deviceType: string
+  sort: string
+  dir: 'asc' | 'desc'
   siteOptions: string[]
   typeOptions: string[]
   summaries: { total: number; sites: number; withHealth: number; incomplete: number }
@@ -67,9 +71,10 @@ export function LegacyDevicesClient({
     event.preventDefault()
     const form = new FormData(event.currentTarget)
     const params = new URLSearchParams(searchParams.toString())
-    for (const key of ['query', 'site', 'deviceType']) {
+    for (const key of ['query', 'site', 'deviceType', 'sort', 'dir']) {
       const value = String(form.get(key) ?? '').trim()
-      if (value) params.set(key, value)
+      const isDefault = (key === 'sort' && value === 'lastSeenAt') || (key === 'dir' && value === 'desc')
+      if (value && !isDefault) params.set(key, value)
       else params.delete(key)
     }
     params.set('page', '1')
@@ -107,6 +112,10 @@ export function LegacyDevicesClient({
           <option value="">All device types</option>
           {typeOptions.map(value => <option key={value} value={value}>{value}</option>)}
         </select>
+        <select name="sort" defaultValue={sort} aria-label="Sort devices" className="rounded-lg border border-border bg-muted px-3 py-1.5 text-xs text-foreground">
+          <option value="lastSeenAt">Last seen</option><option value="hostname">Hostname</option><option value="site">Site</option><option value="managementIp">Management IP</option><option value="model">Model</option>
+        </select>
+        <select name="dir" defaultValue={dir} aria-label="Sort direction" className="rounded-lg border border-border bg-muted px-3 py-1.5 text-xs text-foreground"><option value="desc">Descending</option><option value="asc">Ascending</option></select>
         <button className="rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground">Apply</button>
       </form>
 

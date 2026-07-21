@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import {
   buildLegacyHealthDeviceWhere,
+  legacyHealthOrderBy,
   legacyStatusText,
   serializeLegacyHealthSample,
 } from './health'
@@ -32,5 +33,10 @@ describe('legacy health helpers', () => {
       cpuPercent: null, memoryPercent: 44.5, storagePercent: 20,
       temperatureCelsius: null, fanStatuses: [], psuStatuses: ['OK'],
     })
+  })
+
+  it('maps supported device-level health sorts', () => {
+    expect(legacyHealthOrderBy('hostname', 'asc')).toEqual([{ hostname: 'asc' }, { id: 'asc' }])
+    expect(legacyHealthOrderBy('unknown', 'asc')).toEqual([{ lastHealthSyncAt: 'desc' }, { id: 'asc' }])
   })
 })

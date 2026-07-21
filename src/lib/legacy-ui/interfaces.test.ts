@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import {
   buildLegacyInterfaceWhere,
+  legacyInterfaceOrderBy,
   safeLegacyCounterNumber,
   serializeLegacyInterfaceSample,
 } from './interfaces'
@@ -64,5 +65,10 @@ describe('legacy interface helpers', () => {
     expect(safeLegacyCounterNumber('42')).toBe(42)
     expect(safeLegacyCounterNumber('9007199254740993')).toBeNull()
     expect(safeLegacyCounterNumber(null)).toBeNull()
+  })
+
+  test('maps supported interface sorts with a stable tie-breaker', () => {
+    expect(legacyInterfaceOrderBy('ifName', 'asc')).toEqual([{ ifName: 'asc' }, { id: 'asc' }])
+    expect(legacyInterfaceOrderBy('unknown', 'asc')).toEqual([{ lastSeenAt: 'desc' }, { id: 'asc' }])
   })
 })
