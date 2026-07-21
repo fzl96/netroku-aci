@@ -1,5 +1,10 @@
 import { createHash } from 'crypto'
-import { Prisma, type LegacyIngestFeature } from '@prisma/client'
+import {
+  Prisma,
+  type LegacyIngestFeature,
+  type LegacyIngestReceipt,
+  type PrismaClient,
+} from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 
 export interface LegacyIngestCounts {
@@ -33,7 +38,7 @@ interface LegacyBasePayload {
 }
 
 export interface LegacyApplyContext {
-  tx: any
+  tx: Prisma.TransactionClient
   deviceId: string
   receiptId: string
   collectedAt: Date
@@ -44,9 +49,9 @@ type ApplyLegacyFeature = (
 ) => Promise<LegacyIngestCounts>
 
 interface LegacyDb {
-  $transaction<T>(fn: (tx: any) => Promise<T>): Promise<T>
-  legacyDevice?: any
-  legacyIngestReceipt?: any
+  $transaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T>
+  legacyDevice?: Pick<PrismaClient['legacyDevice'], 'findUnique'>
+  legacyIngestReceipt?: Pick<PrismaClient['legacyIngestReceipt'], 'findUnique'>
 }
 
 export class IdempotencyConflictError extends Error {
@@ -79,7 +84,10 @@ export function canonicalPayloadHash(payload: unknown): string {
 }
 
 function receiptResult(
-  receipt: any,
+  receipt: Pick<
+    LegacyIngestReceipt,
+    'id' | 'inserted' | 'updated' | 'cleared' | 'samples'
+  >,
   deviceId: string,
   duplicate: boolean,
 ): LegacyIngestResult {

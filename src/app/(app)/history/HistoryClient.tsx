@@ -40,6 +40,9 @@ const ACTION_LABELS: Record<AuditAction, string> = {
   'resync.health': 'Resync health',
   'resync.nodes': 'Resync nodes',
   'resync.epgs': 'Resync EPGs',
+  'ingest.legacy.health': 'Ingest legacy health',
+  'ingest.legacy.interfaces': 'Ingest legacy interfaces',
+  'ingest.legacy.endpoints': 'Ingest legacy endpoints',
   'user.create': 'User created',
   'user.delete': 'User deleted',
 }
