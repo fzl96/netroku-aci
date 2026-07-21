@@ -44,7 +44,7 @@ export function LegacyHealthDrawer({ selected, onClose }: { selected: LegacyHeal
 
   return (
     <Sheet open={Boolean(selected)} onOpenChange={open => { if (!open) onClose() }}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-3xl">
+      <SheetContent className="w-full overflow-y-auto data-[side=right]:sm:max-w-3xl">
         <SheetHeader className="border-b border-border"><SheetTitle className="font-serif">{selected?.hostname ?? 'Health history'}</SheetTitle><SheetDescription>{selected?.site} · collected measurements and logs</SheetDescription></SheetHeader>
         <div className="space-y-5 px-4 pb-8">
           <div className="inline-flex rounded-lg border border-border bg-muted p-0.5">

@@ -41,7 +41,7 @@ export default async function LegacyEndpointsPage({ searchParams }: { searchPara
     statuses,
   })
 
-  const [records, total, allCount, activeCount, historicalCount, devices, optionRows] = await Promise.all([
+  const [records, total, allCount, activeCount, historicalCount, devices, vlanRows, interfaceRows] = await Promise.all([
     prisma.legacyEndpoint.findMany({
       where,
       orderBy: legacyEndpointOrderBy(params.sort, direction),
@@ -54,7 +54,8 @@ export default async function LegacyEndpointsPage({ searchParams }: { searchPara
     prisma.legacyEndpoint.count({ where: { isActive: true } }),
     prisma.legacyEndpoint.count({ where: { isActive: false } }),
     prisma.legacyDevice.findMany({ select: { id: true, hostname: true, site: true }, orderBy: { hostname: 'asc' } }),
-    prisma.legacyEndpoint.findMany({ select: { vlan: true, interface: true } }),
+    prisma.legacyEndpoint.findMany({ distinct: ['vlan'], select: { vlan: true }, orderBy: { vlan: 'asc' } }),
+    prisma.legacyEndpoint.findMany({ distinct: ['interface'], select: { interface: true }, orderBy: { interface: 'asc' } }),
   ])
 
   const rows: LegacyEndpointRow[] = records.map(record => ({
@@ -89,9 +90,9 @@ export default async function LegacyEndpointsPage({ searchParams }: { searchPara
     options={{
       sites: unique(devices.map(device => device.site)),
       devices,
-      vlans: unique(optionRows.map(row => row.vlan)),
-      interfaces: unique(optionRows.map(row => row.interface)),
+      vlans: unique(vlanRows.map(row => row.vlan)),
+      interfaces: unique(interfaceRows.map(row => row.interface)),
     }}
-    summaries={{ total: allCount, active: activeCount, historical: historicalCount, vlans: unique(optionRows.map(row => row.vlan)).length }}
+    summaries={{ total: allCount, active: activeCount, historical: historicalCount, vlans: vlanRows.length }}
   />
 }

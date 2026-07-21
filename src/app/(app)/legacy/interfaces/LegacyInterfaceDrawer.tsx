@@ -37,7 +37,7 @@ export function LegacyInterfaceDrawer({ selected, onClose }: { selected: LegacyI
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1
 
   return <Sheet open={Boolean(selected)} onOpenChange={open => { if (!open) onClose() }}>
-    <SheetContent className="w-full overflow-y-auto sm:max-w-3xl">
+    <SheetContent className="w-full overflow-y-auto data-[side=right]:sm:max-w-3xl">
       <SheetHeader className="border-b border-border"><SheetTitle className="font-serif">{selected?.hostname ?? 'Interface'} · {selected?.ifName}</SheetTitle><SheetDescription>{selected?.site} · exact counters and historical deltas</SheetDescription></SheetHeader>
       <div className="space-y-5 px-4 pb-8">
         <div className="inline-flex rounded-lg border border-border bg-muted p-0.5">{(['24h', '7d', '30d', 'all'] as LegacyRange[]).map(value => <button key={value} onClick={() => changeRange(value)} className={`rounded-md px-3 py-1.5 text-xs ${range === value ? 'bg-card font-semibold text-foreground shadow-sm' : 'text-subtle'}`}>{value}</button>)}</div>

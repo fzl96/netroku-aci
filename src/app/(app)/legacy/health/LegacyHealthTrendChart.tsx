@@ -6,7 +6,7 @@ export function LegacyHealthTrendChart({ points }: { points: Array<{ collectedAt
   if (points.length === 0) return <div className="grid h-48 place-items-center rounded-xl border border-dashed border-border text-xs text-subtle">No samples in this range</div>
   return (
     <div className="h-56 rounded-xl border border-border bg-card p-3">
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 640, height: 200 }}>
         <LineChart data={points} margin={{ top: 6, right: 8, bottom: 0, left: -18 }}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
           <XAxis dataKey="collectedAt" tickFormatter={value => new Date(value).toLocaleDateString()} tick={{ fontSize: 10 }} minTickGap={28} />

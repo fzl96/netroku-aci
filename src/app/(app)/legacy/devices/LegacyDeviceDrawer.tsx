@@ -42,7 +42,7 @@ export function LegacyDeviceDrawer({
 
   return (
     <Sheet open={Boolean(device)} onOpenChange={open => { if (!open) onClose() }}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-md">
+      <SheetContent className="w-full overflow-y-auto data-[side=right]:sm:max-w-md">
         <SheetHeader className="border-b border-border">
           <SheetTitle className="font-serif">{device?.hostname ?? 'Device details'}</SheetTitle>
           <SheetDescription>Collected legacy inventory and feature freshness</SheetDescription>

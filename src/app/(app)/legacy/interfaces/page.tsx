@@ -42,7 +42,7 @@ export default async function LegacyInterfacesPage({ searchParams }: { searchPar
     presence,
   })
 
-  const [snapshots, total, allCount, downCount, absentCount, withHistory, devices, stateRows] = await Promise.all([
+  const [snapshots, total, allCount, downCount, absentCount, withHistory, devices, adminRows, operRows] = await Promise.all([
     prisma.legacyInterfaceSnapshot.findMany({
       where,
       orderBy: legacyInterfaceOrderBy(params.sort, parseLegacyDirection(params.dir)),
@@ -59,7 +59,8 @@ export default async function LegacyInterfacesPage({ searchParams }: { searchPar
     prisma.legacyInterfaceSnapshot.count({ where: { present: false } }),
     prisma.legacyInterfaceSnapshot.count({ where: { samples: { some: {} } } }),
     prisma.legacyDevice.findMany({ select: { id: true, hostname: true, site: true }, orderBy: { hostname: 'asc' } }),
-    prisma.legacyInterfaceSnapshot.findMany({ select: { adminSt: true, operSt: true } }),
+    prisma.legacyInterfaceSnapshot.findMany({ distinct: ['adminSt'], select: { adminSt: true }, orderBy: { adminSt: 'asc' } }),
+    prisma.legacyInterfaceSnapshot.findMany({ distinct: ['operSt'], select: { operSt: true }, orderBy: { operSt: 'asc' } }),
   ])
 
   const rows: LegacyInterfaceRow[] = snapshots.map(snapshot => ({
@@ -98,8 +99,8 @@ export default async function LegacyInterfacesPage({ searchParams }: { searchPar
     options={{
       sites: unique(devices.map(device => device.site)),
       devices,
-      adminStates: unique(stateRows.map(row => row.adminSt)),
-      operStates: unique(stateRows.map(row => row.operSt)),
+      adminStates: unique(adminRows.map(row => row.adminSt)),
+      operStates: unique(operRows.map(row => row.operSt)),
     }}
     summaries={{ total: allCount, down: downCount, absent: absentCount, withHistory }}
   />
