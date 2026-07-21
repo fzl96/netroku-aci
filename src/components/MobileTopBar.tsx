@@ -5,12 +5,19 @@ import { IconMoon, IconSun } from "@tabler/icons-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useTheme } from "./ThemeProvider";
 import { nextBinaryTheme } from "./theme-toggle";
+import { usePathname } from "next/navigation";
+import {
+  resolveNavigationScope,
+  type NavigationScope,
+} from "@/lib/navigation-scope";
 
 // Global mobile-only top bar. Carries the sidebar trigger (the only way to
 // reach the nav on a phone) plus brand + theme toggle. Hidden on md+ where the
 // persistent sidebar is visible.
-export function MobileTopBar() {
+export function MobileTopBar({ initialScope }: { initialScope: NavigationScope }) {
   const { setTheme } = useTheme();
+  const pathname = usePathname();
+  const scope = resolveNavigationScope(pathname, initialScope);
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/90 px-3 backdrop-blur-sm md:hidden">
@@ -25,7 +32,7 @@ export function MobileTopBar() {
           className="h-7 w-7 shrink-0"
         />
         <span className="truncate text-[13px] font-semibold tracking-tight text-foreground">
-          Netroku ACI
+          Netroku {scope === "aci" ? "ACI" : "Legacy"}
         </span>
       </div>
       <button

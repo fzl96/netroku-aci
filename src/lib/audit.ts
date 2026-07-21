@@ -13,6 +13,9 @@ export type AuditAction =
   | 'resync.health'
   | 'resync.nodes'
   | 'resync.epgs'
+  | 'ingest.legacy.health'
+  | 'ingest.legacy.interfaces'
+  | 'ingest.legacy.endpoints'
   | 'user.create'
   | 'user.delete'
 

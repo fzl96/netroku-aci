@@ -32,16 +32,16 @@ model User {
 }
 
 model Session {
-  id        String   @id
-  expiresAt DateTime
-  token     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ipAddress String?
-  userAgent String?
+  id             String   @id
+  expiresAt      DateTime
+  token          String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  ipAddress      String?
+  userAgent      String?
   impersonatedBy String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([token])
   @@index([userId])
@@ -143,20 +143,20 @@ model Endpoint {
 }
 
 model InterfaceSnapshot {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   apicHostId    String
-  apicHost      ApicHost @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  apicHost      ApicHost  @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
   dn            String
   node          String
   ifName        String
-  usage         String   @default("")
-  adminSt       String   @default("")
-  operSt        String   @default("")
-  operSpeed     String   @default("")
-  description   String   @default("")
+  usage         String    @default("")
+  adminSt       String    @default("")
+  operSt        String    @default("")
+  operSpeed     String    @default("")
+  description   String    @default("")
   lastLinkStChg DateTime?
-  firstSeenAt   DateTime @default(now())
-  lastSeenAt    DateTime @default(now())
+  firstSeenAt   DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
 
   samples InterfaceSample[]
 
@@ -271,18 +271,18 @@ model NodeStatusSample {
 }
 
 model EpgSnapshot {
-  id                String   @id @default(cuid())
+  id                String           @id @default(cuid())
   apicHostId        String
-  apicHost          ApicHost @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  apicHost          ApicHost         @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
   dn                String
   name              String
   tenant            String
   appProfile        String
-  description       String   @default("")
-  bridgeDomain      String   @default("")
-  pcTag             String   @default("")
-  preferredGroup    Boolean  @default(false)
-  isolation         Boolean  @default(false)
+  description       String           @default("")
+  bridgeDomain      String           @default("")
+  pcTag             String           @default("")
+  preferredGroup    Boolean          @default(false)
+  isolation         Boolean          @default(false)
   domains           String[]
   providedContracts String[]
   consumedContracts String[]
@@ -294,18 +294,18 @@ model EpgSnapshot {
 }
 
 model EpgPathBinding {
-  id          String      @id @default(cuid())
-  apicHostId  String
-  epgId       String
-  epg         EpgSnapshot @relation(fields: [epgId], references: [id], onDelete: Cascade)
-  dn          String
-  pathTDn     String
-  pod         String      @default("")
-  node        String      @default("")
-  port        String      @default("")
-  pathType    String      @default("port")
-  encap       String      @default("")
-  mode        String      @default("trunk")
+  id         String      @id @default(cuid())
+  apicHostId String
+  epgId      String
+  epg        EpgSnapshot @relation(fields: [epgId], references: [id], onDelete: Cascade)
+  dn         String
+  pathTDn    String
+  pod        String      @default("")
+  node       String      @default("")
+  port       String      @default("")
+  pathType   String      @default("port")
+  encap      String      @default("")
+  mode       String      @default("trunk")
 
   @@unique([apicHostId, dn])
   @@index([apicHostId, node])
@@ -313,3 +313,174 @@ model EpgPathBinding {
   @@map("epg_path_binding")
 }
 
+enum LegacyIngestFeature {
+  health
+  interfaces
+  endpoints
+}
+
+model LegacyDevice {
+  id                  String    @id @default(cuid())
+  site                String
+  siteKey             String
+  hostname            String
+  hostnameKey         String
+  managementIp        String
+  deviceType          String
+  vendor              String?
+  model               String?
+  serialNumber        String?
+  softwareVersion     String?
+  location            String?
+  active              Boolean   @default(true)
+  firstSeenAt         DateTime  @default(now())
+  lastSeenAt          DateTime  @default(now())
+  lastHealthSyncAt    DateTime?
+  lastInterfaceSyncAt DateTime?
+  lastEndpointSyncAt  DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  receipts         LegacyIngestReceipt[]
+  healthSamples    LegacyHealthSample[]
+  logs             LegacyLogEntry[]
+  interfaces       LegacyInterfaceSnapshot[]
+  interfaceSamples LegacyInterfaceSample[]
+  endpoints        LegacyEndpoint[]
+
+  @@unique([siteKey, hostnameKey])
+  @@index([active, lastSeenAt])
+  @@map("legacy_device")
+}
+
+model LegacyIngestReceipt {
+  id          String              @id @default(cuid())
+  runId       String
+  deviceId    String
+  device      LegacyDevice        @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  feature     LegacyIngestFeature
+  collectedAt DateTime
+  receivedAt  DateTime            @default(now())
+  payloadHash String
+  inserted    Int                 @default(0)
+  updated     Int                 @default(0)
+  cleared     Int                 @default(0)
+  samples     Int                 @default(0)
+
+  healthSample     LegacyHealthSample?
+  logs             LegacyLogEntry[]
+  interfaceSamples LegacyInterfaceSample[]
+
+  @@unique([runId, deviceId, feature])
+  @@index([deviceId, collectedAt])
+  @@map("legacy_ingest_receipt")
+}
+
+model LegacyHealthSample {
+  id                 String              @id @default(cuid())
+  deviceId           String
+  device             LegacyDevice        @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  receiptId          String              @unique
+  receipt            LegacyIngestReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  collectedAt        DateTime
+  uptime             String              @default("")
+  cpuPercent         Float?
+  memoryPercent      Float?
+  storagePercent     Float?
+  temperatureCelsius Float?
+  fanStatuses        String[]
+  psuStatuses        String[]
+
+  @@index([deviceId, collectedAt])
+  @@map("legacy_health_sample")
+}
+
+model LegacyLogEntry {
+  id          String              @id @default(cuid())
+  deviceId    String
+  device      LegacyDevice        @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  receiptId   String
+  receipt     LegacyIngestReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  eventAt     DateTime?
+  severity    String?
+  message     String
+  raw         String
+  eventHash   String
+  collectedAt DateTime
+
+  @@unique([deviceId, eventHash])
+  @@index([deviceId, collectedAt])
+  @@map("legacy_log_entry")
+}
+
+model LegacyInterfaceSnapshot {
+  id           String       @id @default(cuid())
+  deviceId     String
+  device       LegacyDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  ifName       String
+  ifNameKey    String
+  description  String       @default("")
+  ipAddress    String?
+  prefixLength Int?
+  mtu          Int?
+  speed        String       @default("")
+  adminSt      String       @default("")
+  operSt       String       @default("")
+  present      Boolean      @default(true)
+  firstSeenAt  DateTime     @default(now())
+  lastSeenAt   DateTime     @default(now())
+
+  samples LegacyInterfaceSample[]
+
+  @@unique([deviceId, ifNameKey])
+  @@index([deviceId, present])
+  @@map("legacy_interface_snapshot")
+}
+
+model LegacyInterfaceSample {
+  id            String                  @id @default(cuid())
+  deviceId      String
+  device        LegacyDevice            @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  interfaceId   String
+  interface     LegacyInterfaceSnapshot @relation(fields: [interfaceId], references: [id], onDelete: Cascade)
+  receiptId     String
+  receipt       LegacyIngestReceipt     @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  collectedAt   DateTime
+  adminSt       String
+  operSt        String
+  speed         String
+  inputErrors   BigInt
+  outputErrors  BigInt
+  crcErrors     BigInt
+  dInputErrors  BigInt?
+  dOutputErrors BigInt?
+  dCrcErrors    BigInt?
+
+  @@unique([receiptId, interfaceId])
+  @@index([interfaceId, collectedAt])
+  @@index([deviceId, collectedAt])
+  @@map("legacy_interface_sample")
+}
+
+model LegacyEndpoint {
+  id           String       @id @default(cuid())
+  deviceId     String
+  device       LegacyDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  mac          String
+  ip           String?
+  ipKey        String
+  vlan         String
+  vlanName     String       @default("")
+  interface    String
+  interfaceKey String
+  learningType String       @default("")
+  isActive     Boolean      @default(true)
+  firstSeenAt  DateTime     @default(now())
+  lastSeenAt   DateTime     @default(now())
+  clearedAt    DateTime?
+
+  @@index([deviceId, isActive])
+  @@index([deviceId, mac, ipKey])
+  @@index([deviceId, interfaceKey])
+  @@map("legacy_endpoint")
+}

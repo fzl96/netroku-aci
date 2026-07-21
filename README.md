@@ -130,6 +130,86 @@ The app never bundles APIC credentials. After signing in:
 2. On any monitoring page, click **Resync** and enter the APIC username/password for that pull. Credentials are used for that single request only — they are **not persisted** to the database.
 3. APIC session tokens expire after **600 seconds** (10 minutes) by default; reconnect if requests start returning 401.
 
+## Legacy Device Ingestion
+
+Legacy IOS/NX-OS data is collected outside the Next.js application by the standalone `legacy_sync.py` file in the companion `netroku-cli` checkout. The web application never stores device credentials and never opens SSH sessions to network devices.
+
+### Server configuration
+
+Generate a dedicated ingestion token and add it to the `netroku-aci` environment:
+
+```bash
+openssl rand -hex 32
+```
+
+```dotenv
+LEGACY_INGEST_TOKEN=<generated-token>
+```
+
+Apply the database migration and regenerate Prisma before starting the updated application:
+
+```bash
+bun run prisma:deploy
+bun run prisma:generate
+```
+
+The version-1 machine endpoints are:
+
+```text
+POST /api/ingest/legacy/health
+POST /api/ingest/legacy/interfaces
+POST /api/ingest/legacy/endpoints
+```
+
+Every request represents one complete feature snapshot for one device and must send `Authorization: Bearer <LEGACY_INGEST_TOKEN>`. Requests are idempotent by run ID, device, and feature. Incomplete collections are not submitted and therefore cannot clear stored state.
+
+### Collector configuration
+
+On the host containing `netroku-cli`, export the application base URL and the same token under the collector-specific name:
+
+```bash
+export NETROKU_BASE_URL="https://netroku.example.com"
+export NETROKU_LEGACY_INGEST_TOKEN="<generated-token>"
+```
+
+Run one of the standalone modes:
+
+```bash
+python legacy_sync.py monitor
+python legacy_sync.py endpoint
+python legacy_sync.py all
+```
+
+`monitor` collects health and physical interfaces in one SSH session per device. `endpoint` uses the smaller endpoint inventory and F5 ARP logs. `all` merges both inventories and uses one SSH session for overlapping devices. Collection defaults to 20 workers and can be limited with `--workers`.
+
+Default private/runtime paths are relative to `legacy_sync.py`:
+
+| Input | Default path |
+|---|---|
+| Monitor inventory | `configs/interfaces/legacy_creds.csv` |
+| Endpoint inventory | `configs/endpoint/legacy_creds.csv` |
+| F5 ARP logs | `configs/endpoint/logs/f5/*.txt` |
+| Customized TextFSM templates | `ntc_templates/` |
+
+Override any path when deployments use a different layout:
+
+```bash
+python legacy_sync.py all \
+  --monitor-creds /srv/netroku/configs/monitor.csv \
+  --endpoint-creds /srv/netroku/configs/endpoints.csv \
+  --f5-logs /srv/netroku/configs/f5 \
+  --ntc-templates /srv/netroku/ntc_templates \
+  --workers 20
+```
+
+Credential CSVs remain headerless and semicolon-separated:
+
+```text
+site;hostname;management_ip;device_type;username;password
+```
+
+Keep inventories, F5 output, customized private templates, and tokens out of source control. The collector prints a final selected/connected/collected/published/failure summary and exits nonzero if any device feature fails.
+
 ---
 
 ## Static Ports

@@ -27,6 +27,15 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -38,6 +47,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useApicHosts } from "@/components/ApicHostsProvider";
+import {
+  resolveNavigationScope,
+  targetPathForScope,
+  type NavigationScope,
+} from "@/lib/navigation-scope";
 
 // Suppress the full leaf-active treatment (bg pill + left bar) for parent
 // containers — they only need to look "expanded", not "current page".
@@ -62,6 +76,8 @@ import {
   IconHistory,
   IconTopologyStar3,
   IconBook,
+  IconChevronDown,
+  IconHeartbeat,
 } from "@tabler/icons-react";
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
@@ -82,7 +98,9 @@ type NavItem = {
   apicParam?: true;
 };
 
-const NAV: { group: string; items: NavItem[] }[] = [
+type NavSection = { group: string; items: NavItem[] };
+
+const ACI_NAV: NavSection[] = [
   {
     group: "",
     items: [
@@ -216,17 +234,54 @@ const NAV: { group: string; items: NavItem[] }[] = [
   },
 ];
 
+const LEGACY_INFRASTRUCTURE: NavSection = {
+  group: "Infrastructure",
+  items: [
+    {
+      href: "/legacy/devices",
+      label: "Devices",
+      icon: <IconServer2 size={15} stroke={1.75} />,
+    },
+    {
+      href: "/legacy/health",
+      label: "Health",
+      icon: <IconHeartbeat size={15} stroke={1.75} />,
+    },
+    {
+      href: "/legacy/interfaces",
+      label: "Interfaces",
+      icon: <IconActivity size={15} stroke={1.75} />,
+    },
+    {
+      href: "/legacy/endpoints",
+      label: "Endpoints",
+      icon: <IconDeviceDesktopSearch size={15} stroke={1.75} />,
+    },
+  ],
+};
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function AppSidebar({ role }: { role: "admin" | "member" }) {
+export function AppSidebar({
+  role,
+  initialScope,
+}: {
+  role: "admin" | "member";
+  initialScope: NavigationScope;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const { setTheme } = useTheme();
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [sharedScope, setSharedScope] = useState(initialScope);
   const apicHosts = useApicHosts();
   const defaultApicId = apicHosts[0]?.id;
-  const nav = NAV.map((section) => ({
+  const scope = resolveNavigationScope(pathname, sharedScope);
+  const sourceNav = scope === "aci"
+    ? ACI_NAV
+    : [ACI_NAV[0], LEGACY_INFRASTRUCTURE, ACI_NAV[ACI_NAV.length - 1]];
+  const nav = sourceNav.map((section) => ({
     ...section,
     items: section.items.filter((item) => !item.adminOnly || role === "admin"),
   })).filter((section) => section.items.length > 0);
@@ -241,6 +296,15 @@ export function AppSidebar({ role }: { role: "admin" | "member" }) {
     await authClient.signOut();
     router.replace("/signin");
     router.refresh();
+  }
+
+  function handleScopeChange(value: string) {
+    if (value !== "aci" && value !== "legacy") return;
+    const nextScope: NavigationScope = value;
+    setSharedScope(nextScope);
+    document.cookie = `netroku_scope=${nextScope}; Path=/; SameSite=Lax; Max-Age=31536000`;
+    const target = targetPathForScope(pathname, nextScope);
+    if (target !== pathname) router.push(target);
   }
 
   function isNodeActive(node: NavChild): boolean {
@@ -320,8 +384,13 @@ export function AppSidebar({ role }: { role: "admin" | "member" }) {
   return (
     <Sidebar>
       <SidebarHeader className="h-16 flex-row items-center border-b border-sidebar-border/60 px-3 py-0">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-3">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label="Switch infrastructure scope"
+              className="flex w-full items-center gap-3 rounded-lg p-1 text-left outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+            >
             <Image
               src="/brand-icon.png"
               alt=""
@@ -332,12 +401,28 @@ export function AppSidebar({ role }: { role: "admin" | "member" }) {
             />
             <div className="min-w-0">
               <p className="text-[12.5px] font-semibold leading-none tracking-tight text-sidebar-foreground">
-                Netroku ACI
+                Netroku {scope === "aci" ? "ACI" : "Legacy"}
               </p>
-              <p className="mt-[5px] text-[10px] leading-none text-sidebar-foreground/55"></p>
+              <p className="mt-[5px] text-[10px] leading-none text-sidebar-foreground/55">
+                Infrastructure view
+              </p>
             </div>
-          </Link>
-        </div>
+              <IconChevronDown
+                size={14}
+                stroke={1.75}
+                className="ml-auto text-sidebar-foreground/55"
+              />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="min-w-52">
+            <DropdownMenuLabel>Infrastructure scope</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuRadioGroup value={scope} onValueChange={handleScopeChange}>
+              <DropdownMenuRadioItem value="aci">Netroku ACI</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="legacy">Netroku Legacy</DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </SidebarHeader>
 
       <SidebarContent>
