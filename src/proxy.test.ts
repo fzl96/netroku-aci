@@ -25,4 +25,11 @@ describe('shouldRedirectUnauthenticated', () => {
   it('does not treat /docs-prefixed routes as public', () => {
     expect(shouldRedirectUnauthenticated(null, '/docs-internal')).toBe(true)
   })
+
+  it('lets legacy ingestion routes enforce their bearer token', () => {
+    expect(shouldRedirectUnauthenticated(null, '/api/ingest/legacy/health')).toBe(false)
+    expect(shouldRedirectUnauthenticated(null, '/api/ingest/legacy/interfaces')).toBe(false)
+    expect(shouldRedirectUnauthenticated(null, '/api/ingest/legacy/endpoints')).toBe(false)
+    expect(shouldRedirectUnauthenticated(null, '/api/ingest/legacy-internal')).toBe(true)
+  })
 })

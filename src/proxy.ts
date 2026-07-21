@@ -3,7 +3,8 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 
 const AUTH_PAGES = ["/signin"];
-const PUBLIC_PREFIXES = ["/docs"];
+// Legacy ingestion routes authenticate machines with their own dedicated bearer token.
+const PUBLIC_PREFIXES = ["/docs", "/api/ingest/legacy"];
 // Docs are public, and their Cmd/Ctrl+K search calls /api/search — keep it reachable without a session.
 const PUBLIC_PAGES = ["/", "/api/search"];
 
