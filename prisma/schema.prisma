@@ -474,6 +474,7 @@ model LegacyEndpoint {
   interface    String
   interfaceKey String
   learningType String       @default("")
+  macFlag      String       @default("")
   isActive     Boolean      @default(true)
   firstSeenAt  DateTime     @default(now())
   lastSeenAt   DateTime     @default(now())

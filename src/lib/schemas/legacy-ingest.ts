@@ -73,6 +73,7 @@ const endpointSchema = z.strictObject({
   vlan: z.string(),
   vlan_name: z.string(),
   learning_type: z.string(),
+  mac_flag: z.string().trim().default(''),
 })
 
 export const legacyEndpointPayloadSchema = z.strictObject({

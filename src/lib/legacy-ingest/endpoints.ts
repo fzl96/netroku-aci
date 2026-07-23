@@ -83,6 +83,7 @@ export async function applyLegacyEndpoints(
         interface: update.endpoint.interface,
         interfaceKey: normalizeLegacyKey(update.endpoint.interface),
         learningType: update.endpoint.learning_type,
+        macFlag: update.endpoint.mac_flag,
         lastSeenAt: collectedAt,
       },
     })
@@ -100,6 +101,7 @@ export async function applyLegacyEndpoints(
           interface: endpoint.interface,
           interfaceKey: normalizeLegacyKey(endpoint.interface),
           learningType: endpoint.learning_type,
+          macFlag: endpoint.mac_flag,
           isActive: true,
           firstSeenAt: collectedAt,
           lastSeenAt: collectedAt,

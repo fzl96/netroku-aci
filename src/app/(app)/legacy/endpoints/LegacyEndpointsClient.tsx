@@ -17,6 +17,7 @@ export interface LegacyEndpointRow {
   site: string
   managementIp: string
   mac: string
+  macFlag: string
   ip: string | null
   vlan: string
   vlanName: string
@@ -34,6 +35,10 @@ function statusBadge(active: boolean) {
   return active
     ? <span className="inline-flex rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[10px] font-semibold text-success">Active</span>
     : <span className="inline-flex rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-semibold text-subtle">Historical</span>
+}
+
+export function LegacyMac({ mac, macFlag }: { mac: string; macFlag: string }) {
+  return <>{macFlag ? `${macFlag} ${mac}` : mac}</>
 }
 
 export function LegacyEndpointsClient({ rows, total, page, pageSize, filters, options, summaries }: {
@@ -80,8 +85,8 @@ export function LegacyEndpointsClient({ rows, total, page, pageSize, filters, op
       <button className="rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground">Apply</button>
     </form>
     {rows.length === 0 ? <LegacyEmptyState icon={<IconDevices size={24} />} title="No legacy endpoints found" description="Run legacy_sync.py endpoint or all on an endpoint-capable device, or clear the current filters." /> : <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      <div className="hidden max-h-[calc(100vh-17rem)] overflow-auto md:block"><table className="w-full text-xs"><thead><tr>{['Device', 'MAC', 'IP address', 'VLAN', 'Interface', 'Learning', 'Status', 'First seen', 'Last seen', 'Cleared'].map(label => <th key={label} className={DENSE_TABLE_HEAD_CLS}>{label}</th>)}</tr></thead><tbody>{rows.map(row => <tr key={row.id} className="border-b border-border/70 hover:bg-muted/60"><td className="px-4 py-3 font-semibold text-foreground">{row.hostname}<div className="text-[10px] font-normal text-faint">{row.site}</div></td><td className="whitespace-nowrap px-4 py-3 font-mono text-foreground">{row.mac}</td><td className="whitespace-nowrap px-4 py-3 font-mono text-subtle">{row.ip ?? <span className="font-sans text-faint">Not reported</span>}</td><td className="whitespace-nowrap px-4 py-3 text-subtle">{row.vlan}{row.vlanName && <div className="text-[10px] text-faint">{row.vlanName}</div>}</td><td className="whitespace-nowrap px-4 py-3 font-mono text-subtle">{row.interface || '—'}</td><td className="px-4 py-3 text-subtle">{row.learningType || '—'}</td><td className="px-4 py-3">{statusBadge(row.isActive)}</td><td className="whitespace-nowrap px-4 py-3 text-subtle">{new Date(row.firstSeenAt).toLocaleString()}</td><td className="whitespace-nowrap px-4 py-3 text-subtle">{new Date(row.lastSeenAt).toLocaleString()}</td><td className="whitespace-nowrap px-4 py-3 text-subtle">{row.clearedAt ? new Date(row.clearedAt).toLocaleString() : '—'}</td></tr>)}</tbody></table></div>
-      <div className="space-y-2 p-3 md:hidden">{rows.map(row => <DataCard key={row.id}><DataCardHeader trailing={statusBadge(row.isActive)}><DataCardTitle>{row.mac}</DataCardTitle></DataCardHeader><DataCardBody><DataCardRow label="Device" value={`${row.hostname} · ${row.site}`} /><DataCardRow label="IP" value={row.ip || 'Not reported'} /><DataCardRow label="Placement" value={`VLAN ${row.vlan} · ${row.interface || 'Unknown interface'}`} /><DataCardRow label="Last seen" value={new Date(row.lastSeenAt).toLocaleString()} /></DataCardBody></DataCard>)}</div>
+      <div className="hidden max-h-[calc(100vh-17rem)] overflow-auto md:block"><table className="w-full text-xs"><thead><tr>{['Device', 'MAC', 'IP address', 'VLAN', 'Interface', 'Learning', 'Status', 'First seen', 'Last seen', 'Cleared'].map(label => <th key={label} className={DENSE_TABLE_HEAD_CLS}>{label}</th>)}</tr></thead><tbody>{rows.map(row => <tr key={row.id} className="border-b border-border/70 hover:bg-muted/60"><td className="px-4 py-3 font-semibold text-foreground">{row.hostname}<div className="text-[10px] font-normal text-faint">{row.site}</div></td><td className="whitespace-nowrap px-4 py-3 font-mono text-foreground"><LegacyMac mac={row.mac} macFlag={row.macFlag} /></td><td className="whitespace-nowrap px-4 py-3 font-mono text-subtle">{row.ip ?? <span className="font-sans text-faint">Not reported</span>}</td><td className="whitespace-nowrap px-4 py-3 text-subtle">{row.vlan}{row.vlanName && <div className="text-[10px] text-faint">{row.vlanName}</div>}</td><td className="whitespace-nowrap px-4 py-3 font-mono text-subtle">{row.interface || '—'}</td><td className="px-4 py-3 text-subtle">{row.learningType || '—'}</td><td className="px-4 py-3">{statusBadge(row.isActive)}</td><td className="whitespace-nowrap px-4 py-3 text-subtle">{new Date(row.firstSeenAt).toLocaleString()}</td><td className="whitespace-nowrap px-4 py-3 text-subtle">{new Date(row.lastSeenAt).toLocaleString()}</td><td className="whitespace-nowrap px-4 py-3 text-subtle">{row.clearedAt ? new Date(row.clearedAt).toLocaleString() : '—'}</td></tr>)}</tbody></table></div>
+      <div className="space-y-2 p-3 md:hidden">{rows.map(row => <DataCard key={row.id}><DataCardHeader trailing={statusBadge(row.isActive)}><DataCardTitle><LegacyMac mac={row.mac} macFlag={row.macFlag} /></DataCardTitle></DataCardHeader><DataCardBody><DataCardRow label="Device" value={`${row.hostname} · ${row.site}`} /><DataCardRow label="IP" value={row.ip || 'Not reported'} /><DataCardRow label="Placement" value={`VLAN ${row.vlan} · ${row.interface || 'Unknown interface'}`} /><DataCardRow label="Last seen" value={new Date(row.lastSeenAt).toLocaleString()} /></DataCardBody></DataCard>)}</div>
       <LegacyPagination page={page} pageSize={pageSize} total={total} />
     </div>}
   </LegacyPageShell>
