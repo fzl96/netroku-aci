@@ -65,6 +65,7 @@ export default async function LegacyEndpointsPage({ searchParams }: { searchPara
     site: record.device.site,
     managementIp: record.device.managementIp,
     mac: record.mac,
+    macFlag: record.macFlag,
     ip: record.ip,
     vlan: record.vlan,
     vlanName: record.vlanName,
