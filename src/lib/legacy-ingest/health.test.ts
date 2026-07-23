@@ -48,4 +48,29 @@ describe('applyLegacyHealth', () => {
     expect(logs[0].eventHash).not.toBe(logs[1].eventHash)
     expect(logs.every(log => log.eventHash.length === 64)).toBe(true)
   })
+
+  it('keeps timestamp-less log identity stable across receipts', async () => {
+    const batches: Array<Array<{ eventHash: string }>> = []
+    const tx = {
+      legacyHealthSample: { create: async () => undefined },
+      legacyLogEntry: {
+        createMany: async (args: { data: Array<{ eventHash: string }> }) => {
+          batches.push(args.data)
+          return { count: args.data.length }
+        },
+      },
+      legacyDevice: { update: async () => undefined },
+    }
+
+    for (const receiptId of ['receipt-1', 'receipt-2']) {
+      await applyLegacyHealth({
+        tx,
+        deviceId: 'device-1',
+        receiptId,
+        collectedAt: new Date(payload.collected_at),
+      }, payload)
+    }
+
+    expect(batches[0][1].eventHash).toBe(batches[1][1].eventHash)
+  })
 })
