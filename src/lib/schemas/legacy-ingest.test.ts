@@ -57,6 +57,28 @@ describe('legacy ingestion schemas', () => {
     }).success).toBe(true)
   })
 
+  it('preserves endpoint MAC markers and defaults older payloads to no marker', () => {
+    const endpoint = {
+      mac: '00:11:22:33:44:55',
+      ip: null,
+      interface: 'GigabitEthernet1/0/1',
+      vlan: '10',
+      vlan_name: 'USERS',
+      learning_type: 'dynamic',
+    }
+    const withMarker = legacyEndpointPayloadSchema.parse({
+      ...base,
+      endpoints: [{ ...endpoint, mac_flag: '+' }],
+    })
+    const withoutMarker = legacyEndpointPayloadSchema.parse({
+      ...base,
+      endpoints: [endpoint],
+    })
+
+    expect(withMarker.endpoints[0].mac_flag).toBe('+')
+    expect(withoutMarker.endpoints[0].mac_flag).toBe('')
+  })
+
   it('rejects unsupported versions, incomplete snapshots, and timestamps without offsets', () => {
     expect(legacyHealthPayloadSchema.safeParse({
       ...base, schema_version: 2, health: {}, logs: [],
