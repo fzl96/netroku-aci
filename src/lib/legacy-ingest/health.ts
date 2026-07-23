@@ -39,7 +39,7 @@ export async function applyLegacyHealth(
     eventHash: createHash('sha256')
       .update(log.timestamp
         ? `${deviceId}|${log.timestamp}|${log.raw}`
-        : `${deviceId}|${receiptId}|${log.raw}`)
+        : `${deviceId}|${log.raw}`)
       .digest('hex'),
     collectedAt,
   }))
