@@ -73,7 +73,3 @@ export async function getAuditLogPage(
     page: window.page,
   }
 }
-
-export async function getAuditLogs(): Promise<AuditLogEntry[]> {
-  return (await getAuditLogPage({ query: '', action: 'all', page: 1 })).logs
-}
