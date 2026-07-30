@@ -30,7 +30,7 @@ component asks the audit action layer for one 20-row page. The database query:
   into exact action values;
 - applies an exact action filter when supplied;
 - orders by `createdAt` descending;
-- runs the page query and matching count together.
+- counts the matching rows before fetching the effective page.
 
 The requested page is clamped against the matching result count. If it is above
 the last page, the page query uses the last valid page so the UI never renders
