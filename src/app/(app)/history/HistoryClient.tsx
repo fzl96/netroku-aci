@@ -10,6 +10,7 @@ import {
 } from '@tabler/icons-react'
 import type { AuditLogEntry } from '@/actions/audit'
 import type { AuditAction, AuditStatus } from '@/lib/audit'
+import { HISTORY_ACTION_LABELS } from '@/lib/history/query'
 import {
   DENSE_TABLE_HEAD_CLS,
   SEARCH_INPUT_CLS,
@@ -28,25 +29,6 @@ const HISTORY_SELECT_CLS =
   'text-xs text-foreground outline-none ' +
   'focus:border-primary focus:ring-2 focus:ring-primary/15 transition-colors'
 
-const ACTION_LABELS: Record<AuditAction, string> = {
-  'apic_host.create': 'Host added',
-  'apic_host.update': 'Host updated',
-  'apic_host.delete': 'Host deleted',
-  deploy: 'Deploy',
-  rollback: 'Rollback',
-  'resync.endpoints': 'Resync endpoints',
-  'resync.interfaces': 'Resync interfaces',
-  'resync.faults': 'Resync faults',
-  'resync.health': 'Resync health',
-  'resync.nodes': 'Resync nodes',
-  'resync.epgs': 'Resync EPGs',
-  'ingest.legacy.health': 'Ingest legacy health',
-  'ingest.legacy.interfaces': 'Ingest legacy interfaces',
-  'ingest.legacy.endpoints': 'Ingest legacy endpoints',
-  'user.create': 'User created',
-  'user.delete': 'User deleted',
-}
-
 const STATUS_STYLES: Record<AuditStatus, string> = {
   success: 'border-success-border bg-success-bg text-success',
   partial: 'border-warning-border bg-warning-bg text-warning',
@@ -54,7 +36,7 @@ const STATUS_STYLES: Record<AuditStatus, string> = {
 }
 
 function actionLabel(action: string): string {
-  return ACTION_LABELS[action as AuditAction] ?? action
+  return HISTORY_ACTION_LABELS[action as AuditAction] ?? action
 }
 
 function formatRelative(date: Date): string {
