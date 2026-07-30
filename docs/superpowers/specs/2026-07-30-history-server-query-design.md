@@ -21,8 +21,9 @@ page `1`.
 
 ## Server Data Flow
 
-`HistoryPage` parses `searchParams` and asks the audit action layer for one
-20-row page. The database query:
+`HistoryPage` authenticates the request, parses `searchParams`, and renders the
+stable page shell and controls. A dedicated async `HistoryResults` server
+component asks the audit action layer for one 20-row page. The database query:
 
 - searches `userName`, `target`, and `detail` case-insensitively;
 - also matches known human-readable action labels by translating label matches
@@ -35,10 +36,22 @@ The requested page is clamped against the matching result count. If it is above
 the last page, the page query uses the last valid page so the UI never renders
 an empty phantom page.
 
+## Suspense and Loading State
+
+`HistoryResults` is wrapped in a `Suspense` boundary keyed by the parsed
+`query`, `action`, and `page`. Its fallback is a History-specific skeleton that
+matches the count, table header, table rows, and pagination footprint.
+
+The page heading and search/action controls remain outside the boundary. They
+stay mounted and usable while a URL update triggers a fresh server query; only
+the results region changes to the skeleton. This prevents layout shift and
+keeps the locally controlled search input from disappearing during its
+debounced navigation.
+
 ## Client Interaction
 
-`HistoryClient` receives only the current rows, total count, parsed query,
-action, and effective page.
+The controls client receives the parsed query and action. The results client
+receives only the current rows, total count, and effective page.
 
 The search input keeps immediate local state, so typing is never debounced or
 visually delayed. A short debounce applies only to `router.replace`, which
@@ -62,5 +75,7 @@ and CSV export behavior remain local to the current page.
 
 Unit tests cover query parsing, action-label search expansion, combined
 search/action filters, page fallback, and page clamping. Existing history export
-tests remain unchanged. The implementation is verified with focused tests,
-the full test suite, lint, and a production build.
+tests remain unchanged. Verification also checks that the Suspense fallback
+matches the results region without replacing the search controls. The
+implementation is verified with focused tests, the full test suite, lint, and a
+production build.
