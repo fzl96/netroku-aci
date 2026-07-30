@@ -3,8 +3,11 @@
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import type { AuditAction, AuditStatus } from '@/lib/audit'
-
-const MAX_LOGS = 200
+import {
+  buildHistoryWhere,
+  historyPageWindow,
+  type HistoryPageParams,
+} from '@/lib/history/query'
 
 export type AuditLogEntry = {
   id: string
@@ -18,16 +21,24 @@ export type AuditLogEntry = {
   payload: unknown
 }
 
-export async function getAuditLogs(): Promise<AuditLogEntry[]> {
-  const session = await getSession()
-  if (!session) throw new Error('Unauthorized')
+export type AuditLogPage = {
+  logs: AuditLogEntry[]
+  total: number
+  page: number
+}
 
-  const logs = await prisma.auditLog.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: MAX_LOGS,
-  })
-
-  return logs.map(log => ({
+function serializeAuditLog(log: {
+  id: string
+  createdAt: Date
+  userId: string | null
+  userName: string
+  action: string
+  target: string | null
+  status: string
+  detail: string | null
+  payload: unknown
+}): AuditLogEntry {
+  return {
     id: log.id,
     createdAt: log.createdAt,
     userId: log.userId,
@@ -37,5 +48,32 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
     status: log.status as AuditStatus,
     detail: log.detail,
     payload: log.payload ?? null,
-  }))
+  }
+}
+
+export async function getAuditLogPage(
+  params: HistoryPageParams,
+): Promise<AuditLogPage> {
+  const session = await getSession()
+  if (!session) throw new Error('Unauthorized')
+
+  const where = buildHistoryWhere(params)
+  const total = await prisma.auditLog.count({ where })
+  const window = historyPageWindow(params.page, total)
+  const logs = await prisma.auditLog.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    skip: window.skip,
+    take: window.take,
+  })
+
+  return {
+    logs: logs.map(serializeAuditLog),
+    total,
+    page: window.page,
+  }
+}
+
+export async function getAuditLogs(): Promise<AuditLogEntry[]> {
+  return (await getAuditLogPage({ query: '', action: 'all', page: 1 })).logs
 }

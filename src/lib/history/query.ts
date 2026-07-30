@@ -79,6 +79,15 @@ export function clampHistoryPage(page: number, total: number): number {
   return Math.min(Math.max(1, page), totalPages)
 }
 
+export function historyPageWindow(page: number, total: number) {
+  const effectivePage = clampHistoryPage(page, total)
+  return {
+    page: effectivePage,
+    skip: (effectivePage - 1) * HISTORY_PAGE_SIZE,
+    take: HISTORY_PAGE_SIZE,
+  }
+}
+
 export function buildHistoryUrl(params: HistoryPageParams): string {
   const search = new URLSearchParams()
   if (params.query.trim()) search.set('query', params.query.trim())

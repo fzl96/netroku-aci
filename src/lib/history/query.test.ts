@@ -3,6 +3,7 @@ import {
   buildHistoryUrl,
   buildHistoryWhere,
   clampHistoryPage,
+  historyPageWindow,
   parseHistoryPageParams,
 } from './query'
 
@@ -42,6 +43,16 @@ describe('clampHistoryPage', () => {
   it('clamps the requested page to the matching result bounds', () => {
     expect(clampHistoryPage(8, 41)).toBe(3)
     expect(clampHistoryPage(2, 0)).toBe(1)
+  })
+})
+
+describe('historyPageWindow', () => {
+  it('returns the clamped page, skip, and fixed take', () => {
+    expect(historyPageWindow(9, 41)).toEqual({
+      page: 3,
+      skip: 40,
+      take: 20,
+    })
   })
 })
 
