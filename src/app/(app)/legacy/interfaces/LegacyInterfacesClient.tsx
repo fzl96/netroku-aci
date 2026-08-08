@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import {
   IconChevronDown,
   IconChevronUp,
@@ -28,6 +28,7 @@ import { DENSE_TABLE_HEAD_CLS, SEARCH_INPUT_CLS } from '@/lib/ui-classes'
 import { LegacyInterfaceDrawer } from './LegacyInterfaceDrawer'
 import {
   buildLegacyInterfaceUrl,
+  mergeLegacyInterfaceListState,
   nextLegacyInterfaceSort,
   type LegacyInterfaceListState,
   type LegacyInterfaceSortKey,
@@ -136,6 +137,11 @@ export function LegacyInterfacesClient({
   const [previousQuery, setPreviousQuery] = useState(state.query)
   const [isPending, startTransition] = useTransition()
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const currentStateRef = useRef(state)
+
+  useEffect(() => {
+    if (!isPending) currentStateRef.current = state
+  }, [isPending, state])
 
   if (state.query !== previousQuery) {
     setPreviousQuery(state.query)
@@ -143,11 +149,8 @@ export function LegacyInterfacesClient({
   }
 
   function navigate(overrides: Partial<LegacyInterfaceListState>) {
-    const nextState = {
-      ...state,
-      ...overrides,
-      page: overrides.page ?? 1,
-    }
+    const nextState = mergeLegacyInterfaceListState(currentStateRef.current, overrides)
+    currentStateRef.current = nextState
     startTransition(() => router.replace(buildLegacyInterfaceUrl(nextState)))
   }
 
@@ -158,14 +161,16 @@ export function LegacyInterfacesClient({
   }
 
   function handleDeviceToggle(deviceId: string) {
-    const deviceIds = state.deviceIds.includes(deviceId)
-      ? state.deviceIds.filter(id => id !== deviceId)
-      : [...state.deviceIds, deviceId]
+    const { deviceIds: currentDeviceIds } = currentStateRef.current
+    const deviceIds = currentDeviceIds.includes(deviceId)
+      ? currentDeviceIds.filter(id => id !== deviceId)
+      : [...currentDeviceIds, deviceId]
     navigate({ deviceIds })
   }
 
   function handleSort(key: LegacyInterfaceSortKey) {
-    const next = nextLegacyInterfaceSort(state.sortKey, state.sortDirection, key)
+    const { sortKey, sortDirection } = currentStateRef.current
+    const next = nextLegacyInterfaceSort(sortKey, sortDirection, key)
     navigate({ sortKey: next.key, sortDirection: next.direction })
   }
 

@@ -4,6 +4,7 @@ import type {
   LegacyInterfaceSortKey,
   LegacyInterfaceView,
 } from './list-state'
+import { normalizeLegacyInterfaceState } from '@/lib/legacy-ui/interfaces'
 
 export interface LegacyCrcDeltaSample {
   interfaceId: string
@@ -26,6 +27,7 @@ export interface SortableLegacyInterfaceRow {
   ifName: string
   description: string
   ipAddress: string | null
+  speed: string
   adminSt: string
   operSt: string
   crcWindowTotal: string | null
@@ -142,9 +144,11 @@ function comparePrimary(
         ? a.description
         : sort.key === 'ipAddress'
           ? a.ipAddress
-          : sort.key === 'adminSt'
-            ? a.adminSt
-            : a.operSt
+          : sort.key === 'speed'
+            ? a.speed
+            : sort.key === 'adminSt'
+              ? normalizeLegacyInterfaceState(a.adminSt)
+              : normalizeLegacyInterfaceState(a.operSt)
   const bText = sort.key === 'hostname'
     ? b.hostname
     : sort.key === 'ifName'
@@ -153,9 +157,11 @@ function comparePrimary(
         ? b.description
         : sort.key === 'ipAddress'
           ? b.ipAddress
-          : sort.key === 'adminSt'
-            ? b.adminSt
-            : b.operSt
+          : sort.key === 'speed'
+            ? b.speed
+            : sort.key === 'adminSt'
+              ? normalizeLegacyInterfaceState(b.adminSt)
+              : normalizeLegacyInterfaceState(b.operSt)
 
   return compareNullable(aText, bText, NATURAL_COLLATOR.compare, sort.direction)
 }

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import {
   buildLegacyInterfaceUrl,
+  mergeLegacyInterfaceListState,
   nextLegacyInterfaceSort,
   parseLegacyInterfaceListState,
 } from './list-state'
@@ -52,7 +53,7 @@ describe('legacy interface list state', () => {
       view: 'broken',
       mode: 'raw',
       window: 'all',
-      sort: 'speed',
+      sort: 'mtu',
       dir: 'sideways',
       page: '-1',
       pageSize: '999',
@@ -66,6 +67,17 @@ describe('legacy interface list state', () => {
       sortDirection: 'asc',
       page: 1,
       pageSize: 50,
+    })
+  })
+
+  test('keeps bookmarked speed sorting as a hidden server-side option', () => {
+    expect(parseLegacyInterfaceListState({ sort: 'speed' })).toMatchObject({
+      sortKey: 'speed',
+      sortDirection: 'desc',
+    })
+    expect(parseLegacyInterfaceListState({ sort: 'speed', dir: 'asc' })).toMatchObject({
+      sortKey: 'speed',
+      sortDirection: 'asc',
     })
   })
 
@@ -94,5 +106,24 @@ describe('legacy interface list state', () => {
     expect(nextLegacyInterfaceSort('ifName', 'asc', 'ifName')).toEqual({ key: 'ifName', direction: 'desc' })
     expect(nextLegacyInterfaceSort('hostname', 'asc', 'inputErrors')).toEqual({ key: 'inputErrors', direction: 'desc' })
     expect(nextLegacyInterfaceSort('inputErrors', 'desc', 'inputErrors')).toEqual({ key: 'inputErrors', direction: 'asc' })
+  })
+
+  test('merges sequential immediate controls without losing prior pending changes', () => {
+    const initial = parseLegacyInterfaceListState({
+      device: 'd1',
+      view: 'crc',
+      page: '3',
+    })
+    const withSecondDevice = mergeLegacyInterfaceListState(initial, {
+      deviceIds: [...initial.deviceIds, 'd2'],
+    })
+    const withSearch = mergeLegacyInterfaceListState(withSecondDevice, { query: 'edge' })
+
+    expect(withSearch).toMatchObject({
+      query: 'edge',
+      deviceIds: ['d1', 'd2'],
+      view: 'crc',
+      page: 1,
+    })
   })
 })

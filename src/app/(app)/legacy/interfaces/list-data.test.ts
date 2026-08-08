@@ -7,6 +7,7 @@ interface TestRow {
   ifName: string
   description: string
   ipAddress: string | null
+  speed: string
   adminSt: string
   operSt: string
   crcWindowTotal: string | null
@@ -28,6 +29,7 @@ function row(overrides: Partial<TestRow> & Pick<TestRow, 'id' | 'ifName'>): Test
     ifName: overrides.ifName,
     description: overrides.description ?? '',
     ipAddress: overrides.ipAddress ?? null,
+    speed: overrides.speed ?? '',
     adminSt: overrides.adminSt ?? 'up',
     operSt: overrides.operSt ?? 'up',
     crcWindowTotal: overrides.crcWindowTotal ?? null,
@@ -100,6 +102,32 @@ describe('legacy interface list data', () => {
     expect(sortLegacyInterfaceRows(rows, {
       key: 'description', direction: 'asc', mode: 'delta', view: 'all',
     }).map(item => item.id)).toEqual(['a', 'c', 'b'])
+  })
+
+  test('sorts admin and operational states by their displayed binary values', () => {
+    const rows = [
+      row({ id: 'unknown', ifName: 'Ethernet1/3', adminSt: 'up/down', operSt: 'up-ish' }),
+      row({ id: 'up', ifName: 'Ethernet1/2', adminSt: 'UP', operSt: 'up' }),
+      row({ id: 'disabled', ifName: 'Ethernet1/1', adminSt: 'disabled', operSt: 'administratively down' }),
+    ]
+
+    expect(sortLegacyInterfaceRows(rows, {
+      key: 'adminSt', direction: 'asc', mode: 'delta', view: 'all',
+    }).map(item => item.id)).toEqual(['disabled', 'unknown', 'up'])
+    expect(sortLegacyInterfaceRows(rows, {
+      key: 'operSt', direction: 'asc', mode: 'delta', view: 'all',
+    }).map(item => item.id)).toEqual(['disabled', 'unknown', 'up'])
+  })
+
+  test('naturally sorts speed for bookmarked legacy URLs', () => {
+    const rows = [
+      row({ id: 'ten', ifName: 'Ethernet1/1', speed: '10G' }),
+      row({ id: 'one', ifName: 'Ethernet1/10', speed: '1G' }),
+    ]
+
+    expect(sortLegacyInterfaceRows(rows, {
+      key: 'speed', direction: 'asc', mode: 'delta', view: 'all',
+    }).map(item => item.id)).toEqual(['one', 'ten'])
   })
 
   test('sums only positive CRC deltas with exact BigInt arithmetic', () => {

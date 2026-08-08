@@ -12,6 +12,7 @@ export type LegacyInterfaceSortKey =
   | 'ifName'
   | 'description'
   | 'ipAddress'
+  | 'speed'
   | 'adminSt'
   | 'operSt'
   | 'inputErrors'
@@ -25,6 +26,7 @@ export const LEGACY_INTERFACE_SORT_KEYS = [
   'ifName',
   'description',
   'ipAddress',
+  'speed',
   'adminSt',
   'operSt',
   'inputErrors',
@@ -34,6 +36,7 @@ export const LEGACY_INTERFACE_SORT_KEYS = [
 ] as const satisfies readonly LegacyInterfaceSortKey[]
 
 const DESCENDING_FIRST = new Set<LegacyInterfaceSortKey>([
+  'speed',
   'inputErrors',
   'outputErrors',
   'crcErrors',
@@ -104,6 +107,17 @@ export function buildLegacyInterfaceUrl(state: LegacyInterfaceListState): string
 
   const queryString = params.toString()
   return `/legacy/interfaces${queryString ? `?${queryString}` : ''}`
+}
+
+export function mergeLegacyInterfaceListState(
+  current: LegacyInterfaceListState,
+  overrides: Partial<LegacyInterfaceListState>,
+): LegacyInterfaceListState {
+  return {
+    ...current,
+    ...overrides,
+    page: overrides.page ?? 1,
+  }
 }
 
 export function nextLegacyInterfaceSort(
