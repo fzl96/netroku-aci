@@ -104,18 +104,8 @@ export default async function LegacyInterfacesPage({ searchParams }: { searchPar
     total={total}
     page={state.page}
     pageSize={state.pageSize}
-    filters={{
-      query: state.query,
-      site: '',
-      device: state.deviceIds[0] ?? '',
-      admin: '',
-      oper: '',
-      presence: 'present',
-      counter: state.mode === 'delta' ? 'delta' : 'raw',
-      sort: state.sortKey,
-      dir: state.sortDirection,
-    }}
-    options={{ sites: [], devices, adminStates: [], operStates: [] }}
+    state={state}
+    options={{ devices }}
     summaries={{ total: allCount, down: downCount, absent: absentCount, withHistory }}
   />
 }
