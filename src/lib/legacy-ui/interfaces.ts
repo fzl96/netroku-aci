@@ -26,6 +26,10 @@ export interface LegacyInterfaceSampleInput {
   dCrcErrors: bigint | null
 }
 
+export function normalizeLegacyInterfaceState(value: string): 'up' | 'down' {
+  return value.trim().toLowerCase() === 'up' ? 'up' : 'down'
+}
+
 export function buildLegacyInterfaceWhere(
   filters: LegacyInterfaceFilters,
 ): Prisma.LegacyInterfaceSnapshotWhereInput {
