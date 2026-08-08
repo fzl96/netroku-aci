@@ -34,6 +34,23 @@ describe('legacy interface helpers', () => {
     })
   })
 
+  test('combines view interface IDs with device and present constraints', () => {
+    expect(buildLegacyInterfaceWhere({
+      deviceIds: ['device-1'],
+      interfaceIds: ['if-1', 'if-2'],
+      presence: 'present',
+    })).toEqual({
+      AND: [
+        { deviceId: { in: ['device-1'] } },
+        { id: { in: ['if-1', 'if-2'] } },
+        { present: true },
+      ],
+    })
+    expect(buildLegacyInterfaceWhere({ interfaceIds: [] })).toEqual({
+      AND: [{ id: { in: [] } }],
+    })
+  })
+
   test('keeps interface counters exact when serializing database rows', () => {
     expect(serializeLegacyInterfaceSample({
       id: 'sample-1',

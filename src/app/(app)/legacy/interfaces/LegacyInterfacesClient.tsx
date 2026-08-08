@@ -43,6 +43,7 @@ export interface LegacyInterfaceRow {
   present: boolean
   firstSeenAt: string
   lastSeenAt: string
+  crcWindowTotal: string | null
   sample: LegacyInterfaceSampleRow | null
 }
 

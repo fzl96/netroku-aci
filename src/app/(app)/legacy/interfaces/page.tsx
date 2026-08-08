@@ -2,9 +2,14 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { buildLegacyInterfaceWhere, legacyInterfaceOrderBy, serializeLegacyInterfaceSample, type LegacyInterfacePresence } from '@/lib/legacy-ui/interfaces'
-import { parseLegacyDirection, parseLegacyPage, parseLegacyPageSize } from '@/lib/legacy-ui/query'
+import {
+  buildLegacyInterfaceWhere,
+  serializeLegacyInterfaceSample,
+} from '@/lib/legacy-ui/interfaces'
 import { LegacyInterfacesClient, type LegacyInterfaceRow } from './LegacyInterfacesClient'
+import { sortLegacyInterfaceRows, sumLegacyCrcByInterface } from './list-data'
+import { parseLegacyInterfaceListState } from './list-state'
+import { queryLegacyStateChangedInterfaceIds } from './state-change-query'
 
 export const metadata: Metadata = {
   title: 'Legacy Interfaces',
@@ -12,58 +17,59 @@ export const metadata: Metadata = {
 }
 
 interface PageParams {
-  query?: string
-  site?: string
-  device?: string
-  admin?: string
-  oper?: string
-  presence?: string
-  counter?: string
-  sort?: string
-  dir?: string
-  page?: string
-  pageSize?: string
+  [key: string]: string | undefined
 }
 
 export default async function LegacyInterfacesPage({ searchParams }: { searchParams: Promise<PageParams> }) {
   if (!await getSession()) redirect('/signin')
-  const params = await searchParams
-  const page = parseLegacyPage(params.page)
-  const pageSize = parseLegacyPageSize(params.pageSize)
-  const presence: LegacyInterfacePresence = params.presence === 'absent'
-    ? 'absent'
-    : params.presence === 'all' ? 'all' : 'present'
+  const state = parseLegacyInterfaceListState(await searchParams)
+  const windowDays = state.window === '30d' ? 30 : 7
+  const now = new Date()
+  const windowStart = new Date(now.getTime() - windowDays * 24 * 60 * 60 * 1000)
+
+  let crcTotals = new Map<string, bigint>()
+  let interfaceIds: string[] | undefined
+
+  if (state.view === 'crc') {
+    const crcSamples = await prisma.legacyInterfaceSample.findMany({
+      where: {
+        collectedAt: { gte: windowStart },
+        dCrcErrors: { gt: BigInt(0) },
+      },
+      select: { interfaceId: true, dCrcErrors: true },
+    })
+    crcTotals = sumLegacyCrcByInterface(crcSamples)
+    interfaceIds = [...crcTotals.keys()]
+  } else if (state.view === 'state-changed') {
+    interfaceIds = await queryLegacyStateChangedInterfaceIds(
+      sql => prisma.$queryRaw<Array<{ interfaceId: string }>>(sql),
+      windowStart,
+    )
+  }
+
   const where = buildLegacyInterfaceWhere({
-    query: params.query,
-    sites: params.site ? [params.site] : [],
-    deviceIds: params.device ? [params.device] : [],
-    adminStates: params.admin ? [params.admin] : [],
-    operStates: params.oper ? [params.oper] : [],
-    presence,
+    query: state.query,
+    deviceIds: state.deviceIds,
+    interfaceIds,
+    presence: 'present',
   })
 
-  const [snapshots, total, allCount, downCount, absentCount, withHistory, devices, adminRows, operRows] = await Promise.all([
+  const [snapshots, allCount, downCount, absentCount, withHistory, devices] = await Promise.all([
     prisma.legacyInterfaceSnapshot.findMany({
       where,
-      orderBy: legacyInterfaceOrderBy(params.sort, parseLegacyDirection(params.dir)),
-      skip: (page - 1) * pageSize,
-      take: pageSize,
       include: {
         device: { select: { id: true, hostname: true, site: true, managementIp: true } },
         samples: { orderBy: { collectedAt: 'desc' }, take: 1 },
       },
     }),
-    prisma.legacyInterfaceSnapshot.count({ where }),
     prisma.legacyInterfaceSnapshot.count(),
     prisma.legacyInterfaceSnapshot.count({ where: { present: true, operSt: { equals: 'down', mode: 'insensitive' } } }),
     prisma.legacyInterfaceSnapshot.count({ where: { present: false } }),
     prisma.legacyInterfaceSnapshot.count({ where: { samples: { some: {} } } }),
     prisma.legacyDevice.findMany({ select: { id: true, hostname: true, site: true }, orderBy: { hostname: 'asc' } }),
-    prisma.legacyInterfaceSnapshot.findMany({ distinct: ['adminSt'], select: { adminSt: true }, orderBy: { adminSt: 'asc' } }),
-    prisma.legacyInterfaceSnapshot.findMany({ distinct: ['operSt'], select: { operSt: true }, orderBy: { operSt: 'asc' } }),
   ])
 
-  const rows: LegacyInterfaceRow[] = snapshots.map(snapshot => ({
+  const allRows: LegacyInterfaceRow[] = snapshots.map(snapshot => ({
     id: snapshot.id,
     deviceId: snapshot.deviceId,
     hostname: snapshot.device.hostname,
@@ -80,28 +86,36 @@ export default async function LegacyInterfacesPage({ searchParams }: { searchPar
     present: snapshot.present,
     firstSeenAt: snapshot.firstSeenAt.toISOString(),
     lastSeenAt: snapshot.lastSeenAt.toISOString(),
+    crcWindowTotal: crcTotals.get(snapshot.id)?.toString() ?? null,
     sample: snapshot.samples[0] ? serializeLegacyInterfaceSample(snapshot.samples[0]) : null,
   }))
-
-  const unique = (values: string[]) => [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b))
+  const sortedRows = sortLegacyInterfaceRows(allRows, {
+    key: state.sortKey,
+    direction: state.sortDirection,
+    mode: state.mode,
+    view: state.view,
+  })
+  const total = sortedRows.length
+  const start = (state.page - 1) * state.pageSize
+  const rows = sortedRows.slice(start, start + state.pageSize)
 
   return <LegacyInterfacesClient
     rows={rows}
     total={total}
-    page={page}
-    pageSize={pageSize}
+    page={state.page}
+    pageSize={state.pageSize}
     filters={{
-      query: params.query ?? '', site: params.site ?? '', device: params.device ?? '',
-      admin: params.admin ?? '', oper: params.oper ?? '', presence,
-      counter: params.counter === 'delta' ? 'delta' : 'raw',
-      sort: params.sort ?? 'lastSeen', dir: parseLegacyDirection(params.dir),
+      query: state.query,
+      site: '',
+      device: state.deviceIds[0] ?? '',
+      admin: '',
+      oper: '',
+      presence: 'present',
+      counter: state.mode === 'delta' ? 'delta' : 'raw',
+      sort: state.sortKey,
+      dir: state.sortDirection,
     }}
-    options={{
-      sites: unique(devices.map(device => device.site)),
-      devices,
-      adminStates: unique(adminRows.map(row => row.adminSt)),
-      operStates: unique(operRows.map(row => row.operSt)),
-    }}
+    options={{ sites: [], devices, adminStates: [], operStates: [] }}
     summaries={{ total: allCount, down: downCount, absent: absentCount, withHistory }}
   />
 }

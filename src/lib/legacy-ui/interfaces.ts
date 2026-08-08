@@ -6,6 +6,7 @@ export type LegacyInterfacePresence = 'all' | 'present' | 'absent'
 export interface LegacyInterfaceFilters {
   query?: string
   deviceIds?: string[]
+  interfaceIds?: string[]
   sites?: string[]
   adminStates?: string[]
   operStates?: string[]
@@ -35,6 +36,7 @@ export function buildLegacyInterfaceWhere(
 ): Prisma.LegacyInterfaceSnapshotWhereInput {
   const and: Prisma.LegacyInterfaceSnapshotWhereInput[] = []
   if (filters.deviceIds?.length) and.push({ deviceId: { in: filters.deviceIds } })
+  if (filters.interfaceIds !== undefined) and.push({ id: { in: filters.interfaceIds } })
   if (filters.sites?.length) and.push({ device: { site: { in: filters.sites } } })
   if (filters.adminStates?.length) and.push({ adminSt: { in: filters.adminStates } })
   if (filters.operStates?.length) and.push({ operSt: { in: filters.operStates } })

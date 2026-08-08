@@ -47,10 +47,10 @@ const NATURAL_COLLATOR = new Intl.Collator(undefined, {
 export function sumLegacyCrcByInterface(samples: LegacyCrcDeltaSample[]): Map<string, bigint> {
   const totals = new Map<string, bigint>()
   for (const sample of samples) {
-    if (sample.dCrcErrors === null || sample.dCrcErrors <= 0n) continue
+    if (sample.dCrcErrors === null || sample.dCrcErrors <= BigInt(0)) continue
     totals.set(
       sample.interfaceId,
-      (totals.get(sample.interfaceId) ?? 0n) + sample.dCrcErrors,
+      (totals.get(sample.interfaceId) ?? BigInt(0)) + sample.dCrcErrors,
     )
   }
   return totals
