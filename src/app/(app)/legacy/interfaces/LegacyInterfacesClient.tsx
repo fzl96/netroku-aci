@@ -7,7 +7,7 @@ import { DataCard, DataCardBody, DataCardHeader, DataCardRow, DataCardTitle } fr
 import { LegacyEmptyState } from '@/components/legacy/LegacyEmptyState'
 import { LegacyPageShell } from '@/components/legacy/LegacyPageShell'
 import { LegacyPagination } from '@/components/legacy/LegacyPagination'
-import type { LegacyInterfacePresence } from '@/lib/legacy-ui/interfaces'
+import { normalizeLegacyInterfaceState, type LegacyInterfacePresence } from '@/lib/legacy-ui/interfaces'
 import type { LegacyPageSize } from '@/lib/legacy-ui/query'
 import { DENSE_TABLE_HEAD_CLS, SEARCH_INPUT_CLS } from '@/lib/ui-classes'
 import { LegacyInterfaceDrawer } from './LegacyInterfaceDrawer'
@@ -48,16 +48,14 @@ export interface LegacyInterfaceRow {
 
 const SELECT_CLS = 'rounded-lg border border-border bg-muted px-3 py-1.5 text-xs text-foreground'
 
-function stateBadge(value: string, present = true) {
-  const normalized = value.toLowerCase()
-  const tone = !present
-    ? 'border-border bg-muted text-faint'
-    : normalized === 'up'
-      ? 'border-success/30 bg-success/10 text-success'
-      : normalized === 'down'
-        ? 'border-error/30 bg-error/10 text-error'
-        : 'border-warning/30 bg-warning/10 text-warning'
-  return <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${tone}`}>{value || 'Unknown'}</span>
+function operState(value: string) {
+  const state = normalizeLegacyInterfaceState(value)
+
+  if (state === 'down') {
+    return <span className="inline-flex items-center gap-1.5 rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400"><span className="size-1.5 shrink-0 rounded-full bg-red-500" />down</span>
+  }
+
+  return <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-success"><span className="size-1.5 shrink-0 rounded-full bg-success-dot" />up</span>
 }
 
 function exactCounter(value: string | null): string {
@@ -121,14 +119,14 @@ export function LegacyInterfacesClient({
       <select name="oper" defaultValue={filters.oper} className={SELECT_CLS}><option value="">Any oper state</option>{options.operStates.map(value => <option key={value}>{value}</option>)}</select>
       <select name="presence" defaultValue={filters.presence} className={SELECT_CLS}><option value="present">Present</option><option value="absent">Absent</option><option value="all">All</option></select>
       <select name="counter" defaultValue={filters.counter} aria-label="Counter display" className={SELECT_CLS}><option value="raw">Raw counters</option><option value="delta">Counter deltas</option></select>
-      <select name="sort" defaultValue={filters.sort} aria-label="Sort interfaces" className={SELECT_CLS}><option value="lastSeen">Last seen</option><option value="ifName">Interface</option><option value="admin">Admin state</option><option value="oper">Oper state</option><option value="speed">Speed</option></select>
+      <select name="sort" defaultValue={filters.sort} aria-label="Sort interfaces" className={SELECT_CLS}><option value="lastSeen">Last seen</option><option value="ifName">Interface</option><option value="admin">Admin state</option><option value="oper">Oper state</option></select>
       <select name="dir" defaultValue={filters.dir} aria-label="Sort direction" className={SELECT_CLS}><option value="desc">Descending</option><option value="asc">Ascending</option></select>
       <button className="rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground">Apply</button>
     </form>
 
     {rows.length === 0 ? <LegacyEmptyState icon={<IconPlugConnected size={24} />} title="No legacy interfaces found" description="Run legacy_sync.py monitor or all to collect interfaces, or clear the current filters." /> : <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      <div className="hidden max-h-[calc(100vh-17rem)] overflow-auto md:block"><table className="w-full text-xs"><thead><tr>{['Device', 'Interface', 'Description', 'IP address', 'Admin', 'Operational', 'Speed', filters.counter === 'raw' ? 'Input errors' : 'Δ input', filters.counter === 'raw' ? 'Output errors' : 'Δ output', filters.counter === 'raw' ? 'CRC errors' : 'Δ CRC', 'Collected'].map(label => <th key={label} className={DENSE_TABLE_HEAD_CLS}>{label}</th>)}</tr></thead><tbody>{rows.map(row => <tr key={row.id} onClick={() => setSelected(row)} className="cursor-pointer border-b border-border/70 hover:bg-muted/60"><td className="px-4 py-3 font-semibold text-foreground">{row.hostname}<div className="text-[10px] font-normal text-faint">{row.site}</div></td><td className="whitespace-nowrap px-4 py-3 font-mono text-foreground">{row.ifName}{!row.present && <div className="font-sans text-[10px] text-faint">Absent</div>}</td><td className="max-w-52 truncate px-4 py-3 text-subtle">{row.description || '—'}</td><td className="whitespace-nowrap px-4 py-3 font-mono text-subtle">{row.ipAddress ? `${row.ipAddress}${row.prefixLength === null ? '' : `/${row.prefixLength}`}` : '—'}</td><td className="px-4 py-3">{stateBadge(row.adminSt, row.present)}</td><td className="px-4 py-3">{stateBadge(row.operSt, row.present)}</td><td className="whitespace-nowrap px-4 py-3 text-subtle">{row.sample?.speed || row.speed || '—'}</td><td className="px-4 py-3 text-right font-mono text-subtle">{exactCounter(filters.counter === 'raw' ? row.sample?.inputErrors ?? null : row.sample?.dInputErrors ?? null)}</td><td className="px-4 py-3 text-right font-mono text-subtle">{exactCounter(filters.counter === 'raw' ? row.sample?.outputErrors ?? null : row.sample?.dOutputErrors ?? null)}</td><td className="px-4 py-3 text-right font-mono text-subtle">{exactCounter(filters.counter === 'raw' ? row.sample?.crcErrors ?? null : row.sample?.dCrcErrors ?? null)}</td><td className="whitespace-nowrap px-4 py-3 text-subtle">{row.sample ? new Date(row.sample.collectedAt).toLocaleString() : 'No samples'}</td></tr>)}</tbody></table></div>
-      <div className="space-y-2 p-3 md:hidden">{rows.map(row => <DataCard key={row.id} onClick={() => setSelected(row)}><DataCardHeader trailing={stateBadge(row.operSt, row.present)}><DataCardTitle>{row.hostname} · {row.ifName}</DataCardTitle></DataCardHeader><DataCardBody><DataCardRow label="Site" value={row.site} /><DataCardRow label="Description" value={row.description || 'Not reported'} /><DataCardRow label={`${filters.counter === 'raw' ? 'Errors' : 'Error deltas'} (in / out / CRC)`} value={`${exactCounter(filters.counter === 'raw' ? row.sample?.inputErrors ?? null : row.sample?.dInputErrors ?? null)} / ${exactCounter(filters.counter === 'raw' ? row.sample?.outputErrors ?? null : row.sample?.dOutputErrors ?? null)} / ${exactCounter(filters.counter === 'raw' ? row.sample?.crcErrors ?? null : row.sample?.dCrcErrors ?? null)}`} /></DataCardBody></DataCard>)}</div>
+      <div className="hidden max-h-[calc(100vh-17rem)] overflow-auto md:block"><table className="w-full text-xs"><thead><tr>{['Device', 'Interface', 'Description', 'IP address', 'Admin', 'Operational', filters.counter === 'raw' ? 'Input errors' : 'Δ input', filters.counter === 'raw' ? 'Output errors' : 'Δ output', filters.counter === 'raw' ? 'CRC errors' : 'Δ CRC', 'Collected'].map(label => <th key={label} className={DENSE_TABLE_HEAD_CLS}>{label}</th>)}</tr></thead><tbody>{rows.map(row => <tr key={row.id} onClick={() => setSelected(row)} className="cursor-pointer border-b border-border/70 hover:bg-muted/60"><td className="px-4 py-3 font-semibold text-foreground">{row.hostname}<div className="text-[10px] font-normal text-faint">{row.site}</div></td><td className="whitespace-nowrap px-4 py-3 font-mono text-foreground">{row.ifName}{!row.present && <div className="font-sans text-[10px] text-faint">Absent</div>}</td><td className="max-w-52 truncate px-4 py-3 text-subtle">{row.description || '—'}</td><td className="whitespace-nowrap px-4 py-3 font-mono text-subtle">{row.ipAddress ? `${row.ipAddress}${row.prefixLength === null ? '' : `/${row.prefixLength}`}` : '—'}</td><td className="px-4 py-3 text-muted-foreground">{normalizeLegacyInterfaceState(row.adminSt)}</td><td className="px-4 py-3">{operState(row.operSt)}</td><td className="px-4 py-3 text-right font-mono text-subtle">{exactCounter(filters.counter === 'raw' ? row.sample?.inputErrors ?? null : row.sample?.dInputErrors ?? null)}</td><td className="px-4 py-3 text-right font-mono text-subtle">{exactCounter(filters.counter === 'raw' ? row.sample?.outputErrors ?? null : row.sample?.dOutputErrors ?? null)}</td><td className="px-4 py-3 text-right font-mono text-subtle">{exactCounter(filters.counter === 'raw' ? row.sample?.crcErrors ?? null : row.sample?.dCrcErrors ?? null)}</td><td className="whitespace-nowrap px-4 py-3 text-subtle">{row.sample ? new Date(row.sample.collectedAt).toLocaleString() : 'No samples'}</td></tr>)}</tbody></table></div>
+      <div className="space-y-2 p-3 md:hidden">{rows.map(row => <DataCard key={row.id} onClick={() => setSelected(row)}><DataCardHeader trailing={operState(row.operSt)}><DataCardTitle>{row.hostname} · {row.ifName}</DataCardTitle></DataCardHeader><DataCardBody><DataCardRow label="Site" value={row.site} /><DataCardRow label="Description" value={row.description || 'Not reported'} /><DataCardRow label={`${filters.counter === 'raw' ? 'Errors' : 'Error deltas'} (in / out / CRC)`} value={`${exactCounter(filters.counter === 'raw' ? row.sample?.inputErrors ?? null : row.sample?.dInputErrors ?? null)} / ${exactCounter(filters.counter === 'raw' ? row.sample?.outputErrors ?? null : row.sample?.dOutputErrors ?? null)} / ${exactCounter(filters.counter === 'raw' ? row.sample?.crcErrors ?? null : row.sample?.dCrcErrors ?? null)}`} /></DataCardBody></DataCard>)}</div>
       <LegacyPagination page={page} pageSize={pageSize} total={total} />
     </div>}
     <LegacyInterfaceDrawer key={selected?.id ?? 'closed'} selected={selected} onClose={() => setSelected(null)} />
