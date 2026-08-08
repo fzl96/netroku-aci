@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   buildLegacyInterfaceWhere,
   legacyInterfaceOrderBy,
+  normalizeLegacyInterfaceState,
   safeLegacyCounterNumber,
   serializeLegacyInterfaceSample,
 } from './interfaces'
@@ -30,6 +31,23 @@ describe('legacy interface helpers', () => {
           { device: { managementIp: { contains: 'uplink', mode: 'insensitive' } } },
         ] },
       ],
+    })
+  })
+
+  test('combines view interface IDs with device and present constraints', () => {
+    expect(buildLegacyInterfaceWhere({
+      deviceIds: ['device-1'],
+      interfaceIds: ['if-1', 'if-2'],
+      presence: 'present',
+    })).toEqual({
+      AND: [
+        { deviceId: { in: ['device-1'] } },
+        { id: { in: ['if-1', 'if-2'] } },
+        { present: true },
+      ],
+    })
+    expect(buildLegacyInterfaceWhere({ interfaceIds: [] })).toEqual({
+      AND: [{ id: { in: [] } }],
     })
   })
 
@@ -70,5 +88,17 @@ describe('legacy interface helpers', () => {
   test('maps supported interface sorts with a stable tie-breaker', () => {
     expect(legacyInterfaceOrderBy('ifName', 'asc')).toEqual([{ ifName: 'asc' }, { id: 'asc' }])
     expect(legacyInterfaceOrderBy('unknown', 'asc')).toEqual([{ lastSeenAt: 'desc' }, { id: 'asc' }])
+  })
+
+  test('normalizes interface table states to up or down', () => {
+    expect(normalizeLegacyInterfaceState('up')).toBe('up')
+    expect(normalizeLegacyInterfaceState('UP')).toBe('up')
+    expect(normalizeLegacyInterfaceState(' up ')).toBe('up')
+    expect(normalizeLegacyInterfaceState('down')).toBe('down')
+    expect(normalizeLegacyInterfaceState('notconnect')).toBe('down')
+    expect(normalizeLegacyInterfaceState('administratively down')).toBe('down')
+    expect(normalizeLegacyInterfaceState('disabled')).toBe('down')
+    expect(normalizeLegacyInterfaceState('')).toBe('down')
+    expect(normalizeLegacyInterfaceState('unknown')).toBe('down')
   })
 })
