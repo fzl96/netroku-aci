@@ -4,8 +4,8 @@ import { cache } from 'react'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { recordAudit } from '@/lib/audit'
-import { decrypt, encrypt } from '@/lib/crypto'
-import { DEFAULT_INTERVAL_MINUTES, isScheduleOverdue } from '@/lib/apic/schedule-timing'
+import { encrypt } from '@/lib/crypto'
+import { toSafeSchedule, type SafeResyncSchedule } from '@/lib/apic/schedule-view'
 import {
   resyncScheduleUpdateSchema,
   type ResyncScheduleUpdateFormValues,
@@ -15,34 +15,6 @@ type ActionResult<T> =
   | { success: true; data: T }
   | { success: false; error: string }
 
-export type SafeResyncSchedule = {
-  apicHostId: string
-  hostName: string
-  host: string
-  enabled: boolean
-  intervalMinutes: number
-  username: string
-  hasPassword: boolean
-  lastRunAt: Date | null
-  lastStatus: string | null
-  lastDetail: string | null
-  nextRunAt: Date | null
-  isRunning: boolean
-  isOverdue: boolean
-}
-
-type ScheduleRow = {
-  enabled: boolean
-  intervalMinutes: number
-  encUsername: string
-  encPassword: string
-  nextRunAt: Date | null
-  lastRunAt: Date | null
-  lastStatus: string | null
-  lastDetail: string | null
-  runningAt: Date | null
-}
-
 async function requireAdmin(): Promise<{ id: string; userName: string }> {
   const session = await getSession()
   if (!session) throw new Error('Unauthorized')
@@ -50,61 +22,6 @@ async function requireAdmin(): Promise<{ id: string; userName: string }> {
   return {
     id: session.user.id,
     userName: session.user.username ?? session.user.name,
-  }
-}
-
-/**
- * Serialization boundary. Ciphertext must never cross it — `decryptFn` is injected so this
- * stays a pure function under test.
- */
-export function toSafeSchedule(
-  host: { id: string; name: string; host: string },
-  schedule: ScheduleRow | null,
-  decryptFn: (value: string) => string = decrypt,
-  now: Date = new Date(),
-): SafeResyncSchedule {
-  if (!schedule) {
-    return {
-      apicHostId: host.id,
-      hostName: host.name,
-      host: host.host,
-      enabled: false,
-      intervalMinutes: DEFAULT_INTERVAL_MINUTES,
-      username: '',
-      hasPassword: false,
-      lastRunAt: null,
-      lastStatus: null,
-      lastDetail: null,
-      nextRunAt: null,
-      isRunning: false,
-      isOverdue: false,
-    }
-  }
-
-  let username: string
-  try {
-    username = decryptFn(schedule.encUsername)
-  } catch {
-    username = '(unreadable)'
-  }
-
-  return {
-    apicHostId: host.id,
-    hostName: host.name,
-    host: host.host,
-    enabled: schedule.enabled,
-    intervalMinutes: schedule.intervalMinutes,
-    username,
-    hasPassword: schedule.encPassword.length > 0,
-    lastRunAt: schedule.lastRunAt,
-    lastStatus: schedule.lastStatus,
-    lastDetail: schedule.lastDetail,
-    nextRunAt: schedule.nextRunAt,
-    isRunning: schedule.runningAt !== null,
-    isOverdue: isScheduleOverdue(
-      { enabled: schedule.enabled, nextRunAt: schedule.nextRunAt, intervalMinutes: schedule.intervalMinutes },
-      now,
-    ),
   }
 }
 

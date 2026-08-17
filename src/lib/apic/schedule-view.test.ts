@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { toSafeSchedule } from './resync-schedules'
+import { toSafeSchedule } from './schedule-view'
 
 const host = { id: 'host-1', name: 'DC-APIC-01', host: '10.0.0.1' }
 const T0 = new Date('2026-08-17T12:00:00.000Z')
