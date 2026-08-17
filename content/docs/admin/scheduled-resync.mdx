@@ -5,9 +5,74 @@ description: Configuring automatic data synchronization.
 
 import { Callout } from 'fumadocs-ui/components/callout';
 
-Netroku ACI does not have a built-in scheduler. Instead, it exposes a single HTTP endpoint that an external scheduler (a cron job, systemd timer, or any task runner) calls on whatever interval you choose. Each call pulls fresh data from the specified APIC controllers and updates the database.
+Netroku ACI can keep monitoring data fresh automatically, either with an in-app schedule
+(recommended) or by having an external system call a resync endpoint on its own timer.
 
-## The resync endpoint
+## In-app scheduling (recommended)
+
+The **Scheduler** page (admin-only, under Infrastructure in the sidebar) lets an admin
+configure recurring resyncs without touching the host running the app.
+
+- **One schedule per APIC host.** Each row picks an interval, the credentials to run as,
+  and whether the schedule is enabled. Datasets stay all-or-nothing per host — there is no
+  per-dataset interval.
+- **Intervals are relative, not wall-clock.** An interval of "every 8h" means 8 hours
+  after the *previous run completes*, not "at a fixed time of day". There is no "run at
+  02:00" option. The interval floor is 15 minutes and the ceiling is 10080 minutes (1
+  week); the default for a new schedule is 480 minutes (8 hours).
+- **Credentials are stored encrypted.** Because a schedule must run unattended, its APIC
+  username and password are stored encrypted (AES-256-GCM via `ENCRYPTION_KEY`) in the
+  `resync_schedule` table. See the [Credential storage](#credential-storage) note below for
+  exactly what this protects against.
+- **"Run now" queues a run**, it does not execute inline. It sets the schedule's next-run
+  time to now; the ticker (below) picks it up on its next pass, typically within about a
+  minute. The row shows *running…* once the run actually starts.
+- **The overdue badge** appears on a row when it is more than twice its interval past due.
+  This almost always means the ticker container is not running — the schedule itself is
+  fine, nothing is calling `/api/cron/tick`.
+
+### Credential storage
+
+Interactive resyncs triggered from the UI (the **Resync** button on a monitoring page)
+never store the APIC username/password — they are used for that one request only.
+**Scheduled** resyncs are different: because they run unattended, a schedule stores its
+credentials encrypted (AES-256-GCM via `ENCRYPTION_KEY`) in the `resync_schedule` table.
+This protects leaked database dumps and backups; it does **not** protect against host
+compromise, since `ENCRYPTION_KEY` lives in `.env` on the same machine as the database.
+Changing `ENCRYPTION_KEY` invalidates every stored schedule credential and requires
+re-entering them — key rotation is not supported.
+
+## The ticker
+
+Schedules configured in-app are executed by `POST /api/cron/tick`, a stateless endpoint
+that a small ticker container calls on a fixed loop (roughly every 60 seconds by default).
+Each call:
+
+```
+POST /api/cron/tick
+Authorization: Bearer <SCHEDULER_TOKEN>
+```
+
+with an empty body, and responds with `{ ran, results }`. On each call the handler claims
+one due schedule at a time, runs it, and finalizes it, repeating until no schedule is due
+or 20 schedules have run in that tick (whichever comes first). A schedule that is claimed
+but never finalized — because its container died mid-run — is reclaimed as stale after 120
+minutes, so a crash never wedges a schedule permanently.
+
+The ticker itself holds no schedule state; it is safe to restart, miss a beat, or run
+alongside a second instance without double-running anything, since the app decides what is
+due.
+
+This repository includes `scheduler/tick.sh`, the script the container runs. Once the app
+is deployed via `docker-compose.yml` (added on the Docker Compose branch), add a service
+like this alongside it — see the README's deployment section for the exact snippet and the
+note on why it is not yet in `docker-compose.yml` on this branch.
+
+## External scheduling (still supported)
+
+If you would rather drive resyncs from outside the app — a Unix cron job, a systemd timer,
+or any other task runner — `POST /api/cron/resync` is retained, unchanged, for that
+purpose.
 
 ```
 POST /api/cron/resync
@@ -38,7 +103,7 @@ You can include multiple host entries in one call. Each entry is processed in se
 - Physical interfaces and counter samples
 - Nodes, PSUs, and fan modules
 
-## Authentication
+### Authentication
 
 Set `SCHEDULER_TOKEN` in `.env` to a random secret:
 
@@ -46,17 +111,19 @@ Set `SCHEDULER_TOKEN` in `.env` to a random secret:
 openssl rand -hex 32
 ```
 
-Every call to `/api/cron/resync` must include this token as a Bearer token in the `Authorization` header. Calls without a valid token are rejected with `401`. If `SCHEDULER_TOKEN` is not set, the endpoint returns `503`.
+Every call to `/api/cron/resync` (and `/api/cron/tick`) must include this token as a
+Bearer token in the `Authorization` header. Calls without a valid token are rejected with
+`401`. If `SCHEDULER_TOKEN` is not set, the endpoint returns `503`.
 
 <Callout type="warn" title="Credentials in the request body">
-The APIC username and password are sent in the request body on every sync call. Use a read-only APIC account for scheduled resyncs and ensure the request is made over HTTPS or a trusted internal network.
+The APIC username and password are sent in the request body on every `/api/cron/resync` call. Use a read-only APIC account for externally-scheduled resyncs and ensure the request is made over HTTPS or a trusted internal network.
 </Callout>
 
-## Finding your APIC host ID
+### Finding your APIC host ID
 
 The `apicHostId` is the internal database ID of the host entry. You can find it by opening the **APIC Hosts** page — the ID is shown in the URL when you edit a host, or you can retrieve it from the API.
 
-## Setting up a cron job
+### Setting up a cron job
 
 Example: sync every 15 minutes using a Unix cron job.
 
@@ -69,8 +136,34 @@ Example: sync every 15 minutes using a Unix cron job.
 
 Replace `your-app`, `<SCHEDULER_TOKEN>`, `<id>`, `<user>`, and `<pass>` with your values.
 
-## Monitoring sync results
+### Monitoring sync results
 
-Every resync call is recorded in the audit log. Navigate to **History** in the sidebar to see a timestamped list of sync operations, including which host was synced, how many records were updated, and whether the sync succeeded or failed.
+Every resync call — from the UI, the ticker, or `/api/cron/resync` — is recorded in the
+audit log. Navigate to **History** in the sidebar to see a timestamped list of sync
+operations, including which host was synced, how many records were updated, and whether
+the sync succeeded or failed.
 
-The endpoint also returns a JSON response with per-dataset results that you can log from your scheduler.
+`/api/cron/resync` also returns a JSON response with per-dataset results that you can log
+from your scheduler.
+
+## Migrating off a systemd timer
+
+If you were previously driving resyncs with a host systemd timer calling
+`/api/cron/resync`, moving to in-app scheduling is straightforward:
+
+1. In the **Scheduler** page, create a schedule for each host with the same credentials
+   and a comparable interval, leaving it **disabled** at first.
+2. Enable the schedules and confirm on the **History** page that runs are landing
+   successfully through at least one full interval.
+3. Disable the old timer:
+
+   ```bash
+   systemctl disable --now netroku-resync.timer
+   ```
+
+   <Callout type="warn" title="Check for a second ExecStart">
+   If the corresponding `.service` unit has more than one `ExecStart` line — for example a legacy Python collector sync alongside the APIC resync — do not delete the unit. Strip out only the `ExecStart` that called `/api/cron/resync` and leave the rest (and its own timer) running; the legacy collector is not covered by in-app scheduling.
+   </Callout>
+
+4. Once you're confident in the in-app schedules, remove any leftover `RESYNC_BODY` or
+   credential material from the old timer's environment file on the host.
