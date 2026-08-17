@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'bun:test'
 import { resyncScheduleSchema, resyncScheduleUpdateSchema } from './resync-schedule'
 
-const valid = { enabled: true, intervalMinutes: 480, username: 'svc-apic', password: 'hunter22' }
+const base = { enabled: true, intervalMinutes: 480, username: 'svc-apic' }
+const valid = { ...base, password: 'hunter22' }
 
 describe('resyncScheduleSchema', () => {
   it('accepts a valid payload', () => {
@@ -38,15 +39,13 @@ describe('resyncScheduleSchema', () => {
   })
 
   it('requires a password', () => {
-    const { password: _omitted, ...rest } = valid
-    expect(resyncScheduleSchema.safeParse(rest).success).toBe(false)
+    expect(resyncScheduleSchema.safeParse(base).success).toBe(false)
   })
 })
 
 describe('resyncScheduleUpdateSchema', () => {
   it('allows password to be omitted', () => {
-    const { password: _omitted, ...rest } = valid
-    expect(resyncScheduleUpdateSchema.safeParse(rest).success).toBe(true)
+    expect(resyncScheduleUpdateSchema.safeParse(base).success).toBe(true)
   })
 
   it('treats an empty password as omitted', () => {
