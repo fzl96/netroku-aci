@@ -1,6 +1,13 @@
 import { decrypt } from '@/lib/crypto'
 import { DEFAULT_INTERVAL_MINUTES, isScheduleOverdue } from './schedule-timing'
 
+/**
+ * Sentinel substituted for a schedule's username when its `encUsername` fails to decrypt.
+ * Never a real APIC username — callers must recognize and strip it rather than round-tripping
+ * it back into storage (which would `encrypt()` the literal string as though it were real).
+ */
+export const UNREADABLE_USERNAME = '(unreadable)'
+
 export type SafeResyncSchedule = {
   apicHostId: string
   hostName: string
@@ -61,7 +68,7 @@ export function toSafeSchedule(
   try {
     username = decryptFn(schedule.encUsername)
   } catch {
-    username = '(unreadable)'
+    username = UNREADABLE_USERNAME
   }
 
   return {

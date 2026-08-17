@@ -19,8 +19,8 @@ export type AuditAction =
   | 'user.create'
   | 'user.delete'
   | 'resync.schedule.run'
-  | 'resync_schedule.update'
-  | 'resync_schedule.delete'
+  | 'resync.schedule.update'
+  | 'resync.schedule.delete'
 
 export type AuditStatus = 'success' | 'partial' | 'failure'
 

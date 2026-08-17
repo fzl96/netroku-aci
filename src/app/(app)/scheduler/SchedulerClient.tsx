@@ -8,7 +8,8 @@ import {
   runResyncScheduleNow,
   upsertResyncSchedule,
 } from '@/actions/resync-schedules'
-import type { SafeResyncSchedule } from '@/lib/apic/schedule-view'
+import { UNREADABLE_USERNAME, type SafeResyncSchedule } from '@/lib/apic/schedule-view'
+import { INTERVAL_MAX_MINUTES, INTERVAL_MIN_MINUTES } from '@/lib/apic/schedule-timing'
 import { INPUT_CLS, LABEL_CLS, SELECT_CLS, TABLE_SCROLL_CLS } from '@/lib/ui-classes'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -29,6 +30,9 @@ const INTERVAL_PRESETS = [
   { label: 'every 8h', value: 480 },
   { label: 'every 24h', value: 1440 },
 ]
+
+/** Sentinel select value that reveals the custom-minutes input below it. */
+const CUSTOM_INTERVAL_VALUE = 'custom'
 
 function intervalLabel(minutes: number): string {
   const preset = INTERVAL_PRESETS.find((p) => p.value === minutes)
@@ -61,6 +65,7 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
   // Form state for the edit dialog
   const [enabled, setEnabled] = useState(false)
   const [intervalMinutes, setIntervalMinutes] = useState(480)
+  const [useCustomInterval, setUseCustomInterval] = useState(false)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
 
@@ -68,7 +73,8 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
     setEditing(schedule)
     setEnabled(schedule.enabled)
     setIntervalMinutes(schedule.intervalMinutes)
-    setUsername(schedule.username === '(unreadable)' ? '' : schedule.username)
+    setUseCustomInterval(!INTERVAL_PRESETS.some((p) => p.value === schedule.intervalMinutes))
+    setUsername(schedule.username === UNREADABLE_USERNAME ? '' : schedule.username)
     setPassword('')
   }
 
@@ -171,8 +177,12 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
                     <td className="py-2.5 pr-4">
                       <Switch
                         checked={s.enabled}
-                        disabled={isPending || !s.hasPassword}
+                        disabled={isPending || !s.hasPassword || s.username === UNREADABLE_USERNAME}
                         onCheckedChange={(next) => {
+                          if (s.username === UNREADABLE_USERNAME) {
+                            toast.error('Credentials could not be decrypted — re-enter them before enabling')
+                            return
+                          }
                           startTransition(async () => {
                             const result = await upsertResyncSchedule(s.apicHostId, {
                               enabled: next,
@@ -252,15 +262,34 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
               <label className={LABEL_CLS}>Interval</label>
               <select
                 className={SELECT_CLS}
-                value={intervalMinutes}
-                onChange={(e) => setIntervalMinutes(Number(e.target.value))}
+                value={useCustomInterval ? CUSTOM_INTERVAL_VALUE : intervalMinutes}
+                onChange={(e) => {
+                  if (e.target.value === CUSTOM_INTERVAL_VALUE) {
+                    setUseCustomInterval(true)
+                    return
+                  }
+                  setUseCustomInterval(false)
+                  setIntervalMinutes(Number(e.target.value))
+                }}
               >
                 {INTERVAL_PRESETS.map((p) => (
                   <option key={p.value} value={p.value}>
                     {p.label} after completion
                   </option>
                 ))}
+                <option value={CUSTOM_INTERVAL_VALUE}>custom…</option>
               </select>
+              {useCustomInterval ? (
+                <input
+                  className={`${INPUT_CLS} mt-2`}
+                  type="number"
+                  min={INTERVAL_MIN_MINUTES}
+                  max={INTERVAL_MAX_MINUTES}
+                  value={intervalMinutes}
+                  onChange={(e) => setIntervalMinutes(Number(e.target.value))}
+                  placeholder={`${INTERVAL_MIN_MINUTES}-${INTERVAL_MAX_MINUTES} minutes`}
+                />
+              ) : null}
             </div>
             <div>
               <label className={LABEL_CLS}>APIC username</label>

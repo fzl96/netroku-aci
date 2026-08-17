@@ -102,7 +102,7 @@ export async function upsertResyncSchedule(
     await recordAudit({
       userId: actor.id,
       userName: actor.userName,
-      action: 'resync_schedule.update',
+      action: 'resync.schedule.update',
       target: `${host.name} (${host.host})`,
       detail: `${enabled ? 'enabled' : 'disabled'}, every ${intervalMinutes}m, runs as ${username}`,
     })
@@ -135,7 +135,7 @@ export async function runResyncScheduleNow(apicHostId: string): Promise<ActionRe
     await recordAudit({
       userId: actor.id,
       userName: actor.userName,
-      action: 'resync_schedule.update',
+      action: 'resync.schedule.update',
       target: `${schedule.apicHost.name} (${schedule.apicHost.host})`,
       detail: 'queued an immediate run',
     })
@@ -157,7 +157,7 @@ export async function deleteResyncSchedule(apicHostId: string): Promise<ActionRe
     await recordAudit({
       userId: actor.id,
       userName: actor.userName,
-      action: 'resync_schedule.delete',
+      action: 'resync.schedule.delete',
       target: existing ? `${existing.apicHost.name} (${existing.apicHost.host})` : apicHostId,
     })
     return { success: true, data: undefined }

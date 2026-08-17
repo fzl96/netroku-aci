@@ -151,11 +151,18 @@ from your scheduler.
 If you were previously driving resyncs with a host systemd timer calling
 `/api/cron/resync`, moving to in-app scheduling is straightforward:
 
+<Callout type="warn" title="Do not run both schedulers at once">
+The in-app ticker and the systemd timer must never be enabled against the same host at the
+same time. Neither one checks whether the other is also driving a resync: `runningAt` on
+`resync_schedule` has no effect on `/api/cron/resync`, since that endpoint never touches the
+`resync_schedule` table at all. The EPG sync does a delete-and-recreate bulk replace per
+host, so two resyncs racing each other risk a database deadlock or a transient empty state
+in the UI. Disable the old timer *before* enabling the new schedules, not after.
+</Callout>
+
 1. In the **Scheduler** page, create a schedule for each host with the same credentials
-   and a comparable interval, leaving it **disabled** at first.
-2. Enable the schedules and confirm on the **History** page that runs are landing
-   successfully through at least one full interval.
-3. Disable the old timer:
+   and a comparable interval, leaving it **disabled**.
+2. Disable the old timer:
 
    ```bash
    systemctl disable --now netroku-resync.timer
@@ -165,5 +172,7 @@ If you were previously driving resyncs with a host systemd timer calling
    If the corresponding `.service` unit has more than one `ExecStart` line — for example a legacy Python collector sync alongside the APIC resync — do not delete the unit. Strip out only the `ExecStart` that called `/api/cron/resync` and leave the rest (and its own timer) running; the legacy collector is not covered by in-app scheduling.
    </Callout>
 
+3. Enable the schedules and confirm on the **History** page that runs are landing
+   successfully through at least one full interval.
 4. Once you're confident in the in-app schedules, remove any leftover `RESYNC_BODY` or
    credential material from the old timer's environment file on the host.

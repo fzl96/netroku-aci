@@ -67,6 +67,15 @@ export async function POST(request: Request) {
         })
       } catch (err) {
         console.error('[tick] failed to finalize schedule', claimed.id, err)
+        // recordAudit swallows its own errors, so this cannot make the catch throw.
+        await recordAudit({
+          userId: null,
+          userName: 'scheduler',
+          action: 'resync.schedule.run',
+          target: `${claimed.hostName} (${claimed.host})`,
+          status: 'failure',
+          detail: 'Failed to finalize schedule — the claim will be released after the stale window',
+        })
       }
     }
 
@@ -76,6 +85,9 @@ export async function POST(request: Request) {
   return Response.json({ ran: results.length, results })
 }
 
+// Note: HostResult also has a host-level `error` string, which is intentionally not
+// rendered here — resyncHost() never sets it. It's only populated by /api/cron/resync's
+// own bad-input paths (e.g. an unknown apicHostId), which never reach this ticker code path.
 function describeResult(result: {
   endpoints?: unknown
   interfaces?: unknown
@@ -85,8 +97,12 @@ function describeResult(result: {
   const parts: string[] = []
   for (const [name, value] of Object.entries(result)) {
     if (!value || typeof value !== 'object') continue
-    if ('error' in value) parts.push(`${name}: ${(value as { error: string }).error}`)
-    else if ('synced' in value) parts.push(`${name}: ${(value as { synced: number }).synced}`)
+    if ('error' in value) {
+      const error = (value as { error: string }).error
+      parts.push(`${name}: ${error || 'unknown error'}`)
+    } else if ('synced' in value) {
+      parts.push(`${name}: ${(value as { synced: number }).synced}`)
+    }
   }
   return parts.join('; ')
 }
