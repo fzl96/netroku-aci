@@ -147,6 +147,11 @@ export async function upsertResyncSchedule(
     } else {
       return { success: false, error: 'Password is required when creating a schedule' }
     }
+    // Unreachable by construction: encPassword is only ever set via the branches above, both
+    // of which produce a non-empty string (encrypt() never returns ''; existingSchedule.encPassword
+    // is a required, non-blank column). Retained as fail-closed defense-in-depth on this
+    // credential-handling boundary — if a future refactor of the branches above ever allows an
+    // empty encPassword through, this stops it from being enabled rather than silently trusting it.
     if (enabled && !encPassword) {
       return { success: false, error: 'Credentials are required before enabling a schedule' }
     }

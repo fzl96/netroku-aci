@@ -18,7 +18,33 @@ const row = {
   runningAt: null,
 }
 
+const EXPECTED_KEYS = [
+  'apicHostId',
+  'hostName',
+  'host',
+  'enabled',
+  'intervalMinutes',
+  'username',
+  'hasPassword',
+  'lastRunAt',
+  'lastStatus',
+  'lastDetail',
+  'nextRunAt',
+  'isRunning',
+  'isOverdue',
+].sort()
+
 describe('toSafeSchedule', () => {
+  it('returns exactly the SafeResyncSchedule shape and nothing more (populated schedule)', () => {
+    const safe = toSafeSchedule(host, row, () => 'svc-apic')
+    expect(Object.keys(safe).sort()).toEqual(EXPECTED_KEYS)
+  })
+
+  it('returns exactly the SafeResyncSchedule shape and nothing more (null schedule)', () => {
+    const safe = toSafeSchedule(host, null, () => 'svc-apic')
+    expect(Object.keys(safe).sort()).toEqual(EXPECTED_KEYS)
+  })
+
   it('never exposes the encrypted password or username ciphertext', () => {
     const safe = toSafeSchedule(host, row, () => 'svc-apic')
     const serialized = JSON.stringify(safe)
