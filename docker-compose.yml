@@ -1,4 +1,20 @@
 services:
+  # One-shot: applies migrations, then exits. `app` waits for it to succeed, so
+  # migrations run exactly once no matter how many app containers start, and a
+  # failed migration stops the rollout instead of racing the server.
+  migrate:
+    build: .
+    restart: "no"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://netroku:netroku@db:5432/netroku?schema=public
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["node", "node_modules/prisma/build/index.js", "migrate", "deploy"]
+
   app:
     build: .
     ports:
@@ -9,13 +25,34 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://netroku:netroku@db:5432/netroku?schema=public
     depends_on:
-      - db
+      migrate:
+        condition: service_completed_successfully
+    # Migrations are the migrate service's job now. `exec` so the server takes
+    # over PID 1 and receives SIGTERM from `docker stop`.
+    command: ["sh", "-c", "bun prisma/seed-admin.ts && exec bun server.js"]
+    # No curl or wget in the bun image, so probe with bun itself. Any response at
+    # all means the server is up; the status code does not matter here.
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "fetch('http://127.0.0.1:3000/').then(()=>process.exit(0),()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
 
   scheduler:
     image: curlimages/curl:8.11.0
     restart: unless-stopped
+    # Wait until the app actually serves, otherwise the first tick fires before
+    # the server is listening and logs a spurious failure.
     depends_on:
-      - app
+      app:
+        condition: service_healthy
     env_file:
       - .env
     environment:
@@ -35,6 +72,15 @@ services:
       POSTGRES_DB: netroku
     volumes:
       - netroku-pgdata:/var/lib/postgresql/data
+    # depends_on alone only waits for the container to start, not for Postgres to
+    # accept connections — without this, migrate can reach a database that is not
+    # listening yet.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U netroku -d netroku"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
 volumes:
   netroku-pgdata:

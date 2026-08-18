@@ -100,6 +100,10 @@ EXPOSE 3000
 #
 # Migrations only: generation already happened in the builder, and re-running it
 # would re-download the engines from binaries.prisma.sh on every boot.
+# This is the self-contained default, so `docker run <image>` still works on its
+# own. docker-compose.yml overrides it: migrations move to a one-shot `migrate`
+# service so they run exactly once regardless of how many app containers start.
+#
 # exec form, and `exec` on the last command: without it the chain runs under
 # /bin/sh, which stays PID 1 and does not forward SIGTERM, so `docker stop` would
 # kill the server abruptly instead of letting it shut down cleanly.
