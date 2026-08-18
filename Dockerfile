@@ -4,9 +4,12 @@ WORKDIR /app
 
 COPY package.json bun.lock ./
 
-ENV BUN_CONFIG_NO_VERIFY=1
-
-RUN bun install --frozen-lockfile
+# Keep integrity verification ON. With it off, a truncated download is not caught by
+# its checksum and instead fails later as "Fail extracting tarball", which hides the
+# real cause. Cap concurrency well below bun's default of 48 — that many parallel
+# downloads is what truncates large tarballs (xlsx is the usual casualty) on hosts
+# with a slower or lossier link than a dev laptop.
+RUN bun install --frozen-lockfile --network-concurrency 8
 
 
 FROM oven/bun:1.3.14 AS builder
@@ -26,9 +29,12 @@ WORKDIR /app
 
 COPY package.json bun.lock ./
 
-ENV BUN_CONFIG_NO_VERIFY=1
-
-RUN bun install --frozen-lockfile
+# Keep integrity verification ON. With it off, a truncated download is not caught by
+# its checksum and instead fails later as "Fail extracting tarball", which hides the
+# real cause. Cap concurrency well below bun's default of 48 — that many parallel
+# downloads is what truncates large tarballs (xlsx is the usual casualty) on hosts
+# with a slower or lossier link than a dev laptop.
+RUN bun install --frozen-lockfile --network-concurrency 8
 
 
 FROM oven/bun:1.3.14 AS runner
