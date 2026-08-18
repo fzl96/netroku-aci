@@ -20,6 +20,9 @@ export const HISTORY_ACTION_LABELS: Record<AuditAction, string> = {
   'ingest.legacy.endpoints': 'Ingest legacy endpoints',
   'user.create': 'User created',
   'user.delete': 'User deleted',
+  'resync.schedule.run': 'Ran scheduled resync',
+  'resync.schedule.update': 'Resync schedule updated',
+  'resync.schedule.delete': 'Resync schedule deleted',
 }
 
 const HISTORY_ACTIONS = Object.keys(HISTORY_ACTION_LABELS) as AuditAction[]

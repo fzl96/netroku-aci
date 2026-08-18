@@ -78,6 +78,7 @@ import {
   IconBook,
   IconChevronDown,
   IconHeartbeat,
+  IconClockPlay,
 } from "@tabler/icons-react";
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
@@ -123,6 +124,12 @@ const ACI_NAV: NavSection[] = [
         href: "/apic-hosts",
         label: "APIC Hosts",
         icon: <IconRouter size={15} stroke={1.75} />,
+        adminOnly: true,
+      },
+      {
+        href: "/scheduler",
+        label: "Scheduler",
+        icon: <IconClockPlay size={15} stroke={1.75} />,
         adminOnly: true,
       },
       {

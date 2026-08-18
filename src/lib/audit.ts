@@ -18,6 +18,9 @@ export type AuditAction =
   | 'ingest.legacy.endpoints'
   | 'user.create'
   | 'user.delete'
+  | 'resync.schedule.run'
+  | 'resync.schedule.update'
+  | 'resync.schedule.delete'
 
 export type AuditStatus = 'success' | 'partial' | 'failure'
 

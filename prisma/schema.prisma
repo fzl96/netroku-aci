@@ -111,9 +111,31 @@ model ApicHost {
   hardware            HardwareComponent[]
   nodeSamples         NodeStatusSample[]
   epgs                EpgSnapshot[]
+  schedule            ResyncSchedule?
 
   @@unique([host])
   @@map("apic_host")
+}
+
+model ResyncSchedule {
+  id              String    @id @default(cuid())
+  apicHostId      String    @unique
+  apicHost        ApicHost  @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  enabled         Boolean   @default(false)
+  intervalMinutes Int       @default(480)
+  encUsername     String
+  encPassword     String
+  nextRunAt       DateTime?
+  lastRunAt       DateTime?
+  lastStatus      String?
+  lastDetail      String?
+  runningAt       DateTime?
+  updatedByUserId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([enabled, nextRunAt])
+  @@map("resync_schedule")
 }
 
 model Endpoint {

@@ -61,9 +61,9 @@ cp .env.example .env
 | `NEXT_PUBLIC_APP_URL`               | yes               | Public base URL used by the browser.                                                                                   |
 | `TRUSTED_ORIGINS`                   | yes               | Comma-separated origins Better Auth accepts (add LAN IPs / Tailscale hosts here).                                      |
 | `SECURE_COOKIES`                    | no                | Set to `true` **only** when served exclusively over HTTPS. Leave blank for HTTP/LAN.                                   |
-| `ENCRYPTION_KEY`                    | yes               | 64-char hex (32 bytes) used by `src/lib/crypto.ts`. Generate with `openssl rand -hex 32`.                              |
+| `ENCRYPTION_KEY`                    | yes               | 64-char hex (32 bytes) used by `src/lib/crypto.ts` to encrypt scheduled-resync credentials stored in the `resync_schedule` table. Generate with `openssl rand -hex 32`. Changing it invalidates every stored schedule credential. |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | yes (for seeding) | First admin account created by the seed script. Password ≥ 8 chars.                                                    |
-| `SCHEDULER_TOKEN`                   | no                | Bearer token an external scheduler must send to `POST /api/cron/resync`. Generate with `openssl rand -hex 32`.         |
+| `SCHEDULER_TOKEN`                   | no                | Bearer token the ticker and any external scheduler must send to `POST /api/cron/tick` / `POST /api/cron/resync`. Generate with `openssl rand -hex 32`. |
 
 ### 5. Start Postgres
 
@@ -399,9 +399,36 @@ Every monitoring page has a **Resync** action that calls its own route handler (
 
 The **EPGs** page uses a third shape: it holds no history at all. Each sync deletes and recreates every `EpgSnapshot` / `EpgPathBinding` row for the host in a single bulk-replace transaction, so the table is always a mirror of the current APIC state.
 
-An external scheduler can drive all features for one or more hosts at once via `POST /api/cron/resync` (authorized with the `SCHEDULER_TOKEN` bearer header). Every sync is written to the `AuditLog` table and surfaced on the **History** page.
+Recurring resyncs are configured in-app on the **Scheduler** page (admin-only): pick a host, an interval, and credentials, and a stateless ticker container calls `POST /api/cron/tick` roughly every 60 seconds to run whatever is due. `POST /api/cron/resync` (authorized with the `SCHEDULER_TOKEN` bearer header) is retained unchanged for anyone driving syncs from an external cron job, systemd timer, or task runner instead. Every sync — whether triggered from the UI, the ticker, or `/api/cron/resync` — is written to the `AuditLog` table and surfaced on the **History** page. See [`docs/admin/scheduled-resync`](content/docs/admin/scheduled-resync.mdx) for details on both paths.
 
-> **Credentials are never stored.** The APIC username/password are supplied with each resync request (from the UI or the scheduler payload) and used only for that pull.
+> **Credential storage.** Interactive resyncs from the UI never store the APIC
+> username/password — they are used for that request only. **Scheduled** resyncs must run
+> unattended, so a schedule stores its credentials encrypted (AES-256-GCM via
+> `ENCRYPTION_KEY`) in the `resync_schedule` table. This protects leaked database dumps and
+> backups; it does **not** protect against host compromise, since `ENCRYPTION_KEY` lives in
+> `.env` on the same machine. Changing `ENCRYPTION_KEY` invalidates stored credentials and
+> requires re-entering them.
+
+`docker-compose.yml` defines a `scheduler` service alongside `app` and `db` that drives
+`/api/cron/tick`:
+
+```yaml
+  scheduler:
+    image: curlimages/curl:8.11.0
+    depends_on: [app]
+    env_file: [.env]
+    environment:
+      TICK_URL: http://app:3000/api/cron/tick
+      TICK_INTERVAL_SECONDS: 60
+    volumes: ["./scheduler/tick.sh:/tick.sh:ro"]
+    entrypoint: ["/bin/sh", "/tick.sh"]
+    restart: unless-stopped
+```
+
+`scheduler/tick.sh` is the script the container runs — it holds no state, so restarting it
+or missing a beat cannot double-run a schedule. It reads `SCHEDULER_TOKEN` from `.env` via
+`env_file`; `docker compose up` starts it automatically. To run the app without in-app
+scheduling, stop just that service (`docker compose stop scheduler`).
 
 ### Page → APIC endpoint → storage
 
@@ -461,7 +488,8 @@ These handlers query read-only APIC classes and persist the results (see [Monito
 | `POST /api/epgs/resync`       | Pull `fvAEPg` (with BD/domain/contract relations and static path bindings) and bulk-replace `EpgSnapshot` / `EpgPathBinding` |
 | `POST /api/interfaces/resync` | Pull `l1PhysIf` + rmon counters into `InterfaceSnapshot` / `InterfaceSample`                                                 |
 | `POST /api/nodes/resync`      | Pull `fabricNode`/`topSystem`/`eqptPsu`/`eqptFan` into `NodeSnapshot` / `HardwareComponent` / `NodeStatusSample`             |
-| `POST /api/cron/resync`       | Scheduler entry point — runs all syncs for the supplied hosts (Bearer `SCHEDULER_TOKEN`)                                     |
+| `POST /api/cron/resync`       | External scheduler entry point — runs all syncs for the supplied hosts (Bearer `SCHEDULER_TOKEN`)                            |
+| `POST /api/cron/tick`         | Ticker entry point — runs any due schedules from the `resync_schedule` table (Bearer `SCHEDULER_TOKEN`)                      |
 | `POST /api/endpoints/export`     | Excel (`.xlsx`) export of the stored endpoints, honouring the active filters and grouped by node or VLAN                     |
 | `POST /api/epgs/export`          | Excel (`.xlsx`) export of the stored EPGs, grouped by EPG or by port                                                         |
 | `POST /api/interfaces/export`    | CSV export of the stored interface samples                                                                                   |

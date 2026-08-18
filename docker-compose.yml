@@ -1,5 +1,31 @@
 services:
-  postgres:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://netroku:netroku@db:5432/netroku?schema=public
+    depends_on:
+      - db
+
+  scheduler:
+    image: curlimages/curl:8.11.0
+    restart: unless-stopped
+    depends_on:
+      - app
+    env_file:
+      - .env
+    environment:
+      TICK_URL: http://app:3000/api/cron/tick
+      TICK_INTERVAL_SECONDS: 60
+    volumes:
+      - ./scheduler/tick.sh:/tick.sh:ro
+    entrypoint: ["/bin/sh", "/tick.sh"]
+
+  db:
     image: postgres:17
     container_name: netroku-postgres
     restart: unless-stopped
@@ -7,8 +33,6 @@ services:
       POSTGRES_USER: netroku
       POSTGRES_PASSWORD: netroku
       POSTGRES_DB: netroku
-    ports:
-      - "5432:5432"
     volumes:
       - netroku-pgdata:/var/lib/postgresql/data
 
