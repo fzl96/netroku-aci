@@ -3,7 +3,9 @@ services:
   # migrations run exactly once no matter how many app containers start, and a
   # failed migration stops the rollout instead of racing the server.
   migrate:
-    build: .
+    build:
+      context: .
+      target: migrator
     restart: "no"
     env_file:
       - .env
@@ -13,7 +15,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: ["node", "node_modules/prisma/build/index.js", "migrate", "deploy"]
 
   app:
     build: .

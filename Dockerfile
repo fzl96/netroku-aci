@@ -54,6 +54,18 @@ RUN test -f node_modules/prisma/package.json \
   || (echo "prisma CLI missing from production install — startup migrations would fail" && exit 1)
 
 
+# Migrations run from a stage that has a real node_modules, not from the runner.
+# The prisma CLI pulls a dependency closure of its own (@prisma/get-platform,
+# @prisma/fetch-engine, c12 and friends); copying pieces of it into the standalone
+# runner by hand would break on the next prisma upgrade. This adds only a small
+# layer on top of prod-deps, which the build produces anyway.
+FROM prod-deps AS migrator
+
+COPY prisma ./prisma
+
+CMD ["bun", "run", "prisma:deploy"]
+
+
 FROM oven/bun:1.3.14 AS runner
 
 WORKDIR /app
@@ -68,22 +80,16 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
-# Prisma needs three things tracing cannot give us, so copy them explicitly rather
-# than hope the trace caught them:
-#   - the generated client (.prisma) and its native query engine, loaded at runtime
-#     by path rather than by import, so tracing does not always follow it
-#   - @prisma/client itself, to guarantee it matches the generated client
-#   - the prisma CLI and its engines, which nothing imports at all — it is invoked
-#     as a command by the startup migration step
+# The generated client and its native query engine are loaded at runtime by path
+# rather than by import, so tracing does not reliably follow them. Copy both,
+# together with @prisma/client itself so it matches the client it was generated
+# against. The prisma CLI is deliberately absent — migrations are the migrator
+# stage's job.
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
-COPY --from=prod-deps /app/node_modules/prisma ./node_modules/prisma
-COPY --from=prod-deps /app/node_modules/@prisma/engines ./node_modules/@prisma/engines
-COPY --from=prod-deps /app/node_modules/@prisma/config ./node_modules/@prisma/config
 
-# The schema and migrations for `migrate deploy`, plus the sources seed-admin.ts
-# imports (it runs outside the traced graph, so it needs real files and the path
-# aliases from tsconfig.json).
+# seed-admin.ts runs outside the traced graph, so it needs real sources, the path
+# aliases from tsconfig.json, and prisma/ for the script itself.
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
