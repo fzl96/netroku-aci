@@ -1,98 +1,57 @@
-/*
-  Warnings:
+-- RenameTable
+ALTER TABLE "Site" RENAME TO "site";
 
-  - You are about to drop the `Device` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `DeviceStack` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `Rack` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `Site` table. If the table is not empty, all the data it contains will be lost.
+-- RenameTable
+ALTER TABLE "Rack" RENAME TO "rack";
 
-*/
--- DropForeignKey
-ALTER TABLE "Device" DROP CONSTRAINT "Device_device_stack_id_fkey";
+-- RenameTable
+ALTER TABLE "DeviceStack" RENAME TO "device_stack";
 
--- DropForeignKey
-ALTER TABLE "Device" DROP CONSTRAINT "Device_rackId_fkey";
+-- RenameTable
+ALTER TABLE "Device" RENAME TO "device";
 
--- DropForeignKey
-ALTER TABLE "Rack" DROP CONSTRAINT "Rack_siteId_fkey";
+-- RenameConstraint (renaming a table does not rename its constraints in Postgres)
+ALTER TABLE "site" RENAME CONSTRAINT "Site_pkey" TO "site_pkey";
 
--- DropTable
-DROP TABLE "Device";
+-- RenameConstraint
+ALTER TABLE "rack" RENAME CONSTRAINT "Rack_pkey" TO "rack_pkey";
 
--- DropTable
-DROP TABLE "DeviceStack";
+-- RenameConstraint
+ALTER TABLE "device_stack" RENAME CONSTRAINT "DeviceStack_pkey" TO "device_stack_pkey";
 
--- DropTable
-DROP TABLE "Rack";
+-- RenameConstraint
+ALTER TABLE "device" RENAME CONSTRAINT "Device_pkey" TO "device_pkey";
 
--- DropTable
-DROP TABLE "Site";
+-- RenameForeignKey
+ALTER TABLE "rack" RENAME CONSTRAINT "Rack_siteId_fkey" TO "rack_siteId_fkey";
 
--- CreateTable
-CREATE TABLE "site" (
-    "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "address" TEXT,
-    "latitude" DOUBLE PRECISION,
-    "longitude" DOUBLE PRECISION,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+-- RenameForeignKey
+ALTER TABLE "device" RENAME CONSTRAINT "Device_rackId_fkey" TO "device_rackId_fkey";
 
-    CONSTRAINT "site_pkey" PRIMARY KEY ("id")
-);
+-- RenameForeignKey
+ALTER TABLE "device" RENAME CONSTRAINT "Device_device_stack_id_fkey" TO "device_device_stack_id_fkey";
 
--- CreateTable
-CREATE TABLE "rack" (
-    "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "heightU" INTEGER NOT NULL,
-    "siteId" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+-- RenameIndex (unique indexes are not covered by RENAME CONSTRAINT)
+ALTER INDEX "Device_serialNumber_key" RENAME TO "device_serialNumber_key";
 
-    CONSTRAINT "rack_pkey" PRIMARY KEY ("id")
-);
+-- RenameIndex
+ALTER INDEX "Device_assetTag_key" RENAME TO "device_assetTag_key";
 
--- CreateTable
-CREATE TABLE "device_stack" (
-    "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
+-- AlterTable
+-- A DEFAULT is included so any existing rows are backfilled instead of the
+-- NOT NULL constraint failing the migration. The default on "updatedAt" is
+-- dropped afterwards since the Prisma schema manages that column via
+-- `@updatedAt` at the application layer rather than a SQL default.
+ALTER TABLE "site" ADD COLUMN "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "site" ADD COLUMN "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "site" ALTER COLUMN "updatedAt" DROP DEFAULT;
 
-    CONSTRAINT "device_stack_pkey" PRIMARY KEY ("id")
-);
+-- AlterTable
+ALTER TABLE "rack" ADD COLUMN "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "rack" ADD COLUMN "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "rack" ALTER COLUMN "updatedAt" DROP DEFAULT;
 
--- CreateTable
-CREATE TABLE "device" (
-    "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "serialNumber" TEXT NOT NULL,
-    "assetTag" TEXT,
-    "status" "DeviceStatus" NOT NULL DEFAULT 'ACTIVE',
-    "rackId" TEXT,
-    "rackPosition" INTEGER,
-    "vendor" TEXT NOT NULL,
-    "model" TEXT NOT NULL,
-    "heightU" INTEGER NOT NULL,
-    "device_stack_id" TEXT,
-    "stack_member" INTEGER,
-    "stack_role" "StackRole",
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "device_pkey" PRIMARY KEY ("id")
-);
-
--- CreateIndex
-CREATE UNIQUE INDEX "device_serialNumber_key" ON "device"("serialNumber");
-
--- CreateIndex
-CREATE UNIQUE INDEX "device_assetTag_key" ON "device"("assetTag");
-
--- AddForeignKey
-ALTER TABLE "rack" ADD CONSTRAINT "rack_siteId_fkey" FOREIGN KEY ("siteId") REFERENCES "site"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "device" ADD CONSTRAINT "device_rackId_fkey" FOREIGN KEY ("rackId") REFERENCES "rack"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "device" ADD CONSTRAINT "device_device_stack_id_fkey" FOREIGN KEY ("device_stack_id") REFERENCES "device_stack"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+-- AlterTable
+-- "updatedAt" already existed on "Device" prior to this migration (added in
+-- 20260818170652_add_device_inventory); only "createdAt" is new here.
+ALTER TABLE "device" ADD COLUMN "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
