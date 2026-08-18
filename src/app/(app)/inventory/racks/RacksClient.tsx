@@ -76,10 +76,28 @@ export function RacksClient({
   const isAdmin = role === 'admin'
 
   const [siteList, setSiteList] = React.useState<SafeSite[]>(sites)
+  const [prevSites, setPrevSites] = React.useState(sites)
+  if (sites !== prevSites) {
+    setPrevSites(sites)
+    setSiteList(sites)
+  }
+
   const [rackList, setRackList] = React.useState<RackItem[]>(
     racks.map((rack) => ({ id: rack.id, name: rack.name, heightU: rack.heightU, devices: rack.devices })),
   )
+  const [prevRacks, setPrevRacks] = React.useState(racks)
+  if (racks !== prevRacks) {
+    setPrevRacks(racks)
+    setRackList(racks.map((rack) => ({ id: rack.id, name: rack.name, heightU: rack.heightU, devices: rack.devices })))
+  }
+
   const [deviceCatalog, setDeviceCatalog] = React.useState<DeviceCatalogEntry[]>(allDevices)
+  const [prevAllDevices, setPrevAllDevices] = React.useState(allDevices)
+  if (allDevices !== prevAllDevices) {
+    setPrevAllDevices(allDevices)
+    setDeviceCatalog(allDevices)
+  }
+
   const [pendingDeviceIds, setPendingDeviceIds] = React.useState<Set<string>>(new Set())
   const [draggingPayload, setDraggingPayload] = React.useState<DragPayload | null>(null)
   const [hoverTarget, setHoverTarget] = React.useState<HoverTarget>(null)
@@ -95,18 +113,6 @@ export function RacksClient({
   const [deletingRack, setDeletingRack] = React.useState<RackItem | null>(null)
   const [deleteRackOpen, setDeleteRackOpen] = React.useState(false)
   const [isRackPending, setIsRackPending] = React.useState(false)
-
-  React.useEffect(() => {
-    setSiteList(sites)
-  }, [sites])
-
-  React.useEffect(() => {
-    setRackList(racks.map((rack) => ({ id: rack.id, name: rack.name, heightU: rack.heightU, devices: rack.devices })))
-  }, [racks])
-
-  React.useEffect(() => {
-    setDeviceCatalog(allDevices)
-  }, [allDevices])
 
   const buildSiteHref = React.useCallback(
     (nextSiteId: string | null) => {
