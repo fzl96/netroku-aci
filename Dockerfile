@@ -49,4 +49,8 @@ COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 EXPOSE 3000
 
-CMD bun run db:setup && bun run seed:admin && bun run start
+# Only apply migrations at startup. `db:setup` also runs `prisma generate`, which
+# re-downloads the engine binaries from binaries.prisma.sh on every boot — the client
+# was already generated in the builder stage and copied in above, so that download is
+# pure waste and hangs startup on a host without egress to Prisma's CDN.
+CMD bun run prisma:deploy && bun run seed:admin && bun run start
