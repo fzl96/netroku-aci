@@ -25,13 +25,13 @@ import { DeviceForm } from '@/components/inventory/DeviceForm'
 import { FooterCancel, FooterSubmit } from '@/components/inventory/dialog-footer-buttons'
 
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,7 +54,7 @@ const STATUS_BADGE_CLS: Record<string, string> = {
   ACTIVE: 'bg-green-500/15 text-green-700 dark:text-green-400',
   PLANNED: 'bg-blue-500/15 text-blue-700 dark:text-blue-400',
   MAINTENANCE: 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400',
-  RETIRED: 'bg-zinc-500/15 text-zinc-500',
+  RETIRED: 'bg-muted text-muted-foreground',
 }
 
 export function DevicesClient({
@@ -294,35 +294,39 @@ export function DevicesClient({
         )}
       </div>
 
-      <Dialog open={createOpen} onOpenChange={(open) => { if (!open) createForm.reset(emptyDefaults); setCreateOpen(open) }}>
-        <DialogContent className="bg-card border-border text-foreground">
-          <DialogHeader>
-            <DialogTitle className="font-serif text-base font-semibold text-foreground">Add Device</DialogTitle>
-            <DialogDescription className="text-xs text-subtle">
+      <Sheet open={createOpen} onOpenChange={(open) => { if (!open) createForm.reset(emptyDefaults); setCreateOpen(open) }}>
+        <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 border-l border-border bg-card shadow-2xl data-[side=right]:sm:max-w-md">
+          <SheetHeader className="px-6 py-5 border-b border-subtle shrink-0">
+            <SheetTitle className="font-serif text-base font-semibold text-foreground">Add Device</SheetTitle>
+            <SheetDescription className="text-xs text-subtle">
               Register a new device. Rack placement is done from the Racks page.
-            </DialogDescription>
-          </DialogHeader>
-          <DeviceForm form={createForm} onSubmit={handleCreate} formId="create-device-form" />
-          <DialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end rounded-b-xl border-t border-subtle bg-muted px-4 py-3 gap-1">
+            </SheetDescription>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+            <DeviceForm form={createForm} onSubmit={handleCreate} formId="create-device-form" />
+          </div>
+          <SheetFooter className="flex flex-row items-center justify-end border-t border-subtle bg-muted px-6 py-3.5 gap-2 shrink-0">
             <FooterCancel onClick={() => setCreateOpen(false)} disabled={isPending} />
             <FooterSubmit form="create-device-form" disabled={isPending} label={isPending ? 'Adding…' : 'Add Device'} />
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
-      <Dialog open={editOpen} onOpenChange={(open) => { if (!open) setEditingDevice(null); setEditOpen(open) }}>
-        <DialogContent className="bg-card border-border text-foreground">
-          <DialogHeader>
-            <DialogTitle className="font-serif text-base font-semibold text-foreground">Edit Device</DialogTitle>
-            <DialogDescription className="text-xs text-subtle">Update device identity and hardware details.</DialogDescription>
-          </DialogHeader>
-          <DeviceForm form={editForm} onSubmit={handleUpdate} formId="edit-device-form" />
-          <DialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end rounded-b-xl border-t border-subtle bg-muted px-4 py-3 gap-1">
+      <Sheet open={editOpen} onOpenChange={(open) => { if (!open) setEditingDevice(null); setEditOpen(open) }}>
+        <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 border-l border-border bg-card shadow-2xl data-[side=right]:sm:max-w-md">
+          <SheetHeader className="px-6 py-5 border-b border-subtle shrink-0">
+            <SheetTitle className="font-serif text-base font-semibold text-foreground">Edit Device</SheetTitle>
+            <SheetDescription className="text-xs text-subtle">Update device identity and hardware details.</SheetDescription>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+            <DeviceForm form={editForm} onSubmit={handleUpdate} formId="edit-device-form" />
+          </div>
+          <SheetFooter className="flex flex-row items-center justify-end border-t border-subtle bg-muted px-6 py-3.5 gap-2 shrink-0">
             <FooterCancel onClick={() => setEditOpen(false)} disabled={isPending} />
             <FooterSubmit form="edit-device-form" disabled={isPending} label={isPending ? 'Saving…' : 'Save Changes'} />
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       <AlertDialog open={deleteOpen} onOpenChange={(open) => { if (!open) setDeletingDevice(null); setDeleteOpen(open) }}>
         <AlertDialogContent className="bg-card border-border">

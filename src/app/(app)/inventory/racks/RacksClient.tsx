@@ -18,13 +18,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -316,7 +316,7 @@ export function RacksClient({
     }
 
     setDeviceCatalog((prev) =>
-      prev.map((d) => (d.id === payload.deviceId ? { ...d, rackId, rackPosition } : d)),
+      prev.map((d) => (d.id === payload.deviceId ? { ...d, rackId, rackPosition, rack: { name: targetRack.name } } : d)),
     )
     toast.success('Device position updated')
   }
@@ -336,7 +336,7 @@ export function RacksClient({
     }
 
     setRackList((prev) => prev.map((rack) => ({ ...rack, devices: rack.devices.filter((d) => d.id !== deviceId) })))
-    setDeviceCatalog((prev) => prev.map((d) => (d.id === deviceId ? { ...d, rackId: null, rackPosition: null } : d)))
+    setDeviceCatalog((prev) => prev.map((d) => (d.id === deviceId ? { ...d, rackId: null, rackPosition: null, rack: null } : d)))
     toast.success('Device removed from rack')
   }
 
@@ -410,7 +410,7 @@ export function RacksClient({
             </div>
           </div>
         )}
-        <SiteDialog
+        <SiteDrawer
           open={siteDialogOpen}
           onOpenChange={setSiteDialogOpen}
           editing={editingSite}
@@ -482,11 +482,13 @@ export function RacksClient({
         )}
       </div>
 
-      <Card className="border-zinc-300 bg-zinc-50/60 dark:border-[#2a2a2a] dark:bg-[#181818]">
+      <Card className="border-border bg-card shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="text-base">{selectedSite?.name ?? 'Selected Site'}</CardTitle>
-            <Badge variant="outline">{rackList.length} rack{rackList.length === 1 ? '' : 's'}</Badge>
+            <CardTitle className="font-serif text-base font-semibold text-foreground">{selectedSite?.name ?? 'Selected Site'}</CardTitle>
+            <Badge variant="outline" className="text-xs font-mono font-normal text-muted-foreground border-border bg-muted/50">
+              {rackList.length} rack{rackList.length === 1 ? '' : 's'}
+            </Badge>
           </div>
         </CardHeader>
         <CardContent className="grid gap-2 text-sm sm:grid-cols-2">
@@ -507,62 +509,63 @@ export function RacksClient({
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {rackList.map((rack) => (
-            <div key={rack.id} className="relative">
-              {isAdmin && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-sm" className="absolute top-3 right-3 z-20" aria-label="Rack actions">
-                      <IconDots size={14} stroke={1.75} />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => openEditRack(rack)}>
-                      <IconPencil size={13} stroke={1.75} />
-                      Edit rack
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      variant="destructive"
-                      onSelect={(event) => {
-                        event.preventDefault()
-                        setDeletingRack(rack)
-                        setDeleteRackOpen(true)
-                      }}
-                    >
-                      <IconTrash size={13} stroke={1.75} />
-                      Delete rack
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-              <RackVisualization
-                rack={rack}
-                onDropDevice={handleDropDevice}
-                allDevices={deviceCatalog}
-                onUnassignDevice={handleUnassignDevice}
-                onResizeDeviceU={handleResizeDeviceU}
-                onDragStartDevice={setDraggingPayload}
-                onDragEndDevice={() => {
-                  setDraggingPayload(null)
-                  setHoverTarget(null)
-                }}
-                onHoverUnit={(rackId, topUnit) => {
-                  if (!draggingPayload) return
-                  setHoverTarget({ rackId, topUnit })
-                }}
-                activeMenuDeviceId={activeMenuDeviceId}
-                onMenuDeviceChange={setActiveMenuDeviceId}
-                hoverTarget={hoverTarget}
-                draggingPayload={draggingPayload}
-                pendingDeviceIds={pendingDeviceIds}
-                isAdmin={isAdmin}
-              />
-            </div>
+            <RackVisualization
+              key={rack.id}
+              rack={rack}
+              onDropDevice={handleDropDevice}
+              allDevices={deviceCatalog}
+              onUnassignDevice={handleUnassignDevice}
+              onResizeDeviceU={handleResizeDeviceU}
+              onDragStartDevice={setDraggingPayload}
+              onDragEndDevice={() => {
+                setDraggingPayload(null)
+                setHoverTarget(null)
+              }}
+              onHoverUnit={(rackId, topUnit) => {
+                if (!draggingPayload) return
+                setHoverTarget({ rackId, topUnit })
+              }}
+              activeMenuDeviceId={activeMenuDeviceId}
+              onMenuDeviceChange={setActiveMenuDeviceId}
+              hoverTarget={hoverTarget}
+              draggingPayload={draggingPayload}
+              pendingDeviceIds={pendingDeviceIds}
+              isAdmin={isAdmin}
+              headerActions={
+                isAdmin ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon-sm" aria-label="Rack actions">
+                        <IconDots size={14} stroke={1.75} />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onSelect={() => openEditRack(rack)}>
+                        <IconPencil size={13} stroke={1.75} />
+                        Edit rack
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onSelect={(event) => {
+                          event.preventDefault()
+                          setDeletingRack(rack)
+                          setDeleteRackOpen(true)
+                        }}
+                      >
+                        <IconTrash size={13} stroke={1.75} />
+                        Delete rack
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : null
+              }
+            />
           ))}
         </div>
       )}
 
-      <SiteDialog
+      <SiteDrawer
         open={siteDialogOpen}
         onOpenChange={setSiteDialogOpen}
         editing={editingSite}
@@ -588,23 +591,25 @@ export function RacksClient({
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={rackDialogOpen} onOpenChange={setRackDialogOpen}>
-        <DialogContent className="bg-card border-border text-foreground">
-          <DialogHeader>
-            <DialogTitle className="font-serif text-base font-semibold text-foreground">
+      <Sheet open={rackDialogOpen} onOpenChange={setRackDialogOpen}>
+        <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 border-l border-border bg-card shadow-2xl data-[side=right]:sm:max-w-md">
+          <SheetHeader className="px-6 py-5 border-b border-subtle shrink-0">
+            <SheetTitle className="font-serif text-base font-semibold text-foreground">
               {editingRack ? 'Edit Rack' : 'Create Rack'}
-            </DialogTitle>
-            <DialogDescription className="text-xs text-subtle">
+            </SheetTitle>
+            <SheetDescription className="text-xs text-subtle">
               {editingRack ? 'Update rack details.' : 'Add a new rack to the selected site.'}
-            </DialogDescription>
-          </DialogHeader>
-          <RackForm form={rackForm} onSubmit={handleSubmitRack} formId="rack-form" sites={siteList} />
-          <DialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end rounded-b-xl border-t border-subtle bg-muted px-4 py-3 gap-1">
+            </SheetDescription>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+            <RackForm form={rackForm} onSubmit={handleSubmitRack} formId="rack-form" sites={siteList} />
+          </div>
+          <SheetFooter className="flex flex-row items-center justify-end border-t border-subtle bg-muted px-6 py-3.5 gap-2 shrink-0">
             <FooterCancel onClick={() => setRackDialogOpen(false)} disabled={isRackPending} />
             <FooterSubmit form="rack-form" disabled={isRackPending} label={isRackPending ? 'Saving…' : editingRack ? 'Save Changes' : 'Create Rack'} />
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       <AlertDialog open={deleteRackOpen} onOpenChange={setDeleteRackOpen}>
         <AlertDialogContent>
@@ -626,7 +631,7 @@ export function RacksClient({
   )
 }
 
-function SiteDialog({
+function SiteDrawer({
   open,
   onOpenChange,
   editing,
@@ -642,22 +647,24 @@ function SiteDialog({
   isPending: boolean
 }) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-border text-foreground">
-        <DialogHeader>
-          <DialogTitle className="font-serif text-base font-semibold text-foreground">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 border-l border-border bg-card shadow-2xl data-[side=right]:sm:max-w-md">
+        <SheetHeader className="px-6 py-5 border-b border-subtle shrink-0">
+          <SheetTitle className="font-serif text-base font-semibold text-foreground">
             {editing ? 'Edit Site' : 'Create Site'}
-          </DialogTitle>
-          <DialogDescription className="text-xs text-subtle">
+          </SheetTitle>
+          <SheetDescription className="text-xs text-subtle">
             {editing ? 'Update the site details.' : 'Add a new physical site.'}
-          </DialogDescription>
-        </DialogHeader>
-        <SiteForm form={form} onSubmit={onSubmit} formId="site-form" />
-        <DialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end rounded-b-xl border-t border-subtle bg-muted px-4 py-3 gap-1">
+          </SheetDescription>
+        </SheetHeader>
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          <SiteForm form={form} onSubmit={onSubmit} formId="site-form" />
+        </div>
+        <SheetFooter className="flex flex-row items-center justify-end border-t border-subtle bg-muted px-6 py-3.5 gap-2 shrink-0">
           <FooterCancel onClick={() => onOpenChange(false)} disabled={isPending} />
           <FooterSubmit form="site-form" disabled={isPending} label={isPending ? 'Saving…' : editing ? 'Save Changes' : 'Create Site'} />
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   )
 }

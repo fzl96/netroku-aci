@@ -70,6 +70,7 @@ export function RackVisualization({
   draggingPayload,
   pendingDeviceIds,
   isAdmin,
+  headerActions,
 }: {
   rack: RackItem
   onDropDevice: (rackId: string, targetTopUnit: number, payload: DragPayload) => void
@@ -85,6 +86,7 @@ export function RackVisualization({
   draggingPayload: DragPayload | null
   pendingDeviceIds: Set<string>
   isAdmin: boolean
+  headerActions?: React.ReactNode
 }) {
   const [rowSearchByKey, setRowSearchByKey] = React.useState<Record<string, string>>({})
   const units = Array.from({ length: rack.heightU }, (_, i) => rack.heightU - i)
@@ -146,36 +148,39 @@ export function RackVisualization({
   }
 
   return (
-    <Card className="border-zinc-300 bg-zinc-50/70 dark:border-[#2a2a2a] dark:bg-[#181818]">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-base">{rack.name}</CardTitle>
-          <Badge variant="outline" className="dark:border-[#3a3a3a] dark:bg-[#212121] dark:text-[#d4d4d4]">
-            {rack.heightU}U
-          </Badge>
+    <Card className="border-border bg-card shadow-sm">
+      <CardHeader className="p-4 pb-3">
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle className="font-serif text-base font-semibold text-foreground truncate">{rack.name}</CardTitle>
+          <div className="flex items-center gap-2 shrink-0">
+            <Badge variant="outline" className="text-xs font-mono font-normal text-muted-foreground border-border bg-muted/50">
+              {rack.heightU}U
+            </Badge>
+            {headerActions}
+          </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="relative overflow-hidden rounded-md border border-zinc-300 dark:border-[#2f2f2f]">
+      <CardContent className="p-4 pt-0">
+        <div className="relative overflow-hidden rounded-lg border border-border bg-card">
           <div
-            className="grid grid-cols-[52px_1fr] bg-gradient-to-b from-zinc-100 to-zinc-200 dark:from-[#181818] dark:to-[#212121]"
+            className="grid grid-cols-[52px_1fr] bg-muted/20"
             style={{ gridTemplateRows: `repeat(${rack.heightU}, minmax(32px, 1fr))` }}
           >
             {units.map((unit) => {
               const inHighlight =
                 highlightedRange && unit >= highlightedRange.start && unit <= highlightedRange.end
               const cellClass = [
-                'border-l border-b border-dashed border-zinc-300 transition-colors dark:border-[#2f2f2f]',
+                'border-l border-b border-dashed border-border/70 transition-colors',
                 inHighlight
                   ? highlightedRange.valid
-                    ? 'bg-zinc-300/70 dark:bg-[#353535]'
-                    : 'bg-zinc-400/70 dark:bg-[#4a2f2f]'
-                  : 'hover:bg-zinc-200/50 dark:hover:bg-[#262626]',
+                    ? 'bg-primary/10'
+                    : 'bg-destructive/10'
+                  : 'hover:bg-muted/50',
               ].join(' ')
 
               return (
                 <React.Fragment key={unit}>
-                  <div className="border-b border-zinc-300 px-2 py-1 text-right text-[11px] font-medium text-zinc-600 dark:border-[#2f2f2f] dark:text-[#a3a3a3]">
+                  <div className="border-b border-border/70 px-2 py-1 text-right text-[11px] font-mono font-medium text-subtle select-none">
                     U{String(unit).padStart(2, '0')}
                   </div>
                   {occupiedUnits.has(unit) || !isAdmin ? (
@@ -246,9 +251,11 @@ export function RackVisualization({
                                   >
                                     <div className="flex w-full items-center justify-between gap-2">
                                       <span className="truncate">{device.name} · {device.serialNumber}</span>
-                                      <span className="text-muted-foreground shrink-0 text-[10px]">
-                                        {device.rackId !== null && device.rackPosition !== null
-                                          ? `Rack ${device.rackId} · U${device.rackPosition}`
+                                      <span className="text-subtle shrink-0 text-[10px] font-mono">
+                                        {device.rackPosition !== null
+                                          ? device.rack?.name
+                                            ? `Rack ${device.rack.name} · U${device.rackPosition}`
+                                            : `U${device.rackPosition}`
                                           : ''}
                                       </span>
                                     </div>
@@ -277,9 +284,9 @@ export function RackVisualization({
                 <div
                   data-device-card="true"
                   className={[
-                    'pointer-events-auto relative z-10 mx-1 my-0 flex h-full min-h-0 cursor-pointer flex-col justify-center overflow-hidden rounded border border-zinc-500 bg-zinc-300 py-1 pr-2 pl-7 text-xs text-zinc-900 shadow-sm transition-all dark:border-[#474747] dark:bg-[#2b2b2b] dark:text-[#e5e5e5]',
+                    'pointer-events-auto relative z-10 mx-1 my-0.5 flex h-[calc(100%-4px)] min-h-0 cursor-pointer flex-col justify-center overflow-hidden rounded border border-border bg-secondary text-secondary-foreground py-1 pr-2 pl-7 text-xs shadow-xs transition-all hover:border-primary/40 hover:bg-accent/80',
                     draggingPayload?.deviceId === device.id
-                      ? '-translate-y-0.5 scale-[1.06] bg-zinc-200 shadow-2xl ring-2 ring-zinc-500/70 dark:bg-[#3a3a3a] dark:ring-zinc-300/40'
+                      ? '-translate-y-0.5 scale-[1.02] bg-accent shadow-xl ring-2 ring-primary/40'
                       : '',
                   ].join(' ')}
                   style={{
@@ -309,20 +316,20 @@ export function RackVisualization({
                         event.dataTransfer.setData('application/json', JSON.stringify(payload))
                       }}
                       onDragEnd={onDragEndDevice}
-                      className="absolute top-1/2 left-1 flex size-4 -translate-y-1/2 cursor-grab items-center justify-center rounded-sm text-zinc-600 opacity-70 hover:bg-zinc-400/30 hover:opacity-100 active:cursor-grabbing dark:text-zinc-300 dark:hover:bg-zinc-600/30"
+                      className="absolute top-1/2 left-1 flex size-4 -translate-y-1/2 cursor-grab items-center justify-center rounded-sm text-subtle opacity-70 hover:bg-muted hover:text-foreground hover:opacity-100 active:cursor-grabbing"
                       title="Drag device"
                     >
                       <IconGripVertical size={12} stroke={1.75} />
                     </div>
                   )}
                   {device.rowSpan === 1 ? (
-                    <div className="truncate text-[11px] leading-none font-semibold">
-                      {device.name} · {device.serialNumber}
+                    <div className="truncate text-[11px] leading-none font-medium text-foreground">
+                      {device.name} <span className="font-mono text-subtle text-[10px]">· {device.serialNumber}</span>
                     </div>
                   ) : (
                     <>
-                      <div className="truncate font-semibold leading-tight">{device.name}</div>
-                      <div className="truncate text-[10px] leading-tight opacity-80">{device.serialNumber}</div>
+                      <div className="truncate font-medium text-foreground leading-tight">{device.name}</div>
+                      <div className="truncate font-mono text-subtle text-[10px] leading-tight">{device.serialNumber}</div>
                     </>
                   )}
                 </div>

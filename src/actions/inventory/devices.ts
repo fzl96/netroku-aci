@@ -47,6 +47,7 @@ export type DeviceCatalogEntry = {
   serialNumber: string
   rackId: string | null
   rackPosition: number | null
+  rack?: { name: string } | null
   vendor: string
   model: string
   heightU: number
@@ -145,6 +146,7 @@ export async function getAllDevices(): Promise<DeviceCatalogEntry[]> {
       serialNumber: true,
       rackId: true,
       rackPosition: true,
+      rack: { select: { name: true } },
       vendor: true,
       model: true,
       heightU: true,

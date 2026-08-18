@@ -9,7 +9,7 @@ const STATUS_BADGE_CLS: Record<string, string> = {
   ACTIVE: 'bg-green-500/15 text-green-700 dark:text-green-400',
   PLANNED: 'bg-blue-500/15 text-blue-700 dark:text-blue-400',
   MAINTENANCE: 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400',
-  RETIRED: 'bg-zinc-500/15 text-zinc-500',
+  RETIRED: 'bg-muted text-muted-foreground',
 }
 
 export async function generateMetadata({
