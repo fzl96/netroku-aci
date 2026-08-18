@@ -409,8 +409,7 @@ Recurring resyncs are configured in-app on the **Scheduler** page (admin-only): 
 > `.env` on the same machine. Changing `ENCRYPTION_KEY` invalidates stored credentials and
 > requires re-entering them.
 
-Once the app is deployed via `docker-compose.yml` (the `feat/docker-compose-deployment`
-branch adds an `app` service), add a ticker service alongside it to drive
+`docker-compose.yml` defines a `scheduler` service alongside `app` and `db` that drives
 `/api/cron/tick`:
 
 ```yaml
@@ -426,10 +425,10 @@ branch adds an `app` service), add a ticker service alongside it to drive
     restart: unless-stopped
 ```
 
-This is not yet present in `docker-compose.yml` on this branch — that file currently only
-defines `postgres`, since the `app` service this depends on lives on the Docker Compose
-branch. `scheduler/tick.sh` in this repo is the script the container runs; add the service
-above once the two branches are merged.
+`scheduler/tick.sh` is the script the container runs — it holds no state, so restarting it
+or missing a beat cannot double-run a schedule. It reads `SCHEDULER_TOKEN` from `.env` via
+`env_file`; `docker compose up` starts it automatically. To run the app without in-app
+scheduling, stop just that service (`docker compose stop scheduler`).
 
 ### Page → APIC endpoint → storage
 

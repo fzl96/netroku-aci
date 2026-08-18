@@ -63,10 +63,10 @@ The ticker itself holds no schedule state; it is safe to restart, miss a beat, o
 alongside a second instance without double-running anything, since the app decides what is
 due.
 
-This repository includes `scheduler/tick.sh`, the script the container runs. Once the app
-is deployed via `docker-compose.yml` (added on the Docker Compose branch), add a service
-like this alongside it — see the README's deployment section for the exact snippet and the
-note on why it is not yet in `docker-compose.yml` on this branch.
+This repository includes `scheduler/tick.sh`, the script the container runs, and
+`docker-compose.yml` already defines the `scheduler` service that runs it — `docker compose
+up` starts it alongside the app. See the README's deployment section for the service
+definition and its environment variables.
 
 ## External scheduling (still supported)
 
