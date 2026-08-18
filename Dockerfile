@@ -13,8 +13,7 @@ COPY package.json bun.lock ./
 # release, so this flag is the only fix available. Revisit when it lands.
 ENV BUN_FEATURE_FLAG_DISABLE_STREAMING_INSTALL=1
 
-# Not the fix, but fewer concurrent connections means fewer chances to be cut short.
-RUN bun install --frozen-lockfile --network-concurrency 8
+RUN bun install --frozen-lockfile
 
 
 FROM oven/bun:1.3.14 AS builder
@@ -43,10 +42,9 @@ COPY package.json bun.lock ./
 # release, so this flag is the only fix available. Revisit when it lands.
 ENV BUN_FEATURE_FLAG_DISABLE_STREAMING_INSTALL=1
 
-# Not the fix, but fewer concurrent connections means fewer chances to be cut short.
 # --production drops the 13 devDependencies (typescript, eslint, tailwind, shadcn,
 # tsx, @types/*) that only the builder stage needs.
-RUN bun install --production --frozen-lockfile --network-concurrency 8
+RUN bun install --production --frozen-lockfile
 
 # The startup chain runs `prisma migrate deploy`, so the runner needs the prisma CLI
 # even though it is a devDependency. It survives --production only because it is an
