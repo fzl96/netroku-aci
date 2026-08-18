@@ -21,6 +21,18 @@ export type AuditAction =
   | 'resync.schedule.run'
   | 'resync.schedule.update'
   | 'resync.schedule.delete'
+  | 'site.create'
+  | 'site.update'
+  | 'site.delete'
+  | 'rack.create'
+  | 'rack.update'
+  | 'rack.delete'
+  | 'device.create'
+  | 'device.update'
+  | 'device.delete'
+  | 'device.place'
+  | 'device.unassign'
+  | 'device.resize'
 
 export type AuditStatus = 'success' | 'partial' | 'failure'
 
