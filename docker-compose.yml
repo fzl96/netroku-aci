@@ -1,11 +1,8 @@
 services:
-  # One-shot: applies migrations, then exits. `app` waits for it to succeed, so
-  # migrations run exactly once no matter how many app containers start, and a
-  # failed migration stops the rollout instead of racing the server.
   migrate:
     build:
       context: .
-      target: migrator
+      target: migration
     restart: "no"
     env_file:
       - .env
@@ -15,24 +12,24 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    command: bunx prisma@6 migrate deploy
 
   app:
-    build: .
+    restart: unless-stopped
+    build:
+      context: .
+      target: runner
     ports:
       - "3000:3000"
     env_file:
       - .env
     environment:
       NODE_ENV: production
+      HOSTNAME: 0.0.0.0
       DATABASE_URL: postgresql://netroku:netroku@db:5432/netroku?schema=public
     depends_on:
       migrate:
         condition: service_completed_successfully
-    # Migrations are the migrate service's job now. `exec` so the server takes
-    # over PID 1 and receives SIGTERM from `docker stop`.
-    command: ["sh", "-c", "bun prisma/seed-admin.ts && exec bun server.js"]
-    # No curl or wget in the bun image, so probe with bun itself. Any response at
-    # all means the server is up; the status code does not matter here.
     healthcheck:
       test:
         [
@@ -49,8 +46,6 @@ services:
   scheduler:
     image: curlimages/curl:8.11.0
     restart: unless-stopped
-    # Wait until the app actually serves, otherwise the first tick fires before
-    # the server is listening and logs a spurious failure.
     depends_on:
       app:
         condition: service_healthy
@@ -73,9 +68,6 @@ services:
       POSTGRES_DB: netroku
     volumes:
       - netroku-pgdata:/var/lib/postgresql/data
-    # depends_on alone only waits for the container to start, not for Postgres to
-    # accept connections — without this, migrate can reach a database that is not
-    # listening yet.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U netroku -d netroku"]
       interval: 5s

@@ -4,13 +4,6 @@ WORKDIR /app
 
 COPY package.json bun.lock ./
 
-# Work around oven-sh/bun#34821: when a tarball download is cut off mid-body (the
-# connection closes before Content-Length bytes arrive), bun's streaming installer
-# hands the short body to the extractor instead of retrying, which surfaces as
-# "Fail extracting tarball". It never reaches an integrity check, so verification
-# cannot catch it. Disabling streaming makes bun download fully, then extract.
-# Upstream fix (oven-sh/bun#34827) is closed unmerged and 1.3.14 is the latest
-# release, so this flag is the only fix available. Revisit when it lands.
 ENV BUN_FEATURE_FLAG_DISABLE_STREAMING_INSTALL=1
 
 RUN bun install --frozen-lockfile
@@ -27,43 +20,13 @@ RUN bun run prisma:generate
 RUN bun run build
 
 
-FROM oven/bun:1.3.14 AS prod-deps
+FROM oven/bun:1.3.14 AS migration
 
 WORKDIR /app
 
-COPY package.json bun.lock ./
-
-# Work around oven-sh/bun#34821: when a tarball download is cut off mid-body (the
-# connection closes before Content-Length bytes arrive), bun's streaming installer
-# hands the short body to the extractor instead of retrying, which surfaces as
-# "Fail extracting tarball". It never reaches an integrity check, so verification
-# cannot catch it. Disabling streaming makes bun download fully, then extract.
-# Upstream fix (oven-sh/bun#34827) is closed unmerged and 1.3.14 is the latest
-# release, so this flag is the only fix available. Revisit when it lands.
-ENV BUN_FEATURE_FLAG_DISABLE_STREAMING_INSTALL=1
-
-# --production drops the 13 devDependencies (typescript, eslint, tailwind, shadcn,
-# tsx, @types/*) that only the builder stage needs.
-RUN bun install --production --frozen-lockfile
-
-# The startup chain runs `prisma migrate deploy`, so the runner needs the prisma CLI
-# even though it is a devDependency. It survives --production only because it is an
-# optional peerDependency of @prisma/client, which bun installs. That is implicit
-# enough to be worth asserting: fail the build here rather than the container at boot.
-RUN test -f node_modules/prisma/package.json \
-  || (echo "prisma CLI missing from production install — startup migrations would fail" && exit 1)
-
-
-# Migrations run from a stage that has a real node_modules, not from the runner.
-# The prisma CLI pulls a dependency closure of its own (@prisma/get-platform,
-# @prisma/fetch-engine, c12 and friends); copying pieces of it into the standalone
-# runner by hand would break on the next prisma upgrade. This adds only a small
-# layer on top of prod-deps, which the build produces anyway.
-FROM prod-deps AS migrator
-
 COPY prisma ./prisma
 
-CMD ["bun", "run", "prisma:deploy"]
+CMD ["bunx", "prisma", "migrate", "deploy"]
 
 
 FROM oven/bun:1.3.14 AS runner
@@ -72,36 +35,10 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# .next/standalone is a complete app root: server.js, a minimal package.json, and
-# only the node_modules Next traced as reachable. It goes at /app, and server.js
-# chdir()s to its own directory at startup. Static assets and public/ are excluded
-# from the trace by design and must be layered back on.
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
-# The generated client and its native query engine are loaded at runtime by path
-# rather than by import, so tracing does not reliably follow them. Copy both,
-# together with @prisma/client itself so it matches the client it was generated
-# against. The prisma CLI is deliberately absent — migrations are the migrator
-# stage's job.
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
-
-# seed-admin.ts runs outside the traced graph, so it needs real sources, the path
-# aliases from tsconfig.json, and prisma/ for the script itself.
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/src ./src
-COPY --from=builder /app/tsconfig.json ./tsconfig.json
-
 EXPOSE 3000
 
-# Serve, nothing else. Migrations run as a one-shot `migrate` service and seeding
-# runs in the app service's command — see docker-compose.yml. Keeping them out of
-# here leaves one definition of the startup sequence rather than two.
-#
-# standalone's server.js is the entrypoint: `bun run start` cannot work, since the
-# emitted package.json carries no scripts and `start` would be `next start`, which
-# standalone does not use. Exec form, so the server is PID 1 and `docker stop`
-# reaches it directly.
 CMD ["bun", "server.js"]
