@@ -6,6 +6,16 @@
         "shadcn@latest",
         "mcp"
       ]
+    },
+    "code-review-graph": {
+      "command": "/Users/furina/.local/pipx/venvs/code-review-graph/bin/python",
+      "args": [
+        "-m",
+        "code_review_graph",
+        "serve"
+      ],
+      "cwd": "/Users/furina/Code/netroku-aci",
+      "type": "stdio"
     }
   }
 }
