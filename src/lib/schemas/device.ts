@@ -13,5 +13,5 @@ export const deviceSchema = z.object({
 
 export const deviceUpdateSchema = deviceSchema
 
-export type DeviceFormValues = z.infer<typeof deviceSchema>
-export type DeviceUpdateFormValues = z.infer<typeof deviceUpdateSchema>
+export type DeviceFormValues = z.input<typeof deviceSchema>
+export type DeviceUpdateFormValues = z.input<typeof deviceUpdateSchema>
