@@ -4,11 +4,16 @@ WORKDIR /app
 
 COPY package.json bun.lock ./
 
-# Keep integrity verification ON. With it off, a truncated download is not caught by
-# its checksum and instead fails later as "Fail extracting tarball", which hides the
-# real cause. Cap concurrency well below bun's default of 48 — that many parallel
-# downloads is what truncates large tarballs (xlsx is the usual casualty) on hosts
-# with a slower or lossier link than a dev laptop.
+# Work around oven-sh/bun#34821: when a tarball download is cut off mid-body (the
+# connection closes before Content-Length bytes arrive), bun's streaming installer
+# hands the short body to the extractor instead of retrying, which surfaces as
+# "Fail extracting tarball". It never reaches an integrity check, so verification
+# cannot catch it. Disabling streaming makes bun download fully, then extract.
+# Upstream fix (oven-sh/bun#34827) is closed unmerged and 1.3.14 is the latest
+# release, so this flag is the only fix available. Revisit when it lands.
+ENV BUN_FEATURE_FLAG_DISABLE_STREAMING_INSTALL=1
+
+# Not the fix, but fewer concurrent connections means fewer chances to be cut short.
 RUN bun install --frozen-lockfile --network-concurrency 8
 
 
@@ -29,11 +34,16 @@ WORKDIR /app
 
 COPY package.json bun.lock ./
 
-# Keep integrity verification ON. With it off, a truncated download is not caught by
-# its checksum and instead fails later as "Fail extracting tarball", which hides the
-# real cause. Cap concurrency well below bun's default of 48 — that many parallel
-# downloads is what truncates large tarballs (xlsx is the usual casualty) on hosts
-# with a slower or lossier link than a dev laptop.
+# Work around oven-sh/bun#34821: when a tarball download is cut off mid-body (the
+# connection closes before Content-Length bytes arrive), bun's streaming installer
+# hands the short body to the extractor instead of retrying, which surfaces as
+# "Fail extracting tarball". It never reaches an integrity check, so verification
+# cannot catch it. Disabling streaming makes bun download fully, then extract.
+# Upstream fix (oven-sh/bun#34827) is closed unmerged and 1.3.14 is the latest
+# release, so this flag is the only fix available. Revisit when it lands.
+ENV BUN_FEATURE_FLAG_DISABLE_STREAMING_INSTALL=1
+
+# Not the fix, but fewer concurrent connections means fewer chances to be cut short.
 RUN bun install --frozen-lockfile --network-concurrency 8
 
 
