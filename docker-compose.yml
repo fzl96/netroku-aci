@@ -1,21 +1,54 @@
 services:
-  app:
-    build: .
-    ports:
-      - "3000:3000"
+  migrate:
+    build:
+      context: .
+      target: migration
+    restart: "no"
     env_file:
       - .env
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://netroku:netroku@db:5432/netroku?schema=public
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    command: bunx prisma@6 migrate deploy
+
+  app:
+    restart: unless-stopped
+    build:
+      context: .
+      target: runner
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      DATABASE_URL: postgresql://netroku:netroku@db:5432/netroku?schema=public
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "fetch('http://127.0.0.1:3000/').then(()=>process.exit(0),()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
 
   scheduler:
     image: curlimages/curl:8.11.0
     restart: unless-stopped
     depends_on:
-      - app
+      app:
+        condition: service_healthy
     env_file:
       - .env
     environment:
@@ -35,6 +68,12 @@ services:
       POSTGRES_DB: netroku
     volumes:
       - netroku-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U netroku -d netroku"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
 volumes:
   netroku-pgdata:
