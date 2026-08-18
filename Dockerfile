@@ -100,6 +100,7 @@ EXPOSE 3000
 #
 # Migrations only: generation already happened in the builder, and re-running it
 # would re-download the engines from binaries.prisma.sh on every boot.
-CMD node node_modules/prisma/build/index.js migrate deploy \
-  && bun prisma/seed-admin.ts \
-  && bun server.js
+# exec form, and `exec` on the last command: without it the chain runs under
+# /bin/sh, which stays PID 1 and does not forward SIGTERM, so `docker stop` would
+# kill the server abruptly instead of letting it shut down cleanly.
+CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && bun prisma/seed-admin.ts && exec bun server.js"]
