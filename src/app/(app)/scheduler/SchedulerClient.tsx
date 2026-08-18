@@ -2,7 +2,13 @@
 
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { IconClockPlay, IconPlayerPlay, IconTrash } from '@tabler/icons-react'
+import {
+  IconAlertTriangle,
+  IconClock,
+  IconClockPlay,
+  IconPlayerPlay,
+  IconTrash,
+} from '@tabler/icons-react'
 import {
   deleteResyncSchedule,
   runResyncScheduleNow,
@@ -10,12 +16,28 @@ import {
 } from '@/actions/resync-schedules'
 import { UNREADABLE_USERNAME, type SafeResyncSchedule } from '@/lib/apic/schedule-view'
 import { INTERVAL_MAX_MINUTES, INTERVAL_MIN_MINUTES } from '@/lib/apic/schedule-timing'
-import { INPUT_CLS, LABEL_CLS, SELECT_CLS, TABLE_SCROLL_CLS } from '@/lib/ui-classes'
-import { Badge } from '@/components/ui/badge'
+import {
+  DENSE_TABLE_HEAD_CLS,
+  INPUT_CLS,
+  LABEL_CLS,
+  SELECT_CLS,
+  TABLE_SCROLL_CLS,
+} from '@/lib/ui-classes'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -34,6 +56,16 @@ const INTERVAL_PRESETS = [
 /** Sentinel select value that reveals the custom-minutes input below it. */
 const CUSTOM_INTERVAL_VALUE = 'custom'
 
+const PILL_CLS =
+  'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]'
+
+/** Mirrors the History page's status palette so a run reads the same wherever it appears. */
+const STATUS_STYLES: Record<string, string> = {
+  success: 'border-success-border bg-success-bg text-success',
+  partial: 'border-warning-border bg-warning-bg text-warning',
+  failure: 'border-error-border bg-error-bg text-error',
+}
+
 function intervalLabel(minutes: number): string {
   const preset = INTERVAL_PRESETS.find((p) => p.value === minutes)
   if (preset) return preset.label
@@ -49,17 +81,29 @@ function relative(date: Date | null): string {
   return past ? `${text} ago` : `in ${text}`
 }
 
-function statusBadge(schedule: SafeResyncSchedule) {
-  if (schedule.isRunning) return <Badge variant="secondary">running…</Badge>
-  if (!schedule.lastStatus) return <span className="text-faint">never run</span>
-  const variant =
-    schedule.lastStatus === 'success' ? 'default' : schedule.lastStatus === 'partial' ? 'secondary' : 'destructive'
-  return <Badge variant={variant}>{schedule.lastStatus}</Badge>
+function StatusPill({ schedule }: { schedule: SafeResyncSchedule }) {
+  if (schedule.isRunning) {
+    return (
+      <span className={`${PILL_CLS} border-primary/25 bg-primary/10 text-primary`}>
+        <IconClock size={11} stroke={1.75} />
+        running
+      </span>
+    )
+  }
+  if (!schedule.lastStatus) {
+    return <span className="text-[10px] text-faint uppercase tracking-[0.08em]">never run</span>
+  }
+  return (
+    <span className={`${PILL_CLS} ${STATUS_STYLES[schedule.lastStatus] ?? STATUS_STYLES.failure}`}>
+      {schedule.lastStatus}
+    </span>
+  )
 }
 
 export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeResyncSchedule[] }) {
   const [schedules, setSchedules] = useState(initialSchedules)
   const [editing, setEditing] = useState<SafeResyncSchedule | null>(null)
+  const [deleting, setDeleting] = useState<SafeResyncSchedule | null>(null)
   const [isPending, startTransition] = useTransition()
 
   // Form state for the edit dialog
@@ -68,6 +112,9 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
   const [useCustomInterval, setUseCustomInterval] = useState(false)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+
+  const enabledCount = schedules.filter((s) => s.enabled).length
+  const attentionCount = schedules.filter((s) => s.isOverdue || s.lastStatus === 'failure').length
 
   function openEditor(schedule: SafeResyncSchedule) {
     setEditing(schedule)
@@ -112,7 +159,9 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
     })
   }
 
-  function handleDelete(schedule: SafeResyncSchedule) {
+  function handleDelete() {
+    const schedule = deleting
+    if (!schedule) return
     startTransition(async () => {
       const result = await deleteResyncSchedule(schedule.apicHostId)
       if (!result.success) {
@@ -131,136 +180,201 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
         isRunning: false,
         isOverdue: false,
       })
+      setDeleting(null)
       toast.success('Schedule removed')
     })
   }
 
   return (
     <div className="min-h-full bg-background">
+      {/* Page header */}
       <div className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur-sm">
-        <div className="px-8 h-16 flex items-center justify-between">
+        <div className="px-8 h-16 flex items-center justify-between gap-4">
           <div>
             <h1 className="font-serif text-[18px] font-semibold text-foreground">Scheduler</h1>
             <p className="text-xs text-subtle mt-0.5">
-              Automatic resyncs per controller. Intervals are measured from the end of the previous run.
+              Automatic resyncs per controller, timed from the end of the previous run
             </p>
           </div>
         </div>
       </div>
 
-      <div className="px-8 py-6">
-        {schedules.length === 0 ? (
-          <p className="text-sm text-subtle">
-            No APIC hosts registered yet. Add one on the APIC Hosts page first.
-          </p>
-        ) : (
+      <div className="px-8 py-6 space-y-6">
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-card border border-border rounded-xl px-5 py-4 animate-fade-up">
+            <p className="text-[11px] text-subtle">Controllers</p>
+            <p className="text-[28px] font-semibold text-foreground leading-none mt-2 font-serif tabular-nums">
+              {schedules.length}
+            </p>
+            <p className="text-[11px] text-faint mt-1.5">registered APIC hosts</p>
+          </div>
+          <div className="bg-card border border-border rounded-xl px-5 py-4 animate-fade-up">
+            <p className="text-[11px] text-subtle">Scheduled</p>
+            <p className="text-[28px] font-semibold text-foreground leading-none mt-2 font-serif tabular-nums">
+              {enabledCount}
+            </p>
+            <p className="text-[11px] text-faint mt-1.5">resyncing on a schedule</p>
+          </div>
+          <div className="bg-card border border-border rounded-xl px-5 py-4 animate-fade-up">
+            <p className="text-[11px] text-subtle">Needs Attention</p>
+            <p className="text-[28px] font-semibold text-foreground leading-none mt-2 font-serif tabular-nums">
+              {attentionCount}
+            </p>
+            <p className="text-[11px] text-faint mt-1.5">overdue or last run failed</p>
+          </div>
+        </div>
+
+        {/* Table card */}
+        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm animate-fade-up">
           <div className={TABLE_SCROLL_CLS}>
-            <table className="w-full text-sm">
+            <table className="w-full text-xs">
               <thead>
-                <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                  <th className="py-2 pr-4">Host</th>
-                  <th className="py-2 pr-4">Enabled</th>
-                  <th className="py-2 pr-4">Interval</th>
-                  <th className="py-2 pr-4">Runs as</th>
-                  <th className="py-2 pr-4">Last run</th>
-                  <th className="py-2 pr-4">Next run</th>
-                  <th className="py-2" />
+                <tr>
+                  {['Controller', 'On', 'Interval', 'Runs As', 'Last Run', 'Next Run', ''].map((header, i) => (
+                    <th key={header || `actions-${i}`} className={DENSE_TABLE_HEAD_CLS}>
+                      {header}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {schedules.map((s) => (
-                  <tr key={s.apicHostId} className="border-t border-border">
-                    <td className="py-2.5 pr-4">
-                      <div className="font-medium text-foreground">{s.hostName}</div>
-                      <div className="text-xs text-faint">{s.host}</div>
-                    </td>
-                    <td className="py-2.5 pr-4">
-                      <Switch
-                        checked={s.enabled}
-                        disabled={isPending || !s.hasPassword || s.username === UNREADABLE_USERNAME}
-                        onCheckedChange={(next) => {
-                          if (s.username === UNREADABLE_USERNAME) {
-                            toast.error('Credentials could not be decrypted — re-enter them before enabling')
-                            return
-                          }
-                          startTransition(async () => {
-                            const result = await upsertResyncSchedule(s.apicHostId, {
-                              enabled: next,
-                              intervalMinutes: s.intervalMinutes,
-                              username: s.username,
-                              password: undefined,
-                            })
-                            if (!result.success) {
-                              toast.error(result.error)
-                              return
-                            }
-                            replace(result.data)
-                          })
-                        }}
-                      />
-                    </td>
-                    <td className="py-2.5 pr-4 text-foreground">
-                      {s.hasPassword ? `${intervalLabel(s.intervalMinutes)} after completion` : '—'}
-                    </td>
-                    <td className="py-2.5 pr-4 text-foreground">{s.username || '—'}</td>
-                    <td className="py-2.5 pr-4">
-                      <div className="flex items-center gap-2">
-                        {statusBadge(s)}
-                        <span className="text-xs text-faint">{relative(s.lastRunAt)}</span>
+                {schedules.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-14 text-center">
+                      <div className="mx-auto mb-4 h-10 w-10 rounded-xl bg-muted border border-border flex items-center justify-center">
+                        <IconClockPlay size={18} stroke={1.5} className="text-faint" />
                       </div>
-                      {s.lastDetail ? (
-                        <div className="text-xs text-faint truncate max-w-[22rem]">{s.lastDetail}</div>
-                      ) : null}
-                    </td>
-                    <td className="py-2.5 pr-4">
-                      {s.enabled ? (
-                        <span className={s.isOverdue ? 'text-destructive' : 'text-foreground'}>
-                          {s.isOverdue ? 'overdue — is the ticker running?' : relative(s.nextRunAt)}
-                        </span>
-                      ) : (
-                        <span className="text-faint">—</span>
-                      )}
-                    </td>
-                    <td className="py-2.5">
-                      <div className="flex items-center gap-1.5 justify-end">
-                        <Button size="sm" variant="ghost" disabled={isPending} onClick={() => openEditor(s)}>
-                          <IconClockPlay size={15} stroke={1.75} />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={isPending || !s.enabled}
-                          onClick={() => handleRunNow(s)}
-                        >
-                          <IconPlayerPlay size={15} stroke={1.75} />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={isPending || !s.hasPassword}
-                          onClick={() => handleDelete(s)}
-                        >
-                          <IconTrash size={15} stroke={1.75} />
-                        </Button>
-                      </div>
+                      <p className="text-sm text-subtle">No APIC hosts yet</p>
+                      <p className="text-xs text-faint mt-1">
+                        Add a controller on the APIC Hosts page, then schedule its resyncs here.
+                      </p>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  schedules.map((s, index) => (
+                    <tr
+                      key={s.apicHostId}
+                      className="group border-b border-border-faint last:border-0 hover:bg-muted transition-colors duration-100 animate-fade-up"
+                      style={{ animationDelay: `${Math.min(index * 35, 180)}ms` }}
+                    >
+                      <td className="px-4 py-2.5 border-l-2 border-l-transparent group-hover:border-l-primary transition-colors duration-100">
+                        <div className="font-medium text-foreground">{s.hostName}</div>
+                        <div className="font-mono text-[11px] text-faint">{s.host}</div>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <Switch
+                          aria-label={`Automatic resync for ${s.hostName}`}
+                          checked={s.enabled}
+                          disabled={isPending || !s.hasPassword || s.username === UNREADABLE_USERNAME}
+                          onCheckedChange={(next) => {
+                            if (s.username === UNREADABLE_USERNAME) {
+                              toast.error('Credentials could not be decrypted — re-enter them before enabling')
+                              return
+                            }
+                            startTransition(async () => {
+                              const result = await upsertResyncSchedule(s.apicHostId, {
+                                enabled: next,
+                                intervalMinutes: s.intervalMinutes,
+                                username: s.username,
+                                password: undefined,
+                              })
+                              if (!result.success) {
+                                toast.error(result.error)
+                                return
+                              }
+                              replace(result.data)
+                            })
+                          }}
+                        />
+                      </td>
+                      <td className="px-4 py-2.5 tabular-nums text-muted-foreground">
+                        {s.hasPassword ? `${intervalLabel(s.intervalMinutes)} after completion` : '—'}
+                      </td>
+                      <td className="px-4 py-2.5 font-mono text-muted-foreground">{s.username || '—'}</td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <StatusPill schedule={s} />
+                          <span className="text-[11px] text-faint tabular-nums">{relative(s.lastRunAt)}</span>
+                        </div>
+                        {s.lastDetail ? (
+                          <div className="text-[11px] text-faint truncate max-w-[22rem] mt-0.5">{s.lastDetail}</div>
+                        ) : null}
+                      </td>
+                      <td className="px-4 py-2.5 tabular-nums">
+                        {!s.enabled ? (
+                          <span className="text-faint">—</span>
+                        ) : s.isOverdue ? (
+                          <span className="inline-flex items-center gap-1.5 text-error">
+                            <IconAlertTriangle size={12} stroke={1.75} />
+                            Overdue — check the ticker
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">{relative(s.nextRunAt)}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            disabled={isPending}
+                            onClick={() => openEditor(s)}
+                            title="Edit schedule"
+                            aria-label={`Edit schedule for ${s.hostName}`}
+                          >
+                            <IconClockPlay size={13} stroke={1.75} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            disabled={isPending || !s.enabled}
+                            onClick={() => handleRunNow(s)}
+                            title="Run now"
+                            aria-label={`Run resync now for ${s.hostName}`}
+                          >
+                            <IconPlayerPlay size={13} stroke={1.75} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            disabled={isPending || !s.hasPassword}
+                            onClick={() => setDeleting(s)}
+                            title="Remove schedule"
+                            aria-label={`Remove schedule for ${s.hostName}`}
+                            className="text-faint hover:text-destructive"
+                          >
+                            <IconTrash size={13} stroke={1.75} />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
-        )}
+        </div>
       </div>
 
+      {/* Edit dialog */}
       <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
-        <DialogContent>
+        <DialogContent className="bg-card border-border text-foreground">
           <DialogHeader>
-            <DialogTitle>{editing?.hostName} schedule</DialogTitle>
+            <DialogTitle className="font-serif text-base font-semibold text-foreground">
+              {editing?.hostName} Schedule
+            </DialogTitle>
+            <DialogDescription className="text-xs text-subtle">
+              Resyncs run with these APIC credentials. The interval starts counting when a run finishes.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className={LABEL_CLS}>Interval</label>
+              <label className={LABEL_CLS} htmlFor="schedule-interval">
+                Interval
+              </label>
               <select
+                id="schedule-interval"
                 className={SELECT_CLS}
                 value={useCustomInterval ? CUSTOM_INTERVAL_VALUE : intervalMinutes}
                 onChange={(e) => {
@@ -288,18 +402,27 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
                   value={intervalMinutes}
                   onChange={(e) => setIntervalMinutes(Number(e.target.value))}
                   placeholder={`${INTERVAL_MIN_MINUTES}-${INTERVAL_MAX_MINUTES} minutes`}
+                  aria-label="Custom interval in minutes"
                 />
               ) : null}
             </div>
             <div>
-              <label className={LABEL_CLS}>APIC username</label>
-              <input className={INPUT_CLS} value={username} onChange={(e) => setUsername(e.target.value)} />
+              <label className={LABEL_CLS} htmlFor="schedule-username">
+                APIC username
+              </label>
+              <input
+                id="schedule-username"
+                className={INPUT_CLS}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
             </div>
             <div>
-              <label className={LABEL_CLS}>
+              <label className={LABEL_CLS} htmlFor="schedule-password">
                 APIC password {editing?.hasPassword ? '(leave blank to keep the current one)' : ''}
               </label>
               <input
+                id="schedule-password"
                 className={INPUT_CLS}
                 type="password"
                 autoComplete="new-password"
@@ -307,21 +430,65 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            <label className="flex items-center gap-2 text-sm text-foreground">
+            <label className="flex items-center gap-2 text-xs font-medium text-foreground">
               <Switch checked={enabled} onCheckedChange={setEnabled} />
-              Enabled
+              Run automatically
             </label>
           </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setEditing(null)} disabled={isPending}>
+          <DialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end rounded-b-xl border-t border-subtle bg-muted px-4 py-3 gap-1">
+            <button
+              type="button"
+              onClick={() => setEditing(null)}
+              disabled={isPending}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2 disabled:opacity-50"
+            >
               Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={isPending}>
-              Save
-            </Button>
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isPending}
+              className="bg-primary text-primary-foreground text-sm font-semibold px-5 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isPending ? 'Saving…' : 'Save Schedule'}
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Remove confirmation */}
+      <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-serif text-base font-semibold text-foreground">
+              Remove the schedule for &ldquo;{deleting?.hostName}&rdquo;?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-subtle">
+              Automatic resyncs stop and the stored APIC credentials are deleted. You can schedule this
+              controller again at any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end rounded-b-xl border-t border-subtle bg-muted px-4 py-3 gap-1">
+            <AlertDialogCancel
+              disabled={isPending}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2 border-0 bg-transparent shadow-none hover:bg-transparent"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={(event) => {
+                event.preventDefault()
+                handleDelete()
+              }}
+              disabled={isPending}
+              className="bg-error text-error-foreground text-sm font-semibold px-5 py-2 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-60"
+            >
+              {isPending ? 'Removing…' : 'Remove'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
