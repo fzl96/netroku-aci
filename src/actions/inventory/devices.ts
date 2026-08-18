@@ -1,7 +1,7 @@
 'use server'
 
 import { z } from 'zod'
-import type { DeviceStatus } from '@prisma/client'
+import { DeviceStatus, StackRole } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { recordAudit } from '@/lib/audit'
@@ -22,6 +22,18 @@ type ActionResult<T> =
   | { success: true; data: T }
   | { success: false; error: string }
 
+export type SafeDeviceStack = {
+  id: string
+  name: string
+  memberCount?: number
+  members?: Array<{
+    id: string
+    name: string
+    stackMember: number | null
+    stackRole: StackRole | null
+  }>
+}
+
 export type SafeDevice = {
   id: string
   name: string
@@ -30,6 +42,9 @@ export type SafeDevice = {
   status: DeviceStatus
   rackId: string | null
   rackPosition: number | null
+  deviceStackId: string | null
+  stackMember: number | null
+  stackRole: StackRole | null
   vendor: string
   model: string
   heightU: number
@@ -39,6 +54,21 @@ export type SafeDevice = {
 
 export type SafeDeviceWithRack = SafeDevice & {
   rack: { id: string; name: string; site: { id: string; name: string } } | null
+  deviceStack: SafeDeviceStack | null
+}
+
+export type SafeDeviceDetail = SafeDeviceWithRack & {
+  deviceStack: (SafeDeviceStack & {
+    devices: Array<{
+      id: string
+      name: string
+      serialNumber: string
+      stackMember: number | null
+      stackRole: StackRole | null
+      rackPosition: number | null
+      rack: { name: string } | null
+    }>
+  }) | null
 }
 
 export type DeviceCatalogEntry = {
@@ -48,6 +78,9 @@ export type DeviceCatalogEntry = {
   rackId: string | null
   rackPosition: number | null
   rack?: { name: string } | null
+  deviceStack?: SafeDeviceStack | null
+  stackMember?: number | null
+  stackRole?: StackRole | null
   vendor: string
   model: string
   heightU: number
@@ -83,6 +116,9 @@ type RawDevice = {
   status: DeviceStatus
   rackId: string | null
   rackPosition: number | null
+  deviceStackId: string | null
+  stackMember: number | null
+  stackRole: StackRole | null
   vendor: string
   model: string
   heightU: number
@@ -99,6 +135,9 @@ function toSafe(device: RawDevice): SafeDevice {
     status: device.status,
     rackId: device.rackId,
     rackPosition: device.rackPosition,
+    deviceStackId: device.deviceStackId,
+    stackMember: device.stackMember,
+    stackRole: device.stackRole,
     vendor: device.vendor,
     model: device.model,
     heightU: device.heightU,
@@ -108,9 +147,32 @@ function toSafe(device: RawDevice): SafeDevice {
 }
 
 function toSafeWithRack(
-  device: RawDevice & { rack: { id: string; name: string; site: { id: string; name: string } } | null },
+  device: RawDevice & {
+    rack: { id: string; name: string; site: { id: string; name: string } } | null
+    deviceStack: {
+      id: string
+      name: string
+      devices?: Array<{
+        id: string
+        name: string
+        stackMember: number | null
+        stackRole: StackRole | null
+      }>
+    } | null
+  },
 ): SafeDeviceWithRack {
-  return { ...toSafe(device), rack: device.rack }
+  return {
+    ...toSafe(device),
+    rack: device.rack,
+    deviceStack: device.deviceStack
+      ? {
+          id: device.deviceStack.id,
+          name: device.deviceStack.name,
+          memberCount: device.deviceStack.devices?.length,
+          members: device.deviceStack.devices,
+        }
+      : null,
+  }
 }
 
 export async function getDevices(params: DeviceListParams): Promise<DeviceListPage> {
@@ -123,18 +185,45 @@ export async function getDevices(params: DeviceListParams): Promise<DeviceListPa
     orderBy: { name: 'asc' },
     skip: window.skip,
     take: window.take,
-    include: { rack: { include: { site: true } } },
+    include: {
+      rack: { include: { site: true } },
+      deviceStack: { select: { id: true, name: true } },
+    },
   })
   return { devices: devices.map(toSafeWithRack), total, page: window.page }
 }
 
-export async function getDeviceById(id: string): Promise<SafeDeviceWithRack | null> {
+export async function getDeviceById(id: string): Promise<SafeDeviceDetail | null> {
   await requireSession()
   const device = await prisma.device.findUnique({
     where: { id },
-    include: { rack: { include: { site: true } } },
+    include: {
+      rack: { include: { site: true } },
+      deviceStack: {
+        include: {
+          devices: {
+            where: { id: { not: id } },
+            select: {
+              id: true,
+              name: true,
+              serialNumber: true,
+              stackMember: true,
+              stackRole: true,
+              rackPosition: true,
+              rack: { select: { name: true } },
+            },
+            orderBy: [{ stackRole: 'asc' }, { stackMember: 'asc' }, { name: 'asc' }],
+          },
+        },
+      },
+    },
   })
-  return device ? toSafeWithRack(device) : null
+  if (!device) return null
+  return {
+    ...toSafe(device),
+    rack: device.rack,
+    deviceStack: device.deviceStack,
+  }
 }
 
 export async function getAllDevices(): Promise<DeviceCatalogEntry[]> {
@@ -147,6 +236,9 @@ export async function getAllDevices(): Promise<DeviceCatalogEntry[]> {
       rackId: true,
       rackPosition: true,
       rack: { select: { name: true } },
+      deviceStack: { select: { id: true, name: true } },
+      stackMember: true,
+      stackRole: true,
       vendor: true,
       model: true,
       heightU: true,
@@ -155,29 +247,111 @@ export async function getAllDevices(): Promise<DeviceCatalogEntry[]> {
   })
 }
 
-export async function createDevice(data: DeviceFormValues): Promise<ActionResult<SafeDevice>> {
+export async function getDeviceStacks(): Promise<SafeDeviceStack[]> {
+  await requireSession()
+  const stacks = await prisma.deviceStack.findMany({
+    select: {
+      id: true,
+      name: true,
+      devices: {
+        select: {
+          id: true,
+          name: true,
+          stackMember: true,
+          stackRole: true,
+        },
+        orderBy: [{ stackRole: 'asc' }, { stackMember: 'asc' }],
+      },
+    },
+    orderBy: { name: 'asc' },
+  })
+  return stacks.map((s) => ({
+    id: s.id,
+    name: s.name,
+    memberCount: s.devices.length,
+    members: s.devices,
+  }))
+}
+
+export async function createDevice(data: DeviceFormValues): Promise<ActionResult<SafeDeviceWithRack>> {
   try {
     const actor = await requireAdmin()
     const parsed = deviceSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: 'Invalid data' }
-    const device = await prisma.device.create({
-      data: {
-        name: parsed.data.name,
-        serialNumber: parsed.data.serialNumber,
-        assetTag: parsed.data.assetTag ?? null,
-        status: parsed.data.status,
-        vendor: parsed.data.vendor,
-        model: parsed.data.model,
-        heightU: parsed.data.heightU,
-      },
+
+    const stackName = parsed.data.deviceStackName?.trim() || null
+    const stackRole = stackName ? parsed.data.stackRole ?? null : null
+    const stackMember = stackName ? parsed.data.stackMember ?? null : null
+
+    const device = await prisma.$transaction(async (tx) => {
+      let deviceStackId: string | null = null
+      if (stackName) {
+        let stack = await tx.deviceStack.findFirst({ where: { name: stackName } })
+        if (!stack) {
+          stack = await tx.deviceStack.create({ data: { name: stackName } })
+        }
+        deviceStackId = stack.id
+
+        if (stackMember !== null) {
+          const conflict = await tx.device.findFirst({
+            where: { deviceStackId, stackMember },
+            select: { name: true },
+          })
+          if (conflict) {
+            throw new Error(`Switch #${stackMember} is already used by "${conflict.name}" in stack "${stackName}".`)
+          }
+        }
+
+        if (stackRole === 'MASTER') {
+          await tx.device.updateMany({
+            where: { deviceStackId, stackRole: 'MASTER' },
+            data: { stackRole: 'MEMBER' },
+          })
+        }
+      }
+
+      return tx.device.create({
+        data: {
+          name: parsed.data.name,
+          serialNumber: parsed.data.serialNumber,
+          assetTag: parsed.data.assetTag ?? null,
+          status: parsed.data.status,
+          vendor: parsed.data.vendor,
+          model: parsed.data.model,
+          heightU: parsed.data.heightU,
+          deviceStackId,
+          stackRole,
+          stackMember,
+        },
+        include: {
+          rack: { include: { site: true } },
+          deviceStack: {
+            select: {
+              id: true,
+              name: true,
+              devices: {
+                select: {
+                  id: true,
+                  name: true,
+                  stackMember: true,
+                  stackRole: true,
+                },
+                orderBy: [{ stackRole: 'asc' }, { stackMember: 'asc' }],
+              },
+            },
+          },
+        },
+      })
     })
+
     await recordAudit({
       userId: actor.id,
       userName: actor.userName,
       action: 'device.create',
       target: `${device.name} (${device.serialNumber})`,
     })
-    return { success: true, data: toSafe(device) }
+
+    return { success: true, data: toSafeWithRack(device) }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
   }
@@ -186,32 +360,111 @@ export async function createDevice(data: DeviceFormValues): Promise<ActionResult
 export async function updateDevice(
   id: string,
   data: DeviceUpdateFormValues,
-): Promise<ActionResult<SafeDevice>> {
+): Promise<ActionResult<SafeDeviceWithRack>> {
   try {
     const actor = await requireAdmin()
     const parsed = deviceUpdateSchema.safeParse(data)
     if (!parsed.success) return { success: false, error: 'Invalid data' }
-    const result = await prisma.device.updateMany({
-      where: { id },
-      data: {
-        name: parsed.data.name,
-        serialNumber: parsed.data.serialNumber,
-        assetTag: parsed.data.assetTag ?? null,
-        status: parsed.data.status,
-        vendor: parsed.data.vendor,
-        model: parsed.data.model,
-        heightU: parsed.data.heightU,
-      },
+
+    const stackName = parsed.data.deviceStackName?.trim() || null
+    const stackRole = stackName ? parsed.data.stackRole ?? null : null
+    const stackMember = stackName ? parsed.data.stackMember ?? null : null
+
+    const device = await prisma.$transaction(async (tx) => {
+      const existing = await tx.device.findUnique({
+        where: { id },
+        select: { deviceStackId: true },
+      })
+      if (!existing) throw new Error('Device not found')
+
+      const prevStackId = existing.deviceStackId
+      let nextStackId: string | null = null
+
+      if (stackName) {
+        let stack = await tx.deviceStack.findFirst({ where: { name: stackName } })
+        if (!stack) {
+          stack = await tx.deviceStack.create({ data: { name: stackName } })
+        }
+        nextStackId = stack.id
+
+        if (stackMember !== null) {
+          const conflict = await tx.device.findFirst({
+            where: {
+              deviceStackId: nextStackId,
+              stackMember,
+              id: { not: id },
+            },
+            select: { name: true },
+          })
+          if (conflict) {
+            throw new Error(`Switch #${stackMember} is already used by "${conflict.name}" in stack "${stackName}".`)
+          }
+        }
+
+        if (stackRole === 'MASTER') {
+          await tx.device.updateMany({
+            where: {
+              deviceStackId: nextStackId,
+              stackRole: 'MASTER',
+              id: { not: id },
+            },
+            data: { stackRole: 'MEMBER' },
+          })
+        }
+      }
+
+      const updated = await tx.device.update({
+        where: { id },
+        data: {
+          name: parsed.data.name,
+          serialNumber: parsed.data.serialNumber,
+          assetTag: parsed.data.assetTag ?? null,
+          status: parsed.data.status,
+          vendor: parsed.data.vendor,
+          model: parsed.data.model,
+          heightU: parsed.data.heightU,
+          deviceStackId: nextStackId,
+          stackRole,
+          stackMember,
+        },
+        include: {
+          rack: { include: { site: true } },
+          deviceStack: {
+            select: {
+              id: true,
+              name: true,
+              devices: {
+                select: {
+                  id: true,
+                  name: true,
+                  stackMember: true,
+                  stackRole: true,
+                },
+                orderBy: [{ stackRole: 'asc' }, { stackMember: 'asc' }],
+              },
+            },
+          },
+        },
+      })
+
+      if (prevStackId && prevStackId !== nextStackId) {
+        const count = await tx.device.count({ where: { deviceStackId: prevStackId } })
+        if (count === 0) {
+          await tx.deviceStack.delete({ where: { id: prevStackId } })
+        }
+      }
+
+      return updated
     })
-    if (result.count === 0) return { success: false, error: 'Device not found' }
-    const device = await prisma.device.findUniqueOrThrow({ where: { id } })
+
     await recordAudit({
       userId: actor.id,
       userName: actor.userName,
       action: 'device.update',
       target: `${device.name} (${device.serialNumber})`,
     })
-    return { success: true, data: toSafe(device) }
+
+    return { success: true, data: toSafeWithRack(device) }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
   }
@@ -220,14 +473,27 @@ export async function updateDevice(
 export async function deleteDevice(id: string): Promise<ActionResult<void>> {
   try {
     const actor = await requireAdmin()
-    const existing = await prisma.device.findUnique({ where: { id } })
-    const result = await prisma.device.deleteMany({ where: { id } })
-    if (result.count === 0) return { success: false, error: 'Device not found' }
+    const existing = await prisma.device.findUnique({
+      where: { id },
+      select: { name: true, serialNumber: true, deviceStackId: true },
+    })
+    if (!existing) return { success: false, error: 'Device not found' }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.device.delete({ where: { id } })
+      if (existing.deviceStackId) {
+        const count = await tx.device.count({ where: { deviceStackId: existing.deviceStackId } })
+        if (count === 0) {
+          await tx.deviceStack.delete({ where: { id: existing.deviceStackId } })
+        }
+      }
+    })
+
     await recordAudit({
       userId: actor.id,
       userName: actor.userName,
       action: 'device.delete',
-      target: existing ? `${existing.name} (${existing.serialNumber})` : id,
+      target: `${existing.name} (${existing.serialNumber})`,
     })
     return { success: true, data: undefined }
   } catch (err) {

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { DeviceStatus } from '@prisma/client'
+import { DeviceStatus, StackRole } from '@prisma/client'
 
 export const deviceSchema = z.object({
   name: z.string().min(1, 'Hostname is required').max(128, 'Hostname must be 128 characters or fewer'),
@@ -9,6 +9,9 @@ export const deviceSchema = z.object({
   vendor: z.string().min(1, 'Vendor is required').max(128, 'Vendor must be 128 characters or fewer'),
   model: z.string().min(1, 'Model is required').max(128, 'Model must be 128 characters or fewer'),
   heightU: z.number().int('Height must be a whole number').positive('Height must be a positive integer').max(60, 'Height must be 60U or fewer'),
+  deviceStackName: z.string().max(128, 'Stack name must be 128 characters or fewer').optional().nullable(),
+  stackRole: z.enum(StackRole).optional().nullable(),
+  stackMember: z.number().int('Member number must be a whole number').positive('Member number must be a positive integer').max(32, 'Member number must be 32 or fewer').optional().nullable(),
 })
 
 export const deviceUpdateSchema = deviceSchema

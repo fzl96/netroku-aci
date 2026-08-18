@@ -26,6 +26,7 @@ export function buildDeviceWhere(params: DeviceListParams): Prisma.DeviceWhereIn
       { model: { contains: params.query, mode: 'insensitive' } },
       { rack: { name: { contains: params.query, mode: 'insensitive' } } },
       { rack: { site: { name: { contains: params.query, mode: 'insensitive' } } } },
+      { deviceStack: { name: { contains: params.query, mode: 'insensitive' } } },
     ],
   }
 }

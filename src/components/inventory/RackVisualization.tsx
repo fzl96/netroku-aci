@@ -22,6 +22,9 @@ export type RackDevice = {
   name: string
   serialNumber: string
   rackPosition: number | null
+  deviceStack?: { id: string; name: string } | null
+  stackMember?: number | null
+  stackRole?: 'MASTER' | 'MEMBER' | null
   vendor: string
   model: string
   heightU: number
@@ -323,14 +326,30 @@ export function RackVisualization({
                     </div>
                   )}
                   {device.rowSpan === 1 ? (
-                    <div className="truncate text-[11px] leading-none font-medium text-foreground">
-                      {device.name} <span className="font-mono text-subtle text-[10px]">· {device.serialNumber}</span>
+                    <div className="flex w-full items-center justify-between gap-1.5 overflow-hidden">
+                      <div className="truncate text-[11px] leading-none font-medium text-foreground">
+                        {device.name} <span className="font-mono text-subtle text-[10px]">· {device.serialNumber}</span>
+                      </div>
+                      {device.deviceStack && (
+                        <span className="shrink-0 font-mono text-[9px] text-muted-foreground bg-muted px-1 py-0.5 rounded border border-border">
+                          {device.stackMember != null ? `#${device.stackMember}` : 'Stk'}
+                          {device.stackRole === 'MASTER' ? ' ★' : ''}
+                        </span>
+                      )}
                     </div>
                   ) : (
-                    <>
-                      <div className="truncate font-medium text-foreground leading-tight">{device.name}</div>
-                      <div className="truncate font-mono text-subtle text-[10px] leading-tight">{device.serialNumber}</div>
-                    </>
+                    <div className="flex w-full items-start justify-between gap-1.5 overflow-hidden">
+                      <div className="overflow-hidden">
+                        <div className="truncate font-medium text-foreground leading-tight">{device.name}</div>
+                        <div className="truncate font-mono text-subtle text-[10px] leading-tight">{device.serialNumber}</div>
+                      </div>
+                      {device.deviceStack && (
+                        <span className="shrink-0 font-mono text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded border border-border">
+                          {device.deviceStack.name} #{device.stackMember ?? ''}
+                          {device.stackRole === 'MASTER' ? ' (Master)' : ''}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
               )

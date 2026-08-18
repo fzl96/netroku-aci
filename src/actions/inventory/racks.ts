@@ -14,6 +14,8 @@ type ActionResult<T> =
   | { success: true; data: T }
   | { success: false; error: string }
 
+import type { StackRole } from '@prisma/client'
+
 export type SafeRack = {
   id: string
   name: string
@@ -28,6 +30,9 @@ export type SafeRackDevice = {
   name: string
   serialNumber: string
   rackPosition: number | null
+  deviceStack?: { id: string; name: string } | null
+  stackMember?: number | null
+  stackRole?: StackRole | null
   vendor: string
   model: string
   heightU: number
@@ -76,7 +81,12 @@ export async function getRacksBySite(siteId: string): Promise<SafeRackWithDevice
   const racks = await prisma.rack.findMany({
     where: { siteId },
     orderBy: { name: 'asc' },
-    include: { devices: { orderBy: { name: 'asc' } } },
+    include: {
+      devices: {
+        orderBy: { name: 'asc' },
+        include: { deviceStack: { select: { id: true, name: true } } },
+      },
+    },
   })
   return racks.map((rack) => ({
     ...toSafe(rack),
@@ -85,6 +95,9 @@ export async function getRacksBySite(siteId: string): Promise<SafeRackWithDevice
       name: device.name,
       serialNumber: device.serialNumber,
       rackPosition: device.rackPosition,
+      deviceStack: device.deviceStack,
+      stackMember: device.stackMember,
+      stackRole: device.stackRole,
       vendor: device.vendor,
       model: device.model,
       heightU: device.heightU,

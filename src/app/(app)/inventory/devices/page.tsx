@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
-import { getDevices } from '@/actions/inventory/devices'
+import { getDevices, getDeviceStacks } from '@/actions/inventory/devices'
 import { parseDeviceListParams } from '@/lib/inventory/device-query'
 import { DevicesClient } from './DevicesClient'
 
@@ -19,12 +19,16 @@ export default async function DevicesPage({
   if (!session) redirect('/signin')
 
   const params = parseDeviceListParams(await searchParams)
-  const { devices, total, page } = await getDevices(params)
+  const [{ devices, total, page }, stacks] = await Promise.all([
+    getDevices(params),
+    getDeviceStacks(),
+  ])
   const role = session.user.role === 'admin' ? 'admin' : 'member'
 
   return (
     <DevicesClient
       initialDevices={devices}
+      existingStacks={stacks}
       total={total}
       page={page}
       query={params.query}

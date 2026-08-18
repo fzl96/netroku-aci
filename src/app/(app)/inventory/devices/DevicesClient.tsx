@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -13,6 +13,7 @@ import {
   updateDevice,
   deleteDevice,
   type SafeDeviceWithRack,
+  type SafeDeviceStack,
 } from '@/actions/inventory/devices'
 import {
   deviceSchema,
@@ -59,12 +60,14 @@ const STATUS_BADGE_CLS: Record<string, string> = {
 
 export function DevicesClient({
   initialDevices,
+  existingStacks = [],
   total,
   page,
   query,
   role,
 }: {
   initialDevices: SafeDeviceWithRack[]
+  existingStacks?: SafeDeviceStack[]
   total: number
   page: number
   query: string
@@ -72,6 +75,7 @@ export function DevicesClient({
 }) {
   const router = useRouter()
   const [devices, setDevices] = useState<SafeDeviceWithRack[]>(initialDevices)
+  const [stacks, setStacks] = useState(existingStacks)
   const [searchValue, setSearchValue] = useState(query)
   const [isPending, setIsPending] = useState(false)
 
@@ -85,6 +89,56 @@ export function DevicesClient({
   const totalPages = Math.max(1, Math.ceil(total / 20))
   const isAdmin = role === 'admin'
 
+  const effectiveStacks: SafeDeviceStack[] = useMemo(() => {
+    const map = new Map<string, SafeDeviceStack>()
+    for (const s of stacks) {
+      map.set(s.name, { ...s, members: s.members ? [...s.members] : [] })
+    }
+
+    for (const d of devices) {
+      if (d.deviceStack) {
+        const stackName = d.deviceStack.name
+        const existing = map.get(stackName) ?? {
+          id: d.deviceStack.id,
+          name: stackName,
+          members: [],
+        }
+        const memberList = existing.members ? [...existing.members] : []
+        const idx = memberList.findIndex((m) => m.id === d.id)
+        const memberObj = {
+          id: d.id,
+          name: d.name,
+          stackMember: d.stackMember,
+          stackRole: d.stackRole,
+        }
+        if (idx >= 0) {
+          memberList[idx] = memberObj
+        } else {
+          memberList.push(memberObj)
+        }
+        existing.members = memberList
+        existing.memberCount = memberList.length
+        map.set(stackName, existing)
+      } else {
+        for (const [name, s] of map.entries()) {
+          if (s.members?.some((m) => m.id === d.id)) {
+            s.members = s.members.filter((m) => m.id !== d.id)
+            s.memberCount = s.members.length
+          }
+        }
+      }
+    }
+
+    const result: SafeDeviceStack[] = []
+    for (const s of map.values()) {
+      if ((s.members?.length ?? 0) > 0) {
+        s.memberCount = s.members!.length
+        result.push(s)
+      }
+    }
+    return result.sort((a, b) => a.name.localeCompare(b.name))
+  }, [stacks, devices])
+
   const emptyDefaults: DeviceFormValues = {
     name: '',
     serialNumber: '',
@@ -93,6 +147,9 @@ export function DevicesClient({
     vendor: '',
     model: '',
     heightU: 1,
+    deviceStackName: null,
+    stackRole: null,
+    stackMember: null,
   }
 
   const createForm = useForm<DeviceFormValues>({
@@ -115,6 +172,9 @@ export function DevicesClient({
       vendor: device.vendor,
       model: device.model,
       heightU: device.heightU,
+      deviceStackName: device.deviceStack?.name ?? null,
+      stackRole: device.stackRole,
+      stackMember: device.stackMember,
     })
     setEditOpen(true)
   }
@@ -138,8 +198,10 @@ export function DevicesClient({
     const result = await createDevice(data)
     setIsPending(false)
     if (result.success) {
-      const withRack: SafeDeviceWithRack = { ...result.data, rack: null }
-      setDevices((prev) => [withRack, ...prev])
+      setDevices((prev) => [result.data, ...prev])
+      if (result.data.deviceStack && !stacks.some((s) => s.id === result.data.deviceStack?.id)) {
+        setStacks((prev) => [...prev, result.data.deviceStack!].sort((a, b) => a.name.localeCompare(b.name)))
+      }
       createForm.reset(emptyDefaults)
       setCreateOpen(false)
       toast.success('Device created')
@@ -155,8 +217,11 @@ export function DevicesClient({
     setIsPending(false)
     if (result.success) {
       setDevices((prev) =>
-        prev.map((d) => (d.id === editingDevice.id ? { ...d, ...result.data } : d)),
+        prev.map((d) => (d.id === editingDevice.id ? result.data : d)),
       )
+      if (result.data.deviceStack && !stacks.some((s) => s.id === result.data.deviceStack?.id)) {
+        setStacks((prev) => [...prev, result.data.deviceStack!].sort((a, b) => a.name.localeCompare(b.name)))
+      }
       setEditOpen(false)
       setEditingDevice(null)
       toast.success('Device updated')
@@ -218,7 +283,7 @@ export function DevicesClient({
             <table className="w-full text-xs">
               <thead>
                 <tr>
-                  {['Name', 'Serial', 'Status', 'Vendor / Model', 'Rack', ...(isAdmin ? [''] : [])].map((h) => (
+                  {['Name', 'Serial', 'Status', 'Vendor / Model', 'Rack', 'Stack', ...(isAdmin ? [''] : [])].map((h) => (
                     <th key={h} className={DENSE_TABLE_HEAD_CLS}>{h}</th>
                   ))}
                 </tr>
@@ -226,7 +291,7 @@ export function DevicesClient({
               <tbody>
                 {devices.length === 0 ? (
                   <tr>
-                    <td colSpan={isAdmin ? 6 : 5} className="px-4 py-14 text-center">
+                    <td colSpan={isAdmin ? 7 : 6} className="px-4 py-14 text-center">
                       <p className="text-sm text-subtle">No devices found</p>
                     </td>
                   </tr>
@@ -252,6 +317,19 @@ export function DevicesClient({
                       <td className="px-4 py-2.5 text-subtle">{device.vendor} {device.model}</td>
                       <td className="px-4 py-2.5 text-subtle">
                         {device.rack ? `${device.rack.site.name} · ${device.rack.name}` : '—'}
+                      </td>
+                      <td className="px-4 py-2.5 text-subtle">
+                        {device.deviceStack ? (
+                          <span className="inline-flex items-center gap-1 font-mono text-[11px] text-foreground bg-muted px-2 py-0.5 rounded border border-border">
+                            <span>{device.deviceStack.name}</span>
+                            <span className="text-muted-foreground text-[10px]">
+                              · {device.stackRole === 'MASTER' ? 'Master' : 'Member'}
+                              {device.stackMember != null ? ` (SW #${device.stackMember})` : ''}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="text-faint">—</span>
+                        )}
                       </td>
                       {isAdmin && (
                         <td className="px-4 py-2.5">
@@ -303,7 +381,7 @@ export function DevicesClient({
             </SheetDescription>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto px-6 py-5">
-            <DeviceForm form={createForm} onSubmit={handleCreate} formId="create-device-form" />
+            <DeviceForm form={createForm} onSubmit={handleCreate} formId="create-device-form" existingStacks={effectiveStacks} />
           </div>
           <SheetFooter className="flex flex-row items-center justify-end border-t border-subtle bg-muted px-6 py-3.5 gap-2 shrink-0">
             <FooterCancel onClick={() => setCreateOpen(false)} disabled={isPending} />
@@ -319,7 +397,7 @@ export function DevicesClient({
             <SheetDescription className="text-xs text-subtle">Update device identity and hardware details.</SheetDescription>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto px-6 py-5">
-            <DeviceForm form={editForm} onSubmit={handleUpdate} formId="edit-device-form" />
+            <DeviceForm form={editForm} onSubmit={handleUpdate} formId="edit-device-form" existingStacks={effectiveStacks} />
           </div>
           <SheetFooter className="flex flex-row items-center justify-end border-t border-subtle bg-muted px-6 py-3.5 gap-2 shrink-0">
             <FooterCancel onClick={() => setEditOpen(false)} disabled={isPending} />
