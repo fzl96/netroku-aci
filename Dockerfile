@@ -90,21 +90,12 @@ COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 EXPOSE 3000
 
-# Everything is invoked by explicit path. standalone ships its own minimal
-# package.json with no scripts, and node_modules/.bin is not part of the traced
-# output, so `bun run <script>` and bare `prisma` are both unavailable here.
+# Serve, nothing else. Migrations run as a one-shot `migrate` service and seeding
+# runs in the app service's command — see docker-compose.yml. Keeping them out of
+# here leaves one definition of the startup sequence rather than two.
 #
-# The prisma CLI keeps going through `node`, which in this image is bun's node
-# wrapper rather than real Node — that is already how the CLI runs today via its
-# .bin shebang, so this changes nothing about how it executes.
-#
-# Migrations only: generation already happened in the builder, and re-running it
-# would re-download the engines from binaries.prisma.sh on every boot.
-# This is the self-contained default, so `docker run <image>` still works on its
-# own. docker-compose.yml overrides it: migrations move to a one-shot `migrate`
-# service so they run exactly once regardless of how many app containers start.
-#
-# exec form, and `exec` on the last command: without it the chain runs under
-# /bin/sh, which stays PID 1 and does not forward SIGTERM, so `docker stop` would
-# kill the server abruptly instead of letting it shut down cleanly.
-CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && bun prisma/seed-admin.ts && exec bun server.js"]
+# standalone's server.js is the entrypoint: `bun run start` cannot work, since the
+# emitted package.json carries no scripts and `start` would be `next start`, which
+# standalone does not use. Exec form, so the server is PID 1 and `docker stop`
+# reaches it directly.
+CMD ["bun", "server.js"]
