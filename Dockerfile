@@ -60,20 +60,46 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-COPY --from=prod-deps /app/node_modules ./node_modules
-COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/.next ./.next
+# .next/standalone is a complete app root: server.js, a minimal package.json, and
+# only the node_modules Next traced as reachable. It goes at /app, and server.js
+# chdir()s to its own directory at startup. Static assets and public/ are excluded
+# from the trace by design and must be layered back on.
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json ./package.json
+
+# Prisma needs three things tracing cannot give us, so copy them explicitly rather
+# than hope the trace caught them:
+#   - the generated client (.prisma) and its native query engine, loaded at runtime
+#     by path rather than by import, so tracing does not always follow it
+#   - @prisma/client itself, to guarantee it matches the generated client
+#   - the prisma CLI and its engines, which nothing imports at all — it is invoked
+#     as a command by the startup migration step
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
+COPY --from=prod-deps /app/node_modules/prisma ./node_modules/prisma
+COPY --from=prod-deps /app/node_modules/@prisma/engines ./node_modules/@prisma/engines
+COPY --from=prod-deps /app/node_modules/@prisma/config ./node_modules/@prisma/config
+
+# The schema and migrations for `migrate deploy`, plus the sources seed-admin.ts
+# imports (it runs outside the traced graph, so it needs real files and the path
+# aliases from tsconfig.json).
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 EXPOSE 3000
 
-# Only apply migrations at startup. `db:setup` also runs `prisma generate`, which
-# re-downloads the engine binaries from binaries.prisma.sh on every boot — the client
-# was already generated in the builder stage and copied in above, so that download is
-# pure waste and hangs startup on a host without egress to Prisma's CDN.
-CMD bun run prisma:deploy && bun run seed:admin && bun run start
+# Everything is invoked by explicit path. standalone ships its own minimal
+# package.json with no scripts, and node_modules/.bin is not part of the traced
+# output, so `bun run <script>` and bare `prisma` are both unavailable here.
+#
+# The prisma CLI keeps going through `node`, which in this image is bun's node
+# wrapper rather than real Node — that is already how the CLI runs today via its
+# .bin shebang, so this changes nothing about how it executes.
+#
+# Migrations only: generation already happened in the builder, and re-running it
+# would re-download the engines from binaries.prisma.sh on every boot.
+CMD node node_modules/prisma/build/index.js migrate deploy \
+  && bun prisma/seed-admin.ts \
+  && bun server.js
