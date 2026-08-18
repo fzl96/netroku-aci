@@ -44,7 +44,16 @@ COPY package.json bun.lock ./
 ENV BUN_FEATURE_FLAG_DISABLE_STREAMING_INSTALL=1
 
 # Not the fix, but fewer concurrent connections means fewer chances to be cut short.
-RUN bun install --frozen-lockfile --network-concurrency 8
+# --production drops the 13 devDependencies (typescript, eslint, tailwind, shadcn,
+# tsx, @types/*) that only the builder stage needs.
+RUN bun install --production --frozen-lockfile --network-concurrency 8
+
+# The startup chain runs `prisma migrate deploy`, so the runner needs the prisma CLI
+# even though it is a devDependency. It survives --production only because it is an
+# optional peerDependency of @prisma/client, which bun installs. That is implicit
+# enough to be worth asserting: fail the build here rather than the container at boot.
+RUN test -f node_modules/prisma/package.json \
+  || (echo "prisma CLI missing from production install — startup migrations would fail" && exit 1)
 
 
 FROM oven/bun:1.3.14 AS runner
