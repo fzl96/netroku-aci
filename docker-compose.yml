@@ -1,5 +1,17 @@
 services:
-  postgres:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://netroku:netroku@db:5432/netroku?schema=public
+    depends_on:
+      - db
+
+  db:
     image: postgres:17
     container_name: netroku-postgres
     restart: unless-stopped
@@ -7,8 +19,6 @@ services:
       POSTGRES_USER: netroku
       POSTGRES_PASSWORD: netroku
       POSTGRES_DB: netroku
-    ports:
-      - "5432:5432"
     volumes:
       - netroku-pgdata:/var/lib/postgresql/data
 
