@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import {
   IconAlertTriangle,
@@ -11,10 +11,12 @@ import {
 } from '@tabler/icons-react'
 import {
   deleteResyncSchedule,
+  refreshResyncSchedules,
   runResyncScheduleNow,
   upsertResyncSchedule,
 } from '@/actions/resync-schedules'
 import { UNREADABLE_USERNAME, type SafeResyncSchedule } from '@/lib/apic/schedule-view'
+import { startSchedulePolling } from '@/lib/apic/schedule-polling'
 import { INTERVAL_MAX_MINUTES, INTERVAL_MIN_MINUTES } from '@/lib/apic/schedule-timing'
 import {
   DENSE_TABLE_HEAD_CLS,
@@ -113,6 +115,11 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
 
+  useEffect(() => startSchedulePolling({
+    load: refreshResyncSchedules,
+    onSnapshot: setSchedules,
+  }), [])
+
   const enabledCount = schedules.filter((s) => s.enabled).length
   const attentionCount = schedules.filter((s) => s.isOverdue || s.lastStatus === 'failure').length
 
@@ -155,6 +162,7 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
         toast.error(result.error)
         return
       }
+      replace(result.data)
       toast.success('Run queued — starts within a minute')
     })
   }
