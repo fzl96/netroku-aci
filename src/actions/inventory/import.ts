@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { recordAudit } from '@/lib/audit'
 import type { ParsedImportRow, MalformedImportRow } from '@/lib/inventory/csv'
+import { requiredRackHeight } from '@/lib/inventory/import-planning'
 
 export type ImportRowState = {
   row: ParsedImportRow
@@ -22,7 +23,7 @@ export type ImportSummary = {
   createCount: number
   updateCount: number
   sitesToCreate: string[]
-  racksToCreate: Array<{ siteName: string; rackName: string }>
+  racksToCreate: Array<{ siteName: string; rackName: string; heightU: number }>
   errorCount: number
   canImport: boolean
 }
@@ -130,7 +131,10 @@ export async function validateDeviceImport(
     const stackByName = new Map(existingStacks.map((s) => [s.name.toLowerCase(), s]))
 
     const sitesToCreateSet = new Set<string>()
-    const racksToCreateMap = new Map<string, { siteName: string; rackName: string; maxU: number }>()
+    const racksToCreateMap = new Map<
+      string,
+      { siteName: string; rackName: string; heightU: number }
+    >()
 
     const rowStates: ImportRowState[] = []
     let errorCount = 0
@@ -313,10 +317,20 @@ export async function validateDeviceImport(
           const effectiveSiteName = row.site ?? 'Default'
           if (!row.site) sitesToCreateSet.add(effectiveSiteName)
 
-          const existingPending = racksToCreateMap.get(rackKey)
-          const neededU = (row.rackPosition ?? 1) + row.heightU - 1
-          const maxU = Math.max(existingPending?.maxU ?? 42, neededU)
-          racksToCreateMap.set(rackKey, { siteName: effectiveSiteName, rackName: row.rack, maxU })
+          try {
+            const existingPending = racksToCreateMap.get(rackKey)
+            const heightU = Math.max(
+              existingPending?.heightU ?? 42,
+              requiredRackHeight(row.rackPosition, row.heightU),
+            )
+            racksToCreateMap.set(rackKey, {
+              siteName: effectiveSiteName,
+              rackName: row.rack,
+              heightU,
+            })
+          } catch (error) {
+            rowErrors.push(error instanceof Error ? error.message : 'Invalid rack placement')
+          }
         }
       }
 
@@ -390,6 +404,7 @@ export async function validateDeviceImport(
       racksToCreate: Array.from(racksToCreateMap.values()).map((r) => ({
         siteName: r.siteName,
         rackName: r.rackName,
+        heightU: r.heightU,
       })),
       errorCount,
       canImport: validCount > 0,
@@ -432,7 +447,10 @@ export async function executeDeviceImport(
 
     // Determine sites and racks to create from valid rows only
     const validSitesToCreate = new Set<string>()
-    const validRacksToCreate = new Map<string, { siteName: string; rackName: string }>()
+    const validRacksToCreate = new Map<
+      string,
+      { siteName: string; rackName: string; heightU: number }
+    >()
 
     for (const rs of validRowStates) {
       if (rs.siteStatus === 'WILL_CREATE' && rs.row.site) {
@@ -442,7 +460,15 @@ export async function executeDeviceImport(
         const siteName = rs.row.site ?? 'Default'
         if (!rs.row.site) validSitesToCreate.add(siteName)
         const key = `${siteName.toLowerCase()}::${rs.row.rack.toLowerCase()}`
-        validRacksToCreate.set(key, { siteName, rackName: rs.row.rack })
+        const existing = validRacksToCreate.get(key)
+        validRacksToCreate.set(key, {
+          siteName,
+          rackName: rs.row.rack,
+          heightU: Math.max(
+            existing?.heightU ?? 42,
+            requiredRackHeight(rs.row.rackPosition, rs.row.heightU),
+          ),
+        })
       }
     }
 
@@ -493,7 +519,7 @@ export async function executeDeviceImport(
           const newRack = await tx.rack.create({
             data: {
               name: r.rackName,
-              heightU: 42,
+              heightU: r.heightU,
               siteId,
             },
           })
