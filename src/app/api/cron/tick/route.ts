@@ -61,7 +61,6 @@ export async function POST(request: Request) {
       try {
         await finalizeSchedule({
           id: claimed.id,
-          intervalMinutes: claimed.intervalMinutes,
           status,
           detail,
         })

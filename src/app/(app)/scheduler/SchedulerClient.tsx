@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import {
   IconAlertTriangle,
@@ -11,10 +11,12 @@ import {
 } from '@tabler/icons-react'
 import {
   deleteResyncSchedule,
+  refreshResyncSchedules,
   runResyncScheduleNow,
   upsertResyncSchedule,
 } from '@/actions/resync-schedules'
 import { UNREADABLE_USERNAME, type SafeResyncSchedule } from '@/lib/apic/schedule-view'
+import { startSchedulePolling } from '@/lib/apic/schedule-polling'
 import { INTERVAL_MAX_MINUTES, INTERVAL_MIN_MINUTES } from '@/lib/apic/schedule-timing'
 import {
   DENSE_TABLE_HEAD_CLS,
@@ -105,6 +107,8 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
   const [editing, setEditing] = useState<SafeResyncSchedule | null>(null)
   const [deleting, setDeleting] = useState<SafeResyncSchedule | null>(null)
   const [isPending, startTransition] = useTransition()
+  const mutationVersion = useRef(0)
+  const pendingMutations = useRef(0)
 
   // Form state for the edit dialog
   const [enabled, setEnabled] = useState(false)
@@ -112,6 +116,13 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
   const [useCustomInterval, setUseCustomInterval] = useState(false)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+
+  useEffect(() => startSchedulePolling({
+    load: refreshResyncSchedules,
+    onSnapshot: setSchedules,
+    getMutationVersion: () => mutationVersion.current,
+    isMutationPending: () => pendingMutations.current > 0,
+  }), [])
 
   const enabledCount = schedules.filter((s) => s.enabled).length
   const attentionCount = schedules.filter((s) => s.isOverdue || s.lastStatus === 'failure').length
@@ -129,9 +140,22 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
     setSchedules((prev) => prev.map((s) => (s.apicHostId === updated.apicHostId ? updated : s)))
   }
 
+  function runMutation(operation: () => Promise<void>) {
+    pendingMutations.current += 1
+    mutationVersion.current += 1
+    startTransition(async () => {
+      try {
+        await operation()
+      } finally {
+        mutationVersion.current += 1
+        pendingMutations.current -= 1
+      }
+    })
+  }
+
   function handleSave() {
     if (!editing) return
-    startTransition(async () => {
+    runMutation(async () => {
       const result = await upsertResyncSchedule(editing.apicHostId, {
         enabled,
         intervalMinutes,
@@ -149,12 +173,13 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
   }
 
   function handleRunNow(schedule: SafeResyncSchedule) {
-    startTransition(async () => {
+    runMutation(async () => {
       const result = await runResyncScheduleNow(schedule.apicHostId)
       if (!result.success) {
         toast.error(result.error)
         return
       }
+      replace(result.data)
       toast.success('Run queued — starts within a minute')
     })
   }
@@ -162,7 +187,7 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
   function handleDelete() {
     const schedule = deleting
     if (!schedule) return
-    startTransition(async () => {
+    runMutation(async () => {
       const result = await deleteResyncSchedule(schedule.apicHostId)
       if (!result.success) {
         toast.error(result.error)
@@ -272,7 +297,7 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
                               toast.error('Credentials could not be decrypted — re-enter them before enabling')
                               return
                             }
-                            startTransition(async () => {
+                            runMutation(async () => {
                               const result = await upsertResyncSchedule(s.apicHostId, {
                                 enabled: next,
                                 intervalMinutes: s.intervalMinutes,

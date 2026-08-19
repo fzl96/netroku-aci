@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma'
 import { recordAudit } from '@/lib/audit'
 import { encrypt } from '@/lib/crypto'
 import { toSafeSchedule, type SafeResyncSchedule } from '@/lib/apic/schedule-view'
+import { queueScheduleNowWithLock, updateScheduleWithLock } from '@/lib/apic/schedule-update'
 import {
   resyncScheduleUpdateSchema,
   type ResyncScheduleUpdateFormValues,
@@ -37,6 +38,15 @@ async function _getResyncSchedules(): Promise<SafeResyncSchedule[]> {
 /** Cached per-request: safe to call from multiple server components. */
 export const getResyncSchedules = cache(_getResyncSchedules)
 
+/** Uncached snapshot for the mounted Scheduler page's background refresh loop. */
+export async function refreshResyncSchedules(): Promise<ActionResult<SafeResyncSchedule[]>> {
+  try {
+    return { success: true, data: await _getResyncSchedules() }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  }
+}
+
 export async function upsertResyncSchedule(
   apicHostId: string,
   data: ResyncScheduleUpdateFormValues,
@@ -47,69 +57,30 @@ export async function upsertResyncSchedule(
     if (!parsed.success) {
       return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid data' }
     }
-    const host = await prisma.apicHost.findUnique({
-      where: { id: apicHostId },
-      include: { schedule: true },
-    })
-    if (!host) return { success: false, error: 'Host not found' }
-
     const { enabled, intervalMinutes, username, password } = parsed.data
-    const existingSchedule = host.schedule
-
-    let encPassword: string
-    if (password) {
-      encPassword = encrypt(password)
-    } else if (existingSchedule) {
-      encPassword = existingSchedule.encPassword
-    } else {
-      return { success: false, error: 'Password is required when creating a schedule' }
-    }
-    // Unreachable by construction: encPassword is only ever set via the branches above, both
-    // of which produce a non-empty string (encrypt() never returns ''; existingSchedule.encPassword
-    // is a required, non-blank column). Retained as fail-closed defense-in-depth on this
-    // credential-handling boundary — if a future refactor of the branches above ever allows an
-    // empty encPassword through, this stops it from being enabled rather than silently trusting it.
-    if (enabled && !encPassword) {
-      return { success: false, error: 'Credentials are required before enabling a schedule' }
-    }
-
     const encUsername = encrypt(username)
-
-    // Enabling for the first time should run soon rather than after a full interval.
-    const nextRunAt = enabled ? (existingSchedule?.nextRunAt ?? new Date()) : null
-
-    const schedule = await prisma.resyncSchedule.upsert({
-      where: { apicHostId },
-      create: {
-        apicHostId,
-        enabled,
-        intervalMinutes,
-        encUsername,
-        encPassword,
-        nextRunAt,
-        updatedByUserId: actor.id,
-      },
-      update: {
-        enabled,
-        intervalMinutes,
-        encUsername,
-        encPassword,
-        nextRunAt,
-        updatedByUserId: actor.id,
-      },
+    const updated = await updateScheduleWithLock(prisma, {
+      apicHostId,
+      enabled,
+      intervalMinutes,
+      encUsername,
+      encPassword: password ? encrypt(password) : undefined,
+      updatedByUserId: actor.id,
+      now: new Date(),
     })
+    if (!updated.success) return updated
 
     await recordAudit({
       userId: actor.id,
       userName: actor.userName,
       action: 'resync.schedule.update',
-      target: `${host.name} (${host.host})`,
+      target: `${updated.host.name} (${updated.host.host})`,
       detail: `${enabled ? 'enabled' : 'disabled'}, every ${intervalMinutes}m, runs as ${username}`,
     })
 
     return {
       success: true,
-      data: toSafeSchedule({ id: host.id, name: host.name, host: host.host }, schedule),
+      data: toSafeSchedule(updated.host, updated.schedule),
     }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
@@ -117,29 +88,27 @@ export async function upsertResyncSchedule(
 }
 
 /** Queue an immediate run — the ticker picks it up within one tick. */
-export async function runResyncScheduleNow(apicHostId: string): Promise<ActionResult<void>> {
+export async function runResyncScheduleNow(
+  apicHostId: string,
+): Promise<ActionResult<SafeResyncSchedule>> {
   try {
     const actor = await requireAdmin()
-    const schedule = await prisma.resyncSchedule.findUnique({
-      where: { apicHostId },
-      include: { apicHost: true },
+    const queued = await queueScheduleNowWithLock(prisma, {
+      apicHostId,
+      now: new Date(),
     })
-    if (!schedule) return { success: false, error: 'No schedule for this host' }
-    if (!schedule.enabled) return { success: false, error: 'Schedule is disabled' }
-    if (schedule.runningAt) return { success: false, error: 'A run is already in progress' }
-
-    await prisma.resyncSchedule.update({
-      where: { apicHostId },
-      data: { nextRunAt: new Date() },
-    })
+    if (!queued.success) return queued
     await recordAudit({
       userId: actor.id,
       userName: actor.userName,
       action: 'resync.schedule.update',
-      target: `${schedule.apicHost.name} (${schedule.apicHost.host})`,
+      target: `${queued.host.name} (${queued.host.host})`,
       detail: 'queued an immediate run',
     })
-    return { success: true, data: undefined }
+    return {
+      success: true,
+      data: toSafeSchedule(queued.host, queued.schedule),
+    }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
   }
