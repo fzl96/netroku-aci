@@ -21,6 +21,7 @@ import {
   SAMPLE_CSV_TEMPLATE,
   type ParsedImportRow,
   type CsvImportError,
+  type MalformedImportRow,
 } from '@/lib/inventory/csv'
 import {
   validateDeviceImport,
@@ -40,7 +41,6 @@ export function DeviceImportClient() {
   const [isValidating, setIsValidating] = useState(false)
   const [isExecuting, setIsExecuting] = useState(false)
 
-  const [fileName, setFileName] = useState<string | null>(null)
   const [clientErrors, setClientErrors] = useState<CsvImportError[]>([])
   const [parsedRows, setParsedRows] = useState<ParsedImportRow[]>([])
   const [validationData, setValidationData] = useState<ValidationResultData | null>(null)
@@ -68,7 +68,6 @@ export function DeviceImportClient() {
       return
     }
 
-    setFileName(file.name)
     setIsParsing(true)
     setClientErrors([])
 
@@ -108,7 +107,7 @@ export function DeviceImportClient() {
 
   async function runServerValidation(
     rowsToValidate: ParsedImportRow[],
-    malformedRows: any[] = [],
+    malformedRows: MalformedImportRow[] = [],
   ) {
     setIsValidating(true)
     const res = await validateDeviceImport(rowsToValidate, malformedRows)
@@ -139,7 +138,6 @@ export function DeviceImportClient() {
 
   function resetImport() {
     setStage('UPLOAD')
-    setFileName(null)
     setClientErrors([])
     setParsedRows([])
     setValidationData(null)

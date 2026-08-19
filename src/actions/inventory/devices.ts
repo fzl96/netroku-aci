@@ -194,7 +194,12 @@ export async function getDevices(params: DeviceListParams): Promise<DeviceListPa
       deviceStack: { select: { id: true, name: true } },
     },
   })
-  return { devices: devices.map(toSafeWithRack), total, page: window.page }
+  return {
+    devices: devices.map(toSafeWithRack),
+    total,
+    page: window.page,
+    pageSize: window.take,
+  }
 }
 
 export async function getDeviceById(id: string): Promise<SafeDeviceDetail | null> {

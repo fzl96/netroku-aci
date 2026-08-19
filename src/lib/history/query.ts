@@ -35,6 +35,7 @@ export const HISTORY_ACTION_LABELS: Record<AuditAction, string> = {
   'device.place': 'Device placed in rack',
   'device.unassign': 'Device removed from rack',
   'device.resize': 'Device resized',
+  'device.import': 'Devices imported',
 }
 
 const HISTORY_ACTIONS = Object.keys(HISTORY_ACTION_LABELS) as AuditAction[]

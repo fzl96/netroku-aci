@@ -33,6 +33,7 @@ export type AuditAction =
   | 'device.place'
   | 'device.unassign'
   | 'device.resize'
+  | 'device.import'
 
 export type AuditStatus = 'success' | 'partial' | 'failure'
 

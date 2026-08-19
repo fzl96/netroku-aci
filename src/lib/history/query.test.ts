@@ -3,6 +3,7 @@ import {
   buildHistoryUrl,
   buildHistoryWhere,
   clampHistoryPage,
+  HISTORY_ACTION_LABELS,
   historyPageWindow,
   parseHistoryPageParams,
 } from './query'
@@ -25,6 +26,13 @@ describe('parseHistoryPageParams', () => {
       action: 'not-supported',
       page: '-4',
     })).toEqual({ query: '', action: 'all', page: 1 })
+  })
+
+  it('supports filtering device import audit events', () => {
+    expect(HISTORY_ACTION_LABELS['device.import' as keyof typeof HISTORY_ACTION_LABELS]).toBe(
+      'Devices imported',
+    )
+    expect(parseHistoryPageParams({ action: 'device.import' }).action).toBe('device.import')
   })
 })
 

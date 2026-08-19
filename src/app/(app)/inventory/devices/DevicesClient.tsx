@@ -120,7 +120,7 @@ export function DevicesClient({
         existing.memberCount = memberList.length
         map.set(stackName, existing)
       } else {
-        for (const [name, s] of map.entries()) {
+        for (const s of map.values()) {
           if (s.members?.some((m) => m.id === d.id)) {
             s.members = s.members.filter((m) => m.id !== d.id)
             s.memberCount = s.members.length
