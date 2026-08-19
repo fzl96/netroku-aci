@@ -52,20 +52,30 @@ export async function claimNextDueSchedule(now: Date = new Date()): Promise<Clai
 /** Record the outcome, schedule the next run, and release the claim. */
 export async function finalizeSchedule(input: {
   id: string
-  intervalMinutes: number
   status: 'success' | 'partial' | 'failure'
   detail: string
   completedAt?: Date
 }): Promise<void> {
   const completedAt = input.completedAt ?? new Date()
-  await prisma.resyncSchedule.update({
-    where: { id: input.id },
-    data: {
-      lastRunAt: completedAt,
-      lastStatus: input.status,
-      lastDetail: input.detail.slice(0, 1000),
-      nextRunAt: computeNextRunAt(completedAt, input.intervalMinutes),
-      runningAt: null,
-    },
+  await prisma.$transaction(async (tx) => {
+    const rows = await tx.$queryRaw<Array<{ intervalMinutes: number }>>`
+      SELECT "intervalMinutes"
+        FROM resync_schedule
+       WHERE id = ${input.id}
+       FOR UPDATE
+    `
+    const schedule = rows[0]
+    if (!schedule) throw new Error('Schedule not found during finalization')
+
+    await tx.resyncSchedule.update({
+      where: { id: input.id },
+      data: {
+        lastRunAt: completedAt,
+        lastStatus: input.status,
+        lastDetail: input.detail.slice(0, 1000),
+        nextRunAt: computeNextRunAt(completedAt, schedule.intervalMinutes),
+        runningAt: null,
+      },
+    })
   })
 }
