@@ -73,11 +73,13 @@ const tx = {
     if (query.includes('FROM resync_schedule')) {
       return schedule
         ? [{
+            id: schedule.id,
             enabled: schedule.enabled,
             intervalMinutes: schedule.intervalMinutes,
             encPassword: schedule.encPassword,
             nextRunAt: schedule.nextRunAt,
             lastRunAt: schedule.lastRunAt,
+            runningAt: schedule.runningAt,
           }]
         : []
     }
@@ -215,6 +217,25 @@ describe('scheduler refresh actions', () => {
     expect(result.data.lastRunAt).toEqual(LAST_RUN)
     expect(result.data.nextRunAt?.getTime()).toBeGreaterThanOrEqual(before)
     expect(result.data.nextRunAt?.getTime()).toBeLessThanOrEqual(after)
+    expect(transactionCalls).toBe(1)
+  })
+
+  it('does not queue a disabled or already-running schedule', async () => {
+    schedule.enabled = false
+    const disabled = await runResyncScheduleNow(host.id)
+
+    expect(disabled).toEqual({ success: false, error: 'Schedule is disabled' })
+    expect(schedule.nextRunAt).toEqual(OLD_NEXT_RUN)
+    expect(transactionCalls).toBe(1)
+
+    transactionCalls = 0
+    schedule.enabled = true
+    schedule.runningAt = new Date('2099-08-17T12:30:00.000Z')
+    const running = await runResyncScheduleNow(host.id)
+
+    expect(running).toEqual({ success: false, error: 'A run is already in progress' })
+    expect(schedule.nextRunAt).toEqual(OLD_NEXT_RUN)
+    expect(transactionCalls).toBe(1)
   })
 
   it('returns a fresh safe snapshot for polling', async () => {

@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma'
 import { recordAudit } from '@/lib/audit'
 import { encrypt } from '@/lib/crypto'
 import { toSafeSchedule, type SafeResyncSchedule } from '@/lib/apic/schedule-view'
-import { updateScheduleWithLock } from '@/lib/apic/schedule-update'
+import { queueScheduleNowWithLock, updateScheduleWithLock } from '@/lib/apic/schedule-update'
 import {
   resyncScheduleUpdateSchema,
   type ResyncScheduleUpdateFormValues,
@@ -93,32 +93,21 @@ export async function runResyncScheduleNow(
 ): Promise<ActionResult<SafeResyncSchedule>> {
   try {
     const actor = await requireAdmin()
-    const schedule = await prisma.resyncSchedule.findUnique({
-      where: { apicHostId },
-      include: { apicHost: true },
+    const queued = await queueScheduleNowWithLock(prisma, {
+      apicHostId,
+      now: new Date(),
     })
-    if (!schedule) return { success: false, error: 'No schedule for this host' }
-    if (!schedule.enabled) return { success: false, error: 'Schedule is disabled' }
-    if (schedule.runningAt) return { success: false, error: 'A run is already in progress' }
-
-    const queued = await prisma.resyncSchedule.update({
-      where: { apicHostId },
-      data: { nextRunAt: new Date() },
-      include: { apicHost: true },
-    })
+    if (!queued.success) return queued
     await recordAudit({
       userId: actor.id,
       userName: actor.userName,
       action: 'resync.schedule.update',
-      target: `${schedule.apicHost.name} (${schedule.apicHost.host})`,
+      target: `${queued.host.name} (${queued.host.host})`,
       detail: 'queued an immediate run',
     })
     return {
       success: true,
-      data: toSafeSchedule(
-        { id: queued.apicHost.id, name: queued.apicHost.name, host: queued.apicHost.host },
-        queued,
-      ),
+      data: toSafeSchedule(queued.host, queued.schedule),
     }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }

@@ -17,6 +17,7 @@ export function startSchedulePolling<T>(input: {
   load: () => Promise<ScheduleRefreshResult<T>>
   onSnapshot: (snapshot: T) => void
   getMutationVersion?: () => number
+  isMutationPending?: () => boolean
   intervalMs?: number
   timers?: PollingTimers
 }): () => void {
@@ -25,7 +26,7 @@ export function startSchedulePolling<T>(input: {
   let refreshing = false
 
   const refresh = async () => {
-    if (refreshing) return
+    if (refreshing || input.isMutationPending?.()) return
     refreshing = true
     const mutationVersion = input.getMutationVersion?.()
     try {

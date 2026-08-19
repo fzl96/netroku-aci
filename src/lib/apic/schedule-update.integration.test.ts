@@ -1,15 +1,42 @@
 import { describe, expect, it } from 'bun:test'
 import { PrismaClient } from '@prisma/client'
 
-const databaseUrl = process.env.SCHEDULER_INTEGRATION_DATABASE_URL ?? process.env.DATABASE_URL
+const databaseUrl = process.env.SCHEDULER_INTEGRATION_DATABASE_URL
 const integrationIt = databaseUrl ? it : it.skip
+
+function withApplicationName(url: string, applicationName: string): string {
+  const parsed = new URL(url)
+  parsed.searchParams.set('application_name', applicationName)
+  return parsed.toString()
+}
+
+async function waitForLockWait(db: PrismaClient, applicationName: string): Promise<void> {
+  const deadline = Date.now() + 5_000
+  while (Date.now() < deadline) {
+    const rows = await db.$queryRaw<Array<{ waiting: boolean }>>`
+      SELECT EXISTS (
+        SELECT 1
+          FROM pg_stat_activity
+         WHERE application_name = ${applicationName}
+           AND state = 'active'
+           AND wait_event_type = 'Lock'
+      ) AS waiting
+    `
+    if (rows[0]?.waiting) return
+    await Bun.sleep(10)
+  }
+  throw new Error('Editor did not reach the PostgreSQL row-lock wait')
+}
 
 describe('schedule update PostgreSQL locking', () => {
   integrationIt('recomputes from a completion that commits before a waiting interval edit', async () => {
     if (!databaseUrl) throw new Error('Integration database URL is required')
     const finalizerDb = new PrismaClient({ datasourceUrl: databaseUrl })
-    const editorDb = new PrismaClient({ datasourceUrl: databaseUrl })
     const hostId = crypto.randomUUID()
+    const editorApplicationName = `scheduler_editor_${hostId.replaceAll('-', '')}`
+    const editorDb = new PrismaClient({
+      datasourceUrl: withApplicationName(databaseUrl, editorApplicationName),
+    })
     let releaseFinalizer: (() => void) | null = null
     let markFinalizerLocked: (() => void) | null = null
     const finalizerLocked = new Promise<void>((resolve) => {
@@ -68,7 +95,7 @@ describe('schedule update PostgreSQL locking', () => {
         now: new Date('2026-08-17T12:30:00.000Z'),
       })
 
-      await Bun.sleep(50)
+      await waitForLockWait(finalizerDb, editorApplicationName)
       releaseFinalizer?.()
       await Promise.all([finalization, edit])
 

@@ -104,6 +104,31 @@ describe('startSchedulePolling', () => {
     expect(snapshots).toEqual([])
   })
 
+  it('does not start a refresh while a schedule mutation is in flight', async () => {
+    const timer = fakeTimers()
+    const snapshots: string[][] = []
+    let mutationPending = true
+    let loadCalls = 0
+    startSchedulePolling({
+      load: async () => {
+        loadCalls += 1
+        return { success: true, data: ['fresh'] }
+      },
+      onSnapshot: (snapshot) => snapshots.push(snapshot),
+      isMutationPending: () => mutationPending,
+      timers: timer.timers,
+    })
+
+    await timer.getTick()()
+    expect(loadCalls).toBe(0)
+    expect(snapshots).toEqual([])
+
+    mutationPending = false
+    await timer.getTick()()
+    expect(loadCalls).toBe(1)
+    expect(snapshots).toEqual([['fresh']])
+  })
+
   it('clears its timer when disposed', () => {
     const timer = fakeTimers()
     const dispose = startSchedulePolling({

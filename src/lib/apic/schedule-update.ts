@@ -18,6 +18,8 @@ export type ScheduleUpdateResult =
   | { success: true; host: HostIdentity; schedule: ResyncSchedule }
   | { success: false; error: string }
 
+type LockedQueueSchedule = Pick<ResyncSchedule, 'id' | 'enabled' | 'runningAt'>
+
 /** Serialize schedule edits with completion so neither can persist a stale deadline. */
 export async function updateScheduleWithLock(
   db: ScheduleUpdateDb,
@@ -85,6 +87,40 @@ export async function updateScheduleWithLock(
       },
     })
 
+    return { success: true, host, schedule }
+  })
+}
+
+/** Atomically validate and queue an immediate run against concurrent claims and edits. */
+export async function queueScheduleNowWithLock(
+  db: ScheduleUpdateDb,
+  input: { apicHostId: string; now: Date },
+): Promise<ScheduleUpdateResult> {
+  return db.$transaction(async (tx) => {
+    const hosts = await tx.$queryRaw<HostIdentity[]>`
+      SELECT id, name, host
+        FROM apic_host
+       WHERE id = ${input.apicHostId}
+       FOR UPDATE
+    `
+    const host = hosts[0]
+    if (!host) return { success: false, error: 'Host not found' }
+
+    const schedules = await tx.$queryRaw<LockedQueueSchedule[]>`
+      SELECT id, enabled, "runningAt"
+        FROM resync_schedule
+       WHERE "apicHostId" = ${input.apicHostId}
+       FOR UPDATE
+    `
+    const existing = schedules[0]
+    if (!existing) return { success: false, error: 'No schedule for this host' }
+    if (!existing.enabled) return { success: false, error: 'Schedule is disabled' }
+    if (existing.runningAt) return { success: false, error: 'A run is already in progress' }
+
+    const schedule = await tx.resyncSchedule.update({
+      where: { id: existing.id },
+      data: { nextRunAt: input.now },
+    })
     return { success: true, host, schedule }
   })
 }

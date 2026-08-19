@@ -108,6 +108,7 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
   const [deleting, setDeleting] = useState<SafeResyncSchedule | null>(null)
   const [isPending, startTransition] = useTransition()
   const mutationVersion = useRef(0)
+  const pendingMutations = useRef(0)
 
   // Form state for the edit dialog
   const [enabled, setEnabled] = useState(false)
@@ -120,6 +121,7 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
     load: refreshResyncSchedules,
     onSnapshot: setSchedules,
     getMutationVersion: () => mutationVersion.current,
+    isMutationPending: () => pendingMutations.current > 0,
   }), [])
 
   const enabledCount = schedules.filter((s) => s.enabled).length
@@ -138,10 +140,22 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
     setSchedules((prev) => prev.map((s) => (s.apicHostId === updated.apicHostId ? updated : s)))
   }
 
-  function handleSave() {
-    if (!editing) return
+  function runMutation(operation: () => Promise<void>) {
+    pendingMutations.current += 1
     mutationVersion.current += 1
     startTransition(async () => {
+      try {
+        await operation()
+      } finally {
+        mutationVersion.current += 1
+        pendingMutations.current -= 1
+      }
+    })
+  }
+
+  function handleSave() {
+    if (!editing) return
+    runMutation(async () => {
       const result = await upsertResyncSchedule(editing.apicHostId, {
         enabled,
         intervalMinutes,
@@ -159,8 +173,7 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
   }
 
   function handleRunNow(schedule: SafeResyncSchedule) {
-    mutationVersion.current += 1
-    startTransition(async () => {
+    runMutation(async () => {
       const result = await runResyncScheduleNow(schedule.apicHostId)
       if (!result.success) {
         toast.error(result.error)
@@ -174,8 +187,7 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
   function handleDelete() {
     const schedule = deleting
     if (!schedule) return
-    mutationVersion.current += 1
-    startTransition(async () => {
+    runMutation(async () => {
       const result = await deleteResyncSchedule(schedule.apicHostId)
       if (!result.success) {
         toast.error(result.error)
@@ -285,8 +297,7 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
                               toast.error('Credentials could not be decrypted — re-enter them before enabling')
                               return
                             }
-                            mutationVersion.current += 1
-                            startTransition(async () => {
+                            runMutation(async () => {
                               const result = await upsertResyncSchedule(s.apicHostId, {
                                 enabled: next,
                                 intervalMinutes: s.intervalMinutes,
