@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
-import { IconPlus, IconPencil, IconTrash, IconSearch } from '@tabler/icons-react'
+import { IconPlus, IconPencil, IconTrash, IconSearch, IconFileSpreadsheet } from '@tabler/icons-react'
 import { DeviceStatus } from '@prisma/client'
 
 import {
@@ -263,16 +263,24 @@ export function DevicesClient({
             />
           </form>
           {isAdmin && (
-            <button
-              onClick={() => {
-                createForm.reset(emptyDefaults)
-                setCreateOpen(true)
-              }}
-              className="flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3.5 py-2 rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
-            >
-              <IconPlus size={11} stroke={1.75} />
-              Add Device
-            </button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" asChild className="gap-1.5 text-xs">
+                <Link href="/inventory/devices/import">
+                  <IconFileSpreadsheet className="h-3.5 w-3.5" />
+                  Import CSV
+                </Link>
+              </Button>
+              <button
+                onClick={() => {
+                  createForm.reset(emptyDefaults)
+                  setCreateOpen(true)
+                }}
+                className="flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3.5 py-2 rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
+              >
+                <IconPlus size={11} stroke={1.75} />
+                Add Device
+              </button>
+            </div>
           )}
         </div>
       </div>
