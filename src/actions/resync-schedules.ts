@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma'
 import { recordAudit } from '@/lib/audit'
 import { encrypt } from '@/lib/crypto'
 import { toSafeSchedule, type SafeResyncSchedule } from '@/lib/apic/schedule-view'
+import { computeEditedNextRunAt } from '@/lib/apic/schedule-timing'
 import {
   resyncScheduleUpdateSchema,
   type ResyncScheduleUpdateFormValues,
@@ -75,8 +76,15 @@ export async function upsertResyncSchedule(
 
     const encUsername = encrypt(username)
 
-    // Enabling for the first time should run soon rather than after a full interval.
-    const nextRunAt = enabled ? (existingSchedule?.nextRunAt ?? new Date()) : null
+    const nextRunAt = computeEditedNextRunAt({
+      enabled,
+      wasEnabled: existingSchedule?.enabled ?? false,
+      intervalMinutes,
+      previousIntervalMinutes: existingSchedule?.intervalMinutes ?? intervalMinutes,
+      existingNextRunAt: existingSchedule?.nextRunAt ?? null,
+      lastRunAt: existingSchedule?.lastRunAt ?? null,
+      now: new Date(),
+    })
 
     const schedule = await prisma.resyncSchedule.upsert({
       where: { apicHostId },
