@@ -9,6 +9,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum DeviceStatus {
+  ACTIVE
+  PLANNED
+  RETIRED
+  MAINTENANCE
+}
+
+enum StackRole {
+  MASTER
+  MEMBER
+}
+
 model User {
   id              String    @id
   name            String
@@ -94,6 +106,75 @@ model AuditLog {
   @@index([createdAt])
   @@index([userId])
   @@map("audit_log")
+}
+
+model Site {
+  id        String  @id @default(cuid())
+  name      String
+  address   String?
+  latitude  Float?
+  longitude Float?
+
+  racks Rack[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("site")
+}
+
+model Rack {
+  id      String @id @default(cuid())
+  name    String
+  heightU Int
+
+  siteId  String
+  site    Site     @relation(fields: [siteId], references: [id])
+  devices Device[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("rack")
+}
+
+model DeviceStack {
+  id      String   @id @default(cuid())
+  name    String
+  devices Device[]
+
+  @@map("device_stack")
+}
+
+model Device {
+  id           String       @id @default(cuid())
+  name         String // Hostname
+  serialNumber String       @unique
+  assetTag     String?      @unique
+  managementIp String?      @map("management_ip")
+  status       DeviceStatus @default(ACTIVE)
+
+  // Location
+  rackId       String?
+  rack         Rack?   @relation(fields: [rackId], references: [id])
+  rackPosition Int? // e.g. 10 (Unit 10)
+
+  // Hardware
+  vendor  String
+  model   String
+  heightU Int
+
+  // Stack
+  deviceStackId String?      @map("device_stack_id")
+  deviceStack   DeviceStack? @relation(fields: [deviceStackId], references: [id], onDelete: SetNull)
+  stackMember   Int?         @map("stack_member")
+  stackRole     StackRole?   @map("stack_role")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([managementIp])
+  @@map("device")
 }
 
 model ApicHost {

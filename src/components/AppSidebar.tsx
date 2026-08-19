@@ -79,6 +79,8 @@ import {
   IconChevronDown,
   IconHeartbeat,
   IconClockPlay,
+  IconBoxSeam,
+  IconStack2,
 } from "@tabler/icons-react";
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
@@ -155,6 +157,21 @@ const ACI_NAV: NavSection[] = [
         label: "Nodes",
         icon: <IconServer2 size={15} stroke={1.75} />,
         apicParam: true,
+      },
+    ],
+  },
+  {
+    group: "Inventory",
+    items: [
+      {
+        href: "/inventory/devices",
+        label: "Devices",
+        icon: <IconBoxSeam size={15} stroke={1.75} />,
+      },
+      {
+        href: "/inventory/racks",
+        label: "Racks",
+        icon: <IconStack2 size={15} stroke={1.75} />,
       },
     ],
   },
