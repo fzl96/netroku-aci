@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { recordAudit } from '@/lib/audit'
 import { canPlaceDevice } from '@/lib/inventory/rack-placement'
+import { ensureStackHasMaster } from '@/lib/inventory/stack-master'
 import {
   buildDeviceWhere,
   deviceListWindow,
@@ -334,7 +335,7 @@ export async function createDevice(data: DeviceFormValues): Promise<ActionResult
         }
       }
 
-      return tx.device.create({
+      const created = await tx.device.create({
         data: {
           name: parsed.data.name,
           serialNumber: parsed.data.serialNumber,
@@ -348,6 +349,14 @@ export async function createDevice(data: DeviceFormValues): Promise<ActionResult
           stackRole,
           stackMember,
         },
+      })
+
+      if (deviceStackId) {
+        await ensureStackHasMaster(tx, deviceStackId)
+      }
+
+      return tx.device.findUniqueOrThrow({
+        where: { id: created.id },
         include: {
           rack: { include: { site: true } },
           deviceStack: {
@@ -398,7 +407,7 @@ export async function updateDevice(
     const device = await prisma.$transaction(async (tx) => {
       const existing = await tx.device.findUnique({
         where: { id },
-        select: { deviceStackId: true },
+        select: { deviceStackId: true, stackRole: true },
       })
       if (!existing) throw new Error('Device not found')
 
@@ -454,7 +463,7 @@ export async function updateDevice(
         }
       }
 
-      const updated = await tx.device.update({
+      await tx.device.update({
         where: { id },
         data: {
           name: parsed.data.name,
@@ -469,6 +478,29 @@ export async function updateDevice(
           stackRole,
           stackMember,
         },
+      })
+
+      if (nextStackId) {
+        const explicitlyDemotedId =
+          prevStackId === nextStackId &&
+          existing.stackRole === StackRole.MASTER &&
+          stackRole !== StackRole.MASTER
+            ? id
+            : undefined
+        await ensureStackHasMaster(tx, nextStackId, explicitlyDemotedId)
+      }
+
+      if (prevStackId && prevStackId !== nextStackId) {
+        const count = await tx.device.count({ where: { deviceStackId: prevStackId } })
+        if (count === 0) {
+          await tx.deviceStack.delete({ where: { id: prevStackId } })
+        } else {
+          await ensureStackHasMaster(tx, prevStackId)
+        }
+      }
+
+      return tx.device.findUniqueOrThrow({
+        where: { id },
         include: {
           rack: { include: { site: true } },
           deviceStack: {
@@ -488,15 +520,6 @@ export async function updateDevice(
           },
         },
       })
-
-      if (prevStackId && prevStackId !== nextStackId) {
-        const count = await tx.device.count({ where: { deviceStackId: prevStackId } })
-        if (count === 0) {
-          await tx.deviceStack.delete({ where: { id: prevStackId } })
-        }
-      }
-
-      return updated
     })
 
     await recordAudit({
@@ -527,6 +550,8 @@ export async function deleteDevice(id: string): Promise<ActionResult<void>> {
         const count = await tx.device.count({ where: { deviceStackId: existing.deviceStackId } })
         if (count === 0) {
           await tx.deviceStack.delete({ where: { id: existing.deviceStackId } })
+        } else {
+          await ensureStackHasMaster(tx, existing.deviceStackId)
         }
       }
     })

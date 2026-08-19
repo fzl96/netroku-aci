@@ -6,6 +6,7 @@ import { getSession } from '@/lib/auth'
 import { recordAudit } from '@/lib/audit'
 import type { ParsedImportRow, MalformedImportRow } from '@/lib/inventory/csv'
 import { requiredRackHeight } from '@/lib/inventory/import-planning'
+import { ensureStackHasMaster } from '@/lib/inventory/stack-master'
 
 export type ImportRowState = {
   row: ParsedImportRow
@@ -543,6 +544,8 @@ export async function executeDeviceImport(
 
       let createdCount = 0
       let updatedCount = 0
+      const affectedStackIds = new Set<string>()
+      const explicitlyDemotedByStack = new Map<string, string>()
 
       // Step D: Process valid rows (Upsert devices)
       for (const row of validRows) {
@@ -572,7 +575,7 @@ export async function executeDeviceImport(
 
         const existing = await tx.device.findUnique({
           where: { serialNumber: row.serialNumber },
-          select: { id: true, deviceStackId: true },
+          select: { id: true, deviceStackId: true, stackRole: true },
         })
 
         if (existing) {
@@ -596,6 +599,17 @@ export async function executeDeviceImport(
             },
           })
           updatedCount++
+
+          if (prevStackId) affectedStackIds.add(prevStackId)
+          if (deviceStackId) affectedStackIds.add(deviceStackId)
+          if (
+            prevStackId &&
+            prevStackId === deviceStackId &&
+            existing.stackRole === StackRole.MASTER &&
+            row.stackRole !== StackRole.MASTER
+          ) {
+            explicitlyDemotedByStack.set(prevStackId, existing.id)
+          }
 
           // Cleanup orphan stack
           if (prevStackId && prevStackId !== deviceStackId) {
@@ -621,7 +635,12 @@ export async function executeDeviceImport(
             },
           })
           createdCount++
+          if (deviceStackId) affectedStackIds.add(deviceStackId)
         }
+      }
+
+      for (const stackId of affectedStackIds) {
+        await ensureStackHasMaster(tx, stackId, explicitlyDemotedByStack.get(stackId))
       }
 
       return {
