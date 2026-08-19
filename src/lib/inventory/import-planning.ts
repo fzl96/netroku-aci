@@ -19,6 +19,10 @@ export type PlannedRack = {
   heightU: number
 }
 
+export function rackIdentityKey(siteName: string | null, rackName: string): string {
+  return `${(siteName ?? 'Default').toLowerCase()}::${rackName.toLowerCase()}`
+}
+
 export function requiredRackHeight(
   rackPosition: number | null,
   deviceHeight: number,
@@ -45,7 +49,7 @@ export function buildNewRackPlan(rows: RackPlanningRow[]): PlannedRack[] {
     }
 
     const siteName = state.row.site ?? 'Default'
-    const key = `${siteName.toLowerCase()}::${state.row.rack.toLowerCase()}`
+    const key = rackIdentityKey(siteName, state.row.rack)
     const existing = racks.get(key)
     racks.set(key, {
       key,

@@ -5,7 +5,11 @@ import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { recordAudit } from '@/lib/audit'
 import type { ParsedImportRow, MalformedImportRow } from '@/lib/inventory/csv'
-import { buildNewRackPlan, requiredRackHeight } from '@/lib/inventory/import-planning'
+import {
+  buildNewRackPlan,
+  rackIdentityKey,
+  requiredRackHeight,
+} from '@/lib/inventory/import-planning'
 import { ensureStackHasMaster } from '@/lib/inventory/stack-master'
 
 export type ImportRowState = {
@@ -127,7 +131,7 @@ export async function validateDeviceImport(
     )
     const siteByName = new Map(existingSites.map((s) => [s.name.toLowerCase(), s]))
     const rackBySiteAndName = new Map(
-      existingRacks.map((r) => [`${r.site.name.toLowerCase()}::${r.name.toLowerCase()}`, r]),
+      existingRacks.map((r) => [rackIdentityKey(r.site.name, r.name), r]),
     )
     const stackByName = new Map(existingStacks.map((s) => [s.name.toLowerCase(), s]))
 
@@ -224,7 +228,7 @@ export async function validateDeviceImport(
 
       // 4. Check intra-file rack placement collisions
       if (row.rack && row.rackPosition !== null) {
-        const rackKey = `${(row.site ?? '').toLowerCase()}::${row.rack.toLowerCase()}`
+        const rackKey = rackIdentityKey(row.site, row.rack)
         const bottomU = row.rackPosition
         const topU = row.rackPosition + row.heightU - 1
         const list = rackPlacements.get(rackKey) ?? []
@@ -268,9 +272,8 @@ export async function validateDeviceImport(
       }
 
       if (row.rack) {
-        // Must have site to resolve rack or default site name
-        const siteKey = (row.site ?? '').toLowerCase()
-        const rackKey = `${siteKey}::${row.rack.toLowerCase()}`
+        // Resolve omitted sites through the Default site.
+        const rackKey = rackIdentityKey(row.site, row.rack)
         const rackMatch = rackBySiteAndName.get(rackKey)
 
         if (rackMatch) {
@@ -467,7 +470,7 @@ export async function executeDeviceImport(
       ])
 
       for (const s of existingSites) siteMap.set(s.name.toLowerCase(), s.id)
-      for (const r of existingRacks) rackMap.set(`${r.site.name.toLowerCase()}::${r.name.toLowerCase()}`, r.id)
+      for (const r of existingRacks) rackMap.set(rackIdentityKey(r.site.name, r.name), r.id)
       for (const st of existingStacks) stackMap.set(st.name.toLowerCase(), st.id)
 
       // Step A: Create any missing sites for valid rows
@@ -486,7 +489,7 @@ export async function executeDeviceImport(
         const siteId = siteMap.get(siteKey)
         if (!siteId) throw new Error(`Site "${r.siteName}" could not be resolved`)
 
-        const rackKey = `${siteKey}::${r.rackName.toLowerCase()}`
+        const rackKey = rackIdentityKey(r.siteName, r.rackName)
         if (!rackMap.has(rackKey)) {
           const newRack = await tx.rack.create({
             data: {
@@ -522,8 +525,7 @@ export async function executeDeviceImport(
       for (const row of validRows) {
         let rackId: string | null = null
         if (row.rack) {
-          const siteKey = (row.site ?? 'Default').toLowerCase()
-          const rackKey = `${siteKey}::${row.rack.toLowerCase()}`
+          const rackKey = rackIdentityKey(row.site, row.rack)
           rackId = rackMap.get(rackKey) ?? null
         }
 

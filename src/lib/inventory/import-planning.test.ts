@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'bun:test'
-import { buildNewRackPlan, requiredRackHeight } from './import-planning'
+import {
+  buildNewRackPlan,
+  rackIdentityKey,
+  requiredRackHeight,
+} from './import-planning'
+
+describe('rackIdentityKey', () => {
+  it('matches an omitted site to a persisted rack under the Default site', () => {
+    expect(rackIdentityKey(null, 'R1')).toBe('default::r1')
+  })
+
+  it('uses one collision key for omitted and explicit Default sites', () => {
+    expect(rackIdentityKey(null, 'R1')).toBe(rackIdentityKey('Default', 'r1'))
+  })
+})
 
 describe('requiredRackHeight', () => {
   it('defaults new racks to 42U and grows them through 60U', () => {
