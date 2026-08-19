@@ -1,12 +1,21 @@
+import type { PrismaClient } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { STALE_CLAIM_MINUTES, computeNextRunAt } from './schedule-timing'
+
+type ScheduleFinalizeDb = Pick<PrismaClient, '$transaction'>
+
+type FinalizeScheduleInput = {
+  id: string
+  status: 'success' | 'partial' | 'failure'
+  detail: string
+  completedAt?: Date
+}
 
 export interface ClaimedSchedule {
   id: string
   apicHostId: string
   encUsername: string
   encPassword: string
-  intervalMinutes: number
   hostName: string
   host: string
 }
@@ -42,7 +51,6 @@ export async function claimNextDueSchedule(now: Date = new Date()): Promise<Clai
       s."apicHostId",
       s."encUsername",
       s."encPassword",
-      s."intervalMinutes",
       (SELECT h.name FROM apic_host AS h WHERE h.id = s."apicHostId") AS "hostName",
       (SELECT h.host FROM apic_host AS h WHERE h.id = s."apicHostId") AS "host"
   `
@@ -50,16 +58,14 @@ export async function claimNextDueSchedule(now: Date = new Date()): Promise<Clai
 }
 
 /** Record the outcome, schedule the next run, and release the claim. */
-export async function finalizeSchedule(input: {
-  id: string
-  status: 'success' | 'partial' | 'failure'
-  detail: string
-  completedAt?: Date
-}): Promise<void> {
+export async function finalizeScheduleWithLock(
+  db: ScheduleFinalizeDb,
+  input: FinalizeScheduleInput,
+): Promise<void> {
   const completedAt = input.completedAt ?? new Date()
-  await prisma.$transaction(async (tx) => {
-    const rows = await tx.$queryRaw<Array<{ intervalMinutes: number }>>`
-      SELECT "intervalMinutes"
+  await db.$transaction(async (tx) => {
+    const rows = await tx.$queryRaw<Array<{ enabled: boolean; intervalMinutes: number }>>`
+      SELECT enabled, "intervalMinutes"
         FROM resync_schedule
        WHERE id = ${input.id}
        FOR UPDATE
@@ -73,9 +79,15 @@ export async function finalizeSchedule(input: {
         lastRunAt: completedAt,
         lastStatus: input.status,
         lastDetail: input.detail.slice(0, 1000),
-        nextRunAt: computeNextRunAt(completedAt, schedule.intervalMinutes),
+        nextRunAt: schedule.enabled
+          ? computeNextRunAt(completedAt, schedule.intervalMinutes)
+          : null,
         runningAt: null,
       },
     })
   })
+}
+
+export async function finalizeSchedule(input: FinalizeScheduleInput): Promise<void> {
+  await finalizeScheduleWithLock(prisma, input)
 }

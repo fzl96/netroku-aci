@@ -81,6 +81,29 @@ describe('startSchedulePolling', () => {
     expect(snapshots).toEqual([])
   })
 
+  it('ignores a response that started before a schedule mutation', async () => {
+    const timer = fakeTimers()
+    const snapshots: string[][] = []
+    let mutationVersion = 0
+    let resolveLoad: ((result: { success: true; data: string[] }) => void) | null = null
+    const load = new Promise<{ success: true; data: string[] }>((resolve) => {
+      resolveLoad = resolve
+    })
+    startSchedulePolling({
+      load: () => load,
+      onSnapshot: (snapshot) => snapshots.push(snapshot),
+      getMutationVersion: () => mutationVersion,
+      timers: timer.timers,
+    })
+
+    const pendingTick = timer.getTick()()
+    mutationVersion += 1
+    resolveLoad?.({ success: true, data: ['stale'] })
+    await pendingTick
+
+    expect(snapshots).toEqual([])
+  })
+
   it('clears its timer when disposed', () => {
     const timer = fakeTimers()
     const dispose = startSchedulePolling({

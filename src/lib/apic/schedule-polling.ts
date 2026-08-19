@@ -16,6 +16,7 @@ const DEFAULT_TIMERS: PollingTimers = {
 export function startSchedulePolling<T>(input: {
   load: () => Promise<ScheduleRefreshResult<T>>
   onSnapshot: (snapshot: T) => void
+  getMutationVersion?: () => number
   intervalMs?: number
   timers?: PollingTimers
 }): () => void {
@@ -26,9 +27,11 @@ export function startSchedulePolling<T>(input: {
   const refresh = async () => {
     if (refreshing) return
     refreshing = true
+    const mutationVersion = input.getMutationVersion?.()
     try {
       const result = await input.load()
-      if (!disposed && result.success) input.onSnapshot(result.data)
+      const mutationUnchanged = mutationVersion === input.getMutationVersion?.()
+      if (!disposed && mutationUnchanged && result.success) input.onSnapshot(result.data)
     } catch {
       // Preserve the last good snapshot; the next interval retries.
     } finally {

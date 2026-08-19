@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import {
   IconAlertTriangle,
@@ -107,6 +107,7 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
   const [editing, setEditing] = useState<SafeResyncSchedule | null>(null)
   const [deleting, setDeleting] = useState<SafeResyncSchedule | null>(null)
   const [isPending, startTransition] = useTransition()
+  const mutationVersion = useRef(0)
 
   // Form state for the edit dialog
   const [enabled, setEnabled] = useState(false)
@@ -118,6 +119,7 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
   useEffect(() => startSchedulePolling({
     load: refreshResyncSchedules,
     onSnapshot: setSchedules,
+    getMutationVersion: () => mutationVersion.current,
   }), [])
 
   const enabledCount = schedules.filter((s) => s.enabled).length
@@ -138,6 +140,7 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
 
   function handleSave() {
     if (!editing) return
+    mutationVersion.current += 1
     startTransition(async () => {
       const result = await upsertResyncSchedule(editing.apicHostId, {
         enabled,
@@ -156,6 +159,7 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
   }
 
   function handleRunNow(schedule: SafeResyncSchedule) {
+    mutationVersion.current += 1
     startTransition(async () => {
       const result = await runResyncScheduleNow(schedule.apicHostId)
       if (!result.success) {
@@ -170,6 +174,7 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
   function handleDelete() {
     const schedule = deleting
     if (!schedule) return
+    mutationVersion.current += 1
     startTransition(async () => {
       const result = await deleteResyncSchedule(schedule.apicHostId)
       if (!result.success) {
@@ -280,6 +285,7 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
                               toast.error('Credentials could not be decrypted — re-enter them before enabling')
                               return
                             }
+                            mutationVersion.current += 1
                             startTransition(async () => {
                               const result = await upsertResyncSchedule(s.apicHostId, {
                                 enabled: next,

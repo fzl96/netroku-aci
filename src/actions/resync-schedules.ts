@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma'
 import { recordAudit } from '@/lib/audit'
 import { encrypt } from '@/lib/crypto'
 import { toSafeSchedule, type SafeResyncSchedule } from '@/lib/apic/schedule-view'
-import { computeEditedNextRunAt } from '@/lib/apic/schedule-timing'
+import { updateScheduleWithLock } from '@/lib/apic/schedule-update'
 import {
   resyncScheduleUpdateSchema,
   type ResyncScheduleUpdateFormValues,
@@ -57,76 +57,30 @@ export async function upsertResyncSchedule(
     if (!parsed.success) {
       return { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid data' }
     }
-    const host = await prisma.apicHost.findUnique({
-      where: { id: apicHostId },
-      include: { schedule: true },
-    })
-    if (!host) return { success: false, error: 'Host not found' }
-
     const { enabled, intervalMinutes, username, password } = parsed.data
-    const existingSchedule = host.schedule
-
-    let encPassword: string
-    if (password) {
-      encPassword = encrypt(password)
-    } else if (existingSchedule) {
-      encPassword = existingSchedule.encPassword
-    } else {
-      return { success: false, error: 'Password is required when creating a schedule' }
-    }
-    // Unreachable by construction: encPassword is only ever set via the branches above, both
-    // of which produce a non-empty string (encrypt() never returns ''; existingSchedule.encPassword
-    // is a required, non-blank column). Retained as fail-closed defense-in-depth on this
-    // credential-handling boundary — if a future refactor of the branches above ever allows an
-    // empty encPassword through, this stops it from being enabled rather than silently trusting it.
-    if (enabled && !encPassword) {
-      return { success: false, error: 'Credentials are required before enabling a schedule' }
-    }
-
     const encUsername = encrypt(username)
-
-    const nextRunAt = computeEditedNextRunAt({
+    const updated = await updateScheduleWithLock(prisma, {
+      apicHostId,
       enabled,
-      wasEnabled: existingSchedule?.enabled ?? false,
       intervalMinutes,
-      previousIntervalMinutes: existingSchedule?.intervalMinutes ?? intervalMinutes,
-      existingNextRunAt: existingSchedule?.nextRunAt ?? null,
-      lastRunAt: existingSchedule?.lastRunAt ?? null,
+      encUsername,
+      encPassword: password ? encrypt(password) : undefined,
+      updatedByUserId: actor.id,
       now: new Date(),
     })
-
-    const schedule = await prisma.resyncSchedule.upsert({
-      where: { apicHostId },
-      create: {
-        apicHostId,
-        enabled,
-        intervalMinutes,
-        encUsername,
-        encPassword,
-        nextRunAt,
-        updatedByUserId: actor.id,
-      },
-      update: {
-        enabled,
-        intervalMinutes,
-        encUsername,
-        encPassword,
-        nextRunAt,
-        updatedByUserId: actor.id,
-      },
-    })
+    if (!updated.success) return updated
 
     await recordAudit({
       userId: actor.id,
       userName: actor.userName,
       action: 'resync.schedule.update',
-      target: `${host.name} (${host.host})`,
+      target: `${updated.host.name} (${updated.host.host})`,
       detail: `${enabled ? 'enabled' : 'disabled'}, every ${intervalMinutes}m, runs as ${username}`,
     })
 
     return {
       success: true,
-      data: toSafeSchedule({ id: host.id, name: host.name, host: host.host }, schedule),
+      data: toSafeSchedule(updated.host, updated.schedule),
     }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }

@@ -32,36 +32,64 @@ const host = {
 }
 
 let schedule: ScheduleRow
+let transactionCalls = 0
 
-const prisma = {
-  apicHost: {
-    findUnique: mock(async () => ({ ...host, schedule })),
-    findMany: mock(async () => [{ ...host, schedule }]),
-  },
-  resyncSchedule: {
-    upsert: mock(async ({ create, update }: {
-      create: Omit<ScheduleRow, 'id' | 'createdAt' | 'updatedAt'>
-      update: Partial<ScheduleRow>
-    }) => {
-      schedule = schedule
-        ? { ...schedule, ...update }
-        : {
-            id: 'schedule-1',
-            ...create,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          }
+const apicHost = {
+  findUnique: mock(async () => ({ ...host, schedule })),
+  findMany: mock(async () => [{ ...host, schedule }]),
+}
+
+const resyncSchedule = {
+  upsert: mock(async ({ create, update }: {
+    create: Omit<ScheduleRow, 'id' | 'createdAt' | 'updatedAt'>
+    update: Partial<ScheduleRow>
+  }) => {
+    schedule = schedule
+      ? { ...schedule, ...update }
+      : {
+          id: 'schedule-1',
+          ...create,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+    return schedule
+  }),
+  findUnique: mock(async () => ({ ...schedule, apicHost: host })),
+  update: mock(async ({ data, include }: {
+    data: Partial<ScheduleRow>
+    include?: { apicHost?: boolean }
+  }) => {
+    schedule = { ...schedule, ...data }
+    return include?.apicHost ? { ...schedule, apicHost: host } : schedule
+  }),
+}
+
+const tx = {
+  apicHost,
+  resyncSchedule,
+  $queryRaw: mock(async (strings: TemplateStringsArray) => {
+    const query = strings.join(' ')
+    if (query.includes('FROM apic_host')) return [host]
+    if (query.includes('FROM resync_schedule')) {
       return schedule
-    }),
-    findUnique: mock(async () => ({ ...schedule, apicHost: host })),
-    update: mock(async ({ data, include }: {
-      data: Partial<ScheduleRow>
-      include?: { apicHost?: boolean }
-    }) => {
-      schedule = { ...schedule, ...data }
-      return include?.apicHost ? { ...schedule, apicHost: host } : schedule
-    }),
-  },
+        ? [{
+            enabled: schedule.enabled,
+            intervalMinutes: schedule.intervalMinutes,
+            encPassword: schedule.encPassword,
+            nextRunAt: schedule.nextRunAt,
+            lastRunAt: schedule.lastRunAt,
+          }]
+        : []
+    }
+    throw new Error('Unexpected query in schedule action test')
+  }),
+}
+const prisma = {
+  ...tx,
+  $transaction: mock(async <T>(operation: (client: typeof tx) => Promise<T>) => {
+    transactionCalls += 1
+    return operation(tx)
+  }),
 }
 
 mock.module('@/lib/auth', () => ({
@@ -83,6 +111,7 @@ const {
 } = await import('./resync-schedules')
 
 beforeEach(() => {
+  transactionCalls = 0
   schedule = {
     id: 'schedule-1',
     apicHostId: host.id,
@@ -104,6 +133,17 @@ beforeEach(() => {
 afterAll(() => mock.restore())
 
 describe('upsertResyncSchedule timing', () => {
+  it('serializes schedule reads and edits in one transaction', async () => {
+    const result = await upsertResyncSchedule(host.id, {
+      enabled: true,
+      intervalMinutes: 240,
+      username: 'svc-apic',
+    })
+
+    expect(result).toEqual(expect.objectContaining({ success: true }))
+    expect(transactionCalls).toBe(1)
+  })
+
   it('recomputes Next Run when changing an existing interval from 1h to 4h', async () => {
     const result = await upsertResyncSchedule(host.id, {
       enabled: true,
