@@ -143,6 +143,7 @@ export function DevicesClient({
     name: '',
     serialNumber: '',
     assetTag: null,
+    managementIp: null,
     status: DeviceStatus.ACTIVE,
     vendor: '',
     model: '',
@@ -168,6 +169,7 @@ export function DevicesClient({
       name: device.name,
       serialNumber: device.serialNumber,
       assetTag: device.assetTag,
+      managementIp: device.managementIp,
       status: device.status,
       vendor: device.vendor,
       model: device.model,
@@ -291,7 +293,7 @@ export function DevicesClient({
             <table className="w-full text-xs">
               <thead>
                 <tr>
-                  {['Name', 'Serial', 'Status', 'Vendor / Model', 'Rack', 'Stack', ...(isAdmin ? [''] : [])].map((h) => (
+                  {['Name', 'Serial', 'Management IP', 'Status', 'Vendor / Model', 'Rack', 'Stack', ...(isAdmin ? [''] : [])].map((h) => (
                     <th key={h} className={DENSE_TABLE_HEAD_CLS}>{h}</th>
                   ))}
                 </tr>
@@ -299,7 +301,7 @@ export function DevicesClient({
               <tbody>
                 {devices.length === 0 ? (
                   <tr>
-                    <td colSpan={isAdmin ? 7 : 6} className="px-4 py-14 text-center">
+                    <td colSpan={isAdmin ? 8 : 7} className="px-4 py-14 text-center">
                       <p className="text-sm text-subtle">No devices found</p>
                     </td>
                   </tr>
@@ -316,6 +318,13 @@ export function DevicesClient({
                       </td>
                       <td className="px-4 py-2.5">
                         <span className="font-mono text-muted-foreground">{device.serialNumber}</span>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {device.managementIp ? (
+                          <span className="font-mono text-foreground">{device.managementIp}</span>
+                        ) : (
+                          <span className="text-faint">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-2.5">
                         <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_BADGE_CLS[device.status] ?? ''}`}>

@@ -142,6 +142,27 @@ export function DeviceForm({
         />
         <FormField
           control={form.control}
+          name="managementIp"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-xs font-medium text-foreground">Management IP</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="e.g. 10.0.1.10"
+                  className={`${INPUT_OVERRIDE_CLS} font-mono`}
+                  {...field}
+                  value={field.value ?? ''}
+                  onChange={(e) =>
+                    field.onChange(e.target.value === '' ? null : e.target.value)
+                  }
+                />
+              </FormControl>
+              <FormMessage className="text-xs" />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
           name="status"
           render={({ field }) => (
             <FormItem>

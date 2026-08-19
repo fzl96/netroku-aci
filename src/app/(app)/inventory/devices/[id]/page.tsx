@@ -58,6 +58,10 @@ export default async function DeviceDetailPage({
               <dd className="font-mono">{device.serialNumber}</dd>
             </div>
             <div className="flex justify-between">
+              <dt className="text-muted-foreground">Management IP</dt>
+              <dd className="font-mono text-foreground">{device.managementIp ?? '—'}</dd>
+            </div>
+            <div className="flex justify-between">
               <dt className="text-muted-foreground">Asset Tag</dt>
               <dd className="font-mono">{device.assetTag ?? '—'}</dd>
             </div>

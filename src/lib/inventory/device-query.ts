@@ -22,6 +22,7 @@ export function buildDeviceWhere(params: DeviceListParams): Prisma.DeviceWhereIn
       { name: { contains: params.query, mode: 'insensitive' } },
       { serialNumber: { contains: params.query, mode: 'insensitive' } },
       { assetTag: { contains: params.query, mode: 'insensitive' } },
+      { managementIp: { contains: params.query, mode: 'insensitive' } },
       { vendor: { contains: params.query, mode: 'insensitive' } },
       { model: { contains: params.query, mode: 'insensitive' } },
       { rack: { name: { contains: params.query, mode: 'insensitive' } } },

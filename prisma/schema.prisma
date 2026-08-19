@@ -151,6 +151,7 @@ model Device {
   name         String // Hostname
   serialNumber String       @unique
   assetTag     String?      @unique
+  managementIp String?      @map("management_ip")
   status       DeviceStatus @default(ACTIVE)
 
   // Location
@@ -172,6 +173,7 @@ model Device {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([managementIp])
   @@map("device")
 }
 

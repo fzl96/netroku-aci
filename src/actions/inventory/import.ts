@@ -89,6 +89,7 @@ export async function validateDeviceImport(
           name: true,
           serialNumber: true,
           assetTag: true,
+          managementIp: true,
           rackId: true,
           rackPosition: true,
           heightU: true,
@@ -119,6 +120,9 @@ export async function validateDeviceImport(
     const deviceByAssetTag = new Map(
       existingDevices.filter((d) => d.assetTag).map((d) => [d.assetTag!.toLowerCase(), d]),
     )
+    const deviceByManagementIp = new Map(
+      existingDevices.filter((d) => d.managementIp).map((d) => [d.managementIp!.toLowerCase(), d]),
+    )
     const siteByName = new Map(existingSites.map((s) => [s.name.toLowerCase(), s]))
     const rackBySiteAndName = new Map(
       existingRacks.map((r) => [`${r.site.name.toLowerCase()}::${r.name.toLowerCase()}`, r]),
@@ -133,9 +137,61 @@ export async function validateDeviceImport(
     let createCount = 0
     let updateCount = 0
 
+    // Intra-file tracking maps
+    const seenSerials = new Map<string, number>()
+    const seenTags = new Map<string, number>()
+    const seenIps = new Map<string, { rowIndex: number; hostname: string; stackName: string | null }>()
+    const stackSwitches = new Map<string, Map<number, number>>()
+    type PlacedUnit = { rowIndex: number; hostname: string; heightU: number; topU: number; bottomU: number }
+    const rackPlacements = new Map<string, PlacedUnit[]>()
+
     for (const row of rows) {
       const rowErrors: string[] = []
       const rowWarnings: string[] = []
+
+      // 1. Check intra-file serial duplicates
+      const serialKey = row.serialNumber.toLowerCase()
+      const firstSerialRow = seenSerials.get(serialKey)
+      if (firstSerialRow !== undefined) {
+        rowErrors.push(`Duplicate serial number "${row.serialNumber}" within file (already defined at row ${firstSerialRow})`)
+      } else {
+        seenSerials.set(serialKey, row.rowIndex)
+      }
+
+      // 2. Check intra-file asset tag duplicates
+      if (row.assetTag) {
+        const tagKey = row.assetTag.toLowerCase()
+        const firstTagRow = seenTags.get(tagKey)
+        if (firstTagRow !== undefined) {
+          rowErrors.push(`Duplicate asset tag "${row.assetTag}" within file (already defined at row ${firstTagRow})`)
+        } else {
+          seenTags.set(tagKey, row.rowIndex)
+        }
+      }
+
+      // 3. Check intra-file management IP duplicates (switches in the same stack may share the stack IP)
+      if (row.managementIp) {
+        const ipKey = row.managementIp.toLowerCase()
+        const firstIp = seenIps.get(ipKey)
+        if (firstIp !== undefined) {
+          const isSameStack = Boolean(
+            row.stackName &&
+              firstIp.stackName &&
+              row.stackName.toLowerCase() === firstIp.stackName.toLowerCase(),
+          )
+          if (!isSameStack) {
+            rowErrors.push(
+              `Duplicate management IP "${row.managementIp}" within file (already used by row ${firstIp.rowIndex} "${firstIp.hostname}")`,
+            )
+          }
+        } else {
+          seenIps.set(ipKey, {
+            rowIndex: row.rowIndex,
+            hostname: row.hostname,
+            stackName: row.stackName,
+          })
+        }
+      }
 
       // Check if serial matches existing device -> UPDATE, otherwise CREATE
       const existingDev = deviceBySerial.get(row.serialNumber.toLowerCase())
@@ -152,6 +208,55 @@ export async function validateDeviceImport(
         const tagOwner = deviceByAssetTag.get(row.assetTag.toLowerCase())
         if (tagOwner && tagOwner.serialNumber.toLowerCase() !== row.serialNumber.toLowerCase()) {
           rowErrors.push(`Asset tag "${row.assetTag}" is already used by "${tagOwner.name}" (${tagOwner.serialNumber})`)
+        }
+      }
+
+      // Check management IP collision against other devices in DB (allowing same stack)
+      if (row.managementIp) {
+        const ipOwner = deviceByManagementIp.get(row.managementIp.toLowerCase())
+        if (ipOwner && ipOwner.serialNumber.toLowerCase() !== row.serialNumber.toLowerCase()) {
+          const isSameDbStack = Boolean(
+            row.stackName &&
+              ipOwner.deviceStackId &&
+              stackByName.get(row.stackName.toLowerCase())?.id === ipOwner.deviceStackId,
+          )
+          if (!isSameDbStack) {
+            rowErrors.push(
+              `Management IP "${row.managementIp}" is already assigned to "${ipOwner.name}" (${ipOwner.serialNumber})`,
+            )
+          }
+        }
+      }
+
+      // 4. Check intra-file rack placement collisions
+      if (row.rack && row.rackPosition !== null) {
+        const rackKey = `${(row.site ?? '').toLowerCase()}::${row.rack.toLowerCase()}`
+        const bottomU = row.rackPosition
+        const topU = row.rackPosition + row.heightU - 1
+        const list = rackPlacements.get(rackKey) ?? []
+        for (const placed of list) {
+          if (bottomU <= placed.topU && topU >= placed.bottomU) {
+            rowErrors.push(
+              `Rack slot conflict with row ${placed.rowIndex} ("${placed.hostname}") at U${bottomU}${row.heightU > 1 ? `–U${topU}` : ''}`,
+            )
+          }
+        }
+        list.push({ rowIndex: row.rowIndex, hostname: row.hostname, heightU: row.heightU, topU, bottomU })
+        rackPlacements.set(rackKey, list)
+      }
+
+      // 5. Check intra-file stack switch ID duplicates
+      if (row.stackName && row.switchId !== null) {
+        const stackKey = row.stackName.toLowerCase()
+        const switchMap = stackSwitches.get(stackKey) ?? new Map<number, number>()
+        const firstSwRow = switchMap.get(row.switchId)
+        if (firstSwRow !== undefined) {
+          rowErrors.push(
+            `Duplicate switch #${row.switchId} in stack "${row.stackName}" within file (already used by row ${firstSwRow})`,
+          )
+        } else {
+          switchMap.set(row.switchId, row.rowIndex)
+          stackSwitches.set(stackKey, switchMap)
         }
       }
 
@@ -254,6 +359,7 @@ export async function validateDeviceImport(
           hostname: m.hostname,
           serialNumber: m.serialNumber,
           assetTag: m.assetTag,
+          managementIp: m.managementIp,
           status: DeviceStatus.ACTIVE,
           vendor: m.vendor,
           model: m.model,
@@ -451,6 +557,7 @@ export async function executeDeviceImport(
             data: {
               name: row.hostname,
               assetTag: row.assetTag,
+              managementIp: row.managementIp,
               status: row.status,
               vendor: row.vendor,
               model: row.model,
@@ -475,6 +582,7 @@ export async function executeDeviceImport(
               name: row.hostname,
               serialNumber: row.serialNumber,
               assetTag: row.assetTag,
+              managementIp: row.managementIp,
               status: row.status,
               vendor: row.vendor,
               model: row.model,

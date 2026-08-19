@@ -39,6 +39,7 @@ export type SafeDevice = {
   name: string
   serialNumber: string
   assetTag: string | null
+  managementIp: string | null
   status: DeviceStatus
   rackId: string | null
   rackPosition: number | null
@@ -90,6 +91,7 @@ export type DeviceListPage = {
   devices: SafeDeviceWithRack[]
   total: number
   page: number
+  pageSize: number
 }
 
 async function requireSession(): Promise<{ id: string; role: string; userName: string }> {
@@ -113,6 +115,7 @@ type RawDevice = {
   name: string
   serialNumber: string
   assetTag: string | null
+  managementIp: string | null
   status: DeviceStatus
   rackId: string | null
   rackPosition: number | null
@@ -132,6 +135,7 @@ function toSafe(device: RawDevice): SafeDevice {
     name: device.name,
     serialNumber: device.serialNumber,
     assetTag: device.assetTag,
+    managementIp: device.managementIp,
     status: device.status,
     rackId: device.rackId,
     rackPosition: device.rackPosition,
@@ -310,11 +314,27 @@ export async function createDevice(data: DeviceFormValues): Promise<ActionResult
         }
       }
 
+      if (parsed.data.managementIp) {
+        const ipConflict = await tx.device.findFirst({
+          where: {
+            managementIp: parsed.data.managementIp,
+            ...(deviceStackId ? { deviceStackId: { not: deviceStackId } } : {}),
+          },
+          select: { name: true, serialNumber: true },
+        })
+        if (ipConflict) {
+          throw new Error(
+            `Management IP "${parsed.data.managementIp}" is already used by "${ipConflict.name}" (${ipConflict.serialNumber}).`,
+          )
+        }
+      }
+
       return tx.device.create({
         data: {
           name: parsed.data.name,
           serialNumber: parsed.data.serialNumber,
           assetTag: parsed.data.assetTag ?? null,
+          managementIp: parsed.data.managementIp ?? null,
           status: parsed.data.status,
           vendor: parsed.data.vendor,
           model: parsed.data.model,
@@ -413,12 +433,29 @@ export async function updateDevice(
         }
       }
 
+      if (parsed.data.managementIp) {
+        const ipConflict = await tx.device.findFirst({
+          where: {
+            managementIp: parsed.data.managementIp,
+            id: { not: id },
+            ...(nextStackId ? { deviceStackId: { not: nextStackId } } : {}),
+          },
+          select: { name: true, serialNumber: true },
+        })
+        if (ipConflict) {
+          throw new Error(
+            `Management IP "${parsed.data.managementIp}" is already used by "${ipConflict.name}" (${ipConflict.serialNumber}).`,
+          )
+        }
+      }
+
       const updated = await tx.device.update({
         where: { id },
         data: {
           name: parsed.data.name,
           serialNumber: parsed.data.serialNumber,
           assetTag: parsed.data.assetTag ?? null,
+          managementIp: parsed.data.managementIp ?? null,
           status: parsed.data.status,
           vendor: parsed.data.vendor,
           model: parsed.data.model,

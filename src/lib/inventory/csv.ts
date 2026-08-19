@@ -7,6 +7,7 @@ export type ParsedImportRow = {
   hostname: string
   serialNumber: string
   assetTag: string | null
+  managementIp: string | null
   status: DeviceStatus
   vendor: string
   model: string
@@ -30,6 +31,7 @@ export type MalformedImportRow = {
   hostname: string
   serialNumber: string
   assetTag: string | null
+  managementIp: string | null
   vendor: string
   model: string
   heightU: number
@@ -61,6 +63,14 @@ const HEADER_ALIASES: Record<string, keyof ParsedImportRow> = {
   assettag: 'assetTag',
   asset: 'assetTag',
   tag: 'assetTag',
+
+  management_ip: 'managementIp',
+  managementip: 'managementIp',
+  mgmt_ip: 'managementIp',
+  mgmtip: 'managementIp',
+  ip_address: 'managementIp',
+  ipaddress: 'managementIp',
+  ip: 'managementIp',
 
   status: 'status',
   state: 'status',
@@ -204,6 +214,16 @@ export function parseCsvRows(rawRows: RawCsvRow[], headers: string[]): CsvParseR
       addErr('assetTag', 'Asset tag must be 128 characters or fewer')
     }
 
+    // Validate managementIp
+    const managementIp = extracted.managementIp || null
+    if (managementIp) {
+      const ipv4Regex = /^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/
+      const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::$|^::1$|^([0-9a-fA-F]{1,4}:){1,7}:$|^([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}$|^([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}$|^([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}$|^([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}$|^([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}$|^[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})$|^:((:[0-9a-fA-F]{1,4}){1,7}|:)$/
+      if (!ipv4Regex.test(managementIp) && !ipv6Regex.test(managementIp)) {
+        addErr('managementIp', `Invalid IP address "${managementIp}". Must be a valid IPv4 or IPv6 address`)
+      }
+    }
+
     // Validate status
     let status: DeviceStatus = DeviceStatus.ACTIVE
     const rawStatus = (extracted.status ?? '').toUpperCase()
@@ -294,6 +314,7 @@ export function parseCsvRows(rawRows: RawCsvRow[], headers: string[]): CsvParseR
         hostname: hostname || '(empty)',
         serialNumber: serialNumber || '(empty)',
         assetTag,
+        managementIp,
         vendor: vendor || '—',
         model: model || '—',
         heightU,
@@ -309,6 +330,7 @@ export function parseCsvRows(rawRows: RawCsvRow[], headers: string[]): CsvParseR
         hostname,
         serialNumber,
         assetTag,
+        managementIp,
         status,
         vendor,
         model,
@@ -363,7 +385,36 @@ function validateIntraCsvConstraints(rows: ParsedImportRow[], errors: CsvImportE
     }
   }
 
-  // 3. Check intra-CSV rack placement collisions
+  // 3. Check duplicate management IPs within the CSV (if present)
+  // Devices in the same stack are allowed to share the stack's management IP
+  const seenIps = new Map<string, { rowIndex: number; hostname: string; stackName: string | null }>()
+  for (const row of rows) {
+    if (!row.managementIp) continue
+    const key = row.managementIp.toLowerCase()
+    const firstRow = seenIps.get(key)
+    if (firstRow !== undefined) {
+      const isSameStack = Boolean(
+        row.stackName &&
+          firstRow.stackName &&
+          row.stackName.toLowerCase() === firstRow.stackName.toLowerCase(),
+      )
+      if (!isSameStack) {
+        errors.push({
+          rowIndex: row.rowIndex,
+          field: 'managementIp',
+          message: `Duplicate management IP "${row.managementIp}" (already used by row ${firstRow.rowIndex} "${firstRow.hostname}")`,
+        })
+      }
+    } else {
+      seenIps.set(key, {
+        rowIndex: row.rowIndex,
+        hostname: row.hostname,
+        stackName: row.stackName,
+      })
+    }
+  }
+
+  // 4. Check intra-CSV rack placement collisions
   type PlacedUnit = { rowIndex: number; hostname: string; heightU: number; topU: number; bottomU: number }
   const rackPlacements = new Map<string, PlacedUnit[]>()
 
@@ -389,7 +440,7 @@ function validateIntraCsvConstraints(rows: ParsedImportRow[], errors: CsvImportE
     }
   }
 
-  // 4. Check duplicate switchId in same stack within CSV
+  // 5. Check duplicate switchId in same stack within CSV
   const stackSwitches = new Map<string, Map<number, number>>()
   for (const row of rows) {
     if (row.stackName && row.switchId !== null) {
@@ -410,23 +461,23 @@ function validateIntraCsvConstraints(rows: ParsedImportRow[], errors: CsvImportE
   }
 }
 
-export const SAMPLE_CSV_TEMPLATE = `hostname,serial_number,asset_tag,status,vendor,model,height_u,site,rack,rack_position,stack_name,stack_role,switch_id
-DCI-SPINE-01,FOX220199A1,TAG-1001,ACTIVE,Arista,DCS-7050SX3-48YC8,1,DCI,C1,42,,,
-DCI-SPINE-02,FOX220199A2,TAG-1002,ACTIVE,Arista,DCS-7050SX3-48YC8,1,DCI,C1,41,,,
-DCI-LEAF-01,FOC240101AA,TAG-1003,ACTIVE,Cisco,Nexus 9336C-FX2,2,DCI,C1,30,,,
-DCI-LEAF-02,FOC240101BB,TAG-1004,ACTIVE,Cisco,Nexus 9336C-FX2,2,DCI,C1,28,,,
-DCI-CORE-RTR-01,TTM280302D1,TAG-1005,ACTIVE,Cisco,C8500-12X,2,DCI,C1,10,,,
-DCI-FW-01,FG100FTK21001,TAG-1006,ACTIVE,Fortinet,FortiGate-100F,1,DCI,D1,40,,,
-DCI-FW-02,FG100FTK21002,TAG-1007,ACTIVE,Fortinet,FortiGate-100F,1,DCI,D1,39,,,
-DCI-CORE-RTR-02,TTM280302D2,TAG-1008,ACTIVE,Cisco,C8500-12X,2,DCI,D1,20,,,
-DCN-SPINE-01,FOX230110X1,TAG-2001,PLANNED,Arista,DCS-7050SX3-48YC8,1,DC-NORTH,RACK-N01,42,,,
-DCN-LEAF-01,JAE270110A1,TAG-2002,PLANNED,Cisco,C9300-48UXM,1,DC-NORTH,RACK-N01,35,,,
-DCN-LEAF-02,JAE270110A2,TAG-2003,PLANNED,Cisco,C9300-48UXM,1,DC-NORTH,RACK-N01,34,,,
-DCN-OOB-SW-01,CN0M311001A,TAG-2004,ACTIVE,Dell,PowerSwitch S5248F,1,DC-NORTH,RACK-N02,30,,,
-HQ-ACC-STK-01,FOC251001A1,TAG-3001,ACTIVE,Cisco,C9200L-48T-4X-E,1,HQ-CAMPUS,MDF-01,40,HQ-ACC-STACK,MASTER,1
-HQ-ACC-STK-02,FOC251001A2,TAG-3002,ACTIVE,Cisco,C9200L-48T-4X-E,1,HQ-CAMPUS,MDF-01,39,HQ-ACC-STACK,MEMBER,2
-HQ-ACC-STK-03,FOC251001A3,TAG-3003,ACTIVE,Cisco,C9200L-48T-4X-E,1,HQ-CAMPUS,MDF-01,38,HQ-ACC-STACK,MEMBER,3
-HQ-ACC-STK-04,FOC251001A4,TAG-3004,ACTIVE,Cisco,C9200L-48T-4X-E,1,HQ-CAMPUS,MDF-01,37,HQ-ACC-STACK,MEMBER,4
-SPARE-SW-9300-01,FOC259900X1,TAG-9001,MAINTENANCE,Cisco,Catalyst 9300-48P,1,,,,,,
-SPARE-RTR-MX204-01,JN12894101A,TAG-9002,PLANNED,Juniper,MX204,1,,,,,,
+export const SAMPLE_CSV_TEMPLATE = `hostname,serial_number,asset_tag,management_ip,status,vendor,model,height_u,site,rack,rack_position,stack_name,stack_role,switch_id
+DCI-SPINE-01,FOX220199A1,TAG-1001,10.0.1.1,ACTIVE,Arista,DCS-7050SX3-48YC8,1,DCI,C1,42,,,
+DCI-SPINE-02,FOX220199A2,TAG-1002,10.0.1.2,ACTIVE,Arista,DCS-7050SX3-48YC8,1,DCI,C1,41,,,
+DCI-LEAF-01,FOC240101AA,TAG-1003,10.0.1.11,ACTIVE,Cisco,Nexus 9336C-FX2,2,DCI,C1,30,,,
+DCI-LEAF-02,FOC240101BB,TAG-1004,10.0.1.12,ACTIVE,Cisco,Nexus 9336C-FX2,2,DCI,C1,28,,,
+DCI-CORE-RTR-01,TTM280302D1,TAG-1005,10.0.0.1,ACTIVE,Cisco,C8500-12X,2,DCI,C1,10,,,
+DCI-FW-01,FG100FTK21001,TAG-1006,10.0.254.1,ACTIVE,Fortinet,FortiGate-100F,1,DCI,D1,40,,,
+DCI-FW-02,FG100FTK21002,TAG-1007,10.0.254.2,ACTIVE,Fortinet,FortiGate-100F,1,DCI,D1,39,,,
+DCI-CORE-RTR-02,TTM280302D2,TAG-1008,10.0.0.2,ACTIVE,Cisco,C8500-12X,2,DCI,D1,20,,,
+DCN-SPINE-01,FOX230110X1,TAG-2001,10.10.1.1,PLANNED,Arista,DCS-7050SX3-48YC8,1,DC-NORTH,RACK-N01,42,,,
+DCN-LEAF-01,JAE270110A1,TAG-2002,10.10.1.11,PLANNED,Cisco,C9300-48UXM,1,DC-NORTH,RACK-N01,35,,,
+DCN-LEAF-02,JAE270110A2,TAG-2003,10.10.1.12,PLANNED,Cisco,C9300-48UXM,1,DC-NORTH,RACK-N01,34,,,
+DCN-OOB-SW-01,CN0M311001A,TAG-2004,10.10.250.1,ACTIVE,Dell,PowerSwitch S5248F,1,DC-NORTH,RACK-N02,30,,,
+HQ-ACC-STK-01,FOC251001A1,TAG-3001,10.20.10.1,ACTIVE,Cisco,C9200L-48T-4X-E,1,HQ-CAMPUS,MDF-01,40,HQ-ACC-STACK,MASTER,1
+HQ-ACC-STK-02,FOC251001A2,TAG-3002,10.20.10.2,ACTIVE,Cisco,C9200L-48T-4X-E,1,HQ-CAMPUS,MDF-01,39,HQ-ACC-STACK,MEMBER,2
+HQ-ACC-STK-03,FOC251001A3,TAG-3003,10.20.10.3,ACTIVE,Cisco,C9200L-48T-4X-E,1,HQ-CAMPUS,MDF-01,38,HQ-ACC-STACK,MEMBER,3
+HQ-ACC-STK-04,FOC251001A4,TAG-3004,10.20.10.4,ACTIVE,Cisco,C9200L-48T-4X-E,1,HQ-CAMPUS,MDF-01,37,HQ-ACC-STACK,MEMBER,4
+SPARE-SW-9300-01,FOC259900X1,TAG-9001,,MAINTENANCE,Cisco,Catalyst 9300-48P,1,,,,,,
+SPARE-RTR-MX204-01,JN12894101A,TAG-9002,,PLANNED,Juniper,MX204,1,,,,,,
 `

@@ -29,7 +29,10 @@ describe('buildDeviceWhere', () => {
   it('builds an OR clause across searchable fields for a query', () => {
     const where = buildDeviceWhere({ query: 'core', page: 1 })
     expect(where.OR).toBeDefined()
-    expect(where.OR).toHaveLength(8)
+    expect(where.OR).toHaveLength(9)
+    expect(where.OR).toContainEqual({
+      managementIp: { contains: 'core', mode: 'insensitive' },
+    })
     expect(where.OR).toContainEqual({
       deviceStack: { name: { contains: 'core', mode: 'insensitive' } },
     })

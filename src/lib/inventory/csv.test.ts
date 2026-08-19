@@ -57,6 +57,7 @@ describe('parseCsvRows', () => {
       hostname: 'sw-core-01',
       serialNumber: 'SN-1001',
       assetTag: 'TAG-01',
+      managementIp: null,
       status: DeviceStatus.ACTIVE,
       vendor: 'Cisco',
       model: 'Catalyst 9300',
@@ -130,5 +131,16 @@ describe('parseCsvRows', () => {
     ]
     const { errors } = parseCsvRows(rawRows, ['hostname', 'serial_number', 'vendor', 'model', 'stack_name', 'switch_id'])
     expect(errors.some((e) => e.field === 'switchId' && e.message.includes('Duplicate switch #1 in stack'))).toBe(true)
+  })
+
+  it('validates managementIp format and detects intra-CSV duplicates', () => {
+    const rawRows = [
+      { hostname: 'sw-01', serial_number: 'SN-1', vendor: 'Cisco', model: 'C9300', ip: '10.0.0.1' },
+      { hostname: 'sw-02', serial_number: 'SN-2', vendor: 'Cisco', model: 'C9300', ip: '10.0.0.1' },
+      { hostname: 'sw-03', serial_number: 'SN-3', vendor: 'Cisco', model: 'C9300', ip: 'not-an-ip' },
+    ]
+    const { errors } = parseCsvRows(rawRows, ['hostname', 'serial_number', 'vendor', 'model', 'ip'])
+    expect(errors.some((e) => e.field === 'managementIp' && e.message.includes('Duplicate management IP "10.0.0.1"'))).toBe(true)
+    expect(errors.some((e) => e.field === 'managementIp' && e.message.includes('Invalid IP address'))).toBe(true)
   })
 })

@@ -484,6 +484,7 @@ export function DeviceImportClient() {
                     <th className="px-3 py-2.5 w-24">Action</th>
                     <th className="px-3 py-2.5 font-semibold text-foreground">Hostname</th>
                     <th className="px-3 py-2.5">Serial Number</th>
+                    <th className="px-3 py-2.5">Management IP</th>
                     <th className="px-3 py-2.5">Asset Tag</th>
                     <th className="px-3 py-2.5">Vendor / Model</th>
                     <th className="px-3 py-2.5">Site & Rack</th>
@@ -523,6 +524,9 @@ export function DeviceImportClient() {
                         </td>
                         <td className="px-3 py-2 font-mono text-muted-foreground whitespace-nowrap">
                           {rs.row.serialNumber}
+                        </td>
+                        <td className="px-3 py-2 font-mono text-foreground whitespace-nowrap">
+                          {rs.row.managementIp ?? '—'}
                         </td>
                         <td className="px-3 py-2 font-mono text-subtle whitespace-nowrap">
                           {rs.row.assetTag ?? '—'}
