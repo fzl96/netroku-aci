@@ -20,6 +20,31 @@ export function computeNextRunAt(completedAt: Date, intervalMinutes: number): Da
   return new Date(completedAt.getTime() + intervalMinutes * MINUTE_MS)
 }
 
+/** Resolve the persisted deadline after an operator edits a schedule. */
+export function computeEditedNextRunAt(input: {
+  enabled: boolean
+  wasEnabled: boolean
+  intervalMinutes: number
+  previousIntervalMinutes: number
+  existingNextRunAt: Date | null
+  lastRunAt: Date | null
+  now: Date
+}): Date | null {
+  if (!input.enabled) return null
+  if (!input.wasEnabled) return input.now
+  if (!input.existingNextRunAt) return input.now
+
+  if (
+    input.intervalMinutes === input.previousIntervalMinutes
+  ) {
+    return input.existingNextRunAt
+  }
+
+  if (!input.lastRunAt) return input.now
+  const editedDeadline = computeNextRunAt(input.lastRunAt, input.intervalMinutes)
+  return editedDeadline.getTime() < input.now.getTime() ? input.now : editedDeadline
+}
+
 /** True when a held claim is old enough to be considered abandoned. */
 export function isClaimStale(
   runningAt: Date | null,
