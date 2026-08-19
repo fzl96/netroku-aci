@@ -261,7 +261,7 @@ export function DeviceForm({
                       placeholder="e.g. ACC-STACK-FL02"
                       {...field}
                       value={field.value ?? ''}
-                      onChange={(e) => field.onChange(e.target.value === '' ? null : e.target.value)}
+                      onChange={(e) => field.onChange(e.target.value)}
                     />
                   </FormControl>
                   <FormMessage className="text-xs" />

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'bun:test'
 import { StackRole } from '@prisma/client'
-import { selectMasterCandidate, type StackMemberCandidate } from './stack-master'
+import {
+  ensureStackHasMaster,
+  selectMasterCandidate,
+  type StackMemberCandidate,
+} from './stack-master'
 
 const members = (...values: StackMemberCandidate[]) => values
 
@@ -64,5 +68,61 @@ describe('selectMasterCandidate', () => {
     )
 
     expect(candidate?.id).toBe('a')
+  })
+
+  it('breaks ties between missing switch numbers by name then id', () => {
+    const candidate = selectMasterCandidate(
+      members(
+        { id: 'z', name: 'beta', stackMember: null, stackRole: StackRole.MEMBER },
+        { id: 'a', name: 'alpha', stackMember: null, stackRole: StackRole.MEMBER },
+      ),
+    )
+
+    expect(candidate?.id).toBe('a')
+  })
+
+  it('chooses one deterministic winner when multiple masters exist', () => {
+    const candidate = selectMasterCandidate(
+      members(
+        { id: 'z', name: 'beta', stackMember: null, stackRole: StackRole.MASTER },
+        { id: 'a', name: 'alpha', stackMember: null, stackRole: StackRole.MASTER },
+      ),
+    )
+
+    expect(candidate?.id).toBe('a')
+  })
+})
+
+describe('ensureStackHasMaster', () => {
+  it('locks the stack and demotes duplicate masters to one deterministic winner', async () => {
+    const calls: string[] = []
+    const tx = {
+      $queryRaw: async () => {
+        calls.push('lock')
+        return []
+      },
+      device: {
+        findMany: async () => {
+          calls.push('find')
+          return members(
+            { id: 'z', name: 'beta', stackMember: null, stackRole: StackRole.MASTER },
+            { id: 'a', name: 'alpha', stackMember: null, stackRole: StackRole.MASTER },
+          )
+        },
+        updateMany: async () => {
+          calls.push('demote')
+          return { count: 1 }
+        },
+        update: async () => {
+          calls.push('promote')
+          throw new Error('The deterministic winner is already a master')
+        },
+      },
+    } as unknown as Parameters<typeof ensureStackHasMaster>[0]
+
+    const candidate = await ensureStackHasMaster(tx, 'stack-1')
+
+    expect(candidate?.id).toBe('a')
+    expect(calls).toEqual(['lock', 'find', 'demote'])
   })
 })

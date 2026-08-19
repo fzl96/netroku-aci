@@ -1,4 +1,4 @@
-import { StackRole, type Prisma } from '@prisma/client'
+import { Prisma, StackRole } from '@prisma/client'
 
 export type StackMemberCandidate = {
   id: string
@@ -7,11 +7,28 @@ export type StackMemberCandidate = {
   stackRole: StackRole | null
 }
 
+function compareStackMembers(
+  left: StackMemberCandidate,
+  right: StackMemberCandidate,
+): number {
+  if (left.stackMember === null && right.stackMember !== null) return 1
+  if (left.stackMember !== null && right.stackMember === null) return -1
+  if (left.stackMember !== null && right.stackMember !== null) {
+    const memberOrder = left.stackMember - right.stackMember
+    if (memberOrder !== 0) return memberOrder
+  }
+
+  const nameOrder = left.name.localeCompare(right.name)
+  return nameOrder !== 0 ? nameOrder : left.id.localeCompare(right.id)
+}
+
 export function selectMasterCandidate(
   members: StackMemberCandidate[],
   excludedDeviceId?: string,
 ): StackMemberCandidate | null {
-  const currentMaster = members.find((member) => member.stackRole === StackRole.MASTER)
+  const currentMaster = members
+    .filter((member) => member.stackRole === StackRole.MASTER)
+    .sort(compareStackMembers)[0]
   if (currentMaster) return currentMaster
 
   const preferred = excludedDeviceId
@@ -19,26 +36,20 @@ export function selectMasterCandidate(
     : members
   const candidates = preferred.length > 0 ? preferred : members
 
-  return (
-    [...candidates].sort((left, right) => {
-      const memberOrder =
-        (left.stackMember ?? Number.POSITIVE_INFINITY) -
-        (right.stackMember ?? Number.POSITIVE_INFINITY)
-      if (memberOrder !== 0) return memberOrder
-
-      const nameOrder = left.name.localeCompare(right.name)
-      return nameOrder !== 0 ? nameOrder : left.id.localeCompare(right.id)
-    })[0] ?? null
-  )
+  return [...candidates].sort(compareStackMembers)[0] ?? null
 }
 
-type StackMasterTransaction = Pick<Prisma.TransactionClient, 'device'>
+type StackMasterTransaction = Pick<Prisma.TransactionClient, '$queryRaw' | 'device'>
 
 export async function ensureStackHasMaster(
   tx: StackMasterTransaction,
   stackId: string,
   excludedDeviceId?: string,
 ): Promise<StackMemberCandidate | null> {
+  await tx.$queryRaw(
+    Prisma.sql`SELECT "id" FROM "device_stack" WHERE "id" = ${stackId} FOR UPDATE`,
+  )
+
   const members = await tx.device.findMany({
     where: { deviceStackId: stackId },
     select: {
@@ -49,7 +60,18 @@ export async function ensureStackHasMaster(
     },
   })
   const candidate = selectMasterCandidate(members, excludedDeviceId)
-  if (!candidate || candidate.stackRole === StackRole.MASTER) return candidate
+  if (!candidate) return null
+
+  await tx.device.updateMany({
+    where: {
+      deviceStackId: stackId,
+      stackRole: StackRole.MASTER,
+      id: { not: candidate.id },
+    },
+    data: { stackRole: StackRole.MEMBER },
+  })
+
+  if (candidate.stackRole === StackRole.MASTER) return candidate
 
   await tx.device.update({
     where: { id: candidate.id },

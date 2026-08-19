@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { recordAudit } from '@/lib/audit'
 import type { ParsedImportRow, MalformedImportRow } from '@/lib/inventory/csv'
-import { requiredRackHeight } from '@/lib/inventory/import-planning'
+import { buildNewRackPlan, requiredRackHeight } from '@/lib/inventory/import-planning'
 import { ensureStackHasMaster } from '@/lib/inventory/stack-master'
 
 export type ImportRowState = {
@@ -131,16 +131,8 @@ export async function validateDeviceImport(
     )
     const stackByName = new Map(existingStacks.map((s) => [s.name.toLowerCase(), s]))
 
-    const sitesToCreateSet = new Set<string>()
-    const racksToCreateMap = new Map<
-      string,
-      { siteName: string; rackName: string; heightU: number }
-    >()
-
     const rowStates: ImportRowState[] = []
     let errorCount = 0
-    let createCount = 0
-    let updateCount = 0
 
     // Intra-file tracking maps
     const seenSerials = new Map<string, number>()
@@ -201,10 +193,7 @@ export async function validateDeviceImport(
       // Check if serial matches existing device -> UPDATE, otherwise CREATE
       const existingDev = deviceBySerial.get(row.serialNumber.toLowerCase())
       const action: 'CREATE' | 'UPDATE' = existingDev ? 'UPDATE' : 'CREATE'
-      if (action === 'CREATE') {
-        createCount++
-      } else {
-        updateCount++
+      if (action === 'UPDATE') {
         rowWarnings.push(`Existing device "${existingDev!.name}" will be updated`)
       }
 
@@ -275,7 +264,6 @@ export async function validateDeviceImport(
           siteStatus = 'EXISTS'
         } else {
           siteStatus = 'WILL_CREATE'
-          sitesToCreateSet.add(row.site)
         }
       }
 
@@ -315,20 +303,8 @@ export async function validateDeviceImport(
           }
         } else {
           rackStatus = 'WILL_CREATE'
-          const effectiveSiteName = row.site ?? 'Default'
-          if (!row.site) sitesToCreateSet.add(effectiveSiteName)
-
           try {
-            const existingPending = racksToCreateMap.get(rackKey)
-            const heightU = Math.max(
-              existingPending?.heightU ?? 42,
-              requiredRackHeight(row.rackPosition, row.heightU),
-            )
-            racksToCreateMap.set(rackKey, {
-              siteName: effectiveSiteName,
-              rackName: row.rack,
-              heightU,
-            })
+            requiredRackHeight(row.rackPosition, row.heightU)
           } catch (error) {
             rowErrors.push(error instanceof Error ? error.message : 'Invalid rack placement')
           }
@@ -395,14 +371,25 @@ export async function validateDeviceImport(
     rowStates.sort((a, b) => a.row.rowIndex - b.row.rowIndex)
 
     const totalRows = rows.length + malformedRows.length
-    const validCount = rows.length - (errorCount - malformedRows.length)
+    const validRowStates = rowStates.filter((state) => state.errors.length === 0)
+    const validCount = validRowStates.length
+    const createCount = validRowStates.filter((state) => state.action === 'CREATE').length
+    const updateCount = validRowStates.filter((state) => state.action === 'UPDATE').length
+    const rackPlan = buildNewRackPlan(validRowStates)
+    const sitesToCreateSet = new Set(
+      validRowStates
+        .filter((state) => state.siteStatus === 'WILL_CREATE' && state.row.site)
+        .map((state) => state.row.site!),
+    )
+    for (const rack of rackPlan) sitesToCreateSet.add(rack.siteName)
+
     const summary: ImportSummary = {
       totalRows,
       validCount,
       createCount,
       updateCount,
       sitesToCreate: Array.from(sitesToCreateSet),
-      racksToCreate: Array.from(racksToCreateMap.values()).map((r) => ({
+      racksToCreate: rackPlan.map((r) => ({
         siteName: r.siteName,
         rackName: r.rackName,
         heightU: r.heightU,
@@ -448,30 +435,14 @@ export async function executeDeviceImport(
 
     // Determine sites and racks to create from valid rows only
     const validSitesToCreate = new Set<string>()
-    const validRacksToCreate = new Map<
-      string,
-      { siteName: string; rackName: string; heightU: number }
-    >()
+    const validRacksToCreate = buildNewRackPlan(validRowStates)
 
     for (const rs of validRowStates) {
       if (rs.siteStatus === 'WILL_CREATE' && rs.row.site) {
         validSitesToCreate.add(rs.row.site)
       }
-      if (rs.rackStatus === 'WILL_CREATE' && rs.row.rack) {
-        const siteName = rs.row.site ?? 'Default'
-        if (!rs.row.site) validSitesToCreate.add(siteName)
-        const key = `${siteName.toLowerCase()}::${rs.row.rack.toLowerCase()}`
-        const existing = validRacksToCreate.get(key)
-        validRacksToCreate.set(key, {
-          siteName,
-          rackName: rs.row.rack,
-          heightU: Math.max(
-            existing?.heightU ?? 42,
-            requiredRackHeight(rs.row.rackPosition, rs.row.heightU),
-          ),
-        })
-      }
     }
+    for (const rack of validRacksToCreate) validSitesToCreate.add(rack.siteName)
 
     // 2. Perform transaction
     const result = await prisma.$transaction(async (tx) => {
@@ -510,7 +481,7 @@ export async function executeDeviceImport(
       }
 
       // Step B: Create any missing racks for valid rows
-      for (const r of validRacksToCreate.values()) {
+      for (const r of validRacksToCreate) {
         const siteKey = r.siteName.toLowerCase()
         const siteId = siteMap.get(siteKey)
         if (!siteId) throw new Error(`Site "${r.siteName}" could not be resolved`)
