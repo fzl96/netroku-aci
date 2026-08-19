@@ -149,6 +149,20 @@ export function checkRequiredHeaders(headers: string[]): CsvImportError | null {
   return null
 }
 
+function isRepeatedHeaderRow(extracted: Record<string, string>): boolean {
+  const requiredFields: Array<keyof ParsedImportRow> = [
+    'hostname',
+    'serialNumber',
+    'vendor',
+    'model',
+  ]
+
+  return requiredFields.every((field) => {
+    const value = extracted[field]
+    return Boolean(value && HEADER_ALIASES[normalizeHeaderName(value)] === field)
+  })
+}
+
 export function parseCsvRows(rawRows: RawCsvRow[], headers: string[]): CsvParseResult {
   const headerError = checkRequiredHeaders(headers)
   if (headerError) {
@@ -184,11 +198,7 @@ export function parseCsvRows(rawRows: RawCsvRow[], headers: string[]): CsvParseR
     }
 
     // Skip accidental repeated header rows inside data
-    if (
-      extracted.hostname?.toLowerCase() === 'hostname' &&
-      (extracted.serialNumber?.toLowerCase() === 'serial_number' ||
-        extracted.serialNumber?.toLowerCase() === 'serial')
-    ) {
+    if (isRepeatedHeaderRow(extracted)) {
       return
     }
 

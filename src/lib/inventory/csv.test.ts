@@ -30,6 +30,27 @@ describe('checkRequiredHeaders', () => {
 })
 
 describe('parseCsvRows', () => {
+  it('skips repeated canonical and alias header rows', () => {
+    const canonical = parseCsvRows(
+      [
+        {
+          hostname: 'hostname',
+          serial_number: 'serial_number',
+          vendor: 'vendor',
+          model: 'model',
+        },
+      ],
+      ['hostname', 'serial_number', 'vendor', 'model'],
+    )
+    const aliases = parseCsvRows(
+      [{ name: 'name', sn: 'sn', make: 'make', device_model: 'device_model' }],
+      ['name', 'sn', 'make', 'device_model'],
+    )
+
+    expect(canonical.rows).toHaveLength(0)
+    expect(aliases.rows).toHaveLength(0)
+  })
+
   it('parses valid rows with aliases and default fallbacks', () => {
     const rawRows = [
       {
