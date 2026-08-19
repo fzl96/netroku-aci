@@ -53,3 +53,7 @@ export function buildDeviceListUrl(params: DeviceListParams): string {
   const queryString = search.toString()
   return `/inventory/devices${queryString ? `?${queryString}` : ''}`
 }
+
+export function buildDeviceSearchUrl(query: string): string {
+  return buildDeviceListUrl({ query, page: 1 })
+}

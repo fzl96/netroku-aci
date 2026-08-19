@@ -1,6 +1,5 @@
 'use client'
 
-import * as React from 'react'
 import { useForm } from 'react-hook-form'
 import { DeviceStatus, StackRole } from '@prisma/client'
 import type { DeviceFormValues } from '@/lib/schemas/device'
@@ -25,6 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { INPUT_OVERRIDE_CLS } from '@/lib/ui-classes'
+import { resolveStackSelectValue } from '@/lib/inventory/device-form-state'
 
 export function DeviceForm({
   form,
@@ -38,32 +38,13 @@ export function DeviceForm({
   existingStacks?: SafeDeviceStack[]
 }) {
   const currentStackName = form.watch('deviceStackName')
-
-  const isExisting = existingStacks.some((s) => s.name === currentStackName)
-  const isNew = Boolean(currentStackName) && !isExisting
-
-  const [stackSelectValue, setStackSelectValue] = React.useState<string>(() => {
-    if (isExisting) return currentStackName!
-    if (isNew) return '__new__'
-    return '__none__'
-  })
-
-  React.useEffect(() => {
-    if (!currentStackName) {
-      setStackSelectValue('__none__')
-    } else if (existingStacks.some((s) => s.name === currentStackName)) {
-      setStackSelectValue(currentStackName)
-    } else {
-      setStackSelectValue('__new__')
-    }
-  }, [currentStackName, existingStacks])
+  const stackSelectValue = resolveStackSelectValue(currentStackName, existingStacks)
 
   const selectedStack = existingStacks.find(
     (s) => s.name === (stackSelectValue === '__new__' ? currentStackName : stackSelectValue),
   )
 
   function handleStackDropdownChange(val: string) {
-    setStackSelectValue(val)
     if (val === '__none__') {
       form.setValue('deviceStackName', null)
       form.setValue('stackRole', null)

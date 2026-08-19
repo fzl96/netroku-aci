@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -21,7 +21,7 @@ import {
   type DeviceFormValues,
   type DeviceUpdateFormValues,
 } from '@/lib/schemas/device'
-import { buildDeviceListUrl } from '@/lib/inventory/device-query'
+import { buildDeviceListUrl, buildDeviceSearchUrl } from '@/lib/inventory/device-query'
 import { DeviceForm } from '@/components/inventory/DeviceForm'
 import { FooterCancel, FooterSubmit } from '@/components/inventory/dialog-footer-buttons'
 
@@ -77,7 +77,32 @@ export function DevicesClient({
   const [devices, setDevices] = useState<SafeDeviceWithRack[]>(initialDevices)
   const [stacks, setStacks] = useState(existingStacks)
   const [searchValue, setSearchValue] = useState(query)
-  const [isPending, setIsPending] = useState(false)
+  const [isMutating, setIsMutating] = useState(false)
+  const [isNavigationPending, startNavigation] = useTransition()
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [lastDispatchedQuery, setLastDispatchedQuery] = useState(query)
+  const [previousQuery, setPreviousQuery] = useState(query)
+  const [previousInitialDevices, setPreviousInitialDevices] = useState(initialDevices)
+  const [previousExistingStacks, setPreviousExistingStacks] = useState(existingStacks)
+
+  if (initialDevices !== previousInitialDevices) {
+    setPreviousInitialDevices(initialDevices)
+    setDevices(initialDevices)
+  }
+  if (existingStacks !== previousExistingStacks) {
+    setPreviousExistingStacks(existingStacks)
+    setStacks(existingStacks)
+  }
+  if (query !== previousQuery) {
+    setPreviousQuery(query)
+    if (query !== lastDispatchedQuery) setSearchValue(query)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    }
+  }, [])
 
   const [createOpen, setCreateOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -188,17 +213,34 @@ export function DevicesClient({
 
   function submitSearch(e: React.FormEvent) {
     e.preventDefault()
-    router.push(buildDeviceListUrl({ query: searchValue, page: 1 }))
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    setLastDispatchedQuery(searchValue.trim())
+    startNavigation(() => {
+      router.replace(buildDeviceSearchUrl(searchValue))
+    })
+  }
+
+  function handleSearchChange(value: string) {
+    setSearchValue(value)
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    searchDebounceRef.current = setTimeout(() => {
+      setLastDispatchedQuery(value.trim())
+      startNavigation(() => {
+        router.replace(buildDeviceSearchUrl(value))
+      })
+    }, 300)
   }
 
   function goToPage(nextPage: number) {
-    router.push(buildDeviceListUrl({ query, page: nextPage }))
+    startNavigation(() => {
+      router.replace(buildDeviceListUrl({ query, page: nextPage }))
+    })
   }
 
   async function handleCreate(data: DeviceFormValues) {
-    setIsPending(true)
+    setIsMutating(true)
     const result = await createDevice(data)
-    setIsPending(false)
+    setIsMutating(false)
     if (result.success) {
       setDevices((prev) => [result.data, ...prev])
       if (result.data.deviceStack && !stacks.some((s) => s.id === result.data.deviceStack?.id)) {
@@ -214,9 +256,9 @@ export function DevicesClient({
 
   async function handleUpdate(data: DeviceUpdateFormValues) {
     if (!editingDevice) return
-    setIsPending(true)
+    setIsMutating(true)
     const result = await updateDevice(editingDevice.id, data)
-    setIsPending(false)
+    setIsMutating(false)
     if (result.success) {
       setDevices((prev) =>
         prev.map((d) => (d.id === editingDevice.id ? result.data : d)),
@@ -234,9 +276,9 @@ export function DevicesClient({
 
   async function handleDelete() {
     if (!deletingDevice) return
-    setIsPending(true)
+    setIsMutating(true)
     const result = await deleteDevice(deletingDevice.id)
-    setIsPending(false)
+    setIsMutating(false)
     if (result.success) {
       setDevices((prev) => prev.filter((d) => d.id !== deletingDevice.id))
       setDeleteOpen(false)
@@ -259,7 +301,7 @@ export function DevicesClient({
             <IconSearch size={13} stroke={1.75} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-faint" />
             <input
               value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               placeholder="Search name, serial, vendor..."
               className={SEARCH_INPUT_CLS}
             />
@@ -378,10 +420,10 @@ export function DevicesClient({
           <div className="flex items-center justify-between text-xs text-subtle">
             <span>Page {page} of {totalPages} ({total} total)</span>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => goToPage(page - 1)}>
+              <Button variant="outline" size="sm" disabled={page <= 1 || isNavigationPending} onClick={() => goToPage(page - 1)}>
                 Previous
               </Button>
-              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => goToPage(page + 1)}>
+              <Button variant="outline" size="sm" disabled={page >= totalPages || isNavigationPending} onClick={() => goToPage(page + 1)}>
                 Next
               </Button>
             </div>
@@ -401,8 +443,8 @@ export function DevicesClient({
             <DeviceForm form={createForm} onSubmit={handleCreate} formId="create-device-form" existingStacks={effectiveStacks} />
           </div>
           <SheetFooter className="flex flex-row items-center justify-end border-t border-subtle bg-muted px-6 py-3.5 gap-2 shrink-0">
-            <FooterCancel onClick={() => setCreateOpen(false)} disabled={isPending} />
-            <FooterSubmit form="create-device-form" disabled={isPending} label={isPending ? 'Adding…' : 'Add Device'} />
+            <FooterCancel onClick={() => setCreateOpen(false)} disabled={isMutating} />
+            <FooterSubmit form="create-device-form" disabled={isMutating} label={isMutating ? 'Adding…' : 'Add Device'} />
           </SheetFooter>
         </SheetContent>
       </Sheet>
@@ -417,8 +459,8 @@ export function DevicesClient({
             <DeviceForm form={editForm} onSubmit={handleUpdate} formId="edit-device-form" existingStacks={effectiveStacks} />
           </div>
           <SheetFooter className="flex flex-row items-center justify-end border-t border-subtle bg-muted px-6 py-3.5 gap-2 shrink-0">
-            <FooterCancel onClick={() => setEditOpen(false)} disabled={isPending} />
-            <FooterSubmit form="edit-device-form" disabled={isPending} label={isPending ? 'Saving…' : 'Save Changes'} />
+            <FooterCancel onClick={() => setEditOpen(false)} disabled={isMutating} />
+            <FooterSubmit form="edit-device-form" disabled={isMutating} label={isMutating ? 'Saving…' : 'Save Changes'} />
           </SheetFooter>
         </SheetContent>
       </Sheet>
@@ -434,16 +476,16 @@ export function DevicesClient({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end rounded-b-xl border-t border-subtle bg-muted px-4 py-3 gap-1">
-            <AlertDialogCancel disabled={isPending} className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2 border-0 bg-transparent shadow-none hover:bg-transparent">
+            <AlertDialogCancel disabled={isMutating} className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2 border-0 bg-transparent shadow-none hover:bg-transparent">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={handleDelete}
-              disabled={isPending}
+              disabled={isMutating}
               className="bg-error text-error-foreground text-sm font-semibold px-5 py-2 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-60"
             >
-              {isPending ? 'Deleting…' : 'Delete'}
+              {isMutating ? 'Deleting…' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

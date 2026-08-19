@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import {
   buildDeviceListUrl,
+  buildDeviceSearchUrl,
   buildDeviceWhere,
   clampDevicePage,
   deviceListWindow,
@@ -59,5 +60,9 @@ describe('buildDeviceListUrl', () => {
     expect(buildDeviceListUrl({ query: '  sw01  ', page: 3 })).toBe(
       '/inventory/devices?q=sw01&page=3',
     )
+  })
+
+  it('builds a trimmed page-one URL for live search', () => {
+    expect(buildDeviceSearchUrl(' leaf ')).toBe('/inventory/devices?q=leaf')
   })
 })
