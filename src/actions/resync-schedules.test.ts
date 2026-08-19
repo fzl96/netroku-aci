@@ -36,6 +36,7 @@ let schedule: ScheduleRow
 const prisma = {
   apicHost: {
     findUnique: mock(async () => ({ ...host, schedule })),
+    findMany: mock(async () => [{ ...host, schedule }]),
   },
   resyncSchedule: {
     upsert: mock(async ({ create, update }: {
@@ -53,9 +54,12 @@ const prisma = {
       return schedule
     }),
     findUnique: mock(async () => ({ ...schedule, apicHost: host })),
-    update: mock(async ({ data }: { data: Partial<ScheduleRow> }) => {
+    update: mock(async ({ data, include }: {
+      data: Partial<ScheduleRow>
+      include?: { apicHost?: boolean }
+    }) => {
       schedule = { ...schedule, ...data }
-      return schedule
+      return include?.apicHost ? { ...schedule, apicHost: host } : schedule
     }),
   },
 }
@@ -72,7 +76,11 @@ mock.module('@/lib/crypto', () => ({
   decrypt: (value: string) => value.replace(/^encrypted:/, ''),
 }))
 
-const { upsertResyncSchedule } = await import('./resync-schedules')
+const {
+  refreshResyncSchedules,
+  runResyncScheduleNow,
+  upsertResyncSchedule,
+} = await import('./resync-schedules')
 
 beforeEach(() => {
   schedule = {
@@ -151,5 +159,35 @@ describe('upsertResyncSchedule timing', () => {
     if (!result.success) return
     expect(result.data.nextRunAt?.getTime()).toBeGreaterThanOrEqual(before)
     expect(result.data.nextRunAt?.getTime()).toBeLessThanOrEqual(after)
+  })
+})
+
+describe('scheduler refresh actions', () => {
+  it('returns authoritative queued state from Run now', async () => {
+    const before = Date.now()
+
+    const result = await runResyncScheduleNow(host.id)
+    const after = Date.now()
+
+    expect(result).toEqual(expect.objectContaining({ success: true }))
+    if (!result.success) return
+    expect(result.data.apicHostId).toBe(host.id)
+    expect(result.data.lastRunAt).toEqual(LAST_RUN)
+    expect(result.data.nextRunAt?.getTime()).toBeGreaterThanOrEqual(before)
+    expect(result.data.nextRunAt?.getTime()).toBeLessThanOrEqual(after)
+  })
+
+  it('returns a fresh safe snapshot for polling', async () => {
+    const result = await refreshResyncSchedules()
+
+    expect(result).toEqual(expect.objectContaining({ success: true }))
+    if (!result.success) return
+    expect(result.data).toHaveLength(1)
+    expect(result.data[0]).toEqual(expect.objectContaining({
+      apicHostId: host.id,
+      intervalMinutes: 60,
+      lastRunAt: LAST_RUN,
+      nextRunAt: OLD_NEXT_RUN,
+    }))
   })
 })

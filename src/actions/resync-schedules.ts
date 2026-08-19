@@ -38,6 +38,15 @@ async function _getResyncSchedules(): Promise<SafeResyncSchedule[]> {
 /** Cached per-request: safe to call from multiple server components. */
 export const getResyncSchedules = cache(_getResyncSchedules)
 
+/** Uncached snapshot for the mounted Scheduler page's background refresh loop. */
+export async function refreshResyncSchedules(): Promise<ActionResult<SafeResyncSchedule[]>> {
+  try {
+    return { success: true, data: await _getResyncSchedules() }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  }
+}
+
 export async function upsertResyncSchedule(
   apicHostId: string,
   data: ResyncScheduleUpdateFormValues,
@@ -125,7 +134,9 @@ export async function upsertResyncSchedule(
 }
 
 /** Queue an immediate run — the ticker picks it up within one tick. */
-export async function runResyncScheduleNow(apicHostId: string): Promise<ActionResult<void>> {
+export async function runResyncScheduleNow(
+  apicHostId: string,
+): Promise<ActionResult<SafeResyncSchedule>> {
   try {
     const actor = await requireAdmin()
     const schedule = await prisma.resyncSchedule.findUnique({
@@ -136,9 +147,10 @@ export async function runResyncScheduleNow(apicHostId: string): Promise<ActionRe
     if (!schedule.enabled) return { success: false, error: 'Schedule is disabled' }
     if (schedule.runningAt) return { success: false, error: 'A run is already in progress' }
 
-    await prisma.resyncSchedule.update({
+    const queued = await prisma.resyncSchedule.update({
       where: { apicHostId },
       data: { nextRunAt: new Date() },
+      include: { apicHost: true },
     })
     await recordAudit({
       userId: actor.id,
@@ -147,7 +159,13 @@ export async function runResyncScheduleNow(apicHostId: string): Promise<ActionRe
       target: `${schedule.apicHost.name} (${schedule.apicHost.host})`,
       detail: 'queued an immediate run',
     })
-    return { success: true, data: undefined }
+    return {
+      success: true,
+      data: toSafeSchedule(
+        { id: queued.apicHost.id, name: queued.apicHost.name, host: queued.apicHost.host },
+        queued,
+      ),
+    }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
   }
