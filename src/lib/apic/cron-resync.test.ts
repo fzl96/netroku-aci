@@ -1,5 +1,63 @@
-import { describe, expect, it } from 'bun:test'
+import { afterAll, beforeEach, describe, expect, it, mock } from 'bun:test'
 import { isAuthorized, summarizeResults, type HostResult } from './cron-resync'
+
+const resyncEndpointInventoryForScheduler = mock(async (input: unknown) => {
+  void input
+  return { synced: 3, total: 7 }
+})
+const resyncInterfaces = mock(async (input: unknown) => {
+  void input
+  return { synced: 2, total: 2 }
+})
+const resyncNodes = mock(async (input: unknown) => {
+  void input
+  return { syncedNodes: 1, syncedComponents: 4, nodesOnline: 1 }
+})
+const resyncEpgs = mock(async (input: unknown) => {
+  void input
+  return { syncedEpgs: 2, syncedBindings: 6 }
+})
+const recordAudit = mock(async (input: unknown) => {
+  void input
+})
+
+mock.module('server-only', () => ({}))
+
+const { resyncHost } = await import('./resync-host')
+
+const dependencies = {
+  resyncEndpointInventoryForScheduler,
+  resyncInterfaces,
+  resyncNodes,
+  resyncEpgs,
+  recordAudit,
+}
+
+beforeEach(() => {
+  resyncEndpointInventoryForScheduler.mockClear()
+  resyncEndpointInventoryForScheduler.mockImplementation(async (input: unknown) => {
+    void input
+    return { synced: 3, total: 7 }
+  })
+  resyncInterfaces.mockClear()
+  resyncInterfaces.mockImplementation(async (input: unknown) => {
+    void input
+    return { synced: 2, total: 2 }
+  })
+  resyncNodes.mockClear()
+  resyncNodes.mockImplementation(async (input: unknown) => {
+    void input
+    return { syncedNodes: 1, syncedComponents: 4, nodesOnline: 1 }
+  })
+  resyncEpgs.mockClear()
+  resyncEpgs.mockImplementation(async (input: unknown) => {
+    void input
+    return { syncedEpgs: 2, syncedBindings: 6 }
+  })
+  recordAudit.mockClear()
+})
+
+afterAll(() => mock.restore())
 
 describe('isAuthorized', () => {
   const token = 'sekret-token-value'
@@ -89,5 +147,46 @@ describe('summarizeResults epgs dataset', () => {
       },
     ])
     expect(status).toBe('partial')
+  })
+})
+
+describe('resyncHost endpoint purpose boundary', () => {
+  const input = {
+    apicHostId: 'host-1',
+    hostName: 'APIC One',
+    host: '192.0.2.1',
+    username: 'scheduler-user',
+    password: 'secret',
+  }
+
+  it('enters endpoints through the trusted purpose mutation exactly once', async () => {
+    await expect(resyncHost(input, dependencies)).resolves.toEqual({
+      apicHostId: 'host-1',
+      host: 'APIC One',
+      endpoints: { synced: 3, total: 7 },
+      interfaces: { synced: 2, total: 2 },
+      nodes: { synced: 1, total: 5 },
+      epgs: { synced: 2, total: 8 },
+    })
+
+    expect(resyncEndpointInventoryForScheduler).toHaveBeenCalledTimes(1)
+    expect(resyncEndpointInventoryForScheduler).toHaveBeenCalledWith(input)
+    expect(recordAudit.mock.calls.some(([entry]) => (
+      entry as { action?: string }
+    ).action === 'resync.endpoints')).toBe(false)
+  })
+
+  it('captures endpoint failures and continues later datasets', async () => {
+    resyncEndpointInventoryForScheduler.mockImplementation(async (input: unknown) => {
+      void input
+      throw new Error('endpoint APIC unavailable')
+    })
+
+    const result = await resyncHost(input, dependencies)
+
+    expect(result.endpoints).toEqual({ error: 'endpoint APIC unavailable' })
+    expect(resyncInterfaces).toHaveBeenCalledTimes(1)
+    expect(resyncNodes).toHaveBeenCalledTimes(1)
+    expect(resyncEpgs).toHaveBeenCalledTimes(1)
   })
 })

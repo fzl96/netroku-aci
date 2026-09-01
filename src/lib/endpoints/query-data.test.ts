@@ -275,6 +275,17 @@ describe('getEndpointResults', () => {
 })
 
 describe('getEndpointExportData', () => {
+  it('returns unauthorized before host or endpoint access', async () => {
+    authenticated = false
+
+    await expect(getEndpointExportData({
+      hostId: 'host-1',
+      scope: 'all',
+    })).resolves.toEqual({ kind: 'unauthorized' })
+    expect(apicHostFindMany).not.toHaveBeenCalled()
+    expect(endpointFindMany).not.toHaveBeenCalled()
+  })
+
   it('validates the host and returns every matching serialized row without pagination', async () => {
     await expect(getEndpointExportData({
       hostId: 'host-1',

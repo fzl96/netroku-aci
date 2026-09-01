@@ -95,6 +95,7 @@ export type EndpointExportData =
   | { kind: 'ready'; host: EndpointHostOption; rows: EndpointRow[] }
   | { kind: 'empty'; host: EndpointHostOption }
   | { kind: 'host-not-found' }
+  | { kind: 'unauthorized' }
 
 function endpointCacheOptions(hostId: string) {
   return {
@@ -340,7 +341,11 @@ export async function getEndpointResults(
 export async function getEndpointExportData(
   selection: EndpointExportSelection,
 ): Promise<EndpointExportData> {
-  await requireSession()
+  try {
+    await requireSession()
+  } catch {
+    return { kind: 'unauthorized' }
+  }
   const filters = selection.scope === 'filtered'
     ? normalizedFilters(selection.filters)
     : normalizedFilters()
