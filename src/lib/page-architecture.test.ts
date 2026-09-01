@@ -39,7 +39,16 @@ type MigratedPurpose = {
 
 // Add one purpose only when its vertical slice starts. The slice must restore
 // this guard to green before it is committed.
-const MIGRATED_PURPOSES: MigratedPurpose[] = []
+const MIGRATED_PURPOSES: MigratedPurpose[] = [
+  {
+    name: 'endpoints',
+    routes: [{
+      root: 'src/app/(app)/endpoints',
+      allowedFiles: ['page.tsx'],
+    }],
+    entryRoots: ['src/app/api/endpoints', 'src/components/endpoints'],
+  },
+]
 
 function inspectArchitectureFiles(
   files: ArchitectureFile[],

@@ -8,6 +8,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import type { EndpointPortSummary } from '@/lib/endpoints/sort'
+import type { EndpointRow } from '@/lib/endpoints/query'
 import { DENSE_TABLE_HEAD_CLS } from '@/lib/ui-classes'
 
 function fmt(date: string | Date | null) {
@@ -38,7 +39,7 @@ export function PortDetailPanel({
   port,
   onClose,
 }: {
-  port: EndpointPortSummary | null
+  port: EndpointPortSummary<EndpointRow> | null
   onClose: () => void
 }) {
   const activeEndpoints = port ? port.endpoints.filter(ep => ep.isActive) : []

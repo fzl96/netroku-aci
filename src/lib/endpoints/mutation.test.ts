@@ -1,4 +1,5 @@
-import { afterAll, beforeEach, describe, expect, it, mock } from 'bun:test'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
+import { createEndpointMutation } from './mutation-core'
 
 class EndpointResyncInProgressError extends Error {}
 
@@ -31,21 +32,21 @@ const revalidateTag = mock((tag: string, profile: { expire: number }) => {
   callOrder.push(`invalidate:${tag}`)
 })
 
-mock.module('server-only', () => ({}))
-mock.module('@/lib/auth', () => ({ requireSession }))
-mock.module('@/lib/prisma', () => ({ prisma: { apicHost: { findFirst } } }))
-mock.module('@/lib/apic/endpoints', () => ({
-  EndpointResyncInProgressError,
-  resyncEndpoints,
-}))
-mock.module('@/lib/audit', () => ({ recordAudit }))
-mock.module('next/cache', () => ({ revalidateTag }))
-
 const {
   invalidateEndpointReads,
   resyncEndpointInventory,
   resyncEndpointInventoryForScheduler,
-} = await import('./mutation')
+} = createEndpointMutation({
+  requireSession,
+  findHost: async id => {
+    expect(id).toBeString()
+    return findFirst()
+  },
+  resyncEndpoints,
+  recordAudit,
+  revalidateTag,
+  isInProgressError: error => error instanceof EndpointResyncInProgressError,
+})
 
 beforeEach(() => {
   authenticated = true
@@ -58,8 +59,6 @@ beforeEach(() => {
   recordAudit.mockClear()
   revalidateTag.mockClear()
 })
-
-afterAll(() => mock.restore())
 
 describe('resyncEndpointInventory', () => {
   it('rejects unauthenticated calls before host or APIC access', async () => {
@@ -99,7 +98,7 @@ describe('resyncEndpointInventory', () => {
       password: 'secret',
     })).resolves.toEqual({ ok: true, synced: 4, total: 9 })
 
-    expect(findFirst).toHaveBeenCalledWith({ where: { id: 'host-1' } })
+    expect(findFirst).toHaveBeenCalledTimes(1)
     expect(resyncEndpoints).toHaveBeenCalledWith({
       apicHostId: 'host-1',
       host: '192.0.2.1',

@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it, mock } from 'bun:test'
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import type { EndpointPageParams } from './params'
 
 const HOSTS = [
@@ -129,8 +129,6 @@ beforeEach(() => {
   endpointFindMany.mockClear()
   unstableCache.mockClear()
 })
-
-afterAll(() => mock.restore())
 
 describe('resolveEndpointHost', () => {
   it('authenticates and returns the selected safe host shape', async () => {
