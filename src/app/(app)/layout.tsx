@@ -6,6 +6,7 @@ import { AppSidebar } from '@/components/AppSidebar'
 import { MobileTopBar } from '@/components/MobileTopBar'
 import { ApicHostsProvider } from '@/components/ApicHostsProvider'
 import { cookies } from 'next/headers'
+import { APP_MAIN_CLS } from '@/lib/ui-classes'
 import type { NavigationScope } from '@/lib/navigation-scope'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -21,7 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <SidebarProvider>
         <ApicHostsProvider hosts={apicHosts}>
           <AppSidebar role={role} initialScope={initialScope} />
-          <main className="flex-1 overflow-y-auto bg-background">
+          <main className={APP_MAIN_CLS}>
             <MobileTopBar initialScope={initialScope} />
             {children}
           </main>
