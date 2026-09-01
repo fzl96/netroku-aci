@@ -326,7 +326,7 @@ export function EndpointsClient({
   return (
     <div className="min-h-full bg-background">
       {/* Page header */}
-      <div className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur-sm">
+      <div className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">
         <div className="px-4 md:px-8 py-3 md:py-0 md:h-16 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <h1 className="font-serif text-[18px] font-semibold text-foreground">Endpoints</h1>

@@ -13,7 +13,7 @@ export function LegacyPageShell({
 }) {
   return (
     <div className="min-h-full bg-background">
-      <div className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur-sm">
+      <div className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">
         <div className="flex min-h-16 flex-col justify-center gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between md:px-8 md:py-0">
           <div>
             <h1 className="font-serif text-[18px] font-semibold text-foreground">{title}</h1>

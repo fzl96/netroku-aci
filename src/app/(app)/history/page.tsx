@@ -29,7 +29,7 @@ export default async function HistoryPage({
 
   return (
     <div className="min-h-full bg-background">
-      <div className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur-sm">
+      <div className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">
         <div className="flex h-16 items-center justify-between gap-4 px-8">
           <div>
             <h1 className="font-serif text-[18px] font-semibold text-foreground">
