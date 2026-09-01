@@ -25,10 +25,29 @@ export const INPUT_OVERRIDE_CLS =
 export const LABEL_CLS =
   'block text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5'
 
+// App shell <main> — the region beside the sidebar.
+// No overflow here: `main` stretches to its content height (its flex parent is
+// only `min-h-svh`), so a scrollport on it never scrolls the page, it just
+// shadows the window's. On phones the `min-h-full` page wrapper sits below the
+// `h-14` MobileTopBar, leaving the scrollport exactly 56px short — a swipe
+// latches onto it, moves 56px and dead-ends at the table toolbar. The window is
+// the page scrollport; `md:sticky` headers pin against it.
+// `min-w-0` is load-bearing: a flex item's automatic minimum size is its
+// content's min-content width, and the overflow that used to be here zeroed
+// that out as a side effect. Without it a wide table row holds `main` open past
+// the sidebar and the whole page scrolls sideways.
+export const APP_MAIN_CLS = 'min-w-0 flex-1 bg-background'
+
 // Table wrappers and headers
 // Height cap only from md up: on phones a capped box becomes a nested scroll
 // region that traps the page, leaving the page header stranded on screen.
-export const TABLE_SCROLL_CLS = 'relative overflow-auto md:max-h-[calc(100vh-14rem)]'
+// Phones also pin overflow-y to hidden. Uncapped the box already fits its rows,
+// but a wide table's horizontal scrollbar eats box height, leaving a few px of
+// vertical travel — enough for a swipe to latch onto. Nothing is clipped: with
+// no max-height there is no vertical overflow to lose.
+export const TABLE_SCROLL_CLS =
+  'relative overflow-x-auto overflow-y-hidden ' +
+  'md:overflow-auto md:max-h-[calc(100vh-14rem)]'
 
 export const DENSE_TABLE_HEAD_CLS =
   'md:sticky md:top-0 z-10 bg-card text-left px-4 pt-3 pb-2.5 ' +

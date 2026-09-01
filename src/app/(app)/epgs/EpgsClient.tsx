@@ -185,19 +185,20 @@ export function EpgsClient({
     <div className="min-h-full bg-background">
       {/* Page header */}
       <div className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">
-        <div className="px-8 h-16 flex items-center justify-between gap-4">
+        <div className="px-4 md:px-8 py-3 md:py-0 md:h-16 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <h1 className="font-serif text-[18px] font-semibold text-foreground">EPG</h1>
             <p className="text-xs text-subtle mt-0.5">Deployed EPGs and their static port bindings</p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full md:w-auto">
             <select
               value={selectedHostId}
               onChange={e => navigate(e.target.value ? `/epgs?apic=${e.target.value}` : '/epgs')}
               disabled={isPending}
               className={[
-                'text-xs bg-muted border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 min-w-[180px]',
+                'text-xs bg-muted border border-border rounded-lg px-3 py-2 text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10',
+                'min-w-0 flex-1 md:flex-none md:min-w-[180px]',
                 'disabled:opacity-60 disabled:cursor-not-allowed transition-opacity',
               ].join(' ')}
             >
@@ -237,7 +238,7 @@ export function EpgsClient({
         </div>
       </div>
 
-      <div className="px-8 py-6 space-y-4">
+      <div className="px-4 md:px-8 py-4 md:py-6 space-y-4">
         {!selectedHostId && !isPending ? (
 
           <div className="flex flex-col items-center justify-center py-28 text-center">
@@ -275,8 +276,8 @@ export function EpgsClient({
         ) : (
           <>
             {/* View toggle + search + filters + stats */}
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2 min-w-0">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2 min-w-0 w-full md:w-auto">
                 {/* View toggle */}
                 <div className="flex rounded-lg border border-border overflow-hidden shrink-0">
                   {([['epg', 'By EPG'], ['port', 'By Port']] as const).map(([v, label]) => (
@@ -297,7 +298,7 @@ export function EpgsClient({
                 </div>
 
                 {/* Search */}
-                <div className="relative w-56 shrink-0">
+                <div className="relative flex-1 min-w-[140px] md:w-56 md:flex-none">
                   <IconSearch size={13} stroke={1.75} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none" />
                   <input
                     type="text"
@@ -356,7 +357,7 @@ export function EpgsClient({
               isPending ? 'opacity-60 pointer-events-none' : 'opacity-100',
             ].join(' ')}>
               {currentItemsCount === 0 && !isPending ? (
-                <div className="px-8 py-6 space-y-4">
+                <div className="px-4 md:px-8 py-4 md:py-6 space-y-4">
                   {query || activeFilterGroupCount > 0 ? (
                     <>
                       <p className="text-sm text-subtle">No {noun} match the current filters</p>
@@ -455,13 +456,13 @@ export function EpgsClient({
 
             {/* Pagination */}
             {total > 0 && (
-              <div className="flex items-center justify-between pt-1 gap-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between pt-1 gap-3">
                 <p className="text-xs text-subtle shrink-0">
                   {pageSize === 'all'
                     ? `Showing all ${total} ${noun}`
                     : `Showing ${rangeStart}–${rangeEnd} of ${total} ${noun}`}
                 </p>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs text-faint">Per page</span>
                     <select
