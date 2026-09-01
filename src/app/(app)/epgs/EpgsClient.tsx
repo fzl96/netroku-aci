@@ -184,7 +184,7 @@ export function EpgsClient({
   return (
     <div className="min-h-full bg-background">
       {/* Page header */}
-      <div className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur-sm">
+      <div className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">
         <div className="px-8 h-16 flex items-center justify-between gap-4">
           <div>
             <h1 className="font-serif text-[18px] font-semibold text-foreground">EPG</h1>

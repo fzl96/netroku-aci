@@ -330,7 +330,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-full bg-background">
-      <div className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur-sm">
+      <div className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">
         <div className="flex min-h-16 flex-col gap-3 px-5 py-3 md:px-8 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="font-serif text-[18px] font-semibold text-foreground">Dashboard</h1>
