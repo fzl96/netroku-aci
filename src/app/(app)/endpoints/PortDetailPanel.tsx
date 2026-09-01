@@ -7,7 +7,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import type { EndpointPortSummary } from './sort'
+import type { EndpointPortSummary } from '@/lib/endpoints/sort'
 import { DENSE_TABLE_HEAD_CLS } from '@/lib/ui-classes'
 
 function fmt(date: string | Date | null) {

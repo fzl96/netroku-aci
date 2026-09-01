@@ -8,7 +8,7 @@ import {
   parseEndpointPageParams,
   type RawEndpointPageParams,
 } from '@/lib/endpoints/params'
-import { groupEndpointsByPort, type EndpointPortSummary } from './sort'
+import { groupEndpointsByPort, type EndpointPortSummary } from '@/lib/endpoints/sort'
 import { EndpointsClient } from './EndpointsClient'
 import type { Endpoint } from '@prisma/client'
 

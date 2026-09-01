@@ -1,7 +1,7 @@
 'use server'
 
 import { cache } from 'react'
-import { getSession } from '@/lib/auth'
+import { requireAdmin, requireSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { recordAudit } from '@/lib/audit'
 import {
@@ -21,22 +21,6 @@ export type SafeApicHost = {
   host: string
   createdAt: Date
   updatedAt: Date
-}
-
-async function requireSession(): Promise<{ id: string; role: string; userName: string }> {
-  const session = await getSession()
-  if (!session) throw new Error('Unauthorized')
-  return {
-    id: session.user.id,
-    role: session.user.role ?? 'member',
-    userName: session.user.username ?? session.user.name,
-  }
-}
-
-async function requireAdmin(): Promise<{ id: string; role: string; userName: string }> {
-  const user = await requireSession()
-  if (user.role !== 'admin') throw new Error('Forbidden')
-  return user
 }
 
 function toSafe(host: { id: string; name: string; host: string; createdAt: Date; updatedAt: Date }): SafeApicHost {

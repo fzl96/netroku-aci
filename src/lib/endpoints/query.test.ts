@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'bun:test'
-import { buildEndpointWhere } from './query'
+import { afterAll, describe, expect, it, mock } from 'bun:test'
+
+mock.module('server-only', () => ({}))
+
+const { buildEndpointWhere } = await import('./query')
+
+afterAll(() => mock.restore())
 
 describe('buildEndpointWhere', () => {
   it('scopes unfiltered queries to the selected APIC host', () => {

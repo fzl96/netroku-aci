@@ -2,7 +2,12 @@ import { describe, expect, it } from 'bun:test'
 import type { Endpoint } from '@prisma/client'
 import { groupEndpointsByPort, nextSortState, sortEndpointRows, sortPortRows } from './sort'
 
-function endpoint(overrides: Partial<Endpoint> = {}): Endpoint {
+type TestEndpoint = Omit<Endpoint, 'firstSeenAt' | 'lastSeenAt'> & {
+  firstSeenAt: Date | null
+  lastSeenAt: Date | null
+}
+
+function endpoint(overrides: Partial<TestEndpoint> = {}): TestEndpoint {
   return {
     id: 'endpoint-1',
     apicHostId: 'host-1',

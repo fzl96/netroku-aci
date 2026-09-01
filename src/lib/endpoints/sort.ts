@@ -5,7 +5,22 @@ const NATURAL_COLLATOR = new Intl.Collator(undefined, {
   sensitivity: 'base',
 })
 
-export interface EndpointPortSummary {
+export type GroupableEndpoint = {
+  node: string
+  interface: string
+  vlan: string
+  epgDescr: string
+  isActive: boolean
+  lastSeenAt: Date | string | null
+}
+
+export type SortableEndpoint = GroupableEndpoint & {
+  mac: string
+  ip: string
+  firstSeenAt: Date | string | null
+}
+
+export interface EndpointPortSummary<TEndpoint extends GroupableEndpoint = Endpoint> {
   id: string
   node: string
   interface: string
@@ -15,7 +30,7 @@ export interface EndpointPortSummary {
   vlans: string[]
   epgDescrs: string[]
   lastSeenAt: string
-  endpoints: Endpoint[]
+  endpoints: TEndpoint[]
 }
 
 export type SortDirection = 'asc' | 'desc'
@@ -62,7 +77,7 @@ function stableSort<T>(rows: T[], direction: SortDirection, compare: (a: T, b: T
     .map(({ row }) => row)
 }
 
-function endpointValue(endpoint: Endpoint, key: EndpointSortKey): SortValue {
+function endpointValue(endpoint: SortableEndpoint, key: EndpointSortKey): SortValue {
   switch (key) {
     case 'status': return endpoint.isActive ? 0 : 1
     case 'firstSeenAt': return endpoint.firstSeenAt
@@ -71,7 +86,10 @@ function endpointValue(endpoint: Endpoint, key: EndpointSortKey): SortValue {
   }
 }
 
-function portValue(port: EndpointPortSummary, key: PortSortKey): SortValue {
+function portValue<TEndpoint extends GroupableEndpoint>(
+  port: EndpointPortSummary<TEndpoint>,
+  key: PortSortKey,
+): SortValue {
   switch (key) {
     case 'vlans': return port.vlans.join(', ')
     case 'epgDescrs': return port.epgDescrs.join(', ')
@@ -79,11 +97,19 @@ function portValue(port: EndpointPortSummary, key: PortSortKey): SortValue {
   }
 }
 
-export function sortEndpointRows(rows: Endpoint[], key: EndpointSortKey, direction: SortDirection): Endpoint[] {
+export function sortEndpointRows<TEndpoint extends SortableEndpoint>(
+  rows: TEndpoint[],
+  key: EndpointSortKey,
+  direction: SortDirection,
+): TEndpoint[] {
   return stableSort(rows, direction, (a, b) => compareValues(endpointValue(a, key), endpointValue(b, key)))
 }
 
-export function sortPortRows(rows: EndpointPortSummary[], key: PortSortKey, direction: SortDirection): EndpointPortSummary[] {
+export function sortPortRows<TEndpoint extends GroupableEndpoint>(
+  rows: EndpointPortSummary<TEndpoint>[],
+  key: PortSortKey,
+  direction: SortDirection,
+): EndpointPortSummary<TEndpoint>[] {
   return stableSort(rows, direction, (a, b) => compareValues(portValue(a, key), portValue(b, key)))
 }
 
@@ -98,8 +124,10 @@ export function nextSortState<K extends string>(
 }
 
 /** Group endpoints into unique ports (node + interface) and natural sort by node then interface. */
-export function groupEndpointsByPort(endpoints: Endpoint[]): EndpointPortSummary[] {
-  const map = new Map<string, EndpointPortSummary>()
+export function groupEndpointsByPort<TEndpoint extends GroupableEndpoint>(
+  endpoints: TEndpoint[],
+): EndpointPortSummary<TEndpoint>[] {
+  const map = new Map<string, EndpointPortSummary<TEndpoint>>()
 
   for (const ep of endpoints) {
     const node = ep.node || '—'

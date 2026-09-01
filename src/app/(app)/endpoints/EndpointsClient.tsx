@@ -45,7 +45,7 @@ import {
   type EndpointSortKey,
   type PortSortKey,
   type SortDirection,
-} from './sort'
+} from '@/lib/endpoints/sort'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
