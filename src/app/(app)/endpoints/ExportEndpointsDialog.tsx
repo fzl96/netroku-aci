@@ -3,8 +3,7 @@
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { IconDownload } from '@tabler/icons-react'
-import type { EndpointFilters } from '@/lib/endpoints/query'
-import { hasActiveEndpointFilters } from '@/lib/endpoints/query'
+import { hasActiveEndpointFilters, type EndpointFilters } from '@/lib/endpoints/params'
 import {
   Dialog,
   DialogContent,

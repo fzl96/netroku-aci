@@ -1,32 +1,5 @@
 import type { Prisma } from '@prisma/client'
-
-export type EndpointStatusFilter = 'active' | 'historical'
-
-export interface EndpointFilters {
-  query?: string
-  vlan?: string[]
-  node?: string[]
-  iface?: string[]
-  status?: EndpointStatusFilter[]
-}
-
-export function hasActiveEndpointFilters(filters: EndpointFilters): boolean {
-  return Boolean(
-    filters.query?.trim()
-    || filters.vlan?.length
-    || filters.node?.length
-    || filters.iface?.length
-    || filters.status?.length,
-  )
-}
-
-export function countActiveEndpointFilterGroups(filters: EndpointFilters, view: 'endpoint' | 'port' = 'endpoint'): number {
-  const groups = view === 'endpoint'
-    ? [filters.vlan, filters.node, filters.iface, filters.status]
-    : [filters.vlan, filters.node, filters.status]
-
-  return groups.filter(values => values && values.length > 0).length
-}
+import type { EndpointFilters } from './params'
 
 /** OR-conditions matching an exact node or either member of a vPC pair. */
 function nodeConditions(value: string): Prisma.EndpointWhereInput[] {

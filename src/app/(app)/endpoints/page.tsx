@@ -3,7 +3,11 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getApicHosts } from '@/actions/apic-hosts'
-import { buildEndpointWhere, expandNodeOptions, type EndpointStatusFilter } from '@/lib/endpoints/query'
+import { buildEndpointWhere, expandNodeOptions } from '@/lib/endpoints/query'
+import {
+  parseEndpointPageParams,
+  type RawEndpointPageParams,
+} from '@/lib/endpoints/params'
 import { groupEndpointsByPort, type EndpointPortSummary } from './sort'
 import { EndpointsClient } from './EndpointsClient'
 import type { Endpoint } from '@prisma/client'
@@ -13,38 +17,28 @@ export const metadata: Metadata = {
   description: 'Browse active and historical endpoints learned by the APIC fabric.',
 }
 
-const VALID_PAGE_SIZES = [10, 50, 100, 1000] as const
-type PageSizeValue = typeof VALID_PAGE_SIZES[number] | 'all'
-
-function parsePageSize(param: string | undefined): PageSizeValue {
-  if (param === 'all') return 'all'
-  const n = parseInt(param ?? '50', 10)
-  return (VALID_PAGE_SIZES as readonly number[]).includes(n) ? (n as PageSizeValue) : 50
-}
-
 export default async function EndpointsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ apic?: string; view?: string; query?: string; page?: string; pageSize?: string; vlan?: string; node?: string; iface?: string; status?: string }>
+  searchParams: Promise<RawEndpointPageParams>
 }) {
   const session = await getSession()
   if (!session) redirect('/signin')
 
-  const { apic, view: viewParam, query, page: pageParam, pageSize: pageSizeParam, vlan, node, iface, status } = await searchParams
+  const {
+    hostId: apic,
+    view,
+    query,
+    page,
+    pageSize,
+    vlans: filterVlan,
+    nodes: filterNode,
+    interfaces: filterIface,
+    statuses: filterStatus,
+  } = parseEndpointPageParams(await searchParams)
   const apicHosts = await getApicHosts()
 
   if (!apic && apicHosts.length > 0) redirect(`/endpoints?apic=${apicHosts[0].id}`)
-
-  const view = viewParam === 'port' ? 'port' as const : 'endpoint' as const
-  const page = Math.max(1, parseInt(pageParam ?? '1', 10) || 1)
-  const pageSize = parsePageSize(pageSizeParam)
-
-  const filterVlan = vlan ? vlan.split(',').map(s => s.trim()).filter(Boolean) : []
-  const filterNode = node ? node.split(',').map(s => s.trim()).filter(Boolean) : []
-  const filterIface = iface ? iface.split(',').map(s => s.trim()).filter(Boolean) : []
-  const filterStatus = status
-    ? status.split(',').map(s => s.trim()).filter((s): s is EndpointStatusFilter => s === 'active' || s === 'historical')
-    : []
 
   let endpoints: Endpoint[] = []
   let ports: EndpointPortSummary[] = []

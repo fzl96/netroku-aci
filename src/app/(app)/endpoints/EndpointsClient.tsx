@@ -6,7 +6,14 @@ import { toast } from 'sonner'
 import { IconRefresh, IconSearch, IconChevronLeft, IconChevronRight, IconChevronUp, IconChevronDown, IconServer, IconFilter2 } from '@tabler/icons-react'
 import { useApicHosts } from '@/components/ApicHostsProvider'
 import type { Endpoint } from '@prisma/client'
-import { countActiveEndpointFilterGroups, type EndpointStatusFilter } from '@/lib/endpoints/query'
+import {
+  buildEndpointPageUrl,
+  countActiveEndpointFilterGroups,
+  type EndpointPageParams,
+  type EndpointPageSize,
+  type EndpointStatusFilter,
+  type EndpointView,
+} from '@/lib/endpoints/params'
 import {
   DENSE_TABLE_HEAD_CLS,
   SEARCH_INPUT_CLS,
@@ -89,9 +96,7 @@ function TableSkeleton() {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-type ViewValue = 'endpoint' | 'port'
-type PageSizeValue = 10 | 50 | 100 | 1000 | 'all'
-const PAGE_SIZE_OPTIONS: { label: string; value: PageSizeValue }[] = [
+const PAGE_SIZE_OPTIONS: { label: string; value: EndpointPageSize }[] = [
   { label: '10', value: 10 },
   { label: '50', value: 50 },
   { label: '100', value: 100 },
@@ -151,7 +156,7 @@ function SortableHeader<K extends string>({
 }
 
 interface Props {
-  view: ViewValue
+  view: EndpointView
   endpoints: Endpoint[]
   ports?: EndpointPortSummary[]
   selectedHostId: string
@@ -165,7 +170,7 @@ interface Props {
   ifaces: string[]
   page: number
   total: number
-  pageSize: PageSizeValue
+  pageSize: EndpointPageSize
   activeTotal: number
   historicalTotal: number
 }
@@ -234,29 +239,33 @@ export function EndpointsClient({
     setPortSort(current => nextSortState(current?.key, current?.direction, key))
   }
 
-  function buildUrl(overrides: { apic?: string; view?: ViewValue; query?: string; page?: number; pageSize?: PageSizeValue; vlan?: string[]; node?: string[]; iface?: string[]; status?: string[] }) {
-    const params = new URLSearchParams()
-    const apic = overrides.apic ?? selectedHostId
-    const v = overrides.view ?? view
-    const q = overrides.query !== undefined ? overrides.query : query
-    const p = overrides.page ?? page
-    const ps = overrides.pageSize !== undefined ? overrides.pageSize : pageSize
-    const fv = overrides.vlan !== undefined ? overrides.vlan : filterVlan
-    const fn = overrides.node !== undefined ? overrides.node : filterNode
-    const fi = overrides.iface !== undefined ? overrides.iface : filterIface
-    const fs = overrides.status !== undefined ? overrides.status : filterStatus
-
-    if (apic) params.set('apic', apic)
-    if (v !== 'endpoint') params.set('view', v)
-    if (q.trim()) params.set('query', q.trim())
-    if (p > 1) params.set('page', String(p))
-    if (ps !== 50) params.set('pageSize', String(ps))
-    if (fv.length > 0) params.set('vlan', fv.join(','))
-    if (fn.length > 0) params.set('node', fn.join(','))
-    if (v === 'endpoint' && fi.length > 0) params.set('iface', fi.join(','))
-    if (fs.length > 0 && fs.length < 2) params.set('status', fs[0])
-    const qs = params.toString()
-    return `/endpoints${qs ? `?${qs}` : ''}`
+  function buildUrl(overrides: {
+    apic?: string
+    view?: EndpointView
+    query?: string
+    page?: number
+    pageSize?: EndpointPageSize
+    vlan?: string[]
+    node?: string[]
+    iface?: string[]
+    status?: string[]
+  }) {
+    const nextView = overrides.view ?? view
+    const nextParams: EndpointPageParams = {
+      hostId: overrides.apic ?? selectedHostId,
+      view: nextView,
+      query: overrides.query ?? query,
+      page: overrides.page ?? page,
+      pageSize: overrides.pageSize ?? pageSize,
+      vlans: overrides.vlan ?? filterVlan,
+      nodes: overrides.node ?? filterNode,
+      interfaces: nextView === 'endpoint' ? overrides.iface ?? filterIface : [],
+      statuses: (overrides.status ?? filterStatus)
+        .filter((value): value is EndpointStatusFilter => (
+          value === 'active' || value === 'historical'
+        )),
+    }
+    return buildEndpointPageUrl(nextParams)
   }
 
   function handleHostChange(hostId: string) {
@@ -288,7 +297,7 @@ export function EndpointsClient({
     })
   }
 
-  function handlePageSizeChange(ps: PageSizeValue) {
+  function handlePageSizeChange(ps: EndpointPageSize) {
     startTransition(() => {
       router.replace(buildUrl({ pageSize: ps, page: 1 }))
     })
@@ -683,7 +692,7 @@ export function EndpointsClient({
                     <span className="text-xs text-faint">Per page</span>
                     <select
                       value={String(pageSize)}
-                      onChange={e => handlePageSizeChange(e.target.value === 'all' ? 'all' : Number(e.target.value) as PageSizeValue)}
+                      onChange={e => handlePageSizeChange(e.target.value === 'all' ? 'all' : Number(e.target.value) as EndpointPageSize)}
                       disabled={isPending}
                       className="text-xs bg-muted border border-border rounded-lg px-2 py-1.5 text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-40"
                     >

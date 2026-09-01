@@ -1,4 +1,4 @@
-import type { EndpointFilters } from '@/lib/endpoints/query'
+import type { EndpointFilters } from '@/lib/endpoints/params'
 import type { EndpointExportRequest } from '@/lib/schemas/endpoint-export'
 
 export type ExportScope = EndpointExportRequest['scope']
