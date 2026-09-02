@@ -48,6 +48,14 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
     }],
     entryRoots: ['src/app/api/endpoints', 'src/components/endpoints'],
   },
+  {
+    name: 'epgs',
+    routes: [{
+      root: 'src/app/(app)/epgs',
+      allowedFiles: ['page.tsx'],
+    }],
+    entryRoots: ['src/app/api/epgs', 'src/components/epgs'],
+  },
 ]
 
 function inspectArchitectureFiles(

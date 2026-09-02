@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { sortBindingRows, groupBindingsByPort } from './sort'
-import type { BindingWithEpg } from '@/lib/epgs/query'
+import type { BindingWithEpg } from './query'
 
 describe('sortBindingRows', () => {
   it('natural sorts by node then port', () => {

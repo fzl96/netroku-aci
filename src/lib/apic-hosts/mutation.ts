@@ -3,6 +3,7 @@ import 'server-only'
 import { requireAdmin } from '@/lib/auth'
 import { recordAudit } from '@/lib/audit'
 import { invalidateEndpointReads } from '@/lib/endpoints/mutation'
+import { invalidateEpgReads } from '@/lib/epgs/mutation'
 import { prisma } from '@/lib/prisma'
 import {
   apicHostSchema,
@@ -36,6 +37,7 @@ export type ApicHostMutationDependencies = {
   deleteHost: (id: string) => Promise<SafeApicHost | null>
   recordAudit: (input: AuditInput) => Promise<void>
   invalidateEndpointReads: (id: string) => void
+  invalidateEpgReads: (id: string) => void
   reportAuditError?: (error: unknown) => void
 }
 
@@ -123,6 +125,7 @@ export function createApicHostMutation(dependencies: ApicHostMutationDependencie
         target: `${host.name} (${host.host})`,
       })
       dependencies.invalidateEndpointReads(id)
+      dependencies.invalidateEpgReads(id)
       return { success: true, data: undefined }
     } catch (error) {
       return { success: false, error: errorMessage(error) }
@@ -147,6 +150,7 @@ const apicHostMutation = createApicHostMutation({
   },
   recordAudit,
   invalidateEndpointReads,
+  invalidateEpgReads,
   reportAuditError: error => console.error('[apic-hosts] failed to record audit', error),
 })
 

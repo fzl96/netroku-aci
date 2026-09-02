@@ -7,7 +7,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import type { EpgPortSummary } from './sort'
+import type { EpgPortSummary } from '@/lib/epgs/sort'
 import { DENSE_TABLE_HEAD_CLS } from '@/lib/ui-classes'
 
 function Pill({ children }: { children: React.ReactNode }) {

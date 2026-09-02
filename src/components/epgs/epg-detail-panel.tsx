@@ -8,7 +8,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import type { EpgWithBindings } from '@/lib/epgs/query'
-import { sortBindingRows } from './sort'
+import { sortBindingRows } from '@/lib/epgs/sort'
 import { MUTED_TABLE_HEAD_CLS } from '@/lib/ui-classes'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

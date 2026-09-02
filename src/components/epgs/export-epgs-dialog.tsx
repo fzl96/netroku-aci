@@ -3,8 +3,8 @@
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { IconDownload } from '@tabler/icons-react'
-import type { BindingFilters } from '@/lib/epgs/query'
-import { hasActiveEpgFilters } from '@/lib/epgs/query'
+import type { EpgFilters } from '@/lib/epgs/params'
+import { hasActiveEpgFilters } from '@/lib/epgs/params'
 import {
   Dialog,
   DialogContent,
@@ -18,13 +18,13 @@ import {
   getDefaultExportScope,
   type ExportGrouping,
   type ExportScope,
-} from './export-utils'
+} from '@/lib/epgs/export-utils'
 
 interface Props {
   apicHostId: string
   hostTotal: number
   filteredTotal: number
-  filters: BindingFilters
+  filters: EpgFilters
 }
 
 export function ExportEpgsDialog({

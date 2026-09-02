@@ -13,7 +13,7 @@ const resyncNodes = mock(async (input: unknown) => {
   void input
   return { syncedNodes: 1, syncedComponents: 4, nodesOnline: 1 }
 })
-const resyncEpgs = mock(async (input: unknown) => {
+const resyncEpgInventoryForScheduler = mock(async (input: unknown) => {
   void input
   return { syncedEpgs: 2, syncedBindings: 6 }
 })
@@ -29,7 +29,7 @@ const dependencies = {
   resyncEndpointInventoryForScheduler,
   resyncInterfaces,
   resyncNodes,
-  resyncEpgs,
+  resyncEpgInventoryForScheduler,
   recordAudit,
 }
 
@@ -49,8 +49,8 @@ beforeEach(() => {
     void input
     return { syncedNodes: 1, syncedComponents: 4, nodesOnline: 1 }
   })
-  resyncEpgs.mockClear()
-  resyncEpgs.mockImplementation(async (input: unknown) => {
+  resyncEpgInventoryForScheduler.mockClear()
+  resyncEpgInventoryForScheduler.mockImplementation(async (input: unknown) => {
     void input
     return { syncedEpgs: 2, syncedBindings: 6 }
   })
@@ -187,6 +187,16 @@ describe('resyncHost endpoint purpose boundary', () => {
     expect(result.endpoints).toEqual({ error: 'endpoint APIC unavailable' })
     expect(resyncInterfaces).toHaveBeenCalledTimes(1)
     expect(resyncNodes).toHaveBeenCalledTimes(1)
-    expect(resyncEpgs).toHaveBeenCalledTimes(1)
+    expect(resyncEpgInventoryForScheduler).toHaveBeenCalledTimes(1)
+  })
+
+  it('enters EPGs through the trusted purpose mutation without duplicate audit', async () => {
+    await resyncHost(input, dependencies)
+
+    expect(resyncEpgInventoryForScheduler).toHaveBeenCalledTimes(1)
+    expect(resyncEpgInventoryForScheduler).toHaveBeenCalledWith(input)
+    expect(recordAudit.mock.calls.some(([entry]) => (
+      entry as { action?: string }
+    ).action === 'resync.epgs')).toBe(false)
   })
 })

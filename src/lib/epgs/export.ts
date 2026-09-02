@@ -251,3 +251,20 @@ export function buildEpgWorkbook(
 
   return workbook
 }
+
+export function serializeEpgWorkbook(workbook: XLSX.WorkBook): Uint8Array {
+  const bytes = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer
+  return new Uint8Array(bytes)
+}
+
+function safeFilenameSegment(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'host'
+}
+
+export function buildEpgExportFilename({
+  hostName, scope, groupBy, now = new Date(),
+}: {
+  hostName: string; scope: 'all' | 'filtered'; groupBy: EpgExportGrouping; now?: Date
+}): string {
+  return ['epgs', safeFilenameSegment(hostName), scope, `by-${groupBy}`, now.toISOString().replace(/[:.]/g, '-')].join('-') + '.xlsx'
+}

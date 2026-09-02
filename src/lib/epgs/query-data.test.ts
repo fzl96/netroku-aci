@@ -1,0 +1,72 @@
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
+import * as React from 'react'
+
+const requireSession = mock(async () => ({ id: 'u1', userName: 'alice' }))
+const hostFindMany = mock(async () => [{ id: 'h1', name: 'Fabric', host: 'apic.local' }])
+const hostFindFirst = mock(async () => ({ id: 'h1', name: 'Fabric', host: 'apic.local', lastEpgSyncAt: new Date('2026-01-01T00:00:00Z') }))
+const epgCount = mock(async () => 2)
+const epgFindMany = mock(async (args: Record<string, unknown>) => {
+  if ('distinct' in args) return []
+  return [{
+    id: 'e1', apicHostId: 'h1', dn: 'dn', name: 'web', tenant: 'T1', appProfile: 'App',
+    description: '', bridgeDomain: 'BD', pcTag: '', preferredGroup: false, isolation: false,
+    domains: [], providedContracts: [], consumedContracts: [], bindings: [],
+  }]
+})
+const bindingFindMany = mock(async (): Promise<Array<Record<string, unknown>>> => [])
+const cacheCalls: Array<{ key: string[]; options: { tags: string[]; revalidate: number } }> = []
+
+mock.module('server-only', () => ({}))
+mock.module('@/lib/auth', () => ({ requireSession }))
+mock.module('@/lib/prisma', () => ({ prisma: {
+  apicHost: { findMany: hostFindMany, findFirst: hostFindFirst },
+  epgSnapshot: { count: epgCount, findMany: epgFindMany },
+  epgPathBinding: { findMany: bindingFindMany },
+} }))
+mock.module('next/cache', () => ({
+  unstable_cache: (fn: () => unknown, key: string[], options: { tags: string[]; revalidate: number }) => {
+    cacheCalls.push({ key, options })
+    return fn
+  },
+  revalidateTag: () => {},
+}))
+mock.module('react', () => ({ ...React, cache: (fn: unknown) => fn }))
+
+const query = await import('./query')
+const base = { hostId: 'h1', view: 'epg' as const, query: '', page: 1, pageSize: 50 as const, tenants: [], appProfiles: [], nodes: [] }
+
+beforeEach(() => {
+  requireSession.mockClear(); hostFindMany.mockClear(); hostFindFirst.mockClear()
+  epgCount.mockClear(); epgFindMany.mockClear(); bindingFindMany.mockClear(); cacheCalls.length = 0
+})
+
+describe('EPG data interface', () => {
+  it('authorizes before host resolution and returns safe purpose-owned hosts', async () => {
+    expect(await query.resolveEpgHost('h1')).toEqual({ kind: 'selected', host: { id: 'h1', name: 'Fabric', host: 'apic.local' }, hosts: [{ id: 'h1', name: 'Fabric', host: 'apic.local' }] })
+    expect(requireSession).toHaveBeenCalledTimes(1)
+  })
+
+  it('tags persistent reads for eight hours', async () => {
+    await query.getEpgOverview('h1', base)
+    await query.getEpgResults(base)
+    expect(cacheCalls.every(call => call.options.revalidate === 28800)).toBe(true)
+    expect(cacheCalls.every(call => call.options.tags.join('|') === 'epgs:all|epgs:host:h1')).toBe(true)
+  })
+
+  it('uses unambiguous JSON array cache keys', async () => {
+    await query.getEpgResults({ ...base, tenants: ['a,b'] })
+    await query.getEpgResults({ ...base, tenants: ['a', 'b'] })
+    expect(cacheCalls.at(-2)?.key).not.toEqual(cacheCalls.at(-1)?.key)
+  })
+
+  it('groups all matching bindings before port pagination', async () => {
+    bindingFindMany.mockImplementationOnce(async () => [
+      { id: 'b1', apicHostId: 'h1', epgId: 'e1', dn: 'd', pathTDn: 'p', pod: '1', node: '101', port: 'Eth1/1', pathType: 'port', encap: 'vlan-1', mode: 'trunk', epg: { name: 'web', tenant: 'T1', appProfile: 'App', dn: 'dn' } },
+      { id: 'b2', apicHostId: 'h1', epgId: 'e2', dn: 'd2', pathTDn: 'p', pod: '1', node: '101', port: 'Eth1/1', pathType: 'port', encap: 'vlan-2', mode: 'trunk', epg: { name: 'api', tenant: 'T1', appProfile: 'App', dn: 'dn2' } },
+    ])
+    const result = await query.getEpgResults({ ...base, view: 'port', pageSize: 10 })
+    expect(result.view).toBe('port')
+    expect(result.pagination.total).toBe(1)
+    expect(bindingFindMany).toHaveBeenCalledTimes(1)
+  })
+})

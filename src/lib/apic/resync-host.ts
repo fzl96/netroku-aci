@@ -1,8 +1,8 @@
 import { recordAudit } from '@/lib/audit'
 import { resyncEndpointInventoryForScheduler } from '@/lib/endpoints/mutation'
+import { resyncEpgInventoryForScheduler } from '@/lib/epgs/mutation'
 import { resyncInterfaces } from '@/lib/apic/interfaces'
 import { resyncNodes } from '@/lib/apic/nodes'
-import { resyncEpgs } from '@/lib/apic/epg-resync'
 import type { DatasetResult, HostResult } from '@/lib/apic/cron-resync'
 
 export interface ResyncHostInput {
@@ -19,7 +19,7 @@ export interface ResyncHostDependencies {
   resyncEndpointInventoryForScheduler: typeof resyncEndpointInventoryForScheduler
   resyncInterfaces: typeof resyncInterfaces
   resyncNodes: typeof resyncNodes
-  resyncEpgs: typeof resyncEpgs
+  resyncEpgInventoryForScheduler: typeof resyncEpgInventoryForScheduler
   recordAudit: typeof recordAudit
 }
 
@@ -27,7 +27,7 @@ const DEFAULT_DEPENDENCIES: ResyncHostDependencies = {
   resyncEndpointInventoryForScheduler,
   resyncInterfaces,
   resyncNodes,
-  resyncEpgs,
+  resyncEpgInventoryForScheduler,
   recordAudit,
 }
 
@@ -48,7 +48,7 @@ export async function resyncHost(
     resyncEndpointInventoryForScheduler: resyncEndpointInventory,
     resyncInterfaces: resyncInterfaceInventory,
     resyncNodes: resyncNodeInventory,
-    resyncEpgs: resyncEpgInventory,
+    resyncEpgInventoryForScheduler: resyncEpgInventory,
     recordAudit: audit,
   } = dependencies
   const target = `${hostName} (${host})`
@@ -109,22 +109,11 @@ export async function resyncHost(
   // EPGs & static port bindings
   let epgs: DatasetResult
   try {
-    const r = await resyncEpgInventory(creds)
+    const r = await resyncEpgInventory({ ...creds, hostName })
     epgs = { synced: r.syncedEpgs, total: r.syncedEpgs + r.syncedBindings }
   } catch (err) {
     epgs = { error: errorMessage(err, 'Failed to resync EPGs') }
   }
   result.epgs = epgs
-  await audit({
-    userId: null,
-    userName: 'scheduler',
-    action: 'resync.epgs',
-    target,
-    status: 'error' in epgs ? 'failure' : 'success',
-    detail: 'error' in epgs
-      ? epgs.error
-      : `synced ${epgs.synced} EPGs (total ${epgs.total})`,
-  })
-
   return result
 }
