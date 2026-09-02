@@ -82,9 +82,13 @@ const unstableCache = mock((
 })
 
 mock.module('server-only', () => ({}))
-mock.module('@/lib/auth', () => ({ AuthenticationRequiredError, requireSession }))
+mock.module('@/lib/auth', () => ({
+  AuthenticationRequiredError,
+  requireSession,
+  requireAdmin: async () => ({ id: 'admin', userName: 'admin' }),
+}))
 mock.module('@/lib/prisma', () => ({ prisma }))
-mock.module('next/cache', () => ({ unstable_cache: unstableCache }))
+mock.module('next/cache', () => ({ unstable_cache: unstableCache, revalidateTag: () => {} }))
 
 const query = await import('./query')
 
@@ -187,7 +191,13 @@ describe('dashboard query interface', () => {
       {
         key: ['dashboard', 'hosts'],
         options: {
-          tags: ['dashboard:all', 'endpoints:all', 'interfaces:all', 'nodes:all'],
+          tags: [
+            'dashboard:all',
+            'apic-hosts:all',
+            'endpoints:all',
+            'interfaces:all',
+            'nodes:all',
+          ],
           revalidate: 28_800,
         },
       },

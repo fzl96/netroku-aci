@@ -24,12 +24,12 @@
 | 3 | Endpoints writes | done | `c2be982` refactor: centralize endpoint writes and invalidation |
 | 4 | Endpoints streaming | done | `28968a9`, hardened by `283c501` |
 | 5 | EPGs | done | `0870a10`, hardened by `f057262` |
-| 6 | Interface Health | done | Originally skipped by the 2026-09-02 session with no reason recorded (it jumped straight to Task 7); resumed after 7/8/History landed. Landed across four commits: `refactor: relocate interface health modules to purpose directories`, `test: add typed interface health page parameters`, `refactor: move interface health reads and writes behind purpose modules`, `refactor: stream interface health regions`. Two deliberate behaviour changes: the Export button is no longer disabled on an empty table (the route already answers 422, and the header must not wait on results), and the `window` param is dropped from URLs outside the CRC/state-change views that use it. |
-| 7 | Nodes | done | `refactor: stream node inventory regions` |
-| 8 | Dashboard | done | `refactor: stream dashboard regions` |
+| 6 | Interface Health | done | Originally skipped by the 2026-09-02 session with no reason recorded (it jumped straight to Task 7); resumed after 7/8/History landed. Landed across four commits: `refactor: relocate interface health modules to purpose directories`, `test: add typed interface health page parameters`, `refactor: move interface health reads and writes behind purpose modules`, `refactor: stream interface health regions`; cache identity and export DTO boundaries hardened by `fix: harden streamed data boundaries`. Two deliberate behaviour changes: the Export button is no longer disabled on an empty table (the route already answers 422, and the header must not wait on results), and the `window` param is dropped from URLs outside the CRC/state-change views that use it. |
+| 7 | Nodes | done | `refactor: stream node inventory regions`; retryable data reads and obsolete-action cleanup hardened by `fix: harden streamed data boundaries` |
+| 8 | Dashboard | done | `refactor: stream dashboard regions`; APIC-host cache invalidation hardened by `fix: harden streamed data boundaries` |
 | 9 | Legacy (4 purposes) | not started | |
 | 10 | Inventory split | not started | |
-| 11 | APIC Hosts / Scheduler / Users / History / Settings | partial | History landed as `refactor: stream history regions` (audit writes now invalidate `history:all`). APIC Hosts, Scheduler, Users, Settings not started. |
+| 11 | APIC Hosts / Scheduler / Users / History / Settings | partial | History landed as `refactor: stream history regions` (audit writes now invalidate `history:all`); retryable data reads were hardened by `fix: harden streamed data boundaries`. APIC Hosts, Scheduler, Users, Settings not started. |
 | 12 | Final sweep | not started | |
 
 **Known deviation from the plan text:** Task 11 was started out of order (History only) before Task 6.

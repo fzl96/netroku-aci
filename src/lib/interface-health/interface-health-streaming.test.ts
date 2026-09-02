@@ -38,12 +38,19 @@ describe('interface health streaming architecture', () => {
     expect(view).toContain('hostPromise')
   })
 
+  it('shares the CRC window promise between the trend and table results', () => {
+    const view = read('src/components/interface-health/interface-health-view.tsx')
+    expect(view).toContain('Promise.all([paramsPromise, hostPromise, crcWindowPromise])')
+    expect(view).toContain('getInterfaceResults({ ...params, hostId: resolution.host.id }, crcWindow)')
+  })
+
   it('provides accessible shape-matched fallbacks', () => {
     const skeleton = read('src/components/interface-health/interface-health-skeleton.tsx')
     expect(skeleton).toContain('aria-busy="true"')
     expect(skeleton).toContain('Loading interface filters')
     expect(skeleton).toContain('Loading interface results')
     expect(skeleton).toContain('Loading node filter')
+    expect(skeleton).toContain('Array.from({ length: 12 })')
   })
 
   it('offers a regional retry rather than failing the whole page', () => {

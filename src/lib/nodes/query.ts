@@ -45,9 +45,16 @@ export type NodeResultsData =
   | { view: 'nodes'; rows: NodeRow[]; pagination: NodePagination }
   | { view: 'components'; rows: HardwareComponentRow[]; pagination: NodePagination }
 
+export type NodeReadErrorCode = 'unauthorized' | 'read-failed'
+
 export class NodeReadError extends Error {
-  readonly code = 'unauthorized'
-  constructor() { super('Unauthorized'); this.name = 'NodeReadError' }
+  constructor(
+    readonly code: NodeReadErrorCode = 'unauthorized',
+    options?: ErrorOptions,
+  ) {
+    super(code === 'unauthorized' ? 'Unauthorized' : 'Unable to load node data', options)
+    this.name = 'NodeReadError'
+  }
 }
 
 async function authorize(): Promise<void> {
@@ -58,25 +65,36 @@ async function authorize(): Promise<void> {
   }
 }
 
+async function readNodeData<T>(read: () => Promise<T>): Promise<T> {
+  try {
+    return await read()
+  } catch (error) {
+    if (error instanceof NodeReadError) throw error
+    throw new NodeReadError('read-failed', { cause: error })
+  }
+}
+
 function cacheOptions(hostId: string) {
   return { tags: ['nodes:all', `nodes:host:${hostId}`], revalidate: NODE_CACHE_SECONDS }
 }
 
 async function resolveForRequest(requestedHostId: string): Promise<NodeHostResolution> {
   await authorize()
-  const hosts = await prisma.apicHost.findMany({
-    orderBy: { createdAt: 'desc' }, select: { id: true, name: true, host: true },
+  return readNodeData(async () => {
+    const hosts = await prisma.apicHost.findMany({
+      orderBy: { createdAt: 'desc' }, select: { id: true, name: true, host: true },
+    })
+    if (!hosts.length) return { kind: 'empty', hosts: [] }
+    const host = hosts.find(candidate => candidate.id === requestedHostId)
+    if (host) return { kind: 'selected', host, hosts }
+    return { kind: 'redirect', location: `/nodes?apic=${encodeURIComponent(hosts[0].id)}`, hosts }
   })
-  if (!hosts.length) return { kind: 'empty', hosts: [] }
-  const host = hosts.find(candidate => candidate.id === requestedHostId)
-  if (host) return { kind: 'selected', host, hosts }
-  return { kind: 'redirect', location: `/nodes?apic=${encodeURIComponent(hosts[0].id)}`, hosts }
 }
 export const resolveNodeHost = cache(resolveForRequest)
 
 export async function getNodeOverview(hostId: string): Promise<NodeOverviewData> {
   await authorize()
-  return unstable_cache(async () => {
+  return readNodeData(() => unstable_cache(async () => {
     const [host, nodesTotal, nodesOnline, componentsFailed] = await Promise.all([
       prisma.apicHost.findFirst({ where: { id: hostId }, select: { lastNodeSyncAt: true } }),
       prisma.nodeSnapshot.count({ where: { apicHostId: hostId, present: true } }),
@@ -90,12 +108,12 @@ export async function getNodeOverview(hostId: string): Promise<NodeOverviewData>
       lastNodeSyncAt: host?.lastNodeSyncAt?.toISOString() ?? null,
       nodesOnline, nodesTotal, componentsFailed,
     }
-  }, ['nodes', 'overview', hostId], cacheOptions(hostId))()
+  }, ['nodes', 'overview', hostId], cacheOptions(hostId))())
 }
 
 export async function getNodeTrend(hostId: string): Promise<NodeTrendPoint[]> {
   await authorize()
-  return unstable_cache(async () => {
+  return readNodeData(() => unstable_cache(async () => {
     const samples = await prisma.nodeStatusSample.findMany({
       where: { apicHostId: hostId }, orderBy: { sampledAt: 'desc' }, take: 100,
       select: { sampledAt: true, nodesOnline: true, componentsFailed: true },
@@ -105,7 +123,7 @@ export async function getNodeTrend(hostId: string): Promise<NodeTrendPoint[]> {
       nodesOnline: sample.nodesOnline,
       componentsFailed: sample.componentsFailed,
     }))
-  }, ['nodes', 'trend', hostId], cacheOptions(hostId))()
+  }, ['nodes', 'trend', hostId], cacheOptions(hostId))())
 }
 
 function pagination(total: number, requestedPage: number, pageSize: NodePageSize): NodePagination {
@@ -149,7 +167,7 @@ function normalizedKey(params: NodePageParams): string[] {
 export async function getNodeResults(params: NodePageParams): Promise<NodeResultsData> {
   await authorize()
   const query = params.query.trim()
-  const stored = await unstable_cache(async (): Promise<
+  const stored = await readNodeData(() => unstable_cache(async (): Promise<
     { view: 'nodes'; rows: NodeRow[] } | { view: 'components'; rows: HardwareComponentRow[] }
   > => {
     if (params.view === 'components') {
@@ -180,7 +198,7 @@ export async function getNodeResults(params: NodePageParams): Promise<NodeResult
       _count: { _all: true },
     }) : []
     return { view: 'nodes', rows: sortNodeRows(records.map(row => serializeNode(row, counts))) }
-  }, ['nodes', 'results', ...normalizedKey(params)], cacheOptions(params.hostId))()
+  }, ['nodes', 'results', ...normalizedKey(params)], cacheOptions(params.hostId))())
 
   const paging = pagination(stored.rows.length, params.page, params.pageSize)
   return stored.view === 'nodes'

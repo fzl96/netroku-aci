@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { revalidateTag } from 'next/cache'
 import { requireAdmin } from '@/lib/auth'
 import { recordAudit } from '@/lib/audit'
 import { invalidateEndpointReads } from '@/lib/endpoints/mutation'
@@ -42,7 +43,9 @@ export type ApicHostMutationDependencies = {
   invalidateEpgReads: (id: string) => void
   invalidateNodeReads: (id: string) => void
   invalidateInterfaceReads: (id: string) => void
+  invalidateApicHostReads: () => void
   reportAuditError?: (error: unknown) => void
+  reportInvalidationError?: (error: unknown) => void
 }
 
 function errorMessage(error: unknown): string {
@@ -59,6 +62,10 @@ function toSafeApicHost(host: SafeApicHost): SafeApicHost {
   }
 }
 
+export function invalidateApicHostReads(): void {
+  revalidateTag('apic-hosts:all', { expire: 0 })
+}
+
 /** Owns APIC-host write sequencing, audit semantics, and dependent cache expiry. */
 export function createApicHostMutation(dependencies: ApicHostMutationDependencies) {
   async function audit(input: AuditInput): Promise<void> {
@@ -66,6 +73,18 @@ export function createApicHostMutation(dependencies: ApicHostMutationDependencie
       await dependencies.recordAudit(input)
     } catch (error) {
       dependencies.reportAuditError?.(error)
+    }
+  }
+
+  function invalidate(reads: () => void): void {
+    try {
+      reads()
+    } catch (error) {
+      try {
+        dependencies.reportInvalidationError?.(error)
+      } catch {
+        // Reporting must not turn a committed write into an apparent failure.
+      }
     }
   }
 
@@ -84,6 +103,7 @@ export function createApicHostMutation(dependencies: ApicHostMutationDependencie
         action: 'apic_host.create',
         target: `${host.name} (${host.host})`,
       })
+      invalidate(dependencies.invalidateApicHostReads)
       return { success: true, data: host }
     } catch (error) {
       return { success: false, error: errorMessage(error) }
@@ -109,7 +129,8 @@ export function createApicHostMutation(dependencies: ApicHostMutationDependencie
         action: 'apic_host.update',
         target: `${host.name} (${host.host})`,
       })
-      dependencies.invalidateEndpointReads(id)
+      invalidate(dependencies.invalidateApicHostReads)
+      invalidate(() => dependencies.invalidateEndpointReads(id))
       return { success: true, data: host }
     } catch (error) {
       return { success: false, error: errorMessage(error) }
@@ -128,10 +149,11 @@ export function createApicHostMutation(dependencies: ApicHostMutationDependencie
         action: 'apic_host.delete',
         target: `${host.name} (${host.host})`,
       })
-      dependencies.invalidateEndpointReads(id)
-      dependencies.invalidateEpgReads(id)
-      dependencies.invalidateNodeReads(id)
-      dependencies.invalidateInterfaceReads(id)
+      invalidate(dependencies.invalidateApicHostReads)
+      invalidate(() => dependencies.invalidateEndpointReads(id))
+      invalidate(() => dependencies.invalidateEpgReads(id))
+      invalidate(() => dependencies.invalidateNodeReads(id))
+      invalidate(() => dependencies.invalidateInterfaceReads(id))
       return { success: true, data: undefined }
     } catch (error) {
       return { success: false, error: errorMessage(error) }
@@ -159,7 +181,9 @@ const apicHostMutation = createApicHostMutation({
   invalidateEpgReads,
   invalidateNodeReads,
   invalidateInterfaceReads,
+  invalidateApicHostReads,
   reportAuditError: error => console.error('[apic-hosts] failed to record audit', error),
+  reportInvalidationError: error => console.error('[apic-hosts] failed to expire cache', error),
 })
 
 export const {

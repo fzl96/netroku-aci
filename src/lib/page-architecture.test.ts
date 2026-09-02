@@ -35,6 +35,7 @@ type MigratedPurpose = {
     allowedFiles: string[]
   }>
   entryRoots: string[]
+  obsoletePaths?: string[]
 }
 
 // Add one purpose only when its vertical slice starts. The slice must restore
@@ -63,6 +64,7 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
       allowedFiles: ['page.tsx'],
     }],
     entryRoots: ['src/app/api/nodes', 'src/components/nodes'],
+    obsoletePaths: ['src/actions/nodes.ts'],
   },
   {
     name: 'dashboard',
@@ -251,6 +253,7 @@ describe('page data architecture guard', () => {
       const entryFiles = purpose.entryRoots.flatMap(root => collectTypeScriptFiles(root, false))
 
       expect([...routeViolations, ...inspectArchitectureFiles(entryFiles)]).toEqual([])
+      expect((purpose.obsoletePaths ?? []).filter(existsSync)).toEqual([])
     })
   }
 })

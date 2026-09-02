@@ -11,9 +11,11 @@ const requireSession = mock(async () => {
 
 let hosts = [{ id: 'h1', name: 'Fabric', host: 'apic.local' }]
 const apicHostFindMany = mock(async () => hosts)
-const apicHostFindFirst = mock(async () => ({
-  lastInterfaceSyncAt: new Date('2026-01-01T00:00:00Z'),
-}))
+const apicHostFindFirst = mock(async (args: { select?: Record<string, boolean> }) => (
+  args.select?.lastInterfaceSyncAt
+    ? { lastInterfaceSyncAt: new Date('2026-01-01T00:00:00Z') }
+    : { id: 'h1', name: 'Fabric' }
+))
 
 const crcSamples = [
   {
@@ -27,7 +29,43 @@ const crcSamples = [
     dRxCrcErrors: BigInt(2),
   },
 ]
-const interfaceSampleFindMany = mock(async () => crcSamples)
+const exportSample = {
+  sampledAt: new Date('2026-01-05T00:00:00Z'),
+  adminSt: 'up',
+  operSt: 'up',
+  operSpeed: '10G',
+  rxBytes: BigInt(10),
+  rxPkts: BigInt(11),
+  rxErrors: BigInt(12),
+  rxDiscards: BigInt(13),
+  rxCrcErrors: BigInt(14),
+  rxAlignErrors: BigInt(15),
+  txBytes: BigInt(20),
+  txPkts: BigInt(21),
+  txErrors: BigInt(22),
+  txDiscards: BigInt(23),
+  dRxBytes: BigInt(30),
+  dRxErrors: BigInt(31),
+  dRxDiscards: BigInt(32),
+  dRxCrcErrors: BigInt(33),
+  dRxAlignErrors: BigInt(34),
+  dTxBytes: BigInt(40),
+  dTxErrors: BigInt(41),
+  dTxDiscards: BigInt(42),
+  internalSecret: 'omit-sample',
+  interface: {
+    node: 'leaf-1',
+    ifName: 'eth1/1',
+    usage: 'epg',
+    description: 'server',
+    dn: 'topology/leaf-1/eth1/1',
+    internalSecret: 'omit-interface',
+  },
+}
+const interfaceSampleFindMany = mock(async (args: {
+  select?: Record<string, unknown>
+  include?: Record<string, unknown>
+}) => args.select?.adminSt ? [exportSample] : crcSamples)
 
 function snapshot(id: string, node: string, ifName: string, crc: bigint) {
   return {
@@ -62,10 +100,18 @@ const interfaceSnapshotFindMany = mock(async (args: { distinct?: string[] }) => 
 ) as never)
 const queryRaw = mock(async () => [{ interfaceId: 'i2' }])
 
-const cacheCalls: Array<{ key: string[]; options: { tags: string[]; revalidate: number } }> = []
+const cacheCalls: Array<{
+  key: string[]
+  options: { tags: string[]; revalidate: number }
+  invocationArgs: unknown[][]
+}> = []
 
 mock.module('server-only', () => ({}))
-mock.module('@/lib/auth', () => ({ AuthenticationRequiredError, requireSession }))
+mock.module('@/lib/auth', () => ({
+  AuthenticationRequiredError,
+  requireSession,
+  requireAdmin: async () => ({ id: 'admin', userName: 'admin' }),
+}))
 mock.module('@/lib/prisma', () => ({ prisma: {
   apicHost: { findMany: apicHostFindMany, findFirst: apicHostFindFirst },
   interfaceSample: { findMany: interfaceSampleFindMany },
@@ -73,8 +119,17 @@ mock.module('@/lib/prisma', () => ({ prisma: {
   $queryRaw: queryRaw,
 } }))
 mock.module('next/cache', () => ({
-  unstable_cache: (fn: () => unknown, key: string[], options: { tags: string[]; revalidate: number }) => {
-    cacheCalls.push({ key, options }); return fn
+  unstable_cache: (
+    fn: (...args: unknown[]) => unknown,
+    key: string[],
+    options: { tags: string[]; revalidate: number },
+  ) => {
+    const invocationArgs: unknown[][] = []
+    cacheCalls.push({ key, options, invocationArgs })
+    return (...args: unknown[]) => {
+      invocationArgs.push(args)
+      return fn(...args)
+    }
   },
   revalidateTag: () => {},
 }))
@@ -91,6 +146,8 @@ beforeEach(() => {
   authenticationError = null
   hosts = [{ id: 'h1', name: 'Fabric', host: 'apic.local' }]
   cacheCalls.length = 0
+  requireSession.mockClear()
+  interfaceSampleFindMany.mockClear()
 })
 
 describe('interface health authorization', () => {
@@ -210,6 +267,28 @@ describe('getInterfaceResults', () => {
     expect(results.rows.map(row => row.crcWindowTotal)).toEqual(['5', '2'])
   })
 
+  it('authorizes once when the CRC result cache needs window totals', async () => {
+    await query.getInterfaceResults({
+      ...base, view: 'crc', sort: { kind: 'crc-window', direction: 'desc' },
+    })
+
+    expect(requireSession).toHaveBeenCalledTimes(1)
+  })
+
+  it('makes preloaded CRC totals an explicit result-cache input', async () => {
+    const preloaded = {
+      trend: [],
+      totals: [{ interfaceId: 'i1', total: '9' }],
+    }
+
+    await query.getInterfaceResults({
+      ...base, view: 'crc', sort: { kind: 'crc-window', direction: 'desc' },
+    }, preloaded)
+
+    const resultsCache = cacheCalls.find(call => call.key[1] === 'results')
+    expect(resultsCache?.invocationArgs).toEqual([[preloaded.totals]])
+  })
+
   it('honours an ascending CRC window sort', async () => {
     const results = await query.getInterfaceResults({
       ...base, view: 'crc', sort: { kind: 'crc-window', direction: 'asc' },
@@ -243,9 +322,32 @@ describe('getInterfaceResults', () => {
       counterMode: 'current',
     })
     expect(cacheCalls.at(-1)?.key).toEqual([
-      'interface-health', 'results', 'h1', 'state-changed', '30d', 'eth', 'leaf-1|leaf-2',
+      'interface-health', 'results', 'h1', 'state-changed', '30d', 'eth', '["leaf-1","leaf-2"]',
       'natural::desc:current',
     ])
     expect(cacheCalls.at(-1)?.options.tags).toEqual(['interfaces:all', 'interfaces:host:h1'])
+  })
+})
+
+describe('getInterfaceExport', () => {
+  it('returns an exact purpose DTO selected from Prisma', async () => {
+    const result = await query.getInterfaceExport({
+      hostId: 'h1', from: null, to: null, nodes: [],
+    })
+
+    expect(result?.samples).toHaveLength(1)
+    expect(Object.keys(result!.samples[0]).sort()).toEqual([
+      'adminSt', 'dRxAlignErrors', 'dRxBytes', 'dRxCrcErrors', 'dRxDiscards',
+      'dRxErrors', 'dTxBytes', 'dTxDiscards', 'dTxErrors', 'interface', 'operSpeed',
+      'operSt', 'rxAlignErrors', 'rxBytes', 'rxCrcErrors', 'rxDiscards', 'rxErrors',
+      'rxPkts', 'sampledAt', 'txBytes', 'txDiscards', 'txErrors', 'txPkts',
+    ].sort())
+    expect(Object.keys(result!.samples[0].interface).sort()).toEqual([
+      'description', 'dn', 'ifName', 'node', 'usage',
+    ].sort())
+
+    const call = interfaceSampleFindMany.mock.calls.at(-1)?.[0]
+    expect(call).toHaveProperty('select')
+    expect(call).not.toHaveProperty('include')
   })
 })

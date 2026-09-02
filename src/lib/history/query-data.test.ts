@@ -29,7 +29,11 @@ const cacheCalls: Array<{
 }> = []
 
 mock.module('server-only', () => ({}))
-mock.module('@/lib/auth', () => ({ AuthenticationRequiredError, requireSession }))
+mock.module('@/lib/auth', () => ({
+  AuthenticationRequiredError,
+  requireSession,
+  requireAdmin: async () => ({ id: 'admin', userName: 'admin' }),
+}))
 mock.module('@/lib/prisma', () => ({
   prisma: { auditLog: { count, findMany } },
 }))
@@ -42,6 +46,7 @@ mock.module('next/cache', () => ({
     cacheCalls.push({ key, options })
     return producer
   },
+  revalidateTag: () => {},
 }))
 mock.module('react', () => ({ ...React, cache: (fn: unknown) => fn }))
 
@@ -77,6 +82,17 @@ describe('history query interface', () => {
     await expect(history.getHistoryPage({ query: '', action: 'all', page: 1 }))
       .rejects.toThrow('session database unavailable')
     expect(cacheCalls).toHaveLength(0)
+  })
+
+  it('maps durable read failures to a retryable purpose error after authorization', async () => {
+    count.mockRejectedValueOnce(new Error('database unavailable'))
+
+    const error = await history.getHistoryPage({ query: '', action: 'all', page: 1 })
+      .catch(value => value)
+
+    expect(requireSession).toHaveBeenCalledTimes(1)
+    expect(error).toBeInstanceOf(history.HistoryReadError)
+    expect(error.code).toBe('read-failed')
   })
 
   it('caches normalized reads for eight hours and clamps before selecting rows', async () => {

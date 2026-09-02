@@ -27,7 +27,11 @@ const bindingFindMany = mock(async (): Promise<Array<Record<string, unknown>>> =
 const cacheCalls: Array<{ key: string[]; options: { tags: string[]; revalidate: number } }> = []
 
 mock.module('server-only', () => ({}))
-mock.module('@/lib/auth', () => ({ AuthenticationRequiredError, requireSession }))
+mock.module('@/lib/auth', () => ({
+  AuthenticationRequiredError,
+  requireSession,
+  requireAdmin: async () => ({ id: 'admin', userName: 'admin' }),
+}))
 mock.module('@/lib/prisma', () => ({ prisma: {
   apicHost: { findMany: hostFindMany, findFirst: hostFindFirst },
   epgSnapshot: { count: epgCount, findMany: epgFindMany },

@@ -47,11 +47,14 @@ export type HistoryPageData = {
   page: number
 }
 
-export class HistoryReadError extends Error {
-  readonly code = 'unauthorized'
+export type HistoryReadErrorCode = 'unauthorized' | 'read-failed'
 
-  constructor() {
-    super('Unauthorized')
+export class HistoryReadError extends Error {
+  constructor(
+    readonly code: HistoryReadErrorCode = 'unauthorized',
+    options?: ErrorOptions,
+  ) {
+    super(code === 'unauthorized' ? 'Unauthorized' : 'Unable to load history', options)
     this.name = 'HistoryReadError'
   }
 }
@@ -79,6 +82,15 @@ async function authorizeHistoryRead(): Promise<void> {
   }
 }
 
+async function readHistoryData<T>(read: () => Promise<T>): Promise<T> {
+  try {
+    return await read()
+  } catch (error) {
+    if (error instanceof HistoryReadError) throw error
+    throw new HistoryReadError('read-failed', { cause: error })
+  }
+}
+
 export async function getHistoryPage(params: HistoryPageParams): Promise<HistoryPageData> {
   await authorizeHistoryRead()
 
@@ -88,7 +100,7 @@ export async function getHistoryPage(params: HistoryPageParams): Promise<History
     page: params.page,
   }
 
-  return unstable_cache(async (): Promise<HistoryPageData> => {
+  return readHistoryData(() => unstable_cache(async (): Promise<HistoryPageData> => {
     const where = buildHistoryWhere(normalized)
     const total = await prisma.auditLog.count({ where })
     const window = historyPageWindow(normalized.page, total)
@@ -114,5 +126,5 @@ export async function getHistoryPage(params: HistoryPageParams): Promise<History
   ], {
     tags: ['history:all'],
     revalidate: HISTORY_CACHE_SECONDS,
-  })()
+  })())
 }

@@ -37,7 +37,11 @@ const sampleFindMany = mock(async () => [{
 const cacheCalls: Array<{ key: string[]; options: { tags: string[]; revalidate: number } }> = []
 
 mock.module('server-only', () => ({}))
-mock.module('@/lib/auth', () => ({ AuthenticationRequiredError, requireSession }))
+mock.module('@/lib/auth', () => ({
+  AuthenticationRequiredError,
+  requireSession,
+  requireAdmin: async () => ({ id: 'admin', userName: 'admin' }),
+}))
 mock.module('@/lib/prisma', () => ({ prisma: {
   apicHost: { findMany: apicHostFindMany, findFirst: apicHostFindFirst },
   nodeSnapshot: { count: nodeCount, findMany: nodeFindMany },
@@ -74,6 +78,16 @@ describe('node data interface', () => {
     await expect(query.getNodeOverview('h1')).rejects.toBeInstanceOf(query.NodeReadError)
     authenticationError = new Error('session database unavailable')
     await expect(query.getNodeOverview('h1')).rejects.toThrow('session database unavailable')
+  })
+
+  it('maps durable read failures to a retryable purpose error after authorization', async () => {
+    nodeCount.mockRejectedValueOnce(new Error('database unavailable'))
+
+    const error = await query.getNodeOverview('h1').catch(value => value)
+
+    expect(requireSession).toHaveBeenCalledTimes(1)
+    expect(error).toBeInstanceOf(query.NodeReadError)
+    expect(error.code).toBe('read-failed')
   })
 
   it('tags every persistent read for eight hours', async () => {

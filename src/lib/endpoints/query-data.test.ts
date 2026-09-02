@@ -96,7 +96,11 @@ const unstableCache = mock((
   return operation
 })
 
-mock.module('@/lib/auth', () => ({ AuthenticationRequiredError, requireSession }))
+mock.module('@/lib/auth', () => ({
+  AuthenticationRequiredError,
+  requireSession,
+  requireAdmin: async () => ({ id: 'admin', userName: 'admin' }),
+}))
 mock.module('@/lib/prisma', () => ({ prisma }))
 mock.module('next/cache', () => ({ unstable_cache: unstableCache, revalidateTag: () => {} }))
 mock.module('server-only', () => ({}))

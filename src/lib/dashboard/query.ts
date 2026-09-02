@@ -127,6 +127,7 @@ export async function getDashboardHosts(): Promise<DashboardHost[]> {
     })
     return hosts.map(serializeHost)
   }, ['dashboard', 'hosts'], cacheOptions([
+    'apic-hosts:all',
     'endpoints:all',
     'interfaces:all',
     'nodes:all',

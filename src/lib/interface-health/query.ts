@@ -155,13 +155,10 @@ export async function getInterfaceOverview(hostId: string): Promise<InterfaceOve
   }, ['interface-health', 'overview', hostId], cacheOptions(hostId))()
 }
 
-/** One window fetch feeds both the aggregate trend chart and the per-port
- *  windowed totals, so the CRC view never queries the sample table twice. */
-export async function getInterfaceCrcWindow(
+function readCachedInterfaceCrcWindow(
   hostId: string,
   window: InterfaceWindow,
 ): Promise<InterfaceCrcWindowData> {
-  await authorize()
   return unstable_cache(async () => {
     const samples = await prisma.interfaceSample.findMany({
       where: {
@@ -179,6 +176,16 @@ export async function getInterfaceCrcWindow(
       })),
     }
   }, ['interface-health', 'crc-window', hostId, window], cacheOptions(hostId))()
+}
+
+/** One window fetch feeds both the aggregate trend chart and the per-port
+ *  windowed totals, so the CRC view never queries the sample table twice. */
+export async function getInterfaceCrcWindow(
+  hostId: string,
+  window: InterfaceWindow,
+): Promise<InterfaceCrcWindowData> {
+  await authorize()
+  return readCachedInterfaceCrcWindow(hostId, window)
 }
 
 function sortToken(params: InterfaceHealthPageParams): string {
@@ -258,15 +265,24 @@ function serializeRow(
 
 export async function getInterfaceResults(
   params: InterfaceHealthPageParams,
+  preloadedCrcWindow?: InterfaceCrcWindowData | null,
 ): Promise<InterfaceResultsData> {
   await authorize()
 
-  const rows = await unstable_cache(async (): Promise<InterfaceRow[]> => {
+  // Authentication remains outside every persistent cache producer. The view
+  // can pass its already-started CRC read so the trend and table share it.
+  const crcWindow = params.view === 'crc'
+    ? preloadedCrcWindow ?? await readCachedInterfaceCrcWindow(params.hostId, params.window)
+    : null
+
+  const rows = await unstable_cache(async (
+    crcWindowTotals: InterfaceCrcWindowTotal[] | null,
+  ): Promise<InterfaceRow[]> => {
     const windowStart = interfaceWindowStart(params.window, new Date())
 
-    const crcTotals = params.view === 'crc'
+    const crcTotals = crcWindowTotals
       ? new Map(
-          (await getInterfaceCrcWindow(params.hostId, params.window)).totals
+          crcWindowTotals
             .map(({ interfaceId, total }) => [interfaceId, BigInt(total)] as const),
         )
       : null
@@ -302,8 +318,8 @@ export async function getInterfaceResults(
     return sorted.map(row => serializeRow(row, crcTotals, windowStart))
   }, [
     'interface-health', 'results', params.hostId, params.view, params.window,
-    params.query, params.nodes.join('|'), sortToken(params),
-  ], cacheOptions(params.hostId))()
+    params.query, JSON.stringify(params.nodes), sortToken(params),
+  ], cacheOptions(params.hostId))(crcWindow?.totals ?? null)
 
   const start = params.pageSize === 'all' ? 0 : (params.page - 1) * params.pageSize
   return {
@@ -389,6 +405,74 @@ export type InterfaceExportRequest = {
 }
 export type InterfaceExportData = { hostName: string; samples: InterfaceExportSample[] }
 
+const INTERFACE_EXPORT_SELECT = {
+  sampledAt: true,
+  adminSt: true,
+  operSt: true,
+  operSpeed: true,
+  rxBytes: true,
+  rxPkts: true,
+  rxErrors: true,
+  rxDiscards: true,
+  rxCrcErrors: true,
+  rxAlignErrors: true,
+  txBytes: true,
+  txPkts: true,
+  txErrors: true,
+  txDiscards: true,
+  dRxBytes: true,
+  dRxErrors: true,
+  dRxDiscards: true,
+  dRxCrcErrors: true,
+  dRxAlignErrors: true,
+  dTxBytes: true,
+  dTxErrors: true,
+  dTxDiscards: true,
+  interface: {
+    select: { node: true, ifName: true, usage: true, description: true, dn: true },
+  },
+} satisfies Prisma.InterfaceSampleSelect
+
+type StoredInterfaceExportSample = Prisma.InterfaceSampleGetPayload<{
+  select: typeof INTERFACE_EXPORT_SELECT
+}>
+
+function serializeInterfaceExportSample(
+  sample: StoredInterfaceExportSample,
+): InterfaceExportSample {
+  return {
+    sampledAt: sample.sampledAt,
+    adminSt: sample.adminSt,
+    operSt: sample.operSt,
+    operSpeed: sample.operSpeed,
+    rxBytes: sample.rxBytes,
+    rxPkts: sample.rxPkts,
+    rxErrors: sample.rxErrors,
+    rxDiscards: sample.rxDiscards,
+    rxCrcErrors: sample.rxCrcErrors,
+    rxAlignErrors: sample.rxAlignErrors,
+    txBytes: sample.txBytes,
+    txPkts: sample.txPkts,
+    txErrors: sample.txErrors,
+    txDiscards: sample.txDiscards,
+    dRxBytes: sample.dRxBytes,
+    dRxErrors: sample.dRxErrors,
+    dRxDiscards: sample.dRxDiscards,
+    dRxCrcErrors: sample.dRxCrcErrors,
+    dRxAlignErrors: sample.dRxAlignErrors,
+    dTxBytes: sample.dTxBytes,
+    dTxErrors: sample.dTxErrors,
+    dTxDiscards: sample.dTxDiscards,
+    interface: {
+      node: sample.interface.node,
+      ifName: sample.interface.ifName,
+      usage: sample.interface.usage,
+      description: sample.interface.description,
+      dn: sample.interface.dn,
+    },
+  }
+}
+
 /** Exports read raw counters rather than the page's serialized rows, so they
  *  bypass the page cache and stream straight from the sample table. */
 export async function getInterfaceExport(
@@ -414,12 +498,8 @@ export async function getInterfaceExport(
       ...(request.nodes.length > 0 ? { interface: { node: { in: request.nodes } } } : {}),
     },
     orderBy: [{ sampledAt: 'asc' }, { interfaceId: 'asc' }],
-    include: {
-      interface: {
-        select: { node: true, ifName: true, usage: true, description: true, dn: true },
-      },
-    },
+    select: INTERFACE_EXPORT_SELECT,
   })
 
-  return { hostName: host.name, samples: samples as unknown as InterfaceExportSample[] }
+  return { hostName: host.name, samples: samples.map(serializeInterfaceExportSample) }
 }

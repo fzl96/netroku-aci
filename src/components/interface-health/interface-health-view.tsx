@@ -54,10 +54,11 @@ export function InterfaceHealthView({
     resolution.kind === 'selected' && params.view === 'crc'
       ? getInterfaceCrcWindow(resolution.host.id, params.window)
       : null)
-  const resultsPromise = Promise.all([paramsPromise, hostPromise]).then(([params, resolution]) =>
-    resolution.kind === 'selected'
-      ? getInterfaceResults({ ...params, hostId: resolution.host.id })
-      : null)
+  const resultsPromise = Promise.all([paramsPromise, hostPromise, crcWindowPromise])
+    .then(([params, resolution, crcWindow]) =>
+      resolution.kind === 'selected'
+        ? getInterfaceResults({ ...params, hostId: resolution.host.id }, crcWindow)
+        : null)
 
   return (
     <InterfaceHealthFrame
