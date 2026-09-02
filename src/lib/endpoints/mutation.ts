@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { revalidateTag } from 'next/cache'
-import { requireSession } from '@/lib/auth'
+import { AuthenticationRequiredError, requireSession } from '@/lib/auth'
 import { recordAudit } from '@/lib/audit'
 import {
   EndpointResyncInProgressError,
@@ -48,6 +48,7 @@ export type EndpointMutationDependencies = {
   recordAudit: (input: AuditInput) => Promise<void>
   revalidateTag: (tag: string, profile: { expire: number }) => void
   isInProgressError: (error: unknown) => boolean
+  isAuthenticationRequiredError: (error: unknown) => boolean
   reportAuditError?: (error: unknown) => void
 }
 
@@ -126,7 +127,8 @@ export function createEndpointMutation(dependencies: EndpointMutationDependencie
     let actor: { id: string; userName: string }
     try {
       actor = await dependencies.requireSession()
-    } catch {
+    } catch (error) {
+      if (!dependencies.isAuthenticationRequiredError(error)) throw error
       return { ok: false, code: 'unauthorized', error: 'Unauthorized' }
     }
 
@@ -180,6 +182,7 @@ const endpointMutation = createEndpointMutation({
   recordAudit,
   revalidateTag,
   isInProgressError: error => error instanceof EndpointResyncInProgressError,
+  isAuthenticationRequiredError: error => error instanceof AuthenticationRequiredError,
   reportAuditError: error => console.error('[endpoints] failed to record resync audit', error),
 })
 

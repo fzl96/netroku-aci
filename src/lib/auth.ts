@@ -48,10 +48,17 @@ export type AuthenticatedUser = {
   userName: string;
 };
 
+export class AuthenticationRequiredError extends Error {
+  constructor() {
+    super("Unauthorized");
+    this.name = "AuthenticationRequiredError";
+  }
+}
+
 /** Require an authenticated request and expose only the actor fields consumers need. */
 export const requireSession = cache(async (): Promise<AuthenticatedUser> => {
   const session = await getSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) throw new AuthenticationRequiredError();
 
   return {
     id: session.user.id,

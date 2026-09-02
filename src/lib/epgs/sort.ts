@@ -1,4 +1,17 @@
-import type { EpgBindingWithEpg } from './query'
+export type EpgPortBinding = {
+  id: string
+  apicHostId: string
+  epgId: string
+  dn: string
+  pathTDn: string
+  pod: string
+  node: string
+  port: string
+  pathType: string
+  encap: string
+  mode: string
+  epg: { name: string; tenant: string; appProfile: string; dn: string }
+}
 
 const NATURAL_COLLATOR = new Intl.Collator('en', { numeric: true, sensitivity: 'base' })
 
@@ -8,10 +21,10 @@ export function sortBindingRows<T extends { node: string; port: string }>(rows: 
 
 export interface EpgPortSummary {
   id: string; node: string; port: string; pathType: string; epgCount: number
-  tenants: string[]; encaps: string[]; modes: string[]; bindings: EpgBindingWithEpg[]
+  tenants: string[]; encaps: string[]; modes: string[]; bindings: EpgPortBinding[]
 }
 
-export function groupBindingsByPort(bindings: EpgBindingWithEpg[]): EpgPortSummary[] {
+export function groupBindingsByPort(bindings: EpgPortBinding[]): EpgPortSummary[] {
   const map = new Map<string, EpgPortSummary>()
   for (const binding of bindings) {
     const node = binding.node || '—'; const port = binding.port || '—'; const id = `${node}:${port}`

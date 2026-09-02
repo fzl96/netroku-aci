@@ -5,15 +5,16 @@ mock.module('server-only', () => ({}))
 const { createEndpointMutation } = await import('./mutation')
 
 class EndpointResyncInProgressError extends Error {}
+class AuthenticationRequiredError extends Error {}
 
-let authenticated = true
+let authenticationError: unknown = null
 let hostFound = true
 let resyncError: unknown = null
 const callOrder: string[] = []
 
 const requireSession = mock(async () => {
   callOrder.push('auth')
-  if (!authenticated) throw new Error('Unauthorized')
+  if (authenticationError) throw authenticationError
   return { id: 'user-1', role: 'member', userName: 'operator' }
 })
 const findFirst = mock(async () => {
@@ -50,11 +51,12 @@ const {
   recordAudit,
   revalidateTag,
   isInProgressError: error => error instanceof EndpointResyncInProgressError,
+  isAuthenticationRequiredError: error => error instanceof AuthenticationRequiredError,
   reportAuditError,
 })
 
 beforeEach(() => {
-  authenticated = true
+  authenticationError = null
   hostFound = true
   resyncError = null
   callOrder.length = 0
@@ -68,7 +70,7 @@ beforeEach(() => {
 
 describe('resyncEndpointInventory', () => {
   it('rejects unauthenticated calls before host or APIC access', async () => {
-    authenticated = false
+    authenticationError = new AuthenticationRequiredError('Unauthorized')
 
     await expect(resyncEndpointInventory({
       apicHostId: 'host-1',
@@ -79,6 +81,17 @@ describe('resyncEndpointInventory', () => {
       code: 'unauthorized',
       error: 'Unauthorized',
     })
+    expect(callOrder).toEqual(['auth'])
+  })
+
+  it('propagates authentication infrastructure failures', async () => {
+    authenticationError = new Error('session database unavailable')
+
+    await expect(resyncEndpointInventory({
+      apicHostId: 'host-1',
+      username: 'operator',
+      password: 'secret',
+    })).rejects.toThrow('session database unavailable')
     expect(callOrder).toEqual(['auth'])
   })
 

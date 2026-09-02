@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { sortBindingRows, groupBindingsByPort } from './sort'
-import type { BindingWithEpg } from './query'
+import type { EpgPortBinding } from './sort'
 
 describe('sortBindingRows', () => {
   it('natural sorts by node then port', () => {
@@ -21,7 +21,7 @@ describe('sortBindingRows', () => {
 
 describe('groupBindingsByPort', () => {
   it('groups bindings into unique ports and naturally sorts by node then port', () => {
-    const bindings: BindingWithEpg[] = [
+    const bindings: EpgPortBinding[] = [
       { id: 'b1', apicHostId: 'h1', epgId: 'e1', dn: 'dn1', pathTDn: 'p1', pod: 'pod-1', node: '101', port: 'eth1/10', pathType: 'port', encap: 'vlan-100', mode: 'trunk', epg: { name: 'EPG1', tenant: 'T1', appProfile: 'AP1', dn: 'epg1' } },
       { id: 'b2', apicHostId: 'h1', epgId: 'e2', dn: 'dn2', pathTDn: 'p2', pod: 'pod-1', node: '101', port: 'eth1/10', pathType: 'port', encap: 'vlan-101', mode: 'trunk', epg: { name: 'EPG2', tenant: 'T1', appProfile: 'AP1', dn: 'epg2' } },
       { id: 'b3', apicHostId: 'h1', epgId: 'e3', dn: 'dn3', pathTDn: 'p3', pod: 'pod-1', node: '99', port: 'eth1/1', pathType: 'port', encap: 'vlan-200', mode: 'access', epg: { name: 'EPG3', tenant: 'T2', appProfile: 'AP2', dn: 'epg3' } },

@@ -39,7 +39,9 @@ const ENDPOINT_ROWS = [
   },
 ]
 
-let authenticated = true
+class AuthenticationRequiredError extends Error {}
+
+let authenticationError: unknown = null
 let hostRows = HOSTS
 let endpointRows = ENDPOINT_ROWS
 let resultTotal = 12
@@ -47,7 +49,7 @@ let activeTotal = 7
 let historicalTotal = 5
 
 const requireSession = mock(async () => {
-  if (!authenticated) throw new Error('Unauthorized')
+  if (authenticationError) throw authenticationError
   return { id: 'user-1', role: 'member', userName: 'operator' }
 })
 
@@ -94,7 +96,7 @@ const unstableCache = mock((
   return operation
 })
 
-mock.module('@/lib/auth', () => ({ requireSession }))
+mock.module('@/lib/auth', () => ({ AuthenticationRequiredError, requireSession }))
 mock.module('@/lib/prisma', () => ({ prisma }))
 mock.module('next/cache', () => ({ unstable_cache: unstableCache, revalidateTag: () => {} }))
 mock.module('server-only', () => ({}))
@@ -119,7 +121,7 @@ const BASE_PARAMS: EndpointPageParams = {
 }
 
 beforeEach(() => {
-  authenticated = true
+  authenticationError = null
   hostRows = HOSTS
   endpointRows = ENDPOINT_ROWS
   resultTotal = 12
@@ -169,8 +171,15 @@ describe('resolveEndpointHost', () => {
 
 describe('getEndpointOverview', () => {
   it('authorizes before Prisma and rejects an unauthenticated read', async () => {
-    authenticated = false
+    authenticationError = new AuthenticationRequiredError('Unauthorized')
     await expect(getEndpointOverview('host-1')).rejects.toThrow('Unauthorized')
+    expect(endpointCount).not.toHaveBeenCalled()
+    expect(endpointFindMany).not.toHaveBeenCalled()
+  })
+
+  it('propagates authentication infrastructure failures', async () => {
+    authenticationError = new Error('session database unavailable')
+    await expect(getEndpointOverview('host-1')).rejects.toThrow('session database unavailable')
     expect(endpointCount).not.toHaveBeenCalled()
     expect(endpointFindMany).not.toHaveBeenCalled()
   })
@@ -285,12 +294,23 @@ describe('getEndpointResults', () => {
 
 describe('getEndpointExportData', () => {
   it('returns unauthorized before host or endpoint access', async () => {
-    authenticated = false
+    authenticationError = new AuthenticationRequiredError('Unauthorized')
 
     await expect(getEndpointExportData({
       hostId: 'host-1',
       scope: 'all',
     })).resolves.toEqual({ kind: 'unauthorized' })
+    expect(apicHostFindMany).not.toHaveBeenCalled()
+    expect(endpointFindMany).not.toHaveBeenCalled()
+  })
+
+  it('propagates authentication infrastructure failures', async () => {
+    authenticationError = new Error('session database unavailable')
+
+    await expect(getEndpointExportData({
+      hostId: 'host-1',
+      scope: 'all',
+    })).rejects.toThrow('session database unavailable')
     expect(apicHostFindMany).not.toHaveBeenCalled()
     expect(endpointFindMany).not.toHaveBeenCalled()
   })

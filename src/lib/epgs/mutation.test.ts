@@ -5,6 +5,8 @@ mock.module('next/cache', () => ({ revalidateTag: () => {}, unstable_cache: (fn:
 
 const { createEpgMutation } = await import('./mutation')
 
+class AuthenticationRequiredError extends Error {}
+
 function dependencies() {
   return {
     requireSession: mock(async () => ({ id: 'u1', userName: 'alice' })),
@@ -13,6 +15,7 @@ function dependencies() {
     recordAudit: mock(async () => {}),
     revalidateTag: mock(() => {}),
     isInProgressError: (error: unknown) => error instanceof Error && error.message === 'busy',
+    isAuthenticationRequiredError: (error: unknown) => error instanceof AuthenticationRequiredError,
   }
 }
 
@@ -40,5 +43,25 @@ describe('EPG mutation boundary', () => {
     await expect(createEpgMutation(deps).resyncEpgInventoryForScheduler({ apicHostId: 'h1', hostName: 'Fabric', host: 'apic.local', username: 'u', password: 'p' })).rejects.toThrow('offline')
     expect(deps.recordAudit).toHaveBeenCalledWith(expect.objectContaining({ status: 'failure', detail: 'offline' }))
     expect(deps.revalidateTag).not.toHaveBeenCalled()
+  })
+
+  it('maps only a missing session and propagates auth infrastructure failures', async () => {
+    const missingSessionDeps = dependencies()
+    missingSessionDeps.requireSession.mockImplementation(async () => {
+      throw new AuthenticationRequiredError('missing')
+    })
+    await expect(createEpgMutation(missingSessionDeps).resyncEpgInventory({
+      apicHostId: 'h1', username: 'u', password: 'p',
+    })).resolves.toEqual({ ok: false, code: 'unauthorized', error: 'Unauthorized' })
+    expect(missingSessionDeps.findHost).not.toHaveBeenCalled()
+
+    const infrastructureDeps = dependencies()
+    infrastructureDeps.requireSession.mockImplementation(async () => {
+      throw new Error('session database unavailable')
+    })
+    await expect(createEpgMutation(infrastructureDeps).resyncEpgInventory({
+      apicHostId: 'h1', username: 'u', password: 'p',
+    })).rejects.toThrow('session database unavailable')
+    expect(infrastructureDeps.findHost).not.toHaveBeenCalled()
   })
 })

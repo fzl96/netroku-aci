@@ -3,7 +3,7 @@ import 'server-only'
 import type { Prisma } from '@prisma/client'
 import { unstable_cache } from 'next/cache'
 import { cache } from 'react'
-import { requireSession } from '@/lib/auth'
+import { AuthenticationRequiredError, requireSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import type {
   EndpointFilters,
@@ -168,7 +168,8 @@ function filterCacheParts(filters: EndpointFilters): string[] {
 async function authorizeEndpointRead(): Promise<void> {
   try {
     await requireSession()
-  } catch {
+  } catch (error) {
+    if (!(error instanceof AuthenticationRequiredError)) throw error
     throw new EndpointReadError()
   }
 }
@@ -360,7 +361,8 @@ export async function getEndpointExportData(
 ): Promise<EndpointExportData> {
   try {
     await requireSession()
-  } catch {
+  } catch (error) {
+    if (!(error instanceof AuthenticationRequiredError)) throw error
     return { kind: 'unauthorized' }
   }
   const filters = selection.scope === 'filtered'

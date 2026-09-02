@@ -7,7 +7,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import type { EpgWithBindings } from '@/lib/epgs/query'
+import type { EpgRow } from '@/lib/epgs/query'
 import { sortBindingRows } from '@/lib/epgs/sort'
 import { MUTED_TABLE_HEAD_CLS } from '@/lib/ui-classes'
 
@@ -36,7 +36,7 @@ function Flag({ on }: { on: boolean }) {
   )
 }
 
-export function EpgDetailPanel({ epg, onClose }: { epg: EpgWithBindings | null; onClose: () => void }) {
+export function EpgDetailPanel({ epg, onClose }: { epg: EpgRow | null; onClose: () => void }) {
   const bindings = epg ? sortBindingRows(epg.bindings) : []
 
   return (

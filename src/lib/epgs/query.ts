@@ -3,8 +3,9 @@ import 'server-only'
 import type { Prisma } from '@prisma/client'
 import { unstable_cache } from 'next/cache'
 import { cache } from 'react'
-import { requireSession } from '@/lib/auth'
+import { AuthenticationRequiredError, requireSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import type { EpgExportRow } from './export'
 import type { EpgFilters, EpgPageParams, EpgPageSize } from './params'
 import { groupBindingsByPort, type EpgPortSummary } from './sort'
 
@@ -23,13 +24,47 @@ const EPG_SELECT = {
   bindings: { select: BINDING_SELECT, orderBy: [{ node: 'asc' as const }, { port: 'asc' as const }] },
 } satisfies Prisma.EpgSnapshotSelect
 
-export type EpgBindingRow = Prisma.EpgPathBindingGetPayload<{ select: typeof BINDING_SELECT }>
-export type EpgRow = Prisma.EpgSnapshotGetPayload<{ select: typeof EPG_SELECT }>
-export type EpgBindingWithEpg = EpgBindingRow & { epg: { name: string; tenant: string; appProfile: string; dn: string } }
+type StoredEpgBinding = Prisma.EpgPathBindingGetPayload<{ select: typeof BINDING_SELECT }>
+type StoredEpgRow = Prisma.EpgSnapshotGetPayload<{ select: typeof EPG_SELECT }>
+type StoredEpgBindingWithEpg = StoredEpgBinding & {
+  epg: { name: string; tenant: string; appProfile: string; dn: string }
+}
 
-// Compatibility aliases for existing pure workbook tests while the public shape remains selected/safe.
-export type EpgWithBindings = EpgRow
-export type BindingWithEpg = EpgBindingWithEpg
+export type EpgBindingRow = {
+  id: string
+  apicHostId: string
+  epgId: string
+  dn: string
+  pathTDn: string
+  pod: string
+  node: string
+  port: string
+  pathType: string
+  encap: string
+  mode: string
+}
+
+export type EpgRow = {
+  id: string
+  apicHostId: string
+  dn: string
+  name: string
+  tenant: string
+  appProfile: string
+  description: string
+  bridgeDomain: string
+  pcTag: string
+  preferredGroup: boolean
+  isolation: boolean
+  domains: string[]
+  providedContracts: string[]
+  consumedContracts: string[]
+  bindings: EpgBindingRow[]
+}
+
+export type EpgBindingWithEpg = EpgBindingRow & {
+  epg: { name: string; tenant: string; appProfile: string; dn: string }
+}
 
 export type EpgHostOption = { id: string; name: string; host: string }
 export type EpgHostResolution =
@@ -49,7 +84,7 @@ export type EpgResultsData =
   | { view: 'port'; rows: EpgPortSummary[]; pagination: EpgPagination }
 export type EpgExportSelection = { hostId: string; scope: 'all' | 'filtered'; filters?: EpgFilters }
 export type EpgExportData =
-  | { kind: 'ready'; host: EpgHostOption; rows: EpgRow[] }
+  | { kind: 'ready'; host: EpgHostOption; rows: EpgExportRow[] }
   | { kind: 'empty'; host: EpgHostOption }
   | { kind: 'host-not-found' }
   | { kind: 'unauthorized' }
@@ -64,7 +99,62 @@ function cacheOptions(hostId: string) {
 }
 
 async function authorize(): Promise<void> {
-  try { await requireSession() } catch { throw new EpgReadError() }
+  try {
+    await requireSession()
+  } catch (error) {
+    if (!(error instanceof AuthenticationRequiredError)) throw error
+    throw new EpgReadError()
+  }
+}
+
+function serializeBinding(binding: StoredEpgBinding): EpgBindingRow {
+  return {
+    id: binding.id,
+    apicHostId: binding.apicHostId,
+    epgId: binding.epgId,
+    dn: binding.dn,
+    pathTDn: binding.pathTDn,
+    pod: binding.pod,
+    node: binding.node,
+    port: binding.port,
+    pathType: binding.pathType,
+    encap: binding.encap,
+    mode: binding.mode,
+  }
+}
+
+function serializeEpg(row: StoredEpgRow): EpgRow {
+  return {
+    id: row.id,
+    apicHostId: row.apicHostId,
+    dn: row.dn,
+    name: row.name,
+    tenant: row.tenant,
+    appProfile: row.appProfile,
+    description: row.description,
+    bridgeDomain: row.bridgeDomain,
+    pcTag: row.pcTag,
+    preferredGroup: row.preferredGroup,
+    isolation: row.isolation,
+    domains: row.domains,
+    providedContracts: row.providedContracts,
+    consumedContracts: row.consumedContracts,
+    bindings: row.bindings.map(serializeBinding),
+  }
+}
+
+function serializeBindingWithEpg(
+  binding: StoredEpgBindingWithEpg,
+): EpgBindingWithEpg {
+  return {
+    ...serializeBinding(binding),
+    epg: {
+      name: binding.epg.name,
+      tenant: binding.epg.tenant,
+      appProfile: binding.epg.appProfile,
+      dn: binding.epg.dn,
+    },
+  }
 }
 
 function normalize(filters: EpgFilters = {}): Required<EpgFilters> {
@@ -174,7 +264,7 @@ export async function getEpgResults(params: EpgPageParams): Promise<EpgResultsDa
         where: buildBindingWhere(params.hostId, filters),
         select: { ...BINDING_SELECT, epg: { select: { name: true, tenant: true, appProfile: true, dn: true } } },
       })
-      const grouped = groupBindingsByPort(bindings)
+      const grouped = groupBindingsByPort(bindings.map(serializeBindingWithEpg))
       const page = pagination(grouped.length, params.page, params.pageSize)
       return { view: 'port', rows: params.pageSize === 'all' ? grouped : grouped.slice((page.page - 1) * params.pageSize, page.page * params.pageSize), pagination: page }
     }
@@ -185,26 +275,41 @@ export async function getEpgResults(params: EpgPageParams): Promise<EpgResultsDa
       where, select: EPG_SELECT, orderBy: [{ tenant: 'asc' }, { name: 'asc' }],
       ...(params.pageSize === 'all' ? {} : { skip: (page.page - 1) * params.pageSize, take: params.pageSize }),
     })
-    return { view: 'epg', rows, pagination: page }
+    return { view: 'epg', rows: rows.map(serializeEpg), pagination: page }
   }, ['epgs', 'results', params.hostId, params.view, String(params.page), String(params.pageSize), ...filterParts(filters)], cacheOptions(params.hostId))()
 }
 
-function bindingMatchesNode(binding: EpgBindingRow, nodes: string[]): boolean {
+function bindingMatchesNode(binding: { node: string }, nodes: string[]): boolean {
   const selected = new Set(nodes)
   return binding.node.split('-').some(node => selected.has(node))
 }
 
 export async function getEpgExportData(selection: EpgExportSelection): Promise<EpgExportData> {
-  try { await requireSession() } catch { return { kind: 'unauthorized' } }
+  try {
+    await requireSession()
+  } catch (error) {
+    if (!(error instanceof AuthenticationRequiredError)) throw error
+    return { kind: 'unauthorized' }
+  }
   const host = await prisma.apicHost.findFirst({ where: { id: selection.hostId }, select: { id: true, name: true, host: true } })
   if (!host) return { kind: 'host-not-found' }
   const filters = selection.scope === 'filtered' ? normalize(selection.filters) : normalize()
-  let rows = await unstable_cache(async () => prisma.epgSnapshot.findMany({
-    where: selection.scope === 'all' ? { apicHostId: selection.hostId } : buildEpgWhere(selection.hostId, filters),
-    select: EPG_SELECT, orderBy: [{ tenant: 'asc' }, { name: 'asc' }],
-  }), ['epgs', 'export', selection.hostId, selection.scope, ...filterParts(filters)], cacheOptions(selection.hostId))()
-  if (selection.scope === 'filtered' && filters.node.length) {
-    rows = rows.map(row => ({ ...row, bindings: row.bindings.filter(binding => bindingMatchesNode(binding, filters.node)) })).filter(row => row.bindings.length)
-  }
-  return rows.length ? { kind: 'ready', host, rows } : { kind: 'empty', host }
+  const rows = await unstable_cache(async () => {
+    let records = await prisma.epgSnapshot.findMany({
+      where: selection.scope === 'all' ? { apicHostId: selection.hostId } : buildEpgWhere(selection.hostId, filters),
+      select: EPG_SELECT, orderBy: [{ tenant: 'asc' }, { name: 'asc' }],
+    })
+    if (selection.scope === 'filtered' && filters.node.length) {
+      records = records
+        .map(row => ({
+          ...row,
+          bindings: row.bindings.filter(binding => bindingMatchesNode(binding, filters.node)),
+        }))
+        .filter(row => row.bindings.length)
+    }
+    return records.map(serializeEpg)
+  }, ['epgs', 'export', selection.hostId, selection.scope, ...filterParts(filters)], cacheOptions(selection.hostId))()
+  return rows.length
+    ? { kind: 'ready', host, rows }
+    : { kind: 'empty', host }
 }

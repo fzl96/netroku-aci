@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { revalidateTag } from 'next/cache'
-import { requireSession } from '@/lib/auth'
+import { AuthenticationRequiredError, requireSession } from '@/lib/auth'
 import { recordAudit } from '@/lib/audit'
 import { EpgResyncInProgressError, resyncEpgs } from '@/lib/apic/epg-resync'
 import { prisma } from '@/lib/prisma'
@@ -25,6 +25,7 @@ export type EpgMutationDependencies = {
   recordAudit: (input: AuditInput) => Promise<void>
   revalidateTag: (tag: string, profile: { expire: number }) => void
   isInProgressError: (error: unknown) => boolean
+  isAuthenticationRequiredError: (error: unknown) => boolean
   reportAuditError?: (error: unknown) => void
 }
 
@@ -64,7 +65,12 @@ export function createEpgMutation(dependencies: EpgMutationDependencies) {
   }
   async function resyncEpgInventory(input: { apicHostId: string; username: string; password: string }): Promise<EpgResyncResult> {
     let actor: { id: string; userName: string }
-    try { actor = await dependencies.requireSession() } catch { return { ok: false, code: 'unauthorized', error: 'Unauthorized' } }
+    try {
+      actor = await dependencies.requireSession()
+    } catch (error) {
+      if (!dependencies.isAuthenticationRequiredError(error)) throw error
+      return { ok: false, code: 'unauthorized', error: 'Unauthorized' }
+    }
     const host = await dependencies.findHost(input.apicHostId)
     if (!host) return { ok: false, code: 'host-not-found', error: 'Host not found' }
     try {
@@ -86,6 +92,7 @@ const mutation = createEpgMutation({
   findHost: id => prisma.apicHost.findFirst({ where: { id }, select: { id: true, name: true, host: true } }),
   resyncEpgs, recordAudit, revalidateTag,
   isInProgressError: error => error instanceof EpgResyncInProgressError,
+  isAuthenticationRequiredError: error => error instanceof AuthenticationRequiredError,
   reportAuditError: error => console.error('[epgs] failed to record resync audit', error),
 })
 export const { invalidateEpgReads, resyncEpgInventory, resyncEpgInventoryForScheduler } = mutation
