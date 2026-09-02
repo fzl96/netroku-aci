@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/auth'
 import { recordAudit } from '@/lib/audit'
 import { invalidateEndpointReads } from '@/lib/endpoints/mutation'
 import { invalidateEpgReads } from '@/lib/epgs/mutation'
+import { invalidateInterfaceReads } from '@/lib/interface-health/mutation'
 import { invalidateNodeReads } from '@/lib/nodes/mutation'
 import { prisma } from '@/lib/prisma'
 import {
@@ -40,6 +41,7 @@ export type ApicHostMutationDependencies = {
   invalidateEndpointReads: (id: string) => void
   invalidateEpgReads: (id: string) => void
   invalidateNodeReads: (id: string) => void
+  invalidateInterfaceReads: (id: string) => void
   reportAuditError?: (error: unknown) => void
 }
 
@@ -129,6 +131,7 @@ export function createApicHostMutation(dependencies: ApicHostMutationDependencie
       dependencies.invalidateEndpointReads(id)
       dependencies.invalidateEpgReads(id)
       dependencies.invalidateNodeReads(id)
+      dependencies.invalidateInterfaceReads(id)
       return { success: true, data: undefined }
     } catch (error) {
       return { success: false, error: errorMessage(error) }
@@ -155,6 +158,7 @@ const apicHostMutation = createApicHostMutation({
   invalidateEndpointReads,
   invalidateEpgReads,
   invalidateNodeReads,
+  invalidateInterfaceReads,
   reportAuditError: error => console.error('[apic-hosts] failed to record audit', error),
 })
 

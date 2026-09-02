@@ -5,7 +5,7 @@ const resyncEndpointInventoryForScheduler = mock(async (input: unknown) => {
   void input
   return { synced: 3, total: 7 }
 })
-const resyncInterfaces = mock(async (input: unknown) => {
+const resyncInterfaceInventoryForScheduler = mock(async (input: unknown) => {
   void input
   return { synced: 2, total: 2 }
 })
@@ -17,9 +17,6 @@ const resyncEpgInventoryForScheduler = mock(async (input: unknown) => {
   void input
   return { syncedEpgs: 2, syncedBindings: 6 }
 })
-const recordAudit = mock(async (input: unknown) => {
-  void input
-})
 
 mock.module('server-only', () => ({}))
 
@@ -27,10 +24,9 @@ const { resyncHost } = await import('./resync-host')
 
 const dependencies = {
   resyncEndpointInventoryForScheduler,
-  resyncInterfaces,
+  resyncInterfaceInventoryForScheduler,
   resyncNodeInventoryForScheduler,
   resyncEpgInventoryForScheduler,
-  recordAudit,
 }
 
 beforeEach(() => {
@@ -39,8 +35,8 @@ beforeEach(() => {
     void input
     return { synced: 3, total: 7 }
   })
-  resyncInterfaces.mockClear()
-  resyncInterfaces.mockImplementation(async (input: unknown) => {
+  resyncInterfaceInventoryForScheduler.mockClear()
+  resyncInterfaceInventoryForScheduler.mockImplementation(async (input: unknown) => {
     void input
     return { synced: 2, total: 2 }
   })
@@ -54,7 +50,6 @@ beforeEach(() => {
     void input
     return { syncedEpgs: 2, syncedBindings: 6 }
   })
-  recordAudit.mockClear()
 })
 
 afterAll(() => mock.restore())
@@ -171,9 +166,6 @@ describe('resyncHost endpoint purpose boundary', () => {
 
     expect(resyncEndpointInventoryForScheduler).toHaveBeenCalledTimes(1)
     expect(resyncEndpointInventoryForScheduler).toHaveBeenCalledWith(input)
-    expect(recordAudit.mock.calls.some(([entry]) => (
-      entry as { action?: string }
-    ).action === 'resync.endpoints')).toBe(false)
   })
 
   it('captures endpoint failures and continues later datasets', async () => {
@@ -185,28 +177,29 @@ describe('resyncHost endpoint purpose boundary', () => {
     const result = await resyncHost(input, dependencies)
 
     expect(result.endpoints).toEqual({ error: 'endpoint APIC unavailable' })
-    expect(resyncInterfaces).toHaveBeenCalledTimes(1)
+    expect(resyncInterfaceInventoryForScheduler).toHaveBeenCalledTimes(1)
     expect(resyncNodeInventoryForScheduler).toHaveBeenCalledTimes(1)
     expect(resyncEpgInventoryForScheduler).toHaveBeenCalledTimes(1)
   })
 
-  it('enters EPGs through the trusted purpose mutation without duplicate audit', async () => {
+  it('enters EPGs through the trusted purpose mutation without a duplicate runner-level audit', async () => {
     await resyncHost(input, dependencies)
 
     expect(resyncEpgInventoryForScheduler).toHaveBeenCalledTimes(1)
     expect(resyncEpgInventoryForScheduler).toHaveBeenCalledWith(input)
-    expect(recordAudit.mock.calls.some(([entry]) => (
-      entry as { action?: string }
-    ).action === 'resync.epgs')).toBe(false)
   })
 
-  it('enters nodes through the trusted purpose mutation without duplicate audit', async () => {
+  it('enters interfaces through the trusted purpose mutation without a duplicate runner-level audit', async () => {
+    await resyncHost(input, dependencies)
+
+    expect(resyncInterfaceInventoryForScheduler).toHaveBeenCalledTimes(1)
+    expect(resyncInterfaceInventoryForScheduler).toHaveBeenCalledWith(input)
+  })
+
+  it('enters nodes through the trusted purpose mutation without a duplicate runner-level audit', async () => {
     await resyncHost(input, dependencies)
 
     expect(resyncNodeInventoryForScheduler).toHaveBeenCalledTimes(1)
     expect(resyncNodeInventoryForScheduler).toHaveBeenCalledWith(input)
-    expect(recordAudit.mock.calls.some(([entry]) => (
-      entry as { action?: string }
-    ).action === 'resync.nodes')).toBe(false)
   })
 })

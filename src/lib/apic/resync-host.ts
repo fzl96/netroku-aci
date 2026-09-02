@@ -1,8 +1,7 @@
-import { recordAudit } from '@/lib/audit'
 import { resyncEndpointInventoryForScheduler } from '@/lib/endpoints/mutation'
 import { resyncEpgInventoryForScheduler } from '@/lib/epgs/mutation'
 import { resyncNodeInventoryForScheduler } from '@/lib/nodes/mutation'
-import { resyncInterfaces } from '@/lib/apic/interfaces'
+import { resyncInterfaceInventoryForScheduler } from '@/lib/interface-health/mutation'
 import type { DatasetResult, HostResult } from '@/lib/apic/cron-resync'
 
 export interface ResyncHostInput {
@@ -17,18 +16,16 @@ export interface ResyncHostInput {
 
 export interface ResyncHostDependencies {
   resyncEndpointInventoryForScheduler: typeof resyncEndpointInventoryForScheduler
-  resyncInterfaces: typeof resyncInterfaces
+  resyncInterfaceInventoryForScheduler: typeof resyncInterfaceInventoryForScheduler
   resyncNodeInventoryForScheduler: typeof resyncNodeInventoryForScheduler
   resyncEpgInventoryForScheduler: typeof resyncEpgInventoryForScheduler
-  recordAudit: typeof recordAudit
 }
 
 const DEFAULT_DEPENDENCIES: ResyncHostDependencies = {
   resyncEndpointInventoryForScheduler,
-  resyncInterfaces,
+  resyncInterfaceInventoryForScheduler,
   resyncNodeInventoryForScheduler,
   resyncEpgInventoryForScheduler,
-  recordAudit,
 }
 
 function errorMessage(err: unknown, fallback: string): string {
@@ -36,7 +33,9 @@ function errorMessage(err: unknown, fallback: string): string {
 }
 
 /**
- * Resync all four datasets for a single host, auditing each one as `scheduler`.
+ * Resync all four datasets for a single host. Each purpose module owns its own
+ * `scheduler` audit entry and cache invalidation, so this runner only sequences
+ * them and collects per-dataset outcomes.
  * Never throws: every dataset failure is captured in the returned HostResult.
  */
 export async function resyncHost(
@@ -46,12 +45,10 @@ export async function resyncHost(
   const { apicHostId, hostName, host, username, password } = input
   const {
     resyncEndpointInventoryForScheduler: resyncEndpointInventory,
-    resyncInterfaces: resyncInterfaceInventory,
+    resyncInterfaceInventoryForScheduler: resyncInterfaceInventory,
     resyncNodeInventoryForScheduler: resyncNodeInventory,
     resyncEpgInventoryForScheduler: resyncEpgInventory,
-    recordAudit: audit,
   } = dependencies
-  const target = `${hostName} (${host})`
   const creds = { apicHostId, host, username, password }
   const result: HostResult = { apicHostId, host: hostName }
 
@@ -70,21 +67,11 @@ export async function resyncHost(
   // Interfaces
   let interfaces: DatasetResult
   try {
-    interfaces = await resyncInterfaceInventory(creds)
+    interfaces = await resyncInterfaceInventory({ ...creds, hostName })
   } catch (err) {
     interfaces = { error: errorMessage(err, 'Failed to resync interfaces') }
   }
   result.interfaces = interfaces
-  await audit({
-    userId: null,
-    userName: 'scheduler',
-    action: 'resync.interfaces',
-    target,
-    status: 'error' in interfaces ? 'failure' : 'success',
-    detail: 'error' in interfaces
-      ? interfaces.error
-      : `synced ${interfaces.synced} (total ${interfaces.total})`,
-  })
 
   // Nodes & hardware
   let nodes: DatasetResult

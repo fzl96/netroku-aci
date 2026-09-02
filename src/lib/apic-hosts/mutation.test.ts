@@ -26,6 +26,7 @@ const recordAudit = mock(async () => {})
 const invalidateEndpointReads = mock(() => {})
 const invalidateEpgReads = mock(() => {})
 const invalidateNodeReads = mock(() => {})
+const invalidateInterfaceReads = mock(() => {})
 const reportAuditError = mock(() => {})
 
 const mutation = createApicHostMutation({
@@ -37,6 +38,7 @@ const mutation = createApicHostMutation({
   invalidateEndpointReads,
   invalidateEpgReads,
   invalidateNodeReads,
+  invalidateInterfaceReads,
   reportAuditError,
 })
 
@@ -49,6 +51,7 @@ beforeEach(() => {
   invalidateEndpointReads.mockClear()
   invalidateEpgReads.mockClear()
   invalidateNodeReads.mockClear()
+  invalidateInterfaceReads.mockClear()
   reportAuditError.mockClear()
 })
 
@@ -82,6 +85,7 @@ describe('APIC host endpoint-cache invalidation', () => {
     expect(invalidateEndpointReads).toHaveBeenCalledWith('host-1')
     expect(invalidateEpgReads).toHaveBeenCalledWith('host-1')
     expect(invalidateNodeReads).toHaveBeenCalledWith('host-1')
+    expect(invalidateInterfaceReads).toHaveBeenCalledWith('host-1')
     expect(reportAuditError).toHaveBeenCalledTimes(1)
   })
 })

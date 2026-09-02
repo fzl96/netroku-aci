@@ -25,9 +25,9 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart'
 import {
-  getInterfaceErrorSamples,
-  getInterfaceStatusDetails,
-} from '@/actions/interface-samples'
+  fetchInterfaceErrorSamples,
+  fetchInterfaceStatusDetails,
+} from './interface-samples-request'
 import { OperStBadge } from './interface-health-client'
 import { type InterfaceStatusDetails } from '@/lib/interface-health/state-changes'
 import {
@@ -127,7 +127,7 @@ export function InterfaceErrorTrendDrawer({
 
     if (drawerMode === 'errors') {
       const requestKey = makeDrawerRequestKey('errors', selectedId, range)
-      getInterfaceErrorSamples(selectedId, range)
+      fetchInterfaceErrorSamples(selectedId, range)
         .then((rows) => {
           if (!cancelled) {
             setErrorResult({ key: requestKey, data: rows, failed: false })
@@ -141,7 +141,7 @@ export function InterfaceErrorTrendDrawer({
         })
     } else {
       const requestKey = makeDrawerRequestKey('status', selectedId, range)
-      getInterfaceStatusDetails(selectedId, range)
+      fetchInterfaceStatusDetails(selectedId, range)
         .then((data) => {
           if (!cancelled) {
             setStatusResult({ key: requestKey, data, failed: false })

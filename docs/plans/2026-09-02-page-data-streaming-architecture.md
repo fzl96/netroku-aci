@@ -24,7 +24,7 @@
 | 3 | Endpoints writes | done | `c2be982` refactor: centralize endpoint writes and invalidation |
 | 4 | Endpoints streaming | done | `28968a9`, hardened by `283c501` |
 | 5 | EPGs | done | `0870a10`, hardened by `f057262` |
-| 6 | Interface Health | **deferred** | Skipped by the 2026-09-02 session with no reason recorded; it jumped straight to Task 7. Resuming here once 7/8/History are landed. Largest remaining slice: 23 colocated files, and the drawer's read-only Server Actions still need a real read transport. |
+| 6 | Interface Health | **in progress** | Originally skipped by the 2026-09-02 session with no reason recorded (it jumped straight to Task 7); resumed after 7/8/History landed. Done: modules relocated to `src/lib/interface-health/` + `src/components/interface-health/`; typed params; cached `query.ts` (`interfaces:all` / `interfaces:host:<id>`); `mutation.ts` owning resync audit + invalidation; resync/export routes reduced to adapters; drawer reads moved from Server Actions to `GET /api/interfaces/samples`; `resync-host.ts` no longer audits (every purpose module owns its own). **Remaining: the render split** — `interface-health-client.tsx` is still one ~1000-line client and `page.tsx` still queries Prisma directly, so the purpose is deliberately NOT yet in the guard registry. |
 | 7 | Nodes | done | `refactor: stream node inventory regions` |
 | 8 | Dashboard | done | `refactor: stream dashboard regions` |
 | 9 | Legacy (4 purposes) | not started | |
