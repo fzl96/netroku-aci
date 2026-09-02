@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getLegacyHealthHistory, type LegacyHealthHistory } from '@/actions/legacy-health'
+import type { LegacyHealthHistory } from '@/lib/legacy/health/query'
+import { fetchLegacyHealthHistory } from './health-history-request'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import type { LegacyRange } from '@/lib/legacy/query'
-import type { LegacyHealthRow } from './LegacyHealthClient'
-import { LegacyHealthTrendChart } from './LegacyHealthTrendChart'
+import type { LegacyHealthRow } from '@/lib/legacy/health/query'
+import { LegacyHealthTrendChart } from './health-trend-chart'
 
 function metric(value: number | null, suffix = '%') { return value === null ? '—' : `${value.toFixed(1)}${suffix}` }
 
@@ -30,7 +31,7 @@ export function LegacyHealthDrawer({ selected, onClose }: { selected: LegacyHeal
     if (!selected) return
     let cancelled = false
     const activeRequestKey = `${selected.deviceId}:${range}:${samplePage}:${logPage}`
-    getLegacyHealthHistory(selected.deviceId, { range, samplePage, logPage })
+    fetchLegacyHealthHistory(selected.deviceId, { range, samplePage, logPage })
       .then(history => {
         if (!cancelled) setResult({ key: activeRequestKey, data: history, failed: false })
       })

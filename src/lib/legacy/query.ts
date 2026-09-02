@@ -1,6 +1,7 @@
 export const LEGACY_PAGE_SIZES = [10, 50, 100, 1000] as const
 export type LegacyPageSize = (typeof LEGACY_PAGE_SIZES)[number]
-export type LegacyRange = '24h' | '7d' | '30d' | 'all'
+export const LEGACY_RANGES = ['24h', '7d', '30d', 'all'] as const
+export type LegacyRange = (typeof LEGACY_RANGES)[number]
 
 export function parseLegacyPage(value?: string): number {
   const page = Number.parseInt(value ?? '1', 10)

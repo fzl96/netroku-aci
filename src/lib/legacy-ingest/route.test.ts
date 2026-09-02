@@ -7,7 +7,12 @@ import { IdempotencyConflictError, type LegacyIngestResult } from './common'
 // invalidation calls revalidateTag outside any request scope. Mock both here
 // rather than relying on another suite having mocked them first.
 mock.module('server-only', () => ({}))
-mock.module('next/cache', () => ({ revalidateTag: () => {} }))
+// bun's module mocks are process-wide, so this stand-in must expose every
+// export other suites rely on -- not just the one this file needs.
+mock.module('next/cache', () => ({
+  revalidateTag: () => {},
+  unstable_cache: (fn: unknown) => fn,
+}))
 
 const { handleLegacyIngestRequest } = await import('./route')
 

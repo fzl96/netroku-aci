@@ -4,7 +4,7 @@ import {
   legacyHealthOrderBy,
   legacyStatusText,
   serializeLegacyHealthSample,
-} from './health'
+} from './filters'
 
 describe('legacy health helpers', () => {
   it('combines devices with health samples, search, and site filters', () => {
