@@ -24,7 +24,7 @@
 | 3 | Endpoints writes | done | `c2be982` refactor: centralize endpoint writes and invalidation |
 | 4 | Endpoints streaming | done | `28968a9`, hardened by `283c501` |
 | 5 | EPGs | done | `0870a10`, hardened by `f057262` |
-| 6 | Interface Health | **in progress** | Originally skipped by the 2026-09-02 session with no reason recorded (it jumped straight to Task 7); resumed after 7/8/History landed. Done: modules relocated to `src/lib/interface-health/` + `src/components/interface-health/`; typed params; cached `query.ts` (`interfaces:all` / `interfaces:host:<id>`); `mutation.ts` owning resync audit + invalidation; resync/export routes reduced to adapters; drawer reads moved from Server Actions to `GET /api/interfaces/samples`; `resync-host.ts` no longer audits (every purpose module owns its own). **Remaining: the render split** — `interface-health-client.tsx` is still one ~1000-line client and `page.tsx` still queries Prisma directly, so the purpose is deliberately NOT yet in the guard registry. |
+| 6 | Interface Health | done | Originally skipped by the 2026-09-02 session with no reason recorded (it jumped straight to Task 7); resumed after 7/8/History landed. Landed across four commits: `refactor: relocate interface health modules to purpose directories`, `test: add typed interface health page parameters`, `refactor: move interface health reads and writes behind purpose modules`, `refactor: stream interface health regions`. Two deliberate behaviour changes: the Export button is no longer disabled on an empty table (the route already answers 422, and the header must not wait on results), and the `window` param is dropped from URLs outside the CRC/state-change views that use it. |
 | 7 | Nodes | done | `refactor: stream node inventory regions` |
 | 8 | Dashboard | done | `refactor: stream dashboard regions` |
 | 9 | Legacy (4 purposes) | not started | |
@@ -34,6 +34,12 @@
 
 **Known deviation from the plan text:** Task 11 was started out of order (History only) before Task 6.
 The guard registry is the source of truth for which purposes are actually migrated.
+
+**Verification lesson:** `bun test` + `bunx tsc --noEmit` were green while `bun run build` was broken —
+the History slice moved `buildHistoryWhere` / `historyPageWindow` out of `query.ts` but left the obsolete
+`src/actions/audit.ts` importing them, and those errors sat in the pre-existing tsc noise from test files.
+**Run `bun run build` before claiming a slice is done**, and treat "the tsc error count did not change" as
+insufficient — check which files the errors are in.
 
 ## Required skills and invariants
 

@@ -114,7 +114,9 @@ export function buildInterfaceHealthPageUrl(params: InterfaceHealthPageParams): 
   const search = new URLSearchParams()
   if (params.hostId) search.set('apic', params.hostId)
   if (params.view !== 'all') search.set('view', params.view)
-  if (params.window !== '7d') search.set('window', params.window)
+  // The window only scopes the CRC and state-change views, so it is dropped
+  // elsewhere rather than persisting into a view that ignores it.
+  if (params.window !== '7d' && params.view !== 'all') search.set('window', params.window)
   if (params.query) search.set('query', params.query)
   if (params.nodes.length > 0) search.set('node', params.nodes.join(','))
   if (params.counterMode !== 'delta') search.set('mode', params.counterMode)

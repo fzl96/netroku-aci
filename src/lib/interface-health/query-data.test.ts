@@ -39,7 +39,7 @@ function snapshot(id: string, node: string, ifName: string, crc: bigint) {
     adminSt: 'up',
     operSt: 'up',
     operSpeed: '10G',
-    description: null,
+    description: '',
     lastLinkStChg: new Date('2026-01-03T00:00:00Z'),
     secret: 'omit-snapshot',
     samples: [{
@@ -179,7 +179,7 @@ describe('getInterfaceResults', () => {
       adminSt: 'up',
       operSt: 'up',
       operSpeed: '10G',
-      description: null,
+      description: '',
       lastLinkStChg: '2026-01-03T00:00:00.000Z',
       lastSampledAt: '2026-01-04T00:00:00.000Z',
       rxBytes: '10', rxErrors: '1', rxCrcErrors: '2', rxAlignErrors: '0',

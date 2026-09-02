@@ -80,6 +80,14 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
     }],
     entryRoots: ['src/components/history'],
   },
+  {
+    name: 'interface-health',
+    routes: [{
+      root: 'src/app/(app)/interface-health',
+      allowedFiles: ['page.tsx'],
+    }],
+    entryRoots: ['src/app/api/interfaces', 'src/components/interface-health'],
+  },
 ]
 
 function inspectArchitectureFiles(

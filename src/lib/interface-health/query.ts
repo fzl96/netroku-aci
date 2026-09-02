@@ -71,7 +71,7 @@ export type InterfaceRow = {
   adminSt: string
   operSt: string
   operSpeed: string
-  description: string | null
+  description: string
   lastLinkStChg: string | null
   lastSampledAt: string | null
   rxBytes: string | null
@@ -214,7 +214,7 @@ type StoredSnapshot = {
   adminSt: string
   operSt: string
   operSpeed: string
-  description: string | null
+  description: string
   lastLinkStChg: Date | null
   samples: Array<Prisma.InterfaceSampleGetPayload<{ select: typeof SAMPLE_SELECT }>>
 }

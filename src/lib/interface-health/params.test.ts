@@ -107,6 +107,14 @@ describe('buildInterfaceHealthPageUrl', () => {
     )
   })
 
+  it('drops the window outside the views it scopes', () => {
+    const params = parseInterfaceHealthPageParams({ apic: 'host-1', window: '30d' })
+    expect(params.window).toBe('30d')
+    expect(buildInterfaceHealthPageUrl(params)).toBe('/interface-health?apic=host-1')
+    expect(buildInterfaceHealthPageUrl({ ...params, view: 'state-changed' }))
+      .toBe('/interface-health?apic=host-1&view=state-changed&window=30d')
+  })
+
   it('round-trips through the parser', () => {
     const params = parseInterfaceHealthPageParams({
       apic: 'host-9', view: 'state-changed', query: 'po1', node: 'leaf-4', page: '2', mode: 'current',

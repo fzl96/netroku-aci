@@ -1,6 +1,7 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
+import type { FormEvent, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, useTransition } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -23,13 +24,22 @@ import {
 } from '@/lib/ui-classes'
 import {
   selectVisibleCounters,
-  type CounterFields,
   type CounterMode,
 } from '@/lib/interface-health/counter-mode'
+import {
+  buildInterfaceHealthPageUrl,
+  INTERFACE_PAGE_SIZES,
+  type InterfaceHealthPageParams,
+  type InterfacePageSize,
+  type InterfaceTableSort,
+  type InterfaceWindow,
+} from '@/lib/interface-health/params'
 import type {
   InterfaceSortDirection,
   TableSortKey,
 } from '@/lib/interface-health/sort'
+import type { InterfaceResultsData, InterfaceRow } from '@/lib/interface-health/query'
+import type { InterfaceView } from '@/lib/interface-health/interface-query'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -62,53 +72,29 @@ const InterfaceCrcTrendChart = dynamic(
   { ssr: false },
 )
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-export interface InterfaceRowProps extends CounterFields {
-  id: string
-  node: string
-  ifName: string
-  dn: string
-  usage: string
-  adminSt: string
-  operSt: string
-  operSpeed: string
-  description: string
-  lastLinkStChg: string | null
-  lastSampledAt: string | null
-  // BigInts serialised as decimal strings — see page.tsx / counter-mode.ts
-  dRxDiscards: string | null
-  dTxDiscards: string | null
-  // Sum of positive CRC deltas over the active window (CRC view only); null in the All view.
-  crcWindowTotal: string | null
-  hasRecentStateChange?: boolean
-}
-
-type PageSizeValue = 10 | 50 | 100 | 1000 | 'all'
-const PAGE_SIZE_OPTIONS: { label: string; value: PageSizeValue }[] = [
-  { label: '10', value: 10 },
-  { label: '50', value: 50 },
-  { label: '100', value: 100 },
-  { label: '1000', value: 1000 },
-  { label: 'All', value: 'all' },
+const PAGE_SIZE_OPTIONS: { label: string; value: InterfacePageSize }[] = [
+  ...INTERFACE_PAGE_SIZES.map(value => ({ label: String(value), value: value as InterfacePageSize })),
+  { label: 'All', value: 'all' as const },
 ]
 
-interface Props {
-  rows: InterfaceRowProps[]
-  selectedHostId: string
-  query: string
-  filterNode: string[]
-  availableNodes: string[]
-  lastSyncedAt: string | null
-  page: number
-  total: number
-  pageSize: PageSizeValue
-  sortKey: TableSortKey | null
-  sortDirection: InterfaceSortDirection
-  counterMode: CounterMode
-  view?: 'all' | 'crc' | 'state-changed'
-  window?: '7d' | '30d'
-  crcTrend?: CrcTrendPoint[]
+// ─── Navigation ───────────────────────────────────────────────────────────────
+
+type Navigation = { isPending: boolean; navigate: (url: string) => void; refresh: () => void }
+const NavigationContext = createContext<Navigation | null>(null)
+
+function useInterfaceNavigation(): Navigation {
+  const value = useContext(NavigationContext)
+  if (!value) throw new Error('Interface navigation requires InterfaceHealthFrame')
+  return value
+}
+
+/** Every region navigates through the shell's single transition so the whole
+ *  page shows one coherent pending state for a URL change. */
+function interfaceUrl(
+  params: InterfaceHealthPageParams,
+  overrides: Partial<InterfaceHealthPageParams>,
+): string {
+  return buildInterfaceHealthPageUrl({ ...params, ...overrides })
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -182,8 +168,6 @@ export function OperStBadge({ st, adminSt }: { st: string; adminSt?: string }) {
   )
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 function TableSkeleton({ columns = 8 }: { columns?: number }) {
   return (
     <tbody>
@@ -203,175 +187,97 @@ function TableSkeleton({ columns = 8 }: { columns?: number }) {
   )
 }
 
-export function InterfaceHealthClient({
-  rows,
-  selectedHostId,
-  query,
-  filterNode,
-  availableNodes,
-  lastSyncedAt,
-  page,
-  total,
-  pageSize,
-  sortKey,
-  sortDirection,
-  counterMode,
-  view = 'all',
-  window = '7d',
-  crcTrend = [],
-}: Props) {
-  const apicHosts = useApicHosts()
+// ─── Shell ────────────────────────────────────────────────────────────────────
+
+export function InterfaceHealthFrame({
+  syncStatus,
+  actions,
+  children,
+}: {
+  syncStatus: ReactNode
+  actions: ReactNode
+  children: ReactNode
+}) {
   const router = useRouter()
-  const [selected, setSelected] = useState<SelectedInterface | null>(null)
+  const [isPending, startTransition] = useTransition()
+  const navigation: Navigation = {
+    isPending,
+    navigate: (url: string) => startTransition(() => router.replace(url)),
+    refresh: () => startTransition(() => router.refresh()),
+  }
+
+  return (
+    <NavigationContext.Provider value={navigation}>
+      <div className="min-h-full bg-background">
+        <div className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">
+          <div className="px-4 md:px-8 py-3 md:py-0 md:h-16 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <h1 className="font-serif text-[18px] font-semibold text-foreground">Interfaces</h1>
+              <p className="text-xs text-subtle mt-0.5">
+                Status, error, and utilisation counters
+                {syncStatus}
+              </p>
+            </div>
+            {actions}
+          </div>
+        </div>
+
+        <div className="px-4 md:px-8 py-4 md:py-6 space-y-4">{children}</div>
+      </div>
+    </NavigationContext.Provider>
+  )
+}
+
+export function InterfaceSyncStatusClient({ lastSyncedAt }: { lastSyncedAt: string | null }) {
+  return <>{' '}· last synced {fmtRelative(lastSyncedAt)}</>
+}
+
+function HostSelect({
+  params,
+  className,
+}: {
+  params: InterfaceHealthPageParams
+  className: string
+}) {
+  const apicHosts = useApicHosts()
+  const { isPending, navigate } = useInterfaceNavigation()
+  return (
+    <select
+      value={params.hostId}
+      onChange={e => navigate(e.target.value ? `/interface-health?apic=${e.target.value}` : '/interface-health')}
+      disabled={isPending}
+      className={className}
+    >
+      <option value="">Select APIC host…</option>
+      {apicHosts.map(h => (
+        <option key={h.id} value={h.id}>{h.name} ({h.host})</option>
+      ))}
+    </select>
+  )
+}
+
+export function InterfaceHeaderActionsClient({ params }: { params: InterfaceHealthPageParams }) {
+  const apicHosts = useApicHosts()
+  const { isPending, refresh } = useInterfaceNavigation()
   const [syncing, setSyncing] = useState(false)
   const [credentialOpen, setCredentialOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const [isPending, startTransition] = useTransition()
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [lastDispatchedQuery, setLastDispatchedQuery] = useState(query)
-  const [searchValue, setSearchValue] = useState(query)
-  const [previousQuery, setPreviousQuery] = useState(query)
-  const [jumpValue, setJumpValue] = useState('')
-  const selectedHost = apicHosts.find(host => host.id === selectedHostId)
-
-  // Sync input when query changes via back/forward navigation, but ignore the
-  // echo from our own debounced router.replace so in-flight typing isn't clobbered.
-  if (query !== previousQuery) {
-    setPreviousQuery(query)
-    if (query !== lastDispatchedQuery) {
-      setSearchValue(query)
-    }
-  }
-
-  const effectivePageSize = pageSize === 'all' ? Math.max(total, 1) : pageSize
-  const totalPages = Math.max(1, Math.ceil(total / effectivePageSize))
-  const rangeStart = total === 0 ? 0 : (page - 1) * effectivePageSize + 1
-  const rangeEnd = pageSize === 'all' ? total : Math.min(page * effectivePageSize, total)
-
-  function buildUrl(overrides: {
-    apic?: string
-    query?: string
-    node?: string[]
-    page?: number
-    pageSize?: PageSizeValue
-    sort?: TableSortKey | null
-    dir?: InterfaceSortDirection
-    counterMode?: CounterMode
-    view?: 'all' | 'crc' | 'state-changed'
-    window?: '7d' | '30d'
-  }) {
-    const params = new URLSearchParams()
-    const apic = overrides.apic ?? selectedHostId
-    const q = overrides.query !== undefined ? overrides.query : query
-    const n = overrides.node !== undefined ? overrides.node : filterNode
-    const p = overrides.page ?? page
-    const ps = overrides.pageSize !== undefined ? overrides.pageSize : pageSize
-    const s = overrides.sort !== undefined ? overrides.sort : sortKey
-    const d = overrides.dir ?? sortDirection
-    const mode = overrides.counterMode ?? counterMode
-    const v = overrides.view ?? view
-    const win = overrides.window ?? window
-
-    if (apic) params.set('apic', apic)
-    if (q.trim()) params.set('query', q.trim())
-    if (n.length > 0) params.set('node', n.join(','))
-    if (p > 1) params.set('page', String(p))
-    if (ps !== 50) params.set('pageSize', String(ps))
-    if (s) {
-      params.set('sort', s)
-      if (d !== 'desc') params.set('dir', d)
-    }
-    if (mode !== 'delta') params.set('mode', mode)
-    if (v !== 'all') params.set('view', v)
-    if ((v === 'crc' || v === 'state-changed') && win !== '7d') params.set('window', win)
-    const qs = params.toString()
-    return `/interface-health${qs ? `?${qs}` : ''}`
-  }
-
-  function handleHostChange(hostId: string) {
-    startTransition(() => {
-      router.replace(hostId ? `/interface-health?apic=${hostId}` : '/interface-health')
-    })
-  }
-
-  function handleViewChange(v: 'all' | 'crc' | 'state-changed') {
-    startTransition(() => {
-      router.replace(buildUrl({ view: v, page: 1 }))
-    })
-  }
-
-  function handleWindowChange(w: '7d' | '30d') {
-    startTransition(() => {
-      router.replace(buildUrl({ window: w, page: 1 }))
-    })
-  }
-
-  function handleSearchChange(value: string) {
-    setSearchValue(value)
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => {
-      setLastDispatchedQuery(value.trim())
-      startTransition(() => {
-        router.replace(buildUrl({ query: value, page: 1 }))
-      })
-    }, 300)
-  }
-
-  function handleNodeToggle(value: string) {
-    const next = filterNode.includes(value)
-      ? filterNode.filter(v => v !== value)
-      : [...filterNode, value]
-    startTransition(() => {
-      router.replace(buildUrl({ node: next, page: 1 }))
-    })
-  }
-
-  function handlePage(next: number) {
-    startTransition(() => {
-      router.replace(buildUrl({ page: next }))
-    })
-  }
-
-  function handlePageSizeChange(ps: PageSizeValue) {
-    startTransition(() => {
-      router.replace(buildUrl({ pageSize: ps, page: 1 }))
-    })
-  }
-
-  function handleCounterModeChange(mode: CounterMode) {
-    startTransition(() => {
-      router.replace(buildUrl({ counterMode: mode, page: 1 }))
-    })
-  }
-
-  function handleSort(key: TableSortKey) {
-    const nextDirection: InterfaceSortDirection =
-      sortKey === key && sortDirection === 'desc' ? 'asc' : 'desc'
-    startTransition(() => {
-      router.replace(buildUrl({ sort: key, dir: nextDirection, page: 1 }))
-    })
-  }
-
-  function handleJump(e: React.FormEvent) {
-    e.preventDefault()
-    const p = parseInt(jumpValue, 10)
-    if (p >= 1 && p <= totalPages) handlePage(p)
-    setJumpValue('')
-  }
+  const selectedHost = apicHosts.find(host => host.id === params.hostId)
+  const loading = isPending || syncing
 
   async function handleResync(credentials: { username: string; password: string }) {
-    if (!selectedHostId) return
+    if (!params.hostId) return
     setSyncing(true)
     try {
       const res = await fetch('/api/interfaces/resync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apicHostId: selectedHostId, ...credentials }),
+        body: JSON.stringify({ apicHostId: params.hostId, ...credentials }),
       })
       const data = (await res.json()) as { synced?: number; total?: number; error?: string }
       if (!res.ok) throw new Error(data.error ?? 'Resync failed')
       toast.success(`Synced ${data.synced} interfaces (${data.total} total)`)
-      startTransition(() => router.refresh())
+      refresh()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Resync failed')
     } finally {
@@ -380,15 +286,15 @@ export function InterfaceHealthClient({
   }
 
   async function handleExport() {
-    if (!selectedHostId) return
+    if (!params.hostId) return
     setExporting(true)
     try {
       const res = await fetch('/api/interfaces/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          apicHostId: selectedHostId,
-          node: filterNode.length > 0 ? filterNode : undefined,
+          apicHostId: params.hostId,
+          node: params.nodes.length > 0 ? params.nodes : undefined,
         }),
       })
       if (!res.ok) {
@@ -411,588 +317,49 @@ export function InterfaceHealthClient({
     }
   }
 
-  const activeFilterCount = filterNode.length > 0 ? 1 : 0
-  const loading = isPending || syncing
-  const tableHeaders: ({ label: string; sortKey?: TableSortKey })[] = [
-    { label: 'Node' },
-    { label: 'Interface' },
-    { label: 'Description' },
-    { label: 'Admin' },
-    { label: 'Oper' },
-    { label: 'Speed' },
-    {
-      label: counterMode === 'delta' ? 'Rx err Δ' : 'Rx err',
-      sortKey: 'rxErrors',
-    },
-    {
-      label: counterMode === 'delta' ? 'Tx err Δ' : 'Tx err',
-      sortKey: 'txErrors',
-    },
-    view === 'crc'
-      ? { label: `CRC (${window})`, sortKey: 'crcWindowTotal' as TableSortKey }
-      : {
-          label: counterMode === 'delta' ? 'CRC Δ' : 'CRC',
-          sortKey: 'rxCrcErrors' as TableSortKey,
-        },
-    {
-      label: counterMode === 'delta' ? 'Align Δ' : 'Align',
-      sortKey: 'rxAlignErrors',
-    },
-    { label: 'Last link change' },
-    { label: 'Sampled' },
-  ]
-
   return (
-    <div className="min-h-full bg-background">
-      <div className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">
-        <div className="px-4 md:px-8 py-3 md:py-0 md:h-16 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div>
-            <h1 className="font-serif text-[18px] font-semibold text-foreground">Interfaces</h1>
-            <p className="text-xs text-subtle mt-0.5">
-              Status, error, and utilisation counters
-              {selectedHostId && (
-                <>
-                  {' '}· last synced {fmtRelative(lastSyncedAt)}
-                </>
-              )}
-            </p>
-          </div>
+    <div className="flex items-center gap-2 w-full md:w-auto">
+      <HostSelect
+        params={params}
+        className={[
+          'text-xs bg-muted border border-border rounded-lg',
+          'px-3 py-2 text-foreground outline-none',
+          'focus:border-primary focus:ring-2 focus:ring-primary/10',
+          'min-w-0 flex-1 md:flex-none md:min-w-[180px]',
+          'disabled:opacity-60 disabled:cursor-not-allowed transition-opacity',
+        ].join(' ')}
+      />
 
-          <div className="flex items-center gap-2 w-full md:w-auto">
-            <select
-              value={selectedHostId}
-              onChange={e => handleHostChange(e.target.value)}
-              disabled={isPending}
-              className={[
-                'text-xs bg-muted border border-border rounded-lg',
-                'px-3 py-2 text-foreground outline-none',
-                'focus:border-primary focus:ring-2 focus:ring-primary/10',
-                'min-w-0 flex-1 md:flex-none md:min-w-[180px]',
-                'disabled:opacity-60 disabled:cursor-not-allowed transition-opacity',
-              ].join(' ')}
-            >
-              <option value="">Select APIC host…</option>
-              {apicHosts.map(h => (
-                <option key={h.id} value={h.id}>{h.name} ({h.host})</option>
-              ))}
-            </select>
+      <button
+        onClick={() => setCredentialOpen(true)}
+        disabled={!params.hostId || syncing}
+        title="Resync interfaces from APIC"
+        className={[
+          'flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg transition-colors shadow-sm',
+          params.hostId && !syncing
+            ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+            : 'bg-muted text-faint cursor-not-allowed',
+        ].join(' ')}
+      >
+        <IconRefresh size={12} stroke={1.75} className={loading ? 'animate-spin' : ''} />
+        {syncing ? 'Syncing…' : isPending ? 'Loading…' : 'Resync'}
+      </button>
 
-            <button
-              onClick={() => setCredentialOpen(true)}
-              disabled={!selectedHostId || syncing}
-              title="Resync interfaces from APIC"
-              className={[
-                'flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg transition-colors shadow-sm',
-                selectedHostId && !syncing
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                  : 'bg-muted text-faint cursor-not-allowed',
-              ].join(' ')}
-            >
-              <IconRefresh size={12} stroke={1.75} className={loading ? 'animate-spin' : ''} />
-              {syncing ? 'Syncing…' : isPending ? 'Loading…' : 'Resync'}
-            </button>
+      <button
+        onClick={handleExport}
+        disabled={!params.hostId || exporting}
+        title="Export interface samples to CSV"
+        className={[
+          'flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg border transition-colors',
+          params.hostId && !exporting
+            ? 'border-border text-foreground hover:bg-muted'
+            : 'border-border text-faint cursor-not-allowed',
+        ].join(' ')}
+      >
+        <IconDownload size={12} stroke={1.75} />
+        {exporting ? 'Exporting…' : 'Export'}
+      </button>
 
-            <button
-              onClick={handleExport}
-              disabled={!selectedHostId || exporting || rows.length === 0}
-              title="Export interface samples to CSV"
-              className={[
-                'flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg border transition-colors',
-                selectedHostId && !exporting && rows.length > 0
-                  ? 'border-border text-foreground hover:bg-muted'
-                  : 'border-border text-faint cursor-not-allowed',
-              ].join(' ')}
-            >
-              <IconDownload size={12} stroke={1.75} />
-              {exporting ? 'Exporting…' : 'Export'}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-4 md:px-8 py-4 md:py-6 space-y-4">
-        {!selectedHostId && !isPending ? (
-          <div className="flex flex-col items-center justify-center py-28 text-center">
-            <div className="relative mb-6">
-              <div className="w-14 h-14 rounded-2xl bg-card border border-border flex items-center justify-center shadow-sm">
-                <IconServer size={24} stroke={1.25} className="text-faint" />
-              </div>
-              <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-border border-2 border-background" />
-            </div>
-            <h2 className="font-serif text-base font-semibold text-foreground mb-1">
-              No APIC host selected
-            </h2>
-            <p className="text-xs text-subtle mb-6 max-w-[260px] leading-relaxed">
-              {apicHosts.length === 0
-                ? 'No APIC hosts configured yet. Add one in Settings to get started.'
-                : 'Choose a host to view its interface inventory.'}
-            </p>
-            {apicHosts.length > 0 && (
-              <select
-                value={selectedHostId}
-                onChange={e => handleHostChange(e.target.value)}
-                disabled={isPending}
-                className={[
-                  'text-xs bg-muted border border-border rounded-lg',
-                  'px-3 py-2 text-foreground outline-none cursor-pointer',
-                  'focus:border-primary focus:ring-2 focus:ring-primary/10',
-                  'min-w-[220px] transition-colors',
-                  'disabled:opacity-60 disabled:cursor-not-allowed transition-opacity',
-                ].join(' ')}
-              >
-                <option value="">Select APIC host…</option>
-                {apicHosts.map(h => (
-                  <option key={h.id} value={h.id}>{h.name} ({h.host})</option>
-                ))}
-              </select>
-            )}
-          </div>
-        ) : (
-          <>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2 min-w-0 w-full md:w-auto">
-                <div className="relative flex-1 min-w-[140px] md:w-56 md:flex-none">
-                  <IconSearch
-                    size={13}
-                    stroke={1.75}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none"
-                  />
-                  <input
-                    type="text"
-                    value={searchValue}
-                    onChange={e => handleSearchChange(e.target.value)}
-                    placeholder="Search node, ifName, description…"
-                    className={SEARCH_INPUT_CLS}
-                  />
-                </div>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      title="Filter interfaces"
-                      aria-label="Filter interfaces"
-                      disabled={isPending}
-                      className={[
-                        'relative flex size-9 shrink-0 items-center justify-center rounded-lg border transition-colors outline-none',
-                        'focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-40',
-                        activeFilterCount > 0
-                          ? 'border-primary bg-primary/8 text-foreground'
-                          : 'border-border bg-muted text-muted-foreground hover:text-foreground',
-                      ].join(' ')}
-                    >
-                      <IconFilter2 size={15} stroke={1.75} />
-                      {activeFilterCount > 0 && (
-                        <span className="absolute -right-1.5 -top-1.5 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground shadow-sm">
-                          {activeFilterCount}
-                        </span>
-                      )}
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-44" align="start">
-                    <DropdownMenuLabel>Node</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {availableNodes.length === 0 ? (
-                      <DropdownMenuItem disabled>No values available</DropdownMenuItem>
-                    ) : (
-                      availableNodes.map(n => (
-                        <DropdownMenuCheckboxItem
-                          key={n || '(blank)'}
-                          checked={filterNode.includes(n)}
-                          onCheckedChange={() => handleNodeToggle(n)}
-                          onSelect={event => event.preventDefault()}
-                        >
-                          {n || '(blank)'}
-                        </DropdownMenuCheckboxItem>
-                      ))
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                <div className="inline-flex shrink-0 rounded-lg border border-border bg-muted p-0.5">
-                  {([
-                    { label: 'All', value: 'all' },
-                    { label: 'Counting CRC', value: 'crc' },
-                    { label: 'State Changes', value: 'state-changed' },
-                  ] as const).map(v => (
-                    <button
-                      key={v.value}
-                      type="button"
-                      aria-pressed={view === v.value}
-                      onClick={() => handleViewChange(v.value)}
-                      className={[
-                        'rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors',
-                        view === v.value
-                          ? 'bg-card text-foreground shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground',
-                      ].join(' ')}
-                    >
-                      {v.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="inline-flex shrink-0 rounded-lg border border-border bg-muted p-0.5">
-                  {(['delta', 'current'] as const).map(mode => (
-                    <button
-                      key={mode}
-                      type="button"
-                      aria-pressed={counterMode === mode}
-                      onClick={() => handleCounterModeChange(mode)}
-                      className={[
-                        'rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors',
-                        counterMode === mode
-                          ? 'bg-card text-foreground shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground',
-                      ].join(' ')}
-                    >
-                      {mode === 'delta' ? 'Delta' : 'Current'}
-                    </button>
-                  ))}
-                </div>
-
-                {(view === 'crc' || view === 'state-changed') && (
-                  <div className="inline-flex shrink-0 rounded-lg border border-border bg-muted p-0.5">
-                    {(['7d', '30d'] as const).map(w => (
-                      <button
-                        key={w}
-                        type="button"
-                        aria-pressed={window === w}
-                        onClick={() => handleWindowChange(w)}
-                        className={[
-                          'rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors',
-                          window === w
-                            ? 'bg-card text-foreground shadow-sm'
-                            : 'text-muted-foreground hover:text-foreground',
-                        ].join(' ')}
-                      >
-                        {w}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-3 shrink-0 text-xs text-subtle">
-                <span>
-                  <span className="font-semibold text-foreground">{total}</span>{' '}
-                  {total === 1 ? 'interface' : 'interfaces'}
-                  {view === 'crc'
-                    ? ` (CRC increase in last ${window})`
-                    : view === 'state-changed'
-                    ? ` (state changed in last ${window})`
-                    : ''}
-                </span>
-              </div>
-            </div>
-
-            {view === 'crc' && (
-              <InterfaceCrcTrendChart trend={crcTrend} />
-            )}
-
-            <div
-              className={[
-                'hidden md:block bg-card border border-border rounded-2xl overflow-hidden shadow-sm',
-                'transition-opacity duration-150',
-                isPending ? 'opacity-60 pointer-events-none' : 'opacity-100',
-              ].join(' ')}
-            >
-              {rows.length === 0 && !isPending ? (
-                <div className="px-4 py-14 text-center">
-                  {view === 'crc' && !query && activeFilterCount === 0 ? (
-                    <>
-                      <p className="text-sm text-subtle">No interfaces with increasing CRC errors in the last {window === '30d' ? '30 days' : '7 days'}</p>
-                      <p className="text-xs text-faint mt-1">All monitored interfaces are reporting zero CRC error increases</p>
-                    </>
-                  ) : query || activeFilterCount > 0 ? (
-                    <>
-                      <p className="text-sm text-subtle">No interfaces match the current filters</p>
-                      <p className="text-xs text-faint mt-1">Try adjusting the search or filter values</p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-sm text-subtle">No interfaces synced yet</p>
-                      <p className="text-xs text-faint mt-1">
-                        Click <strong>Resync</strong> to pull the latest data from APIC
-                      </p>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div className={TABLE_SCROLL_CLS}>
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr>
-                        {tableHeaders.map(h => (
-                          <th
-                            key={h.label}
-                            aria-sort={
-                              h.sortKey && sortKey === h.sortKey
-                                ? sortDirection === 'asc' ? 'ascending' : 'descending'
-                                : undefined
-                            }
-                            className={DENSE_TABLE_HEAD_CLS}
-                          >
-                            {h.sortKey ? (
-                              <button
-                                type="button"
-                                onClick={() => handleSort(h.sortKey!)}
-                                className="inline-flex items-center gap-1 text-inherit transition-colors hover:text-foreground"
-                              >
-                                <span>{h.label}</span>
-                                {sortKey === h.sortKey ? (
-                                  sortDirection === 'asc' ? (
-                                    <IconChevronUp size={11} stroke={2} />
-                                  ) : (
-                                    <IconChevronDown size={11} stroke={2} />
-                                  )
-                                ) : (
-                                  <span className="w-[11px]" aria-hidden="true" />
-                                )}
-                              </button>
-                            ) : (
-                              h.label
-                            )}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    {isPending ? (
-                      <TableSkeleton columns={tableHeaders.length} />
-                    ) : (
-                      <tbody>
-                        {rows.map((r, i) => {
-                        const visibleCounters = selectVisibleCounters(r, counterMode)
-
-                        return (
-                          <tr
-                            key={r.id}
-                            className="group cursor-pointer border-b border-border-faint last:border-0 hover:bg-muted transition-colors duration-100 animate-fade-up"
-                            style={{ animationDelay: `${Math.min(i * 12, 200)}ms` }}
-                            onClick={() =>
-                              setSelected({
-                                id: r.id,
-                                node: r.node,
-                                ifName: r.ifName,
-                                description: r.description,
-                                operSt: r.operSt,
-                              })
-                            }
-                          >
-                            <td className="px-4 py-2.5 tabular-nums text-muted-foreground border-l-2 border-l-transparent group-hover:border-l-primary transition-colors duration-100">
-                              {r.node || '—'}
-                            </td>
-                            <td className="px-4 py-2.5 font-mono text-foreground">{r.ifName}</td>
-                            <td className="px-4 py-2.5 text-muted-foreground">{r.description || '—'}</td>
-                            <td className="px-4 py-2.5 text-muted-foreground">{r.adminSt || '—'}</td>
-                            <td className="px-4 py-2.5"><OperStBadge st={r.operSt} adminSt={r.adminSt} /></td>
-                            <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{r.operSpeed || '—'}</td>
-                            <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.rxErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
-                              {counterMode === 'delta' ? fmtDelta(visibleCounters.rxErrors) : fmtCount(visibleCounters.rxErrors)}
-                            </td>
-                            <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.txErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
-                              {counterMode === 'delta' ? fmtDelta(visibleCounters.txErrors) : fmtCount(visibleCounters.txErrors)}
-                            </td>
-                            {view === 'crc' ? (
-                              <td className="px-4 py-2.5 tabular-nums">
-                                <div className={isNonZero(r.crcWindowTotal) ? 'text-danger font-semibold' : 'text-faint'}>
-                                  {fmtCount(r.crcWindowTotal)}
-                                </div>
-                                <div className="text-[10px] text-faint font-normal mt-0.5">
-                                  {r.dRxCrcErrors === null
-                                    ? 'reset'
-                                    : isNonZero(r.dRxCrcErrors)
-                                      ? `+${r.dRxCrcErrors} last poll`
-                                      : '0 last poll'}
-                                </div>
-                              </td>
-                            ) : (
-                              <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.rxCrcErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
-                                {counterMode === 'delta' ? fmtDelta(visibleCounters.rxCrcErrors) : fmtCount(visibleCounters.rxCrcErrors)}
-                              </td>
-                            )}
-                            <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.rxAlignErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
-                              {counterMode === 'delta' ? fmtDelta(visibleCounters.rxAlignErrors) : fmtCount(visibleCounters.rxAlignErrors)}
-                            </td>
-                            <td className="px-4 py-2.5 tabular-nums whitespace-nowrap">
-                              {r.hasRecentStateChange ? (
-                                <span className="inline-flex items-center gap-1.5 font-medium text-amber-600 dark:text-amber-400">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
-                                  {fmtDate(r.lastLinkStChg)}
-                                </span>
-                              ) : (
-                                <span className="text-faint">{fmtDate(r.lastLinkStChg)}</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2.5 tabular-nums text-faint whitespace-nowrap">{fmtRelative(r.lastSampledAt)}</td>
-                          </tr>
-                        )
-                      })}
-                      </tbody>
-                    )}
-                  </table>
-                </div>
-              )}
-            </div>
-
-            {/* Mobile card list */}
-            <div
-              className={[
-                'space-y-2 md:hidden transition-opacity duration-150',
-                isPending ? 'opacity-60 pointer-events-none' : 'opacity-100',
-              ].join(' ')}
-            >
-              {rows.length === 0 && !isPending ? (
-                <div className="rounded-2xl border border-border bg-card px-4 py-14 text-center">
-                  {view === 'crc' && !query && activeFilterCount === 0 ? (
-                    <>
-                      <p className="text-sm text-subtle">No interfaces with increasing CRC errors in the last {window === '30d' ? '30 days' : '7 days'}</p>
-                      <p className="text-xs text-faint mt-1">All monitored interfaces report zero CRC error increases</p>
-                    </>
-                  ) : query || activeFilterCount > 0 ? (
-                    <>
-                      <p className="text-sm text-subtle">No interfaces match the current filters</p>
-                      <p className="text-xs text-faint mt-1">Try adjusting the search or filter values</p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-sm text-subtle">No interfaces synced yet</p>
-                      <p className="text-xs text-faint mt-1">Tap <strong>Resync</strong> to pull the latest data from APIC</p>
-                    </>
-                  )}
-                </div>
-              ) : (
-                rows.map(r => {
-                  const visibleCounters = selectVisibleCounters(r, counterMode)
-                  const crcValue = view === 'crc' ? r.crcWindowTotal : visibleCounters.rxCrcErrors
-                  const fmtCounter = (v: string | null) =>
-                    counterMode === 'delta' && view !== 'crc' ? fmtDelta(v) : fmtCount(v)
-                  return (
-                    <DataCard
-                      key={r.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() =>
-                        setSelected({
-                          id: r.id,
-                          node: r.node,
-                          ifName: r.ifName,
-                          description: r.description,
-                          operSt: r.operSt,
-                        })
-                      }
-                    >
-                      <DataCardHeader trailing={<OperStBadge st={r.operSt} adminSt={r.adminSt} />}>
-                        <DataCardTitle className="font-mono">{r.ifName}</DataCardTitle>
-                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                          Node {r.node || '—'}
-                          {r.description ? ` · ${r.description}` : ''}
-                        </p>
-                      </DataCardHeader>
-                      <DataCardBody>
-                        <DataCardRow label="Speed" value={r.operSpeed || '—'} />
-                        <DataCardRow
-                          label="RX / TX err"
-                          value={
-                            <span className={isNonZero(visibleCounters.rxErrors) || isNonZero(visibleCounters.txErrors) ? 'text-danger font-semibold' : ''}>
-                              {fmtCounter(visibleCounters.rxErrors)} / {fmtCounter(visibleCounters.txErrors)}
-                            </span>
-                          }
-                        />
-                        <DataCardRow
-                          label={view === 'crc' ? 'CRC (window)' : 'CRC err'}
-                          value={
-                            <span className={isNonZero(crcValue) ? 'text-danger font-semibold' : ''}>
-                              {fmtCounter(crcValue)}
-                            </span>
-                          }
-                        />
-                        <DataCardRow label="Sampled" value={fmtRelative(r.lastSampledAt)} />
-                      </DataCardBody>
-                    </DataCard>
-                  )
-                })
-              )}
-            </div>
-
-            {total > 0 && (
-              <div className="flex flex-wrap items-center justify-between pt-1 gap-3">
-                <p className="text-xs text-subtle shrink-0">
-                  {pageSize === 'all'
-                    ? `Showing all ${total} interfaces`
-                    : `Showing ${rangeStart}–${rangeEnd} of ${total} interfaces`}
-                </p>
-
-                <div className="flex items-center gap-2">
-                  <div className="hidden md:flex items-center gap-1.5">
-                    <span className="text-xs text-faint">Per page</span>
-                    <select
-                      value={String(pageSize)}
-                      onChange={e => handlePageSizeChange(e.target.value === 'all' ? 'all' : Number(e.target.value) as PageSizeValue)}
-                      disabled={isPending}
-                      className="text-xs bg-muted border border-border rounded-lg px-2 py-1.5 text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-40"
-                    >
-                      {PAGE_SIZE_OPTIONS.map(o => (
-                        <option key={String(o.value)} value={String(o.value)}>{o.label}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {pageSize !== 'all' && totalPages > 1 && (
-                    <>
-                      <div className="hidden md:block w-px h-4 bg-border" />
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handlePage(page - 1)}
-                          disabled={page <= 1 || isPending}
-                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          <IconChevronLeft size={12} stroke={1.75} />
-                          Prev
-                        </button>
-
-                        <span className="px-2 py-1.5 text-xs text-subtle tabular-nums">
-                          {page} / {totalPages}
-                        </span>
-
-                        <button
-                          onClick={() => handlePage(page + 1)}
-                          disabled={page >= totalPages || isPending}
-                          className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          Next
-                          <IconChevronRight size={12} stroke={1.75} />
-                        </button>
-
-                        <div className="hidden md:block w-px h-4 bg-border" />
-
-                        <form onSubmit={handleJump} className="hidden md:flex items-center gap-1">
-                          <input
-                            type="number"
-                            min={1}
-                            max={totalPages}
-                            value={jumpValue}
-                            onChange={e => setJumpValue(e.target.value)}
-                            placeholder="Go to…"
-                            className="w-20 text-xs bg-muted border border-border rounded-lg px-2 py-1.5 text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          />
-                          <button
-                            type="submit"
-                            disabled={!jumpValue || isPending}
-                            className="px-2.5 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            Go
-                          </button>
-                        </form>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
       <ApicCredentialDialog
         open={credentialOpen}
         onOpenChange={setCredentialOpen}
@@ -1000,7 +367,605 @@ export function InterfaceHealthClient({
         description={`Enter APIC credentials for ${selectedHost?.name ?? 'the selected host'}. Credentials are used for this resync only.`}
         onSubmit={handleResync}
       />
-      <InterfaceErrorTrendDrawer selected={selected} onClose={() => setSelected(null)} />
     </div>
+  )
+}
+
+export function NoInterfaceHost() {
+  const apicHosts = useApicHosts()
+  const params: InterfaceHealthPageParams = {
+    hostId: '', query: '', nodes: [], page: 1, pageSize: 50,
+    view: 'all', window: '7d', counterMode: 'delta', sort: { kind: 'natural' },
+  }
+  return (
+    <div className="flex flex-col items-center justify-center py-28 text-center">
+      <div className="relative mb-6">
+        <div className="w-14 h-14 rounded-2xl bg-card border border-border flex items-center justify-center shadow-sm">
+          <IconServer size={24} stroke={1.25} className="text-faint" />
+        </div>
+        <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-border border-2 border-background" />
+      </div>
+      <h2 className="font-serif text-base font-semibold text-foreground mb-1">
+        No APIC host selected
+      </h2>
+      <p className="text-xs text-subtle mb-6 max-w-[260px] leading-relaxed">
+        {apicHosts.length === 0
+          ? 'No APIC hosts configured yet. Add one in Settings to get started.'
+          : 'Choose a host to view its interface inventory.'}
+      </p>
+      {apicHosts.length > 0 && (
+        <HostSelect
+          params={params}
+          className={[
+            'text-xs bg-muted border border-border rounded-lg',
+            'px-3 py-2 text-foreground outline-none cursor-pointer',
+            'focus:border-primary focus:ring-2 focus:ring-primary/10',
+            'min-w-[220px] transition-colors',
+            'disabled:opacity-60 disabled:cursor-not-allowed transition-opacity',
+          ].join(' ')}
+        />
+      )}
+    </div>
+  )
+}
+
+// ─── Controls ─────────────────────────────────────────────────────────────────
+
+export function InterfaceControlsClient({
+  params,
+  nodeFilter,
+  summary,
+}: {
+  params: InterfaceHealthPageParams
+  nodeFilter: ReactNode
+  summary: ReactNode
+}) {
+  const { isPending, navigate } = useInterfaceNavigation()
+  const [searchValue, setSearchValue] = useState(params.query)
+  const [previousQuery, setPreviousQuery] = useState(params.query)
+  const [lastDispatchedQuery, setLastDispatchedQuery] = useState(params.query)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Sync input when query changes via back/forward navigation, but ignore the
+  // echo from our own debounced router.replace so in-flight typing isn't clobbered.
+  if (params.query !== previousQuery) {
+    setPreviousQuery(params.query)
+    if (params.query !== lastDispatchedQuery) {
+      setSearchValue(params.query)
+    }
+  }
+
+  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current) }, [])
+
+  function handleSearchChange(value: string) {
+    setSearchValue(value)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      setLastDispatchedQuery(value.trim())
+      navigate(interfaceUrl(params, { query: value.trim(), page: 1 }))
+    }, 300)
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center gap-2 min-w-0 w-full md:w-auto">
+        <div className="relative flex-1 min-w-[140px] md:w-56 md:flex-none">
+          <IconSearch
+            size={13}
+            stroke={1.75}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-faint pointer-events-none"
+          />
+          <input
+            type="text"
+            value={searchValue}
+            onChange={e => handleSearchChange(e.target.value)}
+            placeholder="Search node, ifName, description…"
+            className={SEARCH_INPUT_CLS}
+          />
+        </div>
+
+        {nodeFilter}
+
+        <div className="inline-flex shrink-0 rounded-lg border border-border bg-muted p-0.5">
+          {([
+            { label: 'All', value: 'all' },
+            { label: 'Counting CRC', value: 'crc' },
+            { label: 'State Changes', value: 'state-changed' },
+          ] as const).map(v => (
+            <button
+              key={v.value}
+              type="button"
+              aria-pressed={params.view === v.value}
+              onClick={() => navigate(interfaceUrl(params, { view: v.value as InterfaceView, page: 1 }))}
+              className={[
+                'rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors',
+                params.view === v.value
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              ].join(' ')}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="inline-flex shrink-0 rounded-lg border border-border bg-muted p-0.5">
+          {(['delta', 'current'] as const).map(mode => (
+            <button
+              key={mode}
+              type="button"
+              aria-pressed={params.counterMode === mode}
+              onClick={() => navigate(interfaceUrl(params, { counterMode: mode as CounterMode, page: 1 }))}
+              className={[
+                'rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors',
+                params.counterMode === mode
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              ].join(' ')}
+            >
+              {mode === 'delta' ? 'Delta' : 'Current'}
+            </button>
+          ))}
+        </div>
+
+        {(params.view === 'crc' || params.view === 'state-changed') && (
+          <div className="inline-flex shrink-0 rounded-lg border border-border bg-muted p-0.5">
+            {(['7d', '30d'] as const).map(w => (
+              <button
+                key={w}
+                type="button"
+                aria-pressed={params.window === w}
+                onClick={() => navigate(interfaceUrl(params, { window: w as InterfaceWindow, page: 1 }))}
+                disabled={isPending}
+                className={[
+                  'rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors',
+                  params.window === w
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                ].join(' ')}
+              >
+                {w}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center gap-3 shrink-0 text-xs text-subtle">{summary}</div>
+    </div>
+  )
+}
+
+export function InterfaceNodeFilterClient({
+  params,
+  availableNodes,
+}: {
+  params: InterfaceHealthPageParams
+  availableNodes: string[]
+}) {
+  const { isPending, navigate } = useInterfaceNavigation()
+  const activeFilterCount = params.nodes.length > 0 ? 1 : 0
+
+  function toggle(value: string) {
+    const next = params.nodes.includes(value)
+      ? params.nodes.filter(v => v !== value)
+      : [...params.nodes, value]
+    navigate(interfaceUrl(params, { nodes: next, page: 1 }))
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          title="Filter interfaces"
+          aria-label="Filter interfaces"
+          disabled={isPending}
+          className={[
+            'relative flex size-9 shrink-0 items-center justify-center rounded-lg border transition-colors outline-none',
+            'focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-40',
+            activeFilterCount > 0
+              ? 'border-primary bg-primary/8 text-foreground'
+              : 'border-border bg-muted text-muted-foreground hover:text-foreground',
+          ].join(' ')}
+        >
+          <IconFilter2 size={15} stroke={1.75} />
+          {activeFilterCount > 0 && (
+            <span className="absolute -right-1.5 -top-1.5 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground shadow-sm">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-44" align="start">
+        <DropdownMenuLabel>Node</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {availableNodes.length === 0 ? (
+          <DropdownMenuItem disabled>No values available</DropdownMenuItem>
+        ) : (
+          availableNodes.map(n => (
+            <DropdownMenuCheckboxItem
+              key={n || '(blank)'}
+              checked={params.nodes.includes(n)}
+              onCheckedChange={() => toggle(n)}
+              onSelect={event => event.preventDefault()}
+            >
+              {n || '(blank)'}
+            </DropdownMenuCheckboxItem>
+          ))
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+export function InterfaceCrcTrendClient({ trend }: { trend: CrcTrendPoint[] }) {
+  return <InterfaceCrcTrendChart trend={trend} />
+}
+
+// ─── Results ──────────────────────────────────────────────────────────────────
+
+function nextSort(
+  results: InterfaceResultsData,
+  key: TableSortKey,
+  counterMode: CounterMode,
+): InterfaceTableSort {
+  const direction: InterfaceSortDirection =
+    results.sortKey === key && results.sortDirection === 'desc' ? 'asc' : 'desc'
+  return key === 'crcWindowTotal'
+    ? { kind: 'crc-window', direction }
+    : { kind: 'counter', sort: { key, direction, mode: counterMode } }
+}
+
+function EmptyResults({
+  params,
+  className,
+}: {
+  params: InterfaceHealthPageParams
+  className: string
+}) {
+  const filtered = Boolean(params.query) || params.nodes.length > 0
+  if (params.view === 'crc' && !filtered) {
+    return (
+      <div className={className}>
+        <p className="text-sm text-subtle">
+          No interfaces with increasing CRC errors in the last {params.window === '30d' ? '30 days' : '7 days'}
+        </p>
+        <p className="text-xs text-faint mt-1">All monitored interfaces are reporting zero CRC error increases</p>
+      </div>
+    )
+  }
+  if (filtered) {
+    return (
+      <div className={className}>
+        <p className="text-sm text-subtle">No interfaces match the current filters</p>
+        <p className="text-xs text-faint mt-1">Try adjusting the search or filter values</p>
+      </div>
+    )
+  }
+  return (
+    <div className={className}>
+      <p className="text-sm text-subtle">No interfaces synced yet</p>
+      <p className="text-xs text-faint mt-1">
+        Click <strong>Resync</strong> to pull the latest data from APIC
+      </p>
+    </div>
+  )
+}
+
+export function InterfaceResultsClient({
+  params,
+  results,
+}: {
+  params: InterfaceHealthPageParams
+  results: InterfaceResultsData
+}) {
+  const { isPending, navigate } = useInterfaceNavigation()
+  const [selected, setSelected] = useState<SelectedInterface | null>(null)
+  const [jumpValue, setJumpValue] = useState('')
+
+  const { rows, total, page, pageSize, sortKey, sortDirection } = results
+  const effectivePageSize = pageSize === 'all' ? Math.max(total, 1) : pageSize
+  const totalPages = Math.max(1, Math.ceil(total / effectivePageSize))
+  const rangeStart = total === 0 ? 0 : (page - 1) * effectivePageSize + 1
+  const rangeEnd = pageSize === 'all' ? total : Math.min(page * effectivePageSize, total)
+
+  function go(overrides: Partial<InterfaceHealthPageParams>) {
+    navigate(interfaceUrl({ ...params, page }, overrides))
+  }
+
+  function handleJump(e: FormEvent) {
+    e.preventDefault()
+    const target = Number.parseInt(jumpValue, 10)
+    if (target >= 1 && target <= totalPages) go({ page: target })
+    setJumpValue('')
+  }
+
+  function openDrawer(row: InterfaceRow) {
+    setSelected({
+      id: row.id,
+      node: row.node,
+      ifName: row.ifName,
+      description: row.description,
+      operSt: row.operSt,
+    })
+  }
+
+  const tableHeaders: ({ label: string; sortKey?: TableSortKey })[] = [
+    { label: 'Node' },
+    { label: 'Interface' },
+    { label: 'Description' },
+    { label: 'Admin' },
+    { label: 'Oper' },
+    { label: 'Speed' },
+    { label: params.counterMode === 'delta' ? 'Rx err Δ' : 'Rx err', sortKey: 'rxErrors' },
+    { label: params.counterMode === 'delta' ? 'Tx err Δ' : 'Tx err', sortKey: 'txErrors' },
+    params.view === 'crc'
+      ? { label: `CRC (${params.window})`, sortKey: 'crcWindowTotal' as TableSortKey }
+      : {
+          label: params.counterMode === 'delta' ? 'CRC Δ' : 'CRC',
+          sortKey: 'rxCrcErrors' as TableSortKey,
+        },
+    { label: params.counterMode === 'delta' ? 'Align Δ' : 'Align', sortKey: 'rxAlignErrors' },
+    { label: 'Last link change' },
+    { label: 'Sampled' },
+  ]
+
+  return (
+    <>
+      <div
+        className={[
+          'hidden md:block bg-card border border-border rounded-2xl overflow-hidden shadow-sm',
+          'transition-opacity duration-150',
+          isPending ? 'opacity-60 pointer-events-none' : 'opacity-100',
+        ].join(' ')}
+      >
+        {rows.length === 0 && !isPending ? (
+          <EmptyResults params={params} className="px-4 py-14 text-center" />
+        ) : (
+          <div className={TABLE_SCROLL_CLS}>
+            <table className="w-full text-xs">
+              <thead>
+                <tr>
+                  {tableHeaders.map(h => (
+                    <th
+                      key={h.label}
+                      aria-sort={
+                        h.sortKey && sortKey === h.sortKey
+                          ? sortDirection === 'asc' ? 'ascending' : 'descending'
+                          : undefined
+                      }
+                      className={DENSE_TABLE_HEAD_CLS}
+                    >
+                      {h.sortKey ? (
+                        <button
+                          type="button"
+                          onClick={() => go({ sort: nextSort(results, h.sortKey!, params.counterMode), page: 1 })}
+                          className="inline-flex items-center gap-1 text-inherit transition-colors hover:text-foreground"
+                        >
+                          <span>{h.label}</span>
+                          {sortKey === h.sortKey ? (
+                            sortDirection === 'asc' ? (
+                              <IconChevronUp size={11} stroke={2} />
+                            ) : (
+                              <IconChevronDown size={11} stroke={2} />
+                            )
+                          ) : (
+                            <span className="w-[11px]" aria-hidden="true" />
+                          )}
+                        </button>
+                      ) : (
+                        h.label
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              {isPending ? (
+                <TableSkeleton columns={tableHeaders.length} />
+              ) : (
+                <tbody>
+                  {rows.map((r, i) => {
+                    const visibleCounters = selectVisibleCounters(r, params.counterMode)
+
+                    return (
+                      <tr
+                        key={r.id}
+                        className="group cursor-pointer border-b border-border-faint last:border-0 hover:bg-muted transition-colors duration-100 animate-fade-up"
+                        style={{ animationDelay: `${Math.min(i * 12, 200)}ms` }}
+                        onClick={() => openDrawer(r)}
+                      >
+                        <td className="px-4 py-2.5 tabular-nums text-muted-foreground border-l-2 border-l-transparent group-hover:border-l-primary transition-colors duration-100">
+                          {r.node || '—'}
+                        </td>
+                        <td className="px-4 py-2.5 font-mono text-foreground">{r.ifName}</td>
+                        <td className="px-4 py-2.5 text-muted-foreground">{r.description || '—'}</td>
+                        <td className="px-4 py-2.5 text-muted-foreground">{r.adminSt || '—'}</td>
+                        <td className="px-4 py-2.5"><OperStBadge st={r.operSt} adminSt={r.adminSt} /></td>
+                        <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{r.operSpeed || '—'}</td>
+                        <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.rxErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
+                          {params.counterMode === 'delta' ? fmtDelta(visibleCounters.rxErrors) : fmtCount(visibleCounters.rxErrors)}
+                        </td>
+                        <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.txErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
+                          {params.counterMode === 'delta' ? fmtDelta(visibleCounters.txErrors) : fmtCount(visibleCounters.txErrors)}
+                        </td>
+                        {params.view === 'crc' ? (
+                          <td className="px-4 py-2.5 tabular-nums">
+                            <div className={isNonZero(r.crcWindowTotal) ? 'text-danger font-semibold' : 'text-faint'}>
+                              {fmtCount(r.crcWindowTotal)}
+                            </div>
+                            <div className="text-[10px] text-faint font-normal mt-0.5">
+                              {r.dRxCrcErrors === null
+                                ? 'reset'
+                                : isNonZero(r.dRxCrcErrors)
+                                  ? `+${r.dRxCrcErrors} last poll`
+                                  : '0 last poll'}
+                            </div>
+                          </td>
+                        ) : (
+                          <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.rxCrcErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
+                            {params.counterMode === 'delta' ? fmtDelta(visibleCounters.rxCrcErrors) : fmtCount(visibleCounters.rxCrcErrors)}
+                          </td>
+                        )}
+                        <td className={['px-4 py-2.5 tabular-nums', isNonZero(visibleCounters.rxAlignErrors) ? 'text-danger font-semibold' : 'text-faint'].join(' ')}>
+                          {params.counterMode === 'delta' ? fmtDelta(visibleCounters.rxAlignErrors) : fmtCount(visibleCounters.rxAlignErrors)}
+                        </td>
+                        <td className="px-4 py-2.5 tabular-nums whitespace-nowrap">
+                          {r.hasRecentStateChange ? (
+                            <span className="inline-flex items-center gap-1.5 font-medium text-amber-600 dark:text-amber-400">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                              {fmtDate(r.lastLinkStChg)}
+                            </span>
+                          ) : (
+                            <span className="text-faint">{fmtDate(r.lastLinkStChg)}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 tabular-nums text-faint whitespace-nowrap">{fmtRelative(r.lastSampledAt)}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              )}
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Mobile card list */}
+      <div
+        className={[
+          'space-y-2 md:hidden transition-opacity duration-150',
+          isPending ? 'opacity-60 pointer-events-none' : 'opacity-100',
+        ].join(' ')}
+      >
+        {rows.length === 0 && !isPending ? (
+          <EmptyResults params={params} className="rounded-2xl border border-border bg-card px-4 py-14 text-center" />
+        ) : (
+          rows.map(r => {
+            const visibleCounters = selectVisibleCounters(r, params.counterMode)
+            const crcValue = params.view === 'crc' ? r.crcWindowTotal : visibleCounters.rxCrcErrors
+            const fmtCounter = (v: string | null) =>
+              params.counterMode === 'delta' && params.view !== 'crc' ? fmtDelta(v) : fmtCount(v)
+            return (
+              <DataCard
+                key={r.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => openDrawer(r)}
+              >
+                <DataCardHeader trailing={<OperStBadge st={r.operSt} adminSt={r.adminSt} />}>
+                  <DataCardTitle className="font-mono">{r.ifName}</DataCardTitle>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    Node {r.node || '—'}
+                    {r.description ? ` · ${r.description}` : ''}
+                  </p>
+                </DataCardHeader>
+                <DataCardBody>
+                  <DataCardRow label="Speed" value={r.operSpeed || '—'} />
+                  <DataCardRow
+                    label="RX / TX err"
+                    value={
+                      <span className={isNonZero(visibleCounters.rxErrors) || isNonZero(visibleCounters.txErrors) ? 'text-danger font-semibold' : ''}>
+                        {fmtCounter(visibleCounters.rxErrors)} / {fmtCounter(visibleCounters.txErrors)}
+                      </span>
+                    }
+                  />
+                  <DataCardRow
+                    label={params.view === 'crc' ? 'CRC (window)' : 'CRC err'}
+                    value={
+                      <span className={isNonZero(crcValue) ? 'text-danger font-semibold' : ''}>
+                        {fmtCounter(crcValue)}
+                      </span>
+                    }
+                  />
+                  <DataCardRow label="Sampled" value={fmtRelative(r.lastSampledAt)} />
+                </DataCardBody>
+              </DataCard>
+            )
+          })
+        )}
+      </div>
+
+      {total > 0 && (
+        <div className="flex flex-wrap items-center justify-between pt-1 gap-3">
+          <p className="text-xs text-subtle shrink-0">
+            {pageSize === 'all'
+              ? `Showing all ${total} interfaces`
+              : `Showing ${rangeStart}–${rangeEnd} of ${total} interfaces`}
+          </p>
+
+          <div className="flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-1.5">
+              <span className="text-xs text-faint">Per page</span>
+              <select
+                value={String(pageSize)}
+                onChange={e => go({
+                  pageSize: e.target.value === 'all' ? 'all' : Number(e.target.value) as InterfacePageSize,
+                  page: 1,
+                })}
+                disabled={isPending}
+                className="text-xs bg-muted border border-border rounded-lg px-2 py-1.5 text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-40"
+              >
+                {PAGE_SIZE_OPTIONS.map(o => (
+                  <option key={String(o.value)} value={String(o.value)}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {pageSize !== 'all' && totalPages > 1 && (
+              <>
+                <div className="hidden md:block w-px h-4 bg-border" />
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => go({ page: page - 1 })}
+                    disabled={page <= 1 || isPending}
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <IconChevronLeft size={12} stroke={1.75} />
+                    Prev
+                  </button>
+
+                  <span className="px-2 py-1.5 text-xs text-subtle tabular-nums">
+                    {page} / {totalPages}
+                  </span>
+
+                  <button
+                    onClick={() => go({ page: page + 1 })}
+                    disabled={page >= totalPages || isPending}
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Next
+                    <IconChevronRight size={12} stroke={1.75} />
+                  </button>
+
+                  <div className="hidden md:block w-px h-4 bg-border" />
+
+                  <form onSubmit={handleJump} className="hidden md:flex items-center gap-1">
+                    <input
+                      type="number"
+                      min={1}
+                      max={totalPages}
+                      value={jumpValue}
+                      onChange={e => setJumpValue(e.target.value)}
+                      placeholder="Go to…"
+                      className="w-20 text-xs bg-muted border border-border rounded-lg px-2 py-1.5 text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!jumpValue || isPending}
+                      className="px-2.5 py-1.5 text-xs rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Go
+                    </button>
+                  </form>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      <InterfaceErrorTrendDrawer selected={selected} onClose={() => setSelected(null)} />
+    </>
   )
 }
