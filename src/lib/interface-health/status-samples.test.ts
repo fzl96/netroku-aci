@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { serializeStatusSamples } from '@/app/(app)/interface-health/state-changes'
+import { serializeStatusSamples } from '@/lib/interface-health/state-changes'
 
 describe('serializeStatusSamples', () => {
   it('correctly flags state transitions between consecutive samples', () => {

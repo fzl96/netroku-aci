@@ -25,11 +25,11 @@ import {
   selectVisibleCounters,
   type CounterFields,
   type CounterMode,
-} from './counter-mode'
+} from '@/lib/interface-health/counter-mode'
 import type {
   InterfaceSortDirection,
   TableSortKey,
-} from './sort'
+} from '@/lib/interface-health/sort'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -47,18 +47,18 @@ import {
   DataCardBody,
   DataCardRow,
 } from '@/components/ui/data-card'
-import type { SelectedInterface } from './InterfaceErrorTrendDrawer'
-import type { CrcTrendPoint } from './crc-trend'
+import type { SelectedInterface } from './interface-error-trend-drawer'
+import type { CrcTrendPoint } from '@/lib/interface-health/crc-trend'
 
 // recharts is heavy and only needed once the trend drawer is opened or CRC view is selected,
 // so it is code-split out of the initial interface-health bundle.
 const InterfaceErrorTrendDrawer = dynamic(
-  () => import('./InterfaceErrorTrendDrawer').then((m) => m.InterfaceErrorTrendDrawer),
+  () => import('./interface-error-trend-drawer').then((m) => m.InterfaceErrorTrendDrawer),
   { ssr: false },
 )
 
 const InterfaceCrcTrendChart = dynamic(
-  () => import('./InterfaceCrcTrendChart').then((m) => m.InterfaceCrcTrendChart),
+  () => import('./interface-crc-trend-chart').then((m) => m.InterfaceCrcTrendChart),
   { ssr: false },
 )
 

@@ -7,11 +7,11 @@ import {
   serializeErrorSamples,
   type ErrorTrendPoint,
   type ErrorTrendRange,
-} from '@/app/(app)/interface-health/error-trend'
+} from '@/lib/interface-health/error-trend'
 import {
   serializeStatusSamples,
   type InterfaceStatusDetails,
-} from '@/app/(app)/interface-health/state-changes'
+} from '@/lib/interface-health/state-changes'
 
 const statusSampleSelect = {
   id: true,

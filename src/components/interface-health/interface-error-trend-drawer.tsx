@@ -28,8 +28,8 @@ import {
   getInterfaceErrorSamples,
   getInterfaceStatusDetails,
 } from '@/actions/interface-samples'
-import { OperStBadge } from './InterfaceHealthClient'
-import { type InterfaceStatusDetails } from './state-changes'
+import { OperStBadge } from './interface-health-client'
+import { type InterfaceStatusDetails } from '@/lib/interface-health/state-changes'
 import {
   DEFAULT_ERROR_TREND_RANGE,
   ERROR_TREND_RANGES,
@@ -39,12 +39,12 @@ import {
   insertGapBreaks,
   type ErrorTrendPoint,
   type ErrorTrendRange,
-} from './error-trend'
+} from '@/lib/interface-health/error-trend'
 import {
   makeDrawerRequestKey,
   resolveDrawerRequest,
   type DrawerRequestResult,
-} from './drawer-request-state'
+} from '@/lib/interface-health/drawer-request-state'
 
 export interface SelectedInterface {
   id: string

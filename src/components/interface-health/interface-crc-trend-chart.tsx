@@ -7,7 +7,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
-import type { CrcTrendPoint } from './crc-trend'
+import type { CrcTrendPoint } from '@/lib/interface-health/crc-trend'
 
 const trendConfig: ChartConfig = {
   crcErrorsDelta: { label: 'CRC Errors Δ', color: 'var(--chart-3)' },
