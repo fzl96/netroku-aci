@@ -1,8 +1,8 @@
 import { recordAudit } from '@/lib/audit'
 import { resyncEndpointInventoryForScheduler } from '@/lib/endpoints/mutation'
 import { resyncEpgInventoryForScheduler } from '@/lib/epgs/mutation'
+import { resyncNodeInventoryForScheduler } from '@/lib/nodes/mutation'
 import { resyncInterfaces } from '@/lib/apic/interfaces'
-import { resyncNodes } from '@/lib/apic/nodes'
 import type { DatasetResult, HostResult } from '@/lib/apic/cron-resync'
 
 export interface ResyncHostInput {
@@ -18,7 +18,7 @@ export interface ResyncHostInput {
 export interface ResyncHostDependencies {
   resyncEndpointInventoryForScheduler: typeof resyncEndpointInventoryForScheduler
   resyncInterfaces: typeof resyncInterfaces
-  resyncNodes: typeof resyncNodes
+  resyncNodeInventoryForScheduler: typeof resyncNodeInventoryForScheduler
   resyncEpgInventoryForScheduler: typeof resyncEpgInventoryForScheduler
   recordAudit: typeof recordAudit
 }
@@ -26,7 +26,7 @@ export interface ResyncHostDependencies {
 const DEFAULT_DEPENDENCIES: ResyncHostDependencies = {
   resyncEndpointInventoryForScheduler,
   resyncInterfaces,
-  resyncNodes,
+  resyncNodeInventoryForScheduler,
   resyncEpgInventoryForScheduler,
   recordAudit,
 }
@@ -47,7 +47,7 @@ export async function resyncHost(
   const {
     resyncEndpointInventoryForScheduler: resyncEndpointInventory,
     resyncInterfaces: resyncInterfaceInventory,
-    resyncNodes: resyncNodeInventory,
+    resyncNodeInventoryForScheduler: resyncNodeInventory,
     resyncEpgInventoryForScheduler: resyncEpgInventory,
     recordAudit: audit,
   } = dependencies
@@ -89,22 +89,12 @@ export async function resyncHost(
   // Nodes & hardware
   let nodes: DatasetResult
   try {
-    const r = await resyncNodeInventory(creds)
+    const r = await resyncNodeInventory({ ...creds, hostName })
     nodes = { synced: r.syncedNodes, total: r.syncedNodes + r.syncedComponents }
   } catch (err) {
     nodes = { error: errorMessage(err, 'Failed to resync nodes') }
   }
   result.nodes = nodes
-  await audit({
-    userId: null,
-    userName: 'scheduler',
-    action: 'resync.nodes',
-    target,
-    status: 'error' in nodes ? 'failure' : 'success',
-    detail: 'error' in nodes
-      ? nodes.error
-      : `synced ${nodes.synced} nodes (total ${nodes.total})`,
-  })
 
   // EPGs & static port bindings
   let epgs: DatasetResult

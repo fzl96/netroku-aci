@@ -9,7 +9,7 @@ const resyncInterfaces = mock(async (input: unknown) => {
   void input
   return { synced: 2, total: 2 }
 })
-const resyncNodes = mock(async (input: unknown) => {
+const resyncNodeInventoryForScheduler = mock(async (input: unknown) => {
   void input
   return { syncedNodes: 1, syncedComponents: 4, nodesOnline: 1 }
 })
@@ -28,7 +28,7 @@ const { resyncHost } = await import('./resync-host')
 const dependencies = {
   resyncEndpointInventoryForScheduler,
   resyncInterfaces,
-  resyncNodes,
+  resyncNodeInventoryForScheduler,
   resyncEpgInventoryForScheduler,
   recordAudit,
 }
@@ -44,8 +44,8 @@ beforeEach(() => {
     void input
     return { synced: 2, total: 2 }
   })
-  resyncNodes.mockClear()
-  resyncNodes.mockImplementation(async (input: unknown) => {
+  resyncNodeInventoryForScheduler.mockClear()
+  resyncNodeInventoryForScheduler.mockImplementation(async (input: unknown) => {
     void input
     return { syncedNodes: 1, syncedComponents: 4, nodesOnline: 1 }
   })
@@ -186,7 +186,7 @@ describe('resyncHost endpoint purpose boundary', () => {
 
     expect(result.endpoints).toEqual({ error: 'endpoint APIC unavailable' })
     expect(resyncInterfaces).toHaveBeenCalledTimes(1)
-    expect(resyncNodes).toHaveBeenCalledTimes(1)
+    expect(resyncNodeInventoryForScheduler).toHaveBeenCalledTimes(1)
     expect(resyncEpgInventoryForScheduler).toHaveBeenCalledTimes(1)
   })
 
@@ -198,5 +198,15 @@ describe('resyncHost endpoint purpose boundary', () => {
     expect(recordAudit.mock.calls.some(([entry]) => (
       entry as { action?: string }
     ).action === 'resync.epgs')).toBe(false)
+  })
+
+  it('enters nodes through the trusted purpose mutation without duplicate audit', async () => {
+    await resyncHost(input, dependencies)
+
+    expect(resyncNodeInventoryForScheduler).toHaveBeenCalledTimes(1)
+    expect(resyncNodeInventoryForScheduler).toHaveBeenCalledWith(input)
+    expect(recordAudit.mock.calls.some(([entry]) => (
+      entry as { action?: string }
+    ).action === 'resync.nodes')).toBe(false)
   })
 })

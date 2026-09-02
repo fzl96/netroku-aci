@@ -3,8 +3,8 @@ import { sortComponentRows, sortNodeRows } from './sort'
 
 describe('sortNodeRows', () => {
   it('orders by node id in natural numeric order', () => {
-    const rows = [{ nodeId: '102' }, { nodeId: '11' }, { nodeId: '2' }]
-    expect(sortNodeRows(rows).map(r => r.nodeId)).toEqual(['2', '11', '102'])
+    expect(sortNodeRows([{ nodeId: '102' }, { nodeId: '11' }, { nodeId: '2' }]).map(row => row.nodeId))
+      .toEqual(['2', '11', '102'])
   })
 })
 
@@ -15,10 +15,7 @@ describe('sortComponentRows', () => {
       { healthy: false, nodeId: '103', name: '1' },
       { healthy: false, nodeId: '101', name: '2' },
     ]
-    expect(sortComponentRows(rows).map(r => `${r.nodeId}/${r.healthy}`)).toEqual([
-      '101/false',
-      '103/false',
-      '101/true',
-    ])
+    expect(sortComponentRows(rows).map(row => `${row.nodeId}/${row.healthy}`))
+      .toEqual(['101/false', '103/false', '101/true'])
   })
 })

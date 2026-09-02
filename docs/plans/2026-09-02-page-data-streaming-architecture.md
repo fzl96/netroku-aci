@@ -10,6 +10,31 @@
 
 ---
 
+## Progress
+
+> Update this table as the **last edit before each slice's commit**, so the status rides along in
+> that commit and cannot drift. A resuming session should trust, in order: (1) `git log`, (2) the
+> `MIGRATED_PURPOSES` registry in `src/lib/page-architecture.test.ts` plus a `bun test` run, (3) this
+> table. Deviations from the task order go in the Notes column — no other artifact can record them.
+
+| Task | Purpose | Status | Landed as / Notes |
+| --- | --- | --- | --- |
+| 1 | Guardrails + Endpoints params | done | `c476df5` test: define page data architecture guardrails |
+| 2 | Endpoints query depth | done | `0c0cd8d` refactor: deepen endpoint query boundary |
+| 3 | Endpoints writes | done | `c2be982` refactor: centralize endpoint writes and invalidation |
+| 4 | Endpoints streaming | done | `28968a9`, hardened by `283c501` |
+| 5 | EPGs | done | `0870a10`, hardened by `f057262` |
+| 6 | Interface Health | **deferred** | Skipped by the 2026-09-02 session with no reason recorded; it jumped straight to Task 7. Resuming here once 7/8/History are landed. Largest remaining slice: 23 colocated files, and the drawer's read-only Server Actions still need a real read transport. |
+| 7 | Nodes | done | `refactor: stream node inventory regions` |
+| 8 | Dashboard | complete in worktree | Commit pending in this session. |
+| 9 | Legacy (4 purposes) | not started | |
+| 10 | Inventory split | not started | |
+| 11 | APIC Hosts / Scheduler / Users / History / Settings | partial | History slice complete in worktree, commit pending. APIC Hosts, Scheduler, Users, Settings not started. |
+| 12 | Final sweep | not started | |
+
+**Known deviation from the plan text:** Task 11 was started out of order (History only) before Task 6.
+The guard registry is the source of truth for which purposes are actually migrated.
+
 ## Required skills and invariants
 
 - Use `@superpowers:test-driven-development` for every behavior change.
