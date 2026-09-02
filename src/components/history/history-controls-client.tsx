@@ -7,7 +7,7 @@ import {
   buildHistoryUrl,
   HISTORY_ACTION_LABELS,
   type HistoryActionFilter,
-} from '@/lib/history/query'
+} from '@/lib/history/params'
 import { SEARCH_INPUT_CLS } from '@/lib/ui-classes'
 
 const HISTORY_SELECT_CLS =
@@ -15,7 +15,7 @@ const HISTORY_SELECT_CLS =
   'text-xs text-foreground outline-none ' +
   'focus:border-primary focus:ring-2 focus:ring-primary/15 transition-colors'
 
-export function HistoryControls({
+export function HistoryControlsClient({
   query,
   action,
 }: {

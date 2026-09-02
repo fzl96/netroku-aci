@@ -72,6 +72,14 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
     }],
     entryRoots: ['src/components/dashboard'],
   },
+  {
+    name: 'history',
+    routes: [{
+      root: 'src/app/(app)/history',
+      allowedFiles: ['page.tsx'],
+    }],
+    entryRoots: ['src/components/history'],
+  },
 ]
 
 function inspectArchitectureFiles(

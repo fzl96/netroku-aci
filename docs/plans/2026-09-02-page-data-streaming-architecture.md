@@ -29,7 +29,7 @@
 | 8 | Dashboard | done | `refactor: stream dashboard regions` |
 | 9 | Legacy (4 purposes) | not started | |
 | 10 | Inventory split | not started | |
-| 11 | APIC Hosts / Scheduler / Users / History / Settings | partial | History slice complete in worktree, commit pending. APIC Hosts, Scheduler, Users, Settings not started. |
+| 11 | APIC Hosts / Scheduler / Users / History / Settings | partial | History landed as `refactor: stream history regions` (audit writes now invalidate `history:all`). APIC Hosts, Scheduler, Users, Settings not started. |
 | 12 | Final sweep | not started | |
 
 **Known deviation from the plan text:** Task 11 was started out of order (History only) before Task 6.

@@ -3,12 +3,26 @@ import { DENSE_TABLE_HEAD_CLS, TABLE_SCROLL_CLS } from '@/lib/ui-classes'
 
 const HEADERS = ['When', 'User', 'Action', 'Target', 'Status', 'Detail']
 
+export function HistoryControlsSkeleton() {
+  return (
+    <div
+      aria-busy="true"
+      aria-label="Loading history filters"
+      role="status"
+      className="flex items-center gap-3"
+    >
+      <Skeleton className="h-9 w-full max-w-xs" />
+      <Skeleton className="h-8 w-44" />
+    </div>
+  )
+}
+
 export function HistoryResultsSkeleton() {
   return (
     <div
       className="space-y-4"
       aria-busy="true"
-      aria-label="Loading history"
+      aria-label="Loading history results"
       role="status"
     >
       <div className="flex justify-end">

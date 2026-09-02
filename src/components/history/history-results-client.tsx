@@ -8,14 +8,14 @@ import {
   IconHistory,
 } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
-import type { AuditLogEntry } from '@/actions/audit'
 import type { AuditAction, AuditStatus } from '@/lib/audit'
 import {
   buildHistoryUrl,
   HISTORY_ACTION_LABELS,
   HISTORY_PAGE_SIZE,
   type HistoryActionFilter,
-} from '@/lib/history/query'
+} from '@/lib/history/params'
+import type { HistoryLogEntry } from '@/lib/history/query'
 import {
   DENSE_TABLE_HEAD_CLS,
   TABLE_SCROLL_CLS,
@@ -24,7 +24,7 @@ import {
   buildHistoryPayloadCsvExport,
   buildHistoryPayloadSummary,
   formatHistoryPayloadSummary,
-} from './export-utils'
+} from '@/lib/history/export'
 
 const STATUS_STYLES: Record<AuditStatus, string> = {
   success: 'border-success-border bg-success-bg text-success',
@@ -69,7 +69,7 @@ export function HistoryResultsClient({
   query,
   action,
 }: {
-  logs: AuditLogEntry[]
+  logs: HistoryLogEntry[]
   total: number
   page: number
   query: string

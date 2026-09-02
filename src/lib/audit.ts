@@ -1,4 +1,7 @@
+import 'server-only'
+
 import type { Prisma } from '@prisma/client'
+import { revalidateTag } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 
 export type AuditAction =
@@ -37,7 +40,7 @@ export type AuditAction =
 
 export type AuditStatus = 'success' | 'partial' | 'failure'
 
-type AuditInput = {
+export type AuditInput = {
   userId?: string | null
   userName: string
   action: AuditAction
@@ -47,20 +50,37 @@ type AuditInput = {
   payload?: unknown
 }
 
-export async function recordAudit(input: AuditInput): Promise<void> {
-  try {
-    await prisma.auditLog.create({
-      data: {
-        userId: input.userId ?? null,
-        userName: input.userName,
-        action: input.action,
-        target: input.target ?? null,
-        status: input.status ?? 'success',
-        detail: input.detail ?? null,
-        payload: (input.payload ?? undefined) as Prisma.InputJsonValue | undefined,
-      },
-    })
-  } catch (err) {
-    console.error('[audit] failed to record', input.action, err)
+type AuditRecorderDependencies = {
+  createAuditLog: (args: Parameters<typeof prisma.auditLog.create>[0]) => Promise<unknown>
+  revalidateTag: (tag: string, profile: { expire: number }) => void
+  reportError: (error: unknown, input: AuditInput) => void
+}
+
+export function createAuditRecorder(dependencies: AuditRecorderDependencies) {
+  return async function recordAudit(input: AuditInput): Promise<void> {
+    try {
+      await dependencies.createAuditLog({
+        data: {
+          userId: input.userId ?? null,
+          userName: input.userName,
+          action: input.action,
+          target: input.target ?? null,
+          status: input.status ?? 'success',
+          detail: input.detail ?? null,
+          payload: (input.payload ?? undefined) as Prisma.InputJsonValue | undefined,
+        },
+      })
+      dependencies.revalidateTag('history:all', { expire: 0 })
+    } catch (error) {
+      dependencies.reportError(error, input)
+    }
   }
 }
+
+export const recordAudit = createAuditRecorder({
+  createAuditLog: args => prisma.auditLog.create(args),
+  revalidateTag,
+  reportError: (error, input) => {
+    console.error('[audit] failed to record', input.action, error)
+  },
+})

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'bun:test'
 import {
-  buildHistoryUrl,
-  buildHistoryWhere,
-  clampHistoryPage,
   HISTORY_ACTION_LABELS,
+  buildHistoryUrl,
+  clampHistoryPage,
   historyPageWindow,
   parseHistoryPageParams,
-} from './query'
+} from './params'
+import { buildHistoryWhere } from './filters'
 
 describe('parseHistoryPageParams', () => {
   it('trims query and accepts a supported action and positive page', () => {
