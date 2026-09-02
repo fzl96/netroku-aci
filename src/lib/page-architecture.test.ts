@@ -66,8 +66,12 @@ function inspectArchitectureFiles(
 
   for (const file of files) {
     const basename = path.basename(file.path)
+    // Architecture tests quote the specifiers they forbid. The entry rules describe route,
+    // render, action, and route-handler modules, not tests. Placement rules below still
+    // apply, so a test colocated in a route directory remains a violation.
+    const isTest = /\.test\.tsx?$/.test(basename)
 
-    if (file.source.includes('@/lib/prisma')) {
+    if (!isTest && file.source.includes('@/lib/prisma')) {
       violations.push({ path: file.path, rule: 'direct-prisma' })
     }
     if (basename === 'page.tsx' && file.source.includes('@/actions/')) {
@@ -172,6 +176,31 @@ describe('page data architecture guard', () => {
         source: "import { getExample } from '@/lib/example/query'",
       },
     ], new Set(['page.tsx', 'error.tsx']))).toEqual([])
+  })
+
+  it('exempts colocated tests from entry-dependency rules but not from route placement', () => {
+    // Architecture tests legitimately quote the forbidden specifiers they assert against.
+    // The rules describe route, render, action, and route-handler modules -- not tests.
+    expect(inspectArchitectureFiles([
+      {
+        path: 'src/components/example/example-streaming.test.tsx',
+        source: "expect(page).not.toContain('@/lib/prisma')\n"
+          + "expect(page).not.toContain('@/actions/')\n"
+          + "expect(page).not.toContain('getSession')",
+      },
+    ])).toEqual([])
+
+    // A test colocated in a route directory is still misplaced.
+    expect(inspectArchitectureFiles([
+      {
+        path: 'src/app/(app)/example/sort.test.ts',
+        source: 'it("sorts", () => {})',
+        routeImplementation: true,
+        routeRelativePath: 'sort.test.ts',
+      },
+    ], new Set(['page.tsx']))).toEqual([
+      { path: 'src/app/(app)/example/sort.test.ts', rule: 'route-implementation' },
+    ])
   })
 
   for (const purpose of MIGRATED_PURPOSES) {
