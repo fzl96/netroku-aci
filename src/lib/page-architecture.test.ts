@@ -91,6 +91,14 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
     entryRoots: ['src/components/legacy/devices'],
   },
   {
+    name: 'legacy-endpoints',
+    routes: [{
+      root: 'src/app/(app)/legacy/endpoints',
+      allowedFiles: ['page.tsx'],
+    }],
+    entryRoots: ['src/components/legacy/endpoints'],
+  },
+  {
     name: 'interface-health',
     routes: [{
       root: 'src/app/(app)/interface-health',

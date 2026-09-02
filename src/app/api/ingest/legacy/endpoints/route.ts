@@ -1,5 +1,6 @@
 import { legacyEndpointPayloadSchema } from '@/lib/schemas/legacy-ingest'
 import { ingestLegacyEndpoints } from '@/lib/legacy-ingest/endpoints'
+import { invalidateLegacyEndpointReads } from '@/lib/legacy/endpoints/mutation'
 import { handleLegacyIngestRequest } from '@/lib/legacy-ingest/route'
 
 export function POST(request: Request) {
@@ -8,5 +9,6 @@ export function POST(request: Request) {
     legacyEndpointPayloadSchema,
     ingestLegacyEndpoints,
     'ingest.legacy.endpoints',
+    { invalidateReads: invalidateLegacyEndpointReads },
   )
 }

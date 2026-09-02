@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { buildLegacyEndpointWhere, legacyEndpointOrderBy } from './endpoints'
+import { buildLegacyEndpointWhere, legacyEndpointOrderBy } from './filters'
 
 describe('legacy endpoint helpers', () => {
   test('builds active, historical, and all lifecycle views', () => {
