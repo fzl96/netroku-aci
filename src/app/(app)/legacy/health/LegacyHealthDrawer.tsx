@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { getLegacyHealthHistory, type LegacyHealthHistory } from '@/actions/legacy-health'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import type { LegacyRange } from '@/lib/legacy-ui/query'
+import type { LegacyRange } from '@/lib/legacy/query'
 import type { LegacyHealthRow } from './LegacyHealthClient'
 import { LegacyHealthTrendChart } from './LegacyHealthTrendChart'
 

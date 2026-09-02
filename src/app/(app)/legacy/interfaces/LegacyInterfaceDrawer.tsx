@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { getLegacyInterfaceHistory, type LegacyInterfaceHistory } from '@/actions/legacy-interfaces'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import type { LegacyRange } from '@/lib/legacy-ui/query'
+import type { LegacyRange } from '@/lib/legacy/query'
 import type { LegacyInterfaceRow } from './LegacyInterfacesClient'
 import { LegacyInterfaceTrendChart } from './LegacyInterfaceTrendChart'
 

@@ -8,7 +8,7 @@ import { LegacyEmptyState } from '@/components/legacy/LegacyEmptyState'
 import { LegacyPageShell } from '@/components/legacy/LegacyPageShell'
 import { LegacyPagination } from '@/components/legacy/LegacyPagination'
 import { DENSE_TABLE_HEAD_CLS, SEARCH_INPUT_CLS } from '@/lib/ui-classes'
-import type { LegacyPageSize } from '@/lib/legacy-ui/query'
+import type { LegacyPageSize } from '@/lib/legacy/query'
 import { legacyStatusText } from '@/lib/legacy-ui/health'
 import { LegacyHealthDrawer } from './LegacyHealthDrawer'
 

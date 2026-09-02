@@ -1,8 +1,15 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it, mock } from 'bun:test'
 import { z } from 'zod'
 import { legacyInterfacePayloadSchema } from '@/lib/schemas/legacy-ingest'
 import { IdempotencyConflictError, type LegacyIngestResult } from './common'
-import { handleLegacyIngestRequest } from './route'
+
+// `./route` reaches @/lib/audit, which is server-only, and its default cache
+// invalidation calls revalidateTag outside any request scope. Mock both here
+// rather than relying on another suite having mocked them first.
+mock.module('server-only', () => ({}))
+mock.module('next/cache', () => ({ revalidateTag: () => {} }))
+
+const { handleLegacyIngestRequest } = await import('./route')
 
 const valid = {
   schema_version: 1,
@@ -55,6 +62,32 @@ describe('handleLegacyIngestRequest', () => {
       request(valid, 'wrong'), schema, async () => created, 'ingest.legacy.health', deps,
     )
     expect(unauthorized.status).toBe(401)
+  })
+
+  it('expires cached legacy reads only after a successful ingestion', async () => {
+    const invalidated: string[] = []
+    const invalidateReads = () => { invalidated.push('legacy-devices') }
+
+    await handleLegacyIngestRequest(
+      request(valid), schema, async () => created, 'ingest.legacy.health',
+      { ...deps, invalidateReads },
+    )
+    expect(invalidated).toEqual(['legacy-devices'])
+
+    invalidated.length = 0
+    await handleLegacyIngestRequest(
+      request(valid, 'wrong'), schema, async () => created, 'ingest.legacy.health',
+      { ...deps, invalidateReads },
+    )
+    expect(invalidated).toEqual([])
+  })
+
+  it('keeps a committed ingestion successful when cache expiry throws', async () => {
+    const response = await handleLegacyIngestRequest(
+      request(valid), schema, async () => created, 'ingest.legacy.health',
+      { ...deps, invalidateReads: () => { throw new Error('cache offline') } },
+    )
+    expect(response.status).toBe(201)
   })
 
   it('maps malformed JSON, oversized arrays, and validation failures', async () => {

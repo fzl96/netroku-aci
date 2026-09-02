@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { buildLegacyHealthDeviceWhere, legacyHealthOrderBy, serializeLegacyHealthSample } from '@/lib/legacy-ui/health'
-import { parseLegacyDirection, parseLegacyPage, parseLegacyPageSize } from '@/lib/legacy-ui/query'
+import { parseLegacyDirection, parseLegacyPage, parseLegacyPageSize } from '@/lib/legacy/query'
 import { LegacyHealthClient, type LegacyHealthRow } from './LegacyHealthClient'
 
 export const metadata: Metadata = { title: 'Legacy Health', description: 'Latest and historical legacy-device health measurements.' }

@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client'
-import { serializeLegacyCounter } from './serialize'
+import { serializeLegacyCounter } from '@/lib/legacy/serialize'
 
 export type LegacyInterfacePresence = 'all' | 'present' | 'absent'
 

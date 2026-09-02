@@ -3,7 +3,7 @@
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { serializeLegacyInterfaceSample } from '@/lib/legacy-ui/interfaces'
-import { legacyRangeCutoff, parseLegacyRange, type LegacyRange } from '@/lib/legacy-ui/query'
+import { legacyRangeCutoff, parseLegacyRange, type LegacyRange } from '@/lib/legacy/query'
 
 const HISTORY_PAGE_SIZE = 25
 const CHART_POINT_LIMIT = 300

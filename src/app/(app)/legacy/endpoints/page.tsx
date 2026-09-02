@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { buildLegacyEndpointWhere, legacyEndpointOrderBy, type LegacyEndpointStatus } from '@/lib/legacy-ui/endpoints'
-import { parseLegacyDirection, parseLegacyPage, parseLegacyPageSize } from '@/lib/legacy-ui/query'
+import { parseLegacyDirection, parseLegacyPage, parseLegacyPageSize } from '@/lib/legacy/query'
 import { LegacyEndpointsClient, type LegacyEndpointRow } from './LegacyEndpointsClient'
 
 export const metadata: Metadata = {

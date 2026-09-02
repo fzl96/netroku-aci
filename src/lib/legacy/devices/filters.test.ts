@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { buildLegacyDeviceWhere, legacyDeviceOrderBy } from './devices'
+import { buildLegacyDeviceWhere, legacyDeviceOrderBy } from './filters'
 
 describe('legacy device queries', () => {
   it('combines identity search with site and type filters', () => {

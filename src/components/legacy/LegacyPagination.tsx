@@ -2,7 +2,7 @@
 
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { LEGACY_PAGE_SIZES, type LegacyPageSize } from '@/lib/legacy-ui/query'
+import { LEGACY_PAGE_SIZES, type LegacyPageSize } from '@/lib/legacy/query'
 
 export function LegacyPagination({
   page,

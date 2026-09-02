@@ -2,7 +2,7 @@
 
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { legacyRangeCutoff, parseLegacyRange, type LegacyRange } from '@/lib/legacy-ui/query'
+import { legacyRangeCutoff, parseLegacyRange, type LegacyRange } from '@/lib/legacy/query'
 import { serializeLegacyHealthSample } from '@/lib/legacy-ui/health'
 
 const HISTORY_PAGE_SIZE = 25

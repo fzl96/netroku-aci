@@ -7,7 +7,7 @@ import { DataCard, DataCardBody, DataCardHeader, DataCardRow, DataCardTitle } fr
 import { LegacyEmptyState } from '@/components/legacy/LegacyEmptyState'
 import { LegacyPageShell } from '@/components/legacy/LegacyPageShell'
 import { LegacyPagination } from '@/components/legacy/LegacyPagination'
-import type { LegacyPageSize } from '@/lib/legacy-ui/query'
+import type { LegacyPageSize } from '@/lib/legacy/query'
 import { DENSE_TABLE_HEAD_CLS, SEARCH_INPUT_CLS } from '@/lib/ui-classes'
 
 export interface LegacyEndpointRow {

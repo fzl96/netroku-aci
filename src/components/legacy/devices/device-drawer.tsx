@@ -7,7 +7,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import type { LegacyDeviceRow } from './LegacyDevicesClient'
+import type { LegacyDeviceRow } from '@/lib/legacy/devices/query'
 
 function display(value: string | null): string {
   return value || 'Not reported'

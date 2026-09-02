@@ -2,7 +2,7 @@ import {
   parseLegacyPage,
   parseLegacyPageSize,
   type LegacyPageSize,
-} from '@/lib/legacy-ui/query'
+} from '@/lib/legacy/query'
 
 export type LegacyInterfaceView = 'all' | 'crc' | 'state-changed'
 export type LegacyInterfaceCounterMode = 'delta' | 'current'
