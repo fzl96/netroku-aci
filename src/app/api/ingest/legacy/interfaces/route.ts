@@ -1,5 +1,6 @@
 import { legacyInterfacePayloadSchema } from '@/lib/schemas/legacy-ingest'
 import { ingestLegacyInterfaces } from '@/lib/legacy-ingest/interfaces'
+import { invalidateLegacyInterfaceReads } from '@/lib/legacy/interfaces/mutation'
 import { handleLegacyIngestRequest } from '@/lib/legacy-ingest/route'
 
 export function POST(request: Request) {
@@ -8,5 +9,6 @@ export function POST(request: Request) {
     legacyInterfacePayloadSchema,
     ingestLegacyInterfaces,
     'ingest.legacy.interfaces',
+    { invalidateReads: invalidateLegacyInterfaceReads },
   )
 }

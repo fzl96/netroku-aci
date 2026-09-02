@@ -5,7 +5,7 @@ import {
   normalizeLegacyInterfaceState,
   safeLegacyCounterNumber,
   serializeLegacyInterfaceSample,
-} from './interfaces'
+} from './filters'
 
 describe('legacy interface helpers', () => {
   test('combines inventory search, device, site, state, and presence filters', () => {

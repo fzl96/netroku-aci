@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getLegacyInterfaceHistory, type LegacyInterfaceHistory } from '@/actions/legacy-interfaces'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import type { LegacyRange } from '@/lib/legacy/query'
-import type { LegacyInterfaceRow } from './LegacyInterfacesClient'
-import { LegacyInterfaceTrendChart } from './LegacyInterfaceTrendChart'
+import type { LegacyInterfaceHistory, LegacyInterfaceRow } from '@/lib/legacy/interfaces/query'
+import { fetchLegacyInterfaceHistory } from './interface-history-request'
+import { LegacyInterfaceTrendChart } from './interface-trend-chart'
 
 function exactCounter(value: string | null): string {
   if (value === null) return '—'
@@ -27,7 +27,7 @@ export function LegacyInterfaceDrawer({ selected, onClose }: { selected: LegacyI
     if (!selectedId) return
     let cancelled = false
     const activeRequestKey = `${selectedId}:${range}:${page}`
-    getLegacyInterfaceHistory(selectedId, { range, page })
+    fetchLegacyInterfaceHistory(selectedId, { range, page })
       .then(history => { if (!cancelled) setResult({ key: activeRequestKey, data: history, failed: false }) })
       .catch(() => { if (!cancelled) setResult({ key: activeRequestKey, data: null, failed: true }) })
     return () => { cancelled = true }

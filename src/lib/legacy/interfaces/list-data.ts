@@ -3,8 +3,8 @@ import type {
   LegacyInterfaceSortDirection,
   LegacyInterfaceSortKey,
   LegacyInterfaceView,
-} from './list-state'
-import { normalizeLegacyInterfaceState } from '@/lib/legacy-ui/interfaces'
+} from './params'
+import { normalizeLegacyInterfaceState } from './filters'
 
 export interface LegacyCrcDeltaSample {
   interfaceId: string

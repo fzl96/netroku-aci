@@ -4,7 +4,7 @@ import {
   mergeLegacyInterfaceListState,
   nextLegacyInterfaceSort,
   parseLegacyInterfaceListState,
-} from './list-state'
+} from './params'
 
 describe('legacy interface list state', () => {
   test('defaults to all, delta, seven days, and hostname ascending', () => {

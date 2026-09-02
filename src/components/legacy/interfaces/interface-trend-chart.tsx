@@ -1,10 +1,10 @@
 'use client'
 
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { safeLegacyCounterNumber } from '@/lib/legacy-ui/interfaces'
-import type { LegacyInterfaceSampleRow } from './LegacyInterfacesClient'
+import { safeLegacyCounterNumber } from '@/lib/legacy/interfaces/filters'
+import type { LegacyInterfaceSampleView } from '@/lib/legacy/interfaces/query'
 
-export function LegacyInterfaceTrendChart({ points }: { points: LegacyInterfaceSampleRow[] }) {
+export function LegacyInterfaceTrendChart({ points }: { points: LegacyInterfaceSampleView[] }) {
   const chartPoints = points.map(point => ({
     collectedAt: point.collectedAt,
     input: safeLegacyCounterNumber(point.dInputErrors),

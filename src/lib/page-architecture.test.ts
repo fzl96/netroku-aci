@@ -108,6 +108,15 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
     obsoletePaths: ['src/actions/legacy-health.ts'],
   },
   {
+    name: 'legacy-interfaces',
+    routes: [{
+      root: 'src/app/(app)/legacy/interfaces',
+      allowedFiles: ['page.tsx'],
+    }],
+    entryRoots: ['src/app/api/legacy/interfaces', 'src/components/legacy/interfaces'],
+    obsoletePaths: ['src/actions/legacy-interfaces.ts'],
+  },
+  {
     name: 'interface-health',
     routes: [{
       root: 'src/app/(app)/interface-health',

@@ -43,6 +43,21 @@ const DESCENDING_FIRST = new Set<LegacyInterfaceSortKey>([
   'collectedAt',
 ])
 
+export type RawLegacyInterfaceParam = string | string[] | undefined
+export type RawLegacyInterfaceListParams = {
+  query?: RawLegacyInterfaceParam
+  device?: RawLegacyInterfaceParam
+  view?: RawLegacyInterfaceParam
+  mode?: RawLegacyInterfaceParam
+  window?: RawLegacyInterfaceParam
+  sort?: RawLegacyInterfaceParam
+  dir?: RawLegacyInterfaceParam
+  page?: RawLegacyInterfaceParam
+  pageSize?: RawLegacyInterfaceParam
+  /** A URL can carry any key, including retired filters; they are ignored. */
+  [key: string]: RawLegacyInterfaceParam
+}
+
 export interface LegacyInterfaceListState {
   query: string
   deviceIds: string[]
@@ -61,29 +76,38 @@ export function initialLegacyInterfaceSortDirection(
   return DESCENDING_FIRST.has(key) ? 'desc' : 'asc'
 }
 
-function uniqueDeviceIds(value?: string): string[] {
-  return [...new Set((value ?? '').split(',').map(id => id.trim()).filter(Boolean))]
+function uniqueDeviceIds(value: string): string[] {
+  return [...new Set(value.split(',').map(id => id.trim()).filter(Boolean))]
 }
 
-export function parseLegacyInterfaceListState(params: Record<string, string | undefined>): LegacyInterfaceListState {
-  const sortKey = LEGACY_INTERFACE_SORT_KEYS.includes(params.sort as LegacyInterfaceSortKey)
-    ? params.sort as LegacyInterfaceSortKey
+/** A repeated search param arrives as an array; the list state reads one value
+ *  per control, so only the first occurrence is honoured. */
+function first(value: RawLegacyInterfaceParam): string {
+  return (Array.isArray(value) ? value[0] : value)?.trim() ?? ''
+}
+
+export function parseLegacyInterfaceListState(
+  params: RawLegacyInterfaceListParams,
+): LegacyInterfaceListState {
+  const sort = first(params.sort)
+  const sortKey = LEGACY_INTERFACE_SORT_KEYS.includes(sort as LegacyInterfaceSortKey)
+    ? sort as LegacyInterfaceSortKey
     : 'hostname'
-  const defaultDirection = initialLegacyInterfaceSortDirection(sortKey)
-  const sortDirection = params.dir === 'asc' || params.dir === 'desc'
-    ? params.dir
-    : defaultDirection
+  const direction = first(params.dir)
+  const view = first(params.view)
 
   return {
-    query: params.query?.trim() ?? '',
-    deviceIds: uniqueDeviceIds(params.device),
-    view: params.view === 'crc' || params.view === 'state-changed' ? params.view : 'all',
-    mode: params.mode === 'current' ? 'current' : 'delta',
-    window: params.window === '30d' ? '30d' : '7d',
+    query: first(params.query),
+    deviceIds: uniqueDeviceIds(first(params.device)),
+    view: view === 'crc' || view === 'state-changed' ? view : 'all',
+    mode: first(params.mode) === 'current' ? 'current' : 'delta',
+    window: first(params.window) === '30d' ? '30d' : '7d',
     sortKey,
-    sortDirection,
-    page: parseLegacyPage(params.page),
-    pageSize: parseLegacyPageSize(params.pageSize),
+    sortDirection: direction === 'asc' || direction === 'desc'
+      ? direction
+      : initialLegacyInterfaceSortDirection(sortKey),
+    page: parseLegacyPage(first(params.page) || undefined),
+    pageSize: parseLegacyPageSize(first(params.pageSize) || undefined),
   }
 }
 
