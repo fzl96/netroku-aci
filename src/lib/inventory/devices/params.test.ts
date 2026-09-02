@@ -6,7 +6,7 @@ import {
   clampDevicePage,
   deviceListWindow,
   parseDeviceListParams,
-} from './device-query'
+} from './params'
 
 describe('parseDeviceListParams', () => {
   it('trims the query and accepts a positive page', () => {

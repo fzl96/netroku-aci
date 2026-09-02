@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { canPlaceDevice, type PlaceableDevice } from '@/lib/inventory/rack-placement'
-import type { DeviceCatalogEntry } from '@/actions/inventory/devices'
+import type { DeviceCatalogEntry } from '@/lib/inventory/devices/query'
 
 export type RackDevice = {
   id: string

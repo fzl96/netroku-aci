@@ -117,6 +117,26 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
     obsoletePaths: ['src/actions/legacy-interfaces.ts'],
   },
   {
+    name: 'inventory',
+    routes: [
+      {
+        root: 'src/app/(app)/inventory/devices',
+        allowedFiles: ['page.tsx', '[id]/page.tsx', 'import/page.tsx'],
+      },
+      {
+        root: 'src/app/(app)/inventory/racks',
+        allowedFiles: ['page.tsx'],
+      },
+    ],
+    entryRoots: ['src/components/inventory'],
+    obsoletePaths: [
+      'src/actions/inventory/devices.ts',
+      'src/actions/inventory/racks.ts',
+      'src/actions/inventory/sites.ts',
+      'src/actions/inventory/import.ts',
+    ],
+  },
+  {
     name: 'interface-health',
     routes: [{
       root: 'src/app/(app)/interface-health',

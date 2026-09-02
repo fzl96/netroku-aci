@@ -8,20 +8,15 @@ import { toast } from 'sonner'
 import { IconPlus, IconPencil, IconTrash, IconSearch, IconFileSpreadsheet } from '@tabler/icons-react'
 import { DeviceStatus } from '@prisma/client'
 
-import {
-  createDevice,
-  updateDevice,
-  deleteDevice,
-  type SafeDeviceWithRack,
-  type SafeDeviceStack,
-} from '@/actions/inventory/devices'
+import { createDevice, updateDevice, deleteDevice } from '@/lib/inventory/devices/actions'
+import type { SafeDeviceStack, SafeDeviceWithRack } from '@/lib/inventory/devices/query'
 import {
   deviceSchema,
   deviceUpdateSchema,
   type DeviceFormValues,
   type DeviceUpdateFormValues,
 } from '@/lib/schemas/device'
-import { buildDeviceListUrl, buildDeviceSearchUrl } from '@/lib/inventory/device-query'
+import { buildDeviceListUrl, buildDeviceSearchUrl } from '@/lib/inventory/devices/params'
 import { DeviceForm } from '@/components/inventory/DeviceForm'
 import { FooterCancel, FooterSubmit } from '@/components/inventory/dialog-footer-buttons'
 
@@ -58,7 +53,7 @@ const STATUS_BADGE_CLS: Record<string, string> = {
   RETIRED: 'bg-muted text-muted-foreground',
 }
 
-export function DevicesClient({
+export function DevicesTableClient({
   initialDevices,
   existingStacks = [],
   total,

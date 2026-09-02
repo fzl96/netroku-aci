@@ -36,14 +36,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
-import { createSite, deleteSite, updateSite, type SafeSite } from '@/actions/inventory/sites'
-import { createRack, deleteRack, updateRack, type SafeRackWithDevices } from '@/actions/inventory/racks'
-import {
-  clearDevicePlacement,
-  updateDeviceHeight,
-  updateDevicePlacement,
-  type DeviceCatalogEntry,
-} from '@/actions/inventory/devices'
+import { createSite, deleteSite, updateSite } from '@/lib/inventory/sites/actions'
+import type { SafeSite } from '@/lib/inventory/sites/query'
+import { createRack, deleteRack, updateRack } from '@/lib/inventory/racks/actions'
+import type { SafeRackWithDevices } from '@/lib/inventory/racks/query'
+import { clearDevicePlacement, updateDeviceHeight, updateDevicePlacement } from '@/lib/inventory/devices/actions'
+import type { DeviceCatalogEntry } from '@/lib/inventory/devices/query'
 import { siteSchema, type SiteFormValues } from '@/lib/schemas/site'
 import { rackSchema, type RackFormValues } from '@/lib/schemas/rack'
 import { SiteForm } from '@/components/inventory/SiteForm'
@@ -57,7 +55,7 @@ import {
 } from '@/components/inventory/RackVisualization'
 import { canPlaceDevice, type PlaceableDevice } from '@/lib/inventory/rack-placement'
 
-export function RacksClient({
+export function RacksTableClient({
   sites,
   selectedSiteId,
   racks,

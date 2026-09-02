@@ -2,15 +2,22 @@ import type { Prisma } from '@prisma/client'
 
 export const DEVICE_PAGE_SIZE = 20
 
+export type RawDeviceListParam = string | string[] | undefined
+export type RawDeviceListParams = { q?: RawDeviceListParam; page?: RawDeviceListParam }
+
 export type DeviceListParams = {
   query: string
   page: number
 }
 
-export function parseDeviceListParams(input: { q?: string; page?: string }): DeviceListParams {
-  const parsedPage = Number.parseInt(input.page ?? '1', 10)
+function first(value: RawDeviceListParam): string {
+  return (Array.isArray(value) ? value[0] : value)?.trim() ?? ''
+}
+
+export function parseDeviceListParams(input: RawDeviceListParams): DeviceListParams {
+  const parsedPage = Number.parseInt(first(input.page) || '1', 10)
   return {
-    query: input.q?.trim() ?? '',
+    query: first(input.q),
     page: Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1,
   }
 }

@@ -3,7 +3,7 @@
 import { useForm } from 'react-hook-form'
 import { DeviceStatus, StackRole } from '@prisma/client'
 import type { DeviceFormValues } from '@/lib/schemas/device'
-import type { SafeDeviceStack } from '@/actions/inventory/devices'
+import type { SafeDeviceStack } from '@/lib/inventory/devices/query'
 import {
   Form,
   FormControl,

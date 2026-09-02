@@ -23,12 +23,8 @@ import {
   type CsvImportError,
   type MalformedImportRow,
 } from '@/lib/inventory/csv'
-import {
-  validateDeviceImport,
-  executeDeviceImport,
-  type ValidationResultData,
-  type ImportExecutionResult,
-} from '@/actions/inventory/import'
+import { validateDeviceImport, executeDeviceImport } from '@/lib/inventory/import/actions'
+import type { ImportExecutionResult, ValidationResultData } from '@/lib/inventory/import/mutation'
 import { Button } from '@/components/ui/button'
 import { DENSE_TABLE_HEAD_CLS, TABLE_SCROLL_CLS } from '@/lib/ui-classes'
 
