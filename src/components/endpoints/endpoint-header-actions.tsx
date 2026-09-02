@@ -1,14 +1,15 @@
 import { redirect } from 'next/navigation'
 import type { EndpointPageParams } from '@/lib/endpoints/params'
 import {
-  getEndpointResults,
   EndpointReadError,
+  getEndpointOverview,
+  getEndpointResults,
   type EndpointHostResolution,
 } from '@/lib/endpoints/query'
-import { EndpointResultsClient } from './endpoints-client'
+import { EndpointHeaderActionsClient } from './endpoints-client'
 import { EndpointRegionError } from './endpoint-region-error'
 
-export async function EndpointResults({
+export async function EndpointHeaderActions({
   paramsPromise,
   hostPromise,
 }: {
@@ -21,21 +22,32 @@ export async function EndpointResults({
     ;[params, resolution] = await Promise.all([paramsPromise, hostPromise])
   } catch (error) {
     if (!(error instanceof EndpointReadError)) throw error
-    console.error('[endpoints] failed to resolve results host', error)
-    return <EndpointRegionError region="results" />
+    console.error('[endpoints] failed to authorize header actions', error)
+    return <EndpointRegionError region="overview" compact />
   }
 
   if (resolution.kind === 'redirect') redirect(resolution.location)
   if (resolution.kind === 'empty') return null
 
+  let overview: Awaited<ReturnType<typeof getEndpointOverview>>
   let results: Awaited<ReturnType<typeof getEndpointResults>>
   try {
-    results = await getEndpointResults(params)
+    ;[overview, results] = await Promise.all([
+      getEndpointOverview(resolution.host.id),
+      getEndpointResults(params),
+    ])
   } catch (error) {
     if (!(error instanceof EndpointReadError)) throw error
-    console.error('[endpoints] failed to load results', error)
-    return <EndpointRegionError region="results" />
+    console.error('[endpoints] failed to authorize header action data', error)
+    return <EndpointRegionError region="overview" compact />
   }
 
-  return <EndpointResultsClient params={params} results={results} />
+  return (
+    <EndpointHeaderActionsClient
+      params={params}
+      hosts={resolution.hosts}
+      hostTotal={overview.activeTotal + overview.historicalTotal}
+      filteredTotal={results.pagination.total}
+    />
+  )
 }

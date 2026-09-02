@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
-import { createEndpointMutation } from './mutation-core'
+
+mock.module('server-only', () => ({}))
+
+const { createEndpointMutation } = await import('./mutation')
 
 class EndpointResyncInProgressError extends Error {}
 
@@ -27,6 +30,7 @@ const resyncEndpoints = mock(async () => {
 const recordAudit = mock(async () => {
   callOrder.push('audit')
 })
+const reportAuditError = mock(() => {})
 const revalidateTag = mock((tag: string, profile: { expire: number }) => {
   void profile
   callOrder.push(`invalidate:${tag}`)
@@ -46,6 +50,7 @@ const {
   recordAudit,
   revalidateTag,
   isInProgressError: error => error instanceof EndpointResyncInProgressError,
+  reportAuditError,
 })
 
 beforeEach(() => {
@@ -57,6 +62,7 @@ beforeEach(() => {
   findFirst.mockClear()
   resyncEndpoints.mockClear()
   recordAudit.mockClear()
+  reportAuditError.mockClear()
   revalidateTag.mockClear()
 })
 
@@ -148,6 +154,21 @@ describe('resyncEndpointInventory', () => {
     })
     expect(recordAudit).not.toHaveBeenCalled()
     expect(revalidateTag).not.toHaveBeenCalled()
+  })
+
+  it('still invalidates and succeeds when audit persistence unexpectedly rejects', async () => {
+    recordAudit.mockImplementationOnce(async () => {
+      throw new Error('audit database unavailable')
+    })
+
+    await expect(resyncEndpointInventory({
+      apicHostId: 'host-1',
+      username: 'operator',
+      password: 'secret',
+    })).resolves.toEqual({ ok: true, synced: 4, total: 9 })
+
+    expect(reportAuditError).toHaveBeenCalledTimes(1)
+    expect(revalidateTag).toHaveBeenCalledTimes(2)
   })
 })
 

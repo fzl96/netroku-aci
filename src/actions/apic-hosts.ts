@@ -1,27 +1,20 @@
 'use server'
 
 import { cache } from 'react'
-import { requireAdmin, requireSession } from '@/lib/auth'
+import { requireSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { recordAudit } from '@/lib/audit'
 import {
-  apicHostSchema,
-  apicHostUpdateSchema,
-  type ApicHostFormValues,
-  type ApicHostUpdateFormValues,
+  createApicHost as mutateCreateApicHost,
+  deleteApicHost as mutateDeleteApicHost,
+  updateApicHost as mutateUpdateApicHost,
+  type SafeApicHost,
+} from '@/lib/apic-hosts/mutation'
+import type {
+  ApicHostFormValues,
+  ApicHostUpdateFormValues,
 } from '@/lib/schemas/apic-host'
 
-type ActionResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: string }
-
-export type SafeApicHost = {
-  id: string
-  name: string
-  host: string
-  createdAt: Date
-  updatedAt: Date
-}
+export type { SafeApicHost } from '@/lib/apic-hosts/mutation'
 
 function toSafe(host: { id: string; name: string; host: string; createdAt: Date; updatedAt: Date }): SafeApicHost {
   return {
@@ -46,72 +39,17 @@ export const getApicHosts = cache(_getApicHosts)
 
 export async function createApicHost(
   data: ApicHostFormValues
-): Promise<ActionResult<SafeApicHost>> {
-  try {
-    const actor = await requireAdmin()
-    const parsed = apicHostSchema.safeParse(data)
-    if (!parsed.success) return { success: false, error: 'Invalid data' }
-    const host = await prisma.apicHost.create({
-      data: {
-        name: parsed.data.name,
-        host: parsed.data.host,
-      },
-    })
-    await recordAudit({
-      userId: actor.id,
-      userName: actor.userName,
-      action: 'apic_host.create',
-      target: `${host.name} (${host.host})`,
-    })
-    return { success: true, data: toSafe(host) }
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
-  }
+) {
+  return mutateCreateApicHost(data)
 }
 
 export async function updateApicHost(
   id: string,
   data: ApicHostUpdateFormValues
-): Promise<ActionResult<SafeApicHost>> {
-  try {
-    const actor = await requireAdmin()
-    const parsed = apicHostUpdateSchema.safeParse(data)
-    if (!parsed.success) return { success: false, error: 'Invalid data' }
-    const result = await prisma.apicHost.updateMany({
-      where: { id },
-      data: {
-        name: parsed.data.name,
-        host: parsed.data.host,
-      },
-    })
-    if (result.count === 0) return { success: false, error: 'Host not found' }
-    const host = await prisma.apicHost.findUniqueOrThrow({ where: { id } })
-    await recordAudit({
-      userId: actor.id,
-      userName: actor.userName,
-      action: 'apic_host.update',
-      target: `${host.name} (${host.host})`,
-    })
-    return { success: true, data: toSafe(host) }
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
-  }
+) {
+  return mutateUpdateApicHost(id, data)
 }
 
-export async function deleteApicHost(id: string): Promise<ActionResult<void>> {
-  try {
-    const actor = await requireAdmin()
-    const existing = await prisma.apicHost.findUnique({ where: { id } })
-    const result = await prisma.apicHost.deleteMany({ where: { id } })
-    if (result.count === 0) return { success: false, error: 'Host not found' }
-    await recordAudit({
-      userId: actor.id,
-      userName: actor.userName,
-      action: 'apic_host.delete',
-      target: existing ? `${existing.name} (${existing.host})` : id,
-    })
-    return { success: true, data: undefined }
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
-  }
+export async function deleteApicHost(id: string) {
+  return mutateDeleteApicHost(id)
 }

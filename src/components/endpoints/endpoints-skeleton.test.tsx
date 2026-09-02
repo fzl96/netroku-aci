@@ -36,7 +36,10 @@ describe('EndpointsView composition', () => {
       'utf8',
     )
 
-    expect(source.match(/<Suspense/g)).toHaveLength(2)
+    expect(source.match(/<Suspense/g)).toHaveLength(3)
+    expect(source).toContain('export function EndpointsView')
+    expect(source).not.toContain('export async function EndpointsView')
+    expect(source).toContain('<EndpointHeaderActionsSkeleton')
     expect(source).toContain('<EndpointOverviewSkeleton')
     expect(source).toContain('<EndpointResultsSkeleton')
   })

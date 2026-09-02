@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import type { EndpointPageParams } from '@/lib/endpoints/params'
 import {
   getEndpointOverview,
+  EndpointReadError,
   type EndpointHostResolution,
 } from '@/lib/endpoints/query'
 import { EndpointOverviewClient, NoEndpointHost } from './endpoints-client'
@@ -19,6 +20,7 @@ export async function EndpointOverview({
   try {
     ;[params, resolution] = await Promise.all([paramsPromise, hostPromise])
   } catch (error) {
+    if (!(error instanceof EndpointReadError)) throw error
     console.error('[endpoints] failed to resolve overview host', error)
     return <EndpointRegionError region="overview" />
   }
@@ -30,6 +32,7 @@ export async function EndpointOverview({
   try {
     overview = await getEndpointOverview(resolution.host.id)
   } catch (error) {
+    if (!(error instanceof EndpointReadError)) throw error
     console.error('[endpoints] failed to load overview', error)
     return <EndpointRegionError region="overview" />
   }

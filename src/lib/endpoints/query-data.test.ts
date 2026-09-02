@@ -52,6 +52,9 @@ const requireSession = mock(async () => {
 })
 
 const apicHostFindMany = mock(async () => hostRows)
+const apicHostFindFirst = mock(async ({ where }: { where: { id: string } }) => (
+  hostRows.find(host => host.id === where.id) ?? null
+))
 const endpointCount = mock(async ({ where }: { where: { isActive?: boolean } }) => {
   if (where.isActive === true) return activeTotal
   if (where.isActive === false) return historicalTotal
@@ -73,7 +76,7 @@ const endpointFindMany = mock(async ({ select }: {
 })
 
 const prisma = {
-  apicHost: { findMany: apicHostFindMany },
+  apicHost: { findMany: apicHostFindMany, findFirst: apicHostFindFirst },
   endpoint: { count: endpointCount, findMany: endpointFindMany },
 }
 
@@ -93,7 +96,7 @@ const unstableCache = mock((
 
 mock.module('@/lib/auth', () => ({ requireSession }))
 mock.module('@/lib/prisma', () => ({ prisma }))
-mock.module('next/cache', () => ({ unstable_cache: unstableCache }))
+mock.module('next/cache', () => ({ unstable_cache: unstableCache, revalidateTag: () => {} }))
 mock.module('server-only', () => ({}))
 
 const {
@@ -125,6 +128,7 @@ beforeEach(() => {
   cacheCalls.length = 0
   requireSession.mockClear()
   apicHostFindMany.mockClear()
+  apicHostFindFirst.mockClear()
   endpointCount.mockClear()
   endpointFindMany.mockClear()
   unstableCache.mockClear()
@@ -259,16 +263,23 @@ describe('getEndpointResults', () => {
         'mac',
         '1',
         '10',
-        '',
-        '',
-        '',
-        '',
+        '[]',
+        '[]',
+        '[]',
+        '[]',
       ],
       options: {
         tags: ['endpoints:all', 'endpoints:host:host-1'],
         revalidate: 28_800,
       },
     })
+  })
+
+  it('distinguishes result filter values that contain commas', async () => {
+    await getEndpointResults({ ...BASE_PARAMS, vlans: ['a,b'] })
+    await getEndpointResults({ ...BASE_PARAMS, vlans: ['a', 'b'] })
+
+    expect(cacheCalls.at(-2)?.keyParts).not.toEqual(cacheCalls.at(-1)?.keyParts)
   })
 })
 
@@ -316,5 +327,20 @@ describe('getEndpointExportData', () => {
       hostId: 'host-1',
       scope: 'all',
     })).resolves.toEqual({ kind: 'empty', host: HOSTS[1] })
+  })
+
+  it('uses unambiguous cache keys for values that contain commas', async () => {
+    await getEndpointExportData({
+      hostId: 'host-1',
+      scope: 'filtered',
+      filters: { vlan: ['a,b'] },
+    })
+    await getEndpointExportData({
+      hostId: 'host-1',
+      scope: 'filtered',
+      filters: { vlan: ['a', 'b'] },
+    })
+
+    expect(cacheCalls.at(-2)?.keyParts).not.toEqual(cacheCalls.at(-1)?.keyParts)
   })
 })

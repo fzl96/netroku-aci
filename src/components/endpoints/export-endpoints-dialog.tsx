@@ -14,17 +14,22 @@ import {
 } from '@/components/ui/dialog'
 import {
   buildEndpointExportPayload,
+  getDefaultExportScope,
   type ExportGrouping,
   type ExportScope,
 } from '@/lib/endpoints/export-utils'
 
 interface Props {
   apicHostId: string
+  hostTotal: number
+  filteredTotal: number
   filters: EndpointFilters
 }
 
 export function ExportEndpointsDialog({
   apicHostId,
+  hostTotal,
+  filteredTotal,
   filters,
 }: Props) {
   const [open, setOpen] = useState(false)
@@ -34,11 +39,12 @@ export function ExportEndpointsDialog({
   const [exporting, setExporting] = useState(false)
 
   const hasFilters = useMemo(() => hasActiveEndpointFilters(filters), [filters])
-  const disabled = !apicHostId
+  const filteredUnavailable = hasFilters && filteredTotal === 0
+  const disabled = !apicHostId || hostTotal === 0
 
   function openDialog() {
     setStep(1)
-    setScope(hasFilters ? 'filtered' : 'all')
+    setScope(getDefaultExportScope(hasFilters, filteredTotal))
     setGroupBy(null)
     setOpen(true)
   }
@@ -125,16 +131,16 @@ export function ExportEndpointsDialog({
               <ChoiceCard
                 checked={scope === 'all'}
                 title="All endpoints"
-                description="Every endpoint from this APIC host"
+                description={`${hostTotal} endpoint${hostTotal === 1 ? '' : 's'} from this APIC host`}
                 onClick={() => setScope('all')}
               />
               <ChoiceCard
                 checked={scope === 'filtered'}
-                disabled={!hasFilters}
+                disabled={filteredUnavailable}
                 title="Current filters"
-                description={hasFilters
-                  ? 'Every matching endpoint across all pages'
-                  : 'Apply a search or filter to use this option'}
+                description={filteredUnavailable
+                  ? 'No endpoints match the current filters'
+                  : `${filteredTotal} matching endpoint${filteredTotal === 1 ? '' : 's'} across all pages`}
                 onClick={() => setScope('filtered')}
               />
             </div>
@@ -182,7 +188,7 @@ export function ExportEndpointsDialog({
                 <button
                   type="button"
                   onClick={() => setStep(2)}
-                  disabled={scope === 'filtered' && !hasFilters}
+                  disabled={scope === 'filtered' && filteredUnavailable}
                   className="bg-primary text-primary-foreground text-sm font-semibold px-5 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60"
                 >
                   Next

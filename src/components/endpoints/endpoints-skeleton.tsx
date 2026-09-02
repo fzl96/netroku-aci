@@ -28,7 +28,21 @@ export function EndpointOverviewSkeleton() {
   )
 }
 
-export function EndpointResultsSkeleton({ view }: { view: EndpointView }) {
+export function EndpointHeaderActionsSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading endpoint page actions" className="flex w-full items-center gap-2 md:w-auto">
+      <Pulse className="h-9 min-w-0 flex-1 md:w-48 md:flex-none" />
+      <Pulse className="h-9 w-20" />
+      <Pulse className="h-9 w-20" />
+    </div>
+  )
+}
+
+export function EndpointResultsSkeleton({
+  view = 'endpoint',
+}: {
+  view?: EndpointView
+}) {
   const columns = view === 'endpoint' ? ENDPOINT_COLUMNS : PORT_COLUMNS
 
   return (

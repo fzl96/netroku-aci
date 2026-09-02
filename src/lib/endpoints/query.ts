@@ -97,6 +97,15 @@ export type EndpointExportData =
   | { kind: 'host-not-found' }
   | { kind: 'unauthorized' }
 
+export class EndpointReadError extends Error {
+  readonly code = 'unauthorized'
+
+  constructor() {
+    super('Unauthorized')
+    this.name = 'EndpointReadError'
+  }
+}
+
 function endpointCacheOptions(hostId: string) {
   return {
     tags: ['endpoints:all', `endpoints:host:${hostId}`],
@@ -149,11 +158,19 @@ function normalizedFilters(filters: EndpointFilters = {}): EndpointFilters {
 function filterCacheParts(filters: EndpointFilters): string[] {
   return [
     filters.query ?? '',
-    filters.vlan?.join(',') ?? '',
-    filters.node?.join(',') ?? '',
-    filters.iface?.join(',') ?? '',
-    filters.status?.join(',') ?? '',
+    JSON.stringify(filters.vlan ?? []),
+    JSON.stringify(filters.node ?? []),
+    JSON.stringify(filters.iface ?? []),
+    JSON.stringify(filters.status ?? []),
   ]
+}
+
+async function authorizeEndpointRead(): Promise<void> {
+  try {
+    await requireSession()
+  } catch {
+    throw new EndpointReadError()
+  }
 }
 
 /** OR-conditions matching an exact node or either member of a vPC pair. */
@@ -209,7 +226,7 @@ export function expandNodeOptions(values: string[]): string[] {
 async function resolveEndpointHostForRequest(
   requestedHostId: string,
 ): Promise<EndpointHostResolution> {
-  await requireSession()
+  await authorizeEndpointRead()
   const hosts = await prisma.apicHost.findMany({
     orderBy: { createdAt: 'desc' },
     select: { id: true, name: true, host: true },
@@ -231,7 +248,7 @@ async function resolveEndpointHostForRequest(
 export const resolveEndpointHost = cache(resolveEndpointHostForRequest)
 
 export async function getEndpointOverview(hostId: string): Promise<EndpointOverviewData> {
-  await requireSession()
+  await authorizeEndpointRead()
 
   return unstable_cache(
     async () => {
@@ -276,7 +293,7 @@ export async function getEndpointOverview(hostId: string): Promise<EndpointOverv
 export async function getEndpointResults(
   params: EndpointPageParams,
 ): Promise<EndpointResultsData> {
-  await requireSession()
+  await authorizeEndpointRead()
   const filters = normalizedFilters({
     query: params.query,
     vlan: params.vlans,
@@ -329,10 +346,10 @@ export async function getEndpointResults(
       filters.query ?? '',
       String(params.page),
       String(params.pageSize),
-      filters.vlan?.join(',') ?? '',
-      filters.node?.join(',') ?? '',
-      filters.iface?.join(',') ?? '',
-      filters.status?.join(',') ?? '',
+      JSON.stringify(filters.vlan ?? []),
+      JSON.stringify(filters.node ?? []),
+      JSON.stringify(filters.iface ?? []),
+      JSON.stringify(filters.status ?? []),
     ],
     endpointCacheOptions(params.hostId),
   )()
@@ -350,26 +367,20 @@ export async function getEndpointExportData(
     ? normalizedFilters(selection.filters)
     : normalizedFilters()
 
-  return unstable_cache(
-    async (): Promise<EndpointExportData> => {
-      const hosts = await prisma.apicHost.findMany({
-        orderBy: { createdAt: 'desc' },
-        select: { id: true, name: true, host: true },
-      })
-      const host = hosts.find(candidate => candidate.id === selection.hostId)
-      if (!host) return { kind: 'host-not-found' }
+  const host = await prisma.apicHost.findFirst({
+    where: { id: selection.hostId },
+    select: { id: true, name: true, host: true },
+  })
+  if (!host) return { kind: 'host-not-found' }
 
-      const storedRows = await prisma.endpoint.findMany({
-        where: selection.scope === 'all'
-          ? { apicHostId: selection.hostId }
-          : buildEndpointWhere(selection.hostId, filters),
-        select: ENDPOINT_ROW_SELECT,
-        orderBy: { lastSeenAt: 'desc' },
-      })
-
-      if (storedRows.length === 0) return { kind: 'empty', host }
-      return { kind: 'ready', host, rows: storedRows.map(serializeEndpoint) }
-    },
+  const storedRows = await unstable_cache(
+    async () => prisma.endpoint.findMany({
+      where: selection.scope === 'all'
+        ? { apicHostId: selection.hostId }
+        : buildEndpointWhere(selection.hostId, filters),
+      select: ENDPOINT_ROW_SELECT,
+      orderBy: { lastSeenAt: 'desc' },
+    }),
     [
       'endpoints',
       'export',
@@ -379,4 +390,7 @@ export async function getEndpointExportData(
     ],
     endpointCacheOptions(selection.hostId),
   )()
+
+  if (storedRows.length === 0) return { kind: 'empty', host }
+  return { kind: 'ready', host, rows: storedRows.map(serializeEndpoint) }
 }

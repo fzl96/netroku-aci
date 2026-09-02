@@ -1,7 +1,7 @@
 'use client'
 
 import type { FormEvent, ReactNode } from 'react'
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
@@ -16,7 +16,6 @@ import {
 } from '@tabler/icons-react'
 import { ApicCredentialDialog } from '@/components/ApicCredentialDialog'
 import { FilterSubmenu } from '@/components/FilterSubmenu'
-import { useApicHosts } from '@/components/ApicHostsProvider'
 import {
   DataCard,
   DataCardBody,
@@ -41,6 +40,7 @@ import {
 } from '@/lib/endpoints/params'
 import type {
   EndpointOverviewData,
+  EndpointHostOption,
   EndpointResultsData,
   EndpointRow,
 } from '@/lib/endpoints/query'
@@ -165,26 +165,70 @@ function SortableHeader<K extends string>({
   )
 }
 
+type EndpointNavigation = {
+  isPending: boolean
+  navigate: (url: string) => void
+  refresh: () => void
+}
+
+const EndpointNavigationContext = createContext<EndpointNavigation | null>(null)
+
+function useEndpointNavigation(): EndpointNavigation {
+  const navigation = useContext(EndpointNavigationContext)
+  if (!navigation) throw new Error('Endpoint navigation requires EndpointsClient')
+  return navigation
+}
+
 export function EndpointsClient({
-  params,
+  actions,
   children,
 }: {
-  params: EndpointPageParams
+  actions: ReactNode
   children: ReactNode
 }) {
-  const apicHosts = useApicHosts()
   const router = useRouter()
-  const [syncing, setSyncing] = useState(false)
-  const [credentialOpen, setCredentialOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
-  const selectedHost = apicHosts.find(host => host.id === params.hostId)
-
-  function handleHostChange(hostId: string) {
-    startTransition(() => router.replace(hostId ? `/endpoints?apic=${hostId}` : '/endpoints'))
+  const navigation: EndpointNavigation = {
+    isPending,
+    navigate: url => startTransition(() => router.replace(url)),
+    refresh: () => startTransition(() => router.refresh()),
   }
 
+  return (
+    <EndpointNavigationContext.Provider value={navigation}>
+      <div className="min-h-full bg-background">
+        <div className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">
+          <div className="flex flex-col justify-between gap-3 px-4 py-3 md:h-16 md:flex-row md:items-center md:px-8 md:py-0">
+            <div>
+              <h1 className="font-serif text-[18px] font-semibold text-foreground">Endpoints</h1>
+              <p className="mt-0.5 text-xs text-subtle">ACI fabric endpoint inventory</p>
+            </div>
+            {actions}
+          </div>
+        </div>
+        <main className="space-y-4 px-4 py-4 md:px-8 md:py-6">{children}</main>
+      </div>
+    </EndpointNavigationContext.Provider>
+  )
+}
+
+export function EndpointHeaderActionsClient({
+  params,
+  hosts,
+  hostTotal,
+  filteredTotal,
+}: {
+  params: EndpointPageParams
+  hosts: EndpointHostOption[]
+  hostTotal: number
+  filteredTotal: number
+}) {
+  const { isPending, navigate, refresh } = useEndpointNavigation()
+  const [syncing, setSyncing] = useState(false)
+  const [credentialOpen, setCredentialOpen] = useState(false)
+  const selectedHost = hosts.find(host => host.id === params.hostId)
+
   async function handleResync(credentials: { username: string; password: string }) {
-    if (!params.hostId) return
     setSyncing(true)
     try {
       const response = await fetch('/api/endpoints/resync', {
@@ -195,7 +239,7 @@ export function EndpointsClient({
       const data = await response.json() as { synced?: number; total?: number; error?: string }
       if (!response.ok) throw new Error(data.error ?? 'Resync failed')
       toast.success(`Synced ${data.synced} active endpoints (${data.total} total with history)`)
-      startTransition(() => router.refresh())
+      refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Resync failed')
     } finally {
@@ -204,51 +248,40 @@ export function EndpointsClient({
   }
 
   return (
-    <div className="min-h-full bg-background">
-      <div className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">
-        <div className="flex flex-col justify-between gap-3 px-4 py-3 md:h-16 md:flex-row md:items-center md:px-8 md:py-0">
-          <div>
-            <h1 className="font-serif text-[18px] font-semibold text-foreground">Endpoints</h1>
-            <p className="mt-0.5 text-xs text-subtle">ACI fabric endpoint inventory</p>
-          </div>
-          <div className="flex w-full items-center gap-2 md:w-auto">
-            <select
-              value={params.hostId}
-              onChange={event => handleHostChange(event.target.value)}
-              disabled={isPending}
-              className="min-w-0 flex-1 rounded-lg border border-border bg-muted px-3 py-2 text-xs text-foreground outline-none transition-opacity focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-60 md:min-w-[180px] md:flex-none"
-            >
-              <option value="">Select APIC host…</option>
-              {apicHosts.map(host => (
-                <option key={host.id} value={host.id}>{host.name} ({host.host})</option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => setCredentialOpen(true)}
-              disabled={!params.hostId || syncing}
-              title="Resync endpoints from APIC"
-              className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold shadow-sm transition-colors ${params.hostId && !syncing ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'cursor-not-allowed bg-muted text-faint'}`}
-            >
-              <IconRefresh size={12} stroke={1.75} className={syncing || isPending ? 'animate-spin' : ''} />
-              {syncing ? 'Syncing…' : isPending ? 'Loading…' : 'Resync'}
-            </button>
-            <ExportEndpointsDialog
-              apicHostId={params.hostId}
-              filters={{
-                query: params.query,
-                vlan: params.vlans,
-                node: params.nodes,
-                iface: params.interfaces,
-                status: params.statuses,
-              }}
-            />
-          </div>
-        </div>
-      </div>
-
-      <main className="space-y-4 px-4 py-4 md:px-8 md:py-6">{children}</main>
-
+    <div className="flex w-full items-center gap-2 md:w-auto">
+      <select
+        value={params.hostId}
+        onChange={event => navigate(event.target.value ? `/endpoints?apic=${event.target.value}` : '/endpoints')}
+        disabled={isPending}
+        className="min-w-0 flex-1 rounded-lg border border-border bg-muted px-3 py-2 text-xs text-foreground outline-none transition-opacity focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-60 md:min-w-[180px] md:flex-none"
+      >
+        <option value="">Select APIC host…</option>
+        {hosts.map(host => (
+          <option key={host.id} value={host.id}>{host.name} ({host.host})</option>
+        ))}
+      </select>
+      <button
+        type="button"
+        onClick={() => setCredentialOpen(true)}
+        disabled={!params.hostId || syncing}
+        title="Resync endpoints from APIC"
+        className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold shadow-sm transition-colors ${params.hostId && !syncing ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'cursor-not-allowed bg-muted text-faint'}`}
+      >
+        <IconRefresh size={12} stroke={1.75} className={syncing || isPending ? 'animate-spin' : ''} />
+        {syncing ? 'Syncing…' : isPending ? 'Loading…' : 'Resync'}
+      </button>
+      <ExportEndpointsDialog
+        apicHostId={params.hostId}
+        hostTotal={hostTotal}
+        filteredTotal={filteredTotal}
+        filters={{
+          query: params.query,
+          vlan: params.vlans,
+          node: params.nodes,
+          iface: params.interfaces,
+          status: params.statuses,
+        }}
+      />
       <ApicCredentialDialog
         open={credentialOpen}
         onOpenChange={setCredentialOpen}
@@ -261,9 +294,6 @@ export function EndpointsClient({
 }
 
 export function NoEndpointHost() {
-  const apicHosts = useApicHosts()
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
 
   return (
     <div className="flex flex-col items-center justify-center py-28 text-center">
@@ -275,23 +305,8 @@ export function NoEndpointHost() {
       </div>
       <h2 className="mb-1 font-serif text-base font-semibold text-foreground">No APIC host selected</h2>
       <p className="mb-6 max-w-[260px] text-xs leading-relaxed text-subtle">
-        {apicHosts.length === 0
-          ? 'No APIC hosts configured yet. Add one in Settings to get started.'
-          : 'Choose a host to view its endpoint inventory.'}
+        No APIC hosts are configured yet. Add one in Settings to get started.
       </p>
-      {apicHosts.length > 0 && (
-        <select
-          value=""
-          onChange={event => startTransition(() => router.replace(`/endpoints?apic=${event.target.value}`))}
-          disabled={isPending}
-          className="min-w-[220px] rounded-lg border border-border bg-muted px-3 py-2 text-xs text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-60"
-        >
-          <option value="">Select APIC host…</option>
-          {apicHosts.map(host => (
-            <option key={host.id} value={host.id}>{host.name} ({host.host})</option>
-          ))}
-        </select>
-      )}
     </div>
   )
 }
@@ -303,8 +318,7 @@ export function EndpointOverviewClient({
   params: EndpointPageParams
   overview: EndpointOverviewData
 }) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
+  const { isPending, navigate: navigateTo } = useEndpointNavigation()
   const [searchValue, setSearchValue] = useState(params.query)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const noun = params.view === 'endpoint' ? 'endpoints' : 'ports'
@@ -320,7 +334,7 @@ export function EndpointOverviewClient({
   }, [])
 
   function navigate(overrides: UrlOverrides) {
-    startTransition(() => router.replace(endpointUrl(params, overrides)))
+    navigateTo(endpointUrl(params, overrides))
   }
 
   function handleSearchChange(value: string) {
@@ -404,8 +418,7 @@ export function EndpointResultsClient({
   params: EndpointPageParams
   results: EndpointResultsData
 }) {
-  const router = useRouter()
-  const [isPending, startTransition] = useTransition()
+  const { isPending, navigate: navigateTo } = useEndpointNavigation()
   const [jumpValue, setJumpValue] = useState('')
   const [endpointSort, setEndpointSort] = useState<{ key: EndpointSortKey; direction: SortDirection } | null>(null)
   const [portSort, setPortSort] = useState<{ key: PortSortKey; direction: SortDirection } | null>(null)
@@ -429,7 +442,7 @@ export function EndpointResultsClient({
   )
 
   function navigate(overrides: UrlOverrides) {
-    startTransition(() => router.replace(endpointUrl(effectiveParams, overrides)))
+    navigateTo(endpointUrl(effectiveParams, overrides))
   }
 
   function handleJump(event: FormEvent) {
