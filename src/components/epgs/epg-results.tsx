@@ -4,10 +4,9 @@ import { use, useState } from 'react'
 import type { EpgLoadState, EpgResultsPayload } from '@/lib/epgs/query'
 import type { EpgPortSummary } from '@/lib/epgs/sort'
 import { EpgDetailPanel } from './epg-detail-panel'
-import { EpgPaginationClient } from './epg-pagination-client'
 import { EpgPortDetailPanel } from './epg-port-detail-panel'
 import { EpgRegionError } from './epg-region-error'
-import { EpgTableClient } from './epg-table-client'
+import { EpgTable } from './epg-table'
 
 export function EpgResults({
   dataPromise,
@@ -30,8 +29,8 @@ export function EpgResults({
 
   return (
     <section className="space-y-3">
-      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-        {results.rows.length === 0 ? (
+      {results.rows.length === 0 ? (
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="px-4 py-14 text-center">
             <p className="text-sm text-subtle">
               {filtered ? `No ${noun} match the current filters` : `No ${noun} found`}
@@ -42,11 +41,10 @@ export function EpgResults({
                 : 'Click Resync to pull the latest data from the APIC'}
             </p>
           </div>
-        ) : (
-          <EpgTableClient results={results} onEpgSelect={setEpgId} onPortSelect={setPort} />
-        )}
-      </div>
-      <EpgPaginationClient params={params} pagination={results.pagination} view={results.view} />
+        </div>
+      ) : (
+        <EpgTable params={params} results={results} onEpgSelect={setEpgId} onPortSelect={setPort} />
+      )}
       <EpgDetailPanel epg={selectedEpg} onClose={() => setEpgId(null)} />
       <EpgPortDetailPanel port={port} onClose={() => setPort(null)} />
     </section>
