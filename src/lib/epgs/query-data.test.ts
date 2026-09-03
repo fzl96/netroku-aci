@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import * as React from 'react'
 
 class AuthenticationRequiredError extends Error {}
+class ApicHostReadError extends Error {
+  readonly code = 'unauthorized'
+}
 let authenticationError: unknown = null
 const requireSession = mock(async () => {
   if (authenticationError) throw authenticationError
@@ -14,6 +17,7 @@ const hostFindFirst = mock(async () => ({
   host: 'apic.local',
   lastEpgSyncAt: new Date('2026-01-01T00:00:00Z'),
 }))
+const cachedHosts = mock(async () => [{ id: 'h1', name: 'Fabric', host: 'apic.local' }])
 const epgCount = mock(async () => 2)
 const epgFindMany = mock(async (args: Record<string, unknown>) => {
   if ('distinct' in args) return []
@@ -62,6 +66,10 @@ mock.module('@/lib/auth', () => ({
   requireSession,
   requireAdmin: async () => ({ id: 'admin', userName: 'admin' }),
 }))
+mock.module('@/lib/apic-hosts/query', () => ({
+  ApicHostReadError,
+  getApicHosts: cachedHosts,
+}))
 mock.module('@/lib/prisma', () => ({
   prisma: {
     apicHost: { findMany: hostFindMany, findFirst: hostFindFirst },
@@ -97,6 +105,7 @@ const base = {
 beforeEach(() => {
   authenticationError = null
   requireSession.mockClear()
+  cachedHosts.mockClear()
   hostFindMany.mockClear()
   hostFindFirst.mockClear()
   epgCount.mockClear()
@@ -112,7 +121,13 @@ describe('EPG data interface', () => {
       host: { id: 'h1', name: 'Fabric', host: 'apic.local' },
       hosts: [{ id: 'h1', name: 'Fabric', host: 'apic.local' }],
     })
-    expect(requireSession).toHaveBeenCalledTimes(1)
+    expect(cachedHosts).toHaveBeenCalledTimes(1)
+    expect(hostFindMany).not.toHaveBeenCalled()
+  })
+
+  it('maps cached host authorization failures to an EPG read error', async () => {
+    cachedHosts.mockRejectedValueOnce(new ApicHostReadError('missing'))
+    await expect(query.resolveEpgHost('h1')).rejects.toBeInstanceOf(query.EpgReadError)
   })
 
   it('maps only missing-session errors and propagates auth infrastructure failures', async () => {

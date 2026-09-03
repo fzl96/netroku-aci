@@ -99,3 +99,18 @@ Steps:
 3. Delete the obsolete wrapper and remove dead imports/helpers without changing the server query interfaces.
 4. Run focused tests, then the full test suite, lint, TypeScript/build checks, and `git diff --check`.
 5. Update the plan progress and record any deviations.
+
+## Progress
+
+- [x] Replaced the page-wide `EpgsClient` wrapper with the server-rendered `EpgShell`.
+- [x] Kept APIC actions, filters, and results behind server render modules and Suspense boundaries.
+- [x] Split static tabs/search, filter controls, results table, pagination, and detail panels into focused Client Components.
+- [x] Removed `NavigationContext`, `useNavigation`, and the obsolete combined overview/client module.
+- [x] Kept URL parameters as the source of truth and avoided adding Zustand.
+- [x] Added `use-debounce` as a direct dependency for the user-created shared `SearchBar`.
+- [x] Reused the sidebar's persistently cached APIC host read for EPG host resolution.
+- [x] Verified focused EPG tests (37 passed), full tests (777 passed / 2 skipped), lint (0 errors), formatting, and production build.
+
+## Deviations
+
+- A small server-side host gate remains inside `EpgShell` so the existing no-host empty state and canonical host redirect behavior are preserved. The static title/description and toolbar render before that gate; the host gate has no visible fallback, while APIC actions, filters, and results stream independently with their own fallbacks.

@@ -4,6 +4,7 @@ import type { Prisma } from '@prisma/client'
 import { unstable_cache } from 'next/cache'
 import { cache } from 'react'
 import { AuthenticationRequiredError, requireSession } from '@/lib/auth'
+import { ApicHostReadError, getApicHosts } from '@/lib/apic-hosts/query'
 import { prisma } from '@/lib/prisma'
 import type { EpgExportRow } from './export'
 import type { EpgFilters, EpgPageParams, EpgPageSize } from './params'
@@ -286,15 +287,24 @@ export function expandNodeOptions(values: string[]): string[] {
 }
 
 async function resolveForRequest(requestedHostId: string): Promise<EpgHostResolution> {
-  await authorize()
-  const hosts = await prisma.apicHost.findMany({
-    orderBy: { createdAt: 'desc' },
-    select: { id: true, name: true, host: true },
-  })
-  if (!hosts.length) return { kind: 'empty', hosts: [] }
-  const host = hosts.find((candidate) => candidate.id === requestedHostId)
-  if (host) return { kind: 'selected', host, hosts }
-  return { kind: 'redirect', location: `/epgs?apic=${encodeURIComponent(hosts[0].id)}`, hosts }
+  let hosts: Awaited<ReturnType<typeof getApicHosts>>
+  try {
+    hosts = await getApicHosts()
+  } catch (error) {
+    if (error instanceof ApicHostReadError && error.code === 'unauthorized') {
+      throw new EpgReadError()
+    }
+    throw error instanceof ApicHostReadError ? (error.cause ?? error) : error
+  }
+  const options = hosts.map(({ id, name, host }) => ({ id, name, host }))
+  if (!options.length) return { kind: 'empty', hosts: [] }
+  const host = options.find((candidate) => candidate.id === requestedHostId)
+  if (host) return { kind: 'selected', host, hosts: options }
+  return {
+    kind: 'redirect',
+    location: `/epgs?apic=${encodeURIComponent(options[0].id)}`,
+    hosts: options,
+  }
 }
 export const resolveEpgHost = cache(resolveForRequest)
 

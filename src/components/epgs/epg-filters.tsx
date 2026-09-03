@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation'
 import type { EpgPageParams } from '@/lib/epgs/params'
 import { EpgReadError, getEpgOverview, type EpgHostResolution } from '@/lib/epgs/query'
-import { EpgOverviewClient, NoEpgHost } from './epgs-client'
+import { EpgFiltersClient } from './epg-filters-client'
 import { EpgRegionError } from './epg-region-error'
 
-export async function EpgOverview({
+export async function EpgFilters({
   paramsPromise,
   hostPromise,
 }: {
@@ -17,18 +17,26 @@ export async function EpgOverview({
     ;[params, resolution] = await Promise.all([paramsPromise, hostPromise])
   } catch (error) {
     if (!(error instanceof EpgReadError)) throw error
-    console.error('[epgs] failed to load overview', error)
+    console.error('[epgs] failed to load filters', error)
     return <EpgRegionError region="overview" />
   }
   if (resolution.kind === 'redirect') redirect(resolution.location)
-  if (resolution.kind === 'empty') return <NoEpgHost />
+  if (resolution.kind === 'empty') return null
+
   let overview: Awaited<ReturnType<typeof getEpgOverview>>
   try {
     overview = await getEpgOverview(resolution.host.id, params)
   } catch (error) {
     if (!(error instanceof EpgReadError)) throw error
-    console.error('[epgs] failed to load overview data', error)
+    console.error('[epgs] failed to load filter data', error)
     return <EpgRegionError region="overview" />
   }
-  return <EpgOverviewClient key={params.query} params={params} overview={overview} />
+
+  return (
+    <EpgFiltersClient
+      params={params}
+      choices={overview.choices}
+      lastEpgSyncAt={overview.lastEpgSyncAt}
+    />
+  )
 }

@@ -17,22 +17,15 @@ export function EpgHeaderActionsSkeleton() {
     </div>
   )
 }
-export function EpgOverviewSkeleton() {
+export function EpgFilterSkeleton() {
   return (
-    <section
-      aria-busy="true"
-      aria-label="Loading EPG filters and sync status"
-      className="flex flex-wrap items-center justify-between gap-3"
-    >
-      <div className="flex w-full gap-2 md:w-auto">
-        <Pulse className="h-9 w-40" />
-        <Pulse className="h-9 min-w-36 flex-1 md:w-56" />
-        <Pulse className="size-9" />
-      </div>
+    <div aria-busy="true" aria-label="Loading EPG filters" className="flex items-center gap-3">
+      <Pulse className="size-9" />
       <Pulse className="h-3 w-36" />
-    </section>
+    </div>
   )
 }
+
 export function EpgResultsSkeleton({ view = 'epg' }: { view?: EpgView }) {
   const columns =
     view === 'epg'

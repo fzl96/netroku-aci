@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import type { EpgPageParams } from '@/lib/epgs/params'
 import { EpgReadError, getEpgOverview, type EpgHostResolution } from '@/lib/epgs/query'
-import { EpgHeaderActionsClient } from './epgs-client'
+import { EpgHeaderActionsClient } from './epg-header-actions-client'
 import { EpgRegionError } from './epg-region-error'
 
 export async function EpgHeaderActions({
