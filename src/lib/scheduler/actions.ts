@@ -8,9 +8,7 @@ import {
   upsertResyncScheduleRecord,
 } from './mutation'
 
-type ActionResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: string }
+type ActionResult<T> = { success: true; data: T } | { success: false; error: string }
 
 export async function upsertResyncSchedule(
   apicHostId: string,
@@ -23,7 +21,9 @@ export async function upsertResyncSchedule(
   }
 }
 
-export async function runResyncScheduleNow(apicHostId: string): Promise<ActionResult<SafeResyncSchedule>> {
+export async function runResyncScheduleNow(
+  apicHostId: string,
+): Promise<ActionResult<SafeResyncSchedule>> {
   try {
     return { success: true, data: await runResyncScheduleNowRecord(apicHostId) }
   } catch (err) {

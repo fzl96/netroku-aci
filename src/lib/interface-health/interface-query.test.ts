@@ -5,21 +5,20 @@ describe('buildInterfaceSnapshotWhere', () => {
   const windowStart = new Date('2026-07-10T00:00:00Z')
 
   it('ANDs the state-change and search OR groups', () => {
-    expect(buildInterfaceSnapshotWhere({
-      apicHostId: 'host-1',
-      view: 'state-changed',
-      windowStart,
-      stateChangedInterfaceIds: ['if-1'],
-      nodeFilter: [],
-      query: 'eth1/10',
-    })).toEqual({
+    expect(
+      buildInterfaceSnapshotWhere({
+        apicHostId: 'host-1',
+        view: 'state-changed',
+        windowStart,
+        stateChangedInterfaceIds: ['if-1'],
+        nodeFilter: [],
+        query: 'eth1/10',
+      }),
+    ).toEqual({
       apicHostId: 'host-1',
       AND: [
         {
-          OR: [
-            { lastLinkStChg: { gte: windowStart } },
-            { id: { in: ['if-1'] } },
-          ],
+          OR: [{ lastLinkStChg: { gte: windowStart } }, { id: { in: ['if-1'] } }],
         },
         {
           OR: [
@@ -45,23 +44,22 @@ describe('buildInterfaceSnapshotWhere', () => {
 
     expect(where.AND).toEqual([
       {
-        OR: [
-          { lastLinkStChg: { gte: windowStart } },
-          { id: { in: [] } },
-        ],
+        OR: [{ lastLinkStChg: { gte: windowStart } }, { id: { in: [] } }],
       },
     ])
   })
 
   it('preserves CRC and node constraints', () => {
-    expect(buildInterfaceSnapshotWhere({
-      apicHostId: 'host-1',
-      view: 'crc',
-      windowStart,
-      stateChangedInterfaceIds: [],
-      crcInterfaceIds: ['if-2'],
-      nodeFilter: ['101'],
-    })).toEqual({
+    expect(
+      buildInterfaceSnapshotWhere({
+        apicHostId: 'host-1',
+        view: 'crc',
+        windowStart,
+        stateChangedInterfaceIds: [],
+        crcInterfaceIds: ['if-2'],
+        nodeFilter: ['101'],
+      }),
+    ).toEqual({
       apicHostId: 'host-1',
       id: { in: ['if-2'] },
       node: { in: ['101'] },

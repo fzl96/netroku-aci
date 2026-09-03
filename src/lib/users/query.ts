@@ -54,13 +54,24 @@ export async function getUsers(): Promise<SafeUser[]> {
   }
 
   try {
-    return await unstable_cache(async () => {
-      const users = await prisma.user.findMany({
-        orderBy: { createdAt: 'desc' },
-        select: { id: true, username: true, displayUsername: true, name: true, role: true, createdAt: true },
-      })
-      return users.map(toSafeUser)
-    }, ['users', 'all'], { tags: [USERS_TAG], revalidate: USERS_CACHE_SECONDS })()
+    return await unstable_cache(
+      async () => {
+        const users = await prisma.user.findMany({
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            username: true,
+            displayUsername: true,
+            name: true,
+            role: true,
+            createdAt: true,
+          },
+        })
+        return users.map(toSafeUser)
+      },
+      ['users', 'all'],
+      { tags: [USERS_TAG], revalidate: USERS_CACHE_SECONDS },
+    )()
   } catch (error) {
     if (error instanceof UserReadError) throw error
     throw new UserReadError('read-failed', { cause: error })

@@ -26,12 +26,14 @@
 ### Task 1: Versioned payload schemas and bearer authentication
 
 **Files:**
+
 - Create: `src/lib/schemas/legacy-ingest.ts`
 - Create: `src/lib/schemas/legacy-ingest.test.ts`
 - Create: `src/lib/legacy-ingest/auth.ts`
 - Create: `src/lib/legacy-ingest/auth.test.ts`
 
 **Interfaces:**
+
 - Produces: `legacyHealthPayloadSchema`, `legacyInterfacePayloadSchema`, `legacyEndpointPayloadSchema` and their inferred payload types.
 - Produces: `isLegacyIngestAuthorized(header: string | null, expected: string): boolean`.
 - Incoming contracts use snake_case exactly as documented in the approved design.
@@ -104,10 +106,12 @@ git commit -m "feat: define legacy ingestion contracts"
 ### Task 2: Dedicated legacy Prisma schema and migration
 
 **Files:**
+
 - Modify: `prisma/schema.prisma`
 - Create: `prisma/migrations/20260721090000_add_legacy_ingestion/migration.sql`
 
 **Interfaces:**
+
 - Produces Prisma models: `LegacyDevice`, `LegacyIngestReceipt`, `LegacyHealthSample`, `LegacyLogEntry`, `LegacyInterfaceSnapshot`, `LegacyInterfaceSample`, and `LegacyEndpoint`.
 - Produces `LegacyIngestFeature` enum with `health`, `interfaces`, and `endpoints` mapped to lowercase database values.
 
@@ -188,10 +192,12 @@ git commit -m "feat: add legacy ingestion storage"
 ### Task 3: Shared ingestion identity, canonical hashing, and idempotency
 
 **Files:**
+
 - Create: `src/lib/legacy-ingest/common.ts`
 - Create: `src/lib/legacy-ingest/common.test.ts`
 
 **Interfaces:**
+
 - Consumes: common envelope types from Task 1 and Prisma models from Task 2.
 - Produces: `normalizeLegacyKey(value: string): string`.
 - Produces: `canonicalPayloadHash(payload: unknown): string`.
@@ -234,6 +240,7 @@ git commit -m "feat: add idempotent legacy ingestion core"
 ### Task 4: Health persistence and health route
 
 **Files:**
+
 - Create: `src/lib/legacy-ingest/health.ts`
 - Create: `src/lib/legacy-ingest/health.test.ts`
 - Create: `src/lib/legacy-ingest/route.ts`
@@ -242,6 +249,7 @@ git commit -m "feat: add idempotent legacy ingestion core"
 - Modify: `src/lib/audit.ts`
 
 **Interfaces:**
+
 - Consumes: `LegacyHealthPayload`, auth helper, and shared ingestion wrapper.
 - Produces: `ingestLegacyHealth(payload): Promise<LegacyIngestResult>`.
 - Produces: `handleLegacyIngestRequest(request, schema, ingest, action): Promise<Response>`.
@@ -282,11 +290,13 @@ git commit -m "feat: ingest legacy health samples"
 ### Task 5: Interface snapshot reconciliation and samples
 
 **Files:**
+
 - Create: `src/lib/legacy-ingest/interfaces.ts`
 - Create: `src/lib/legacy-ingest/interfaces.test.ts`
 - Create: `src/app/api/ingest/legacy/interfaces/route.ts`
 
 **Interfaces:**
+
 - Consumes: `LegacyInterfacePayload` and shared ingestion/route helpers.
 - Produces: `computeLegacyDelta(current: bigint, previous: bigint | null): bigint | null`.
 - Produces: `ingestLegacyInterfaces(payload): Promise<LegacyIngestResult>`.
@@ -324,11 +334,13 @@ git commit -m "feat: ingest legacy interface history"
 ### Task 6: Endpoint lifecycle reconciliation
 
 **Files:**
+
 - Create: `src/lib/legacy-ingest/endpoints.ts`
 - Create: `src/lib/legacy-ingest/endpoints.test.ts`
 - Create: `src/app/api/ingest/legacy/endpoints/route.ts`
 
 **Interfaces:**
+
 - Consumes: `LegacyEndpointPayload` and shared ingestion/route helpers.
 - Produces: `planLegacyEndpointReconcile(active, fetched): LegacyEndpointPlan`.
 - Produces: `ingestLegacyEndpoints(payload): Promise<LegacyIngestResult>`.
@@ -366,10 +378,12 @@ git commit -m "feat: ingest legacy endpoint lifecycle"
 **Repository:** `netroku-cli`
 
 **Files:**
+
 - Create: `legacy_sync.py`
 - Create: `tests/test_legacy_sync.py`
 
 **Interfaces:**
+
 - Produces CLI modes `monitor`, `endpoint`, and `all` via `main(argv: Optional[Sequence[str]] = None) -> int`.
 - Produces import-safe helpers `load_inventory`, `merge_inventories`, `parse_f5_arp_files`, `normalize_interfaces`, `normalize_endpoints`, `build_health_payload`, `build_interface_payload`, and `build_endpoint_payload`.
 - The file imports no `netroku_cli` modules.
@@ -412,10 +426,12 @@ git commit -m "feat: add standalone legacy payload collector"
 **Repository:** `netroku-cli`
 
 **Files:**
+
 - Modify: `legacy_sync.py`
 - Modify: `tests/test_legacy_sync.py`
 
 **Interfaces:**
+
 - Consumes Task 7 normalization/payload helpers.
 - Produces `collect_device_work(work: DeviceWork, f5_lookup, run_id, collected_at) -> DeviceResult`.
 - Produces `publish_payload(session, base_url, token, feature, payload) -> PublishResult`.
@@ -466,11 +482,13 @@ git commit -m "feat: publish legacy snapshots with pooled SSH"
 **Repository:** `netroku-aci` unless a command says otherwise.
 
 **Files:**
+
 - Modify: `.env.example`
 - Modify: `README.md`
 - Modify: `docs/superpowers/specs/2026-07-21-legacy-device-ingestion-design.md` only if implementation names differ from the approved contract.
 
 **Interfaces:**
+
 - Documents server `LEGACY_INGEST_TOKEN`, collector `NETROKU_BASE_URL`, collector `NETROKU_LEGACY_INGEST_TOKEN`, default asset paths, modes, worker control, API routes, and deployment/migration commands.
 
 - [ ] **Step 1: Add environment and operations documentation**

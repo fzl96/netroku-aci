@@ -54,28 +54,29 @@ const requireSession = mock(async () => {
 })
 
 const apicHostFindMany = mock(async () => hostRows)
-const apicHostFindFirst = mock(async ({ where }: { where: { id: string } }) => (
-  hostRows.find(host => host.id === where.id) ?? null
-))
+const apicHostFindFirst = mock(
+  async ({ where }: { where: { id: string } }) =>
+    hostRows.find((host) => host.id === where.id) ?? null,
+)
 const endpointCount = mock(async ({ where }: { where: { isActive?: boolean } }) => {
   if (where.isActive === true) return activeTotal
   if (where.isActive === false) return historicalTotal
   return resultTotal
 })
-const endpointFindMany = mock(async ({ select }: {
-  select?: { vlan?: boolean; node?: boolean; interface?: boolean }
-}) => {
-  if (select?.vlan && !select.node && !select.interface) {
-    return [{ vlan: 'vlan-20' }, { vlan: 'vlan-10' }]
-  }
-  if (select?.node && !select.vlan && !select.interface) {
-    return [{ node: '102-101' }, { node: '103' }]
-  }
-  if (select?.interface && !select.vlan && !select.node) {
-    return [{ interface: 'eth1/10' }, { interface: 'eth1/2' }]
-  }
-  return endpointRows
-})
+const endpointFindMany = mock(
+  async ({ select }: { select?: { vlan?: boolean; node?: boolean; interface?: boolean } }) => {
+    if (select?.vlan && !select.node && !select.interface) {
+      return [{ vlan: 'vlan-20' }, { vlan: 'vlan-10' }]
+    }
+    if (select?.node && !select.vlan && !select.interface) {
+      return [{ node: '102-101' }, { node: '103' }]
+    }
+    if (select?.interface && !select.vlan && !select.node) {
+      return [{ interface: 'eth1/10' }, { interface: 'eth1/2' }]
+    }
+    return endpointRows
+  },
+)
 
 const prisma = {
   apicHost: { findMany: apicHostFindMany, findFirst: apicHostFindFirst },
@@ -87,14 +88,12 @@ type CacheCall = {
   options: { tags?: string[]; revalidate?: number }
 }
 const cacheCalls: CacheCall[] = []
-const unstableCache = mock((
-  operation: () => Promise<unknown>,
-  keyParts: string[],
-  options: CacheCall['options'],
-) => {
-  cacheCalls.push({ keyParts, options })
-  return operation
-})
+const unstableCache = mock(
+  (operation: () => Promise<unknown>, keyParts: string[], options: CacheCall['options']) => {
+    cacheCalls.push({ keyParts, options })
+    return operation
+  },
+)
 
 mock.module('@/lib/auth', () => ({
   AuthenticationRequiredError,
@@ -105,12 +104,8 @@ mock.module('@/lib/prisma', () => ({ prisma }))
 mock.module('next/cache', () => ({ unstable_cache: unstableCache, revalidateTag: () => {} }))
 mock.module('server-only', () => ({}))
 
-const {
-  getEndpointExportData,
-  getEndpointOverview,
-  getEndpointResults,
-  resolveEndpointHost,
-} = await import('./query')
+const { getEndpointExportData, getEndpointOverview, getEndpointResults, resolveEndpointHost } =
+  await import('./query')
 
 const BASE_PARAMS: EndpointPageParams = {
   hostId: 'host-1',
@@ -218,7 +213,7 @@ describe('getEndpointResults', () => {
 
     expect(result).toEqual({
       view: 'endpoint',
-      rows: ENDPOINT_ROWS.map(row => ({
+      rows: ENDPOINT_ROWS.map((row) => ({
         id: row.id,
         mac: row.mac,
         ip: row.ip,
@@ -234,11 +229,13 @@ describe('getEndpointResults', () => {
       })),
       pagination: { page: 2, pageSize: 10, total: 12, totalPages: 2 },
     })
-    expect(endpointFindMany).toHaveBeenCalledWith(expect.objectContaining({
-      skip: 10,
-      take: 10,
-      orderBy: { lastSeenAt: 'desc' },
-    }))
+    expect(endpointFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skip: 10,
+        take: 10,
+        orderBy: { lastSeenAt: 'desc' },
+      }),
+    )
   })
 
   it('groups port rows before pagination and keeps nested dates serialized', async () => {
@@ -251,16 +248,18 @@ describe('getEndpointResults', () => {
 
     expect(result).toEqual({
       view: 'port',
-      rows: [expect.objectContaining({
-        id: '101:eth1/1',
-        endpointCount: 2,
-        activeCount: 1,
-        historicalCount: 1,
-        lastSeenAt: '2026-01-03T00:00:00.000Z',
-        endpoints: expect.arrayContaining([
-          expect.objectContaining({ firstSeenAt: '2026-01-01T00:00:00.000Z' }),
-        ]),
-      })],
+      rows: [
+        expect.objectContaining({
+          id: '101:eth1/1',
+          endpointCount: 2,
+          activeCount: 1,
+          historicalCount: 1,
+          lastSeenAt: '2026-01-03T00:00:00.000Z',
+          endpoints: expect.arrayContaining([
+            expect.objectContaining({ firstSeenAt: '2026-01-01T00:00:00.000Z' }),
+          ]),
+        }),
+      ],
       pagination: { page: 1, pageSize: 'all', total: 1, totalPages: 1 },
     })
   })
@@ -300,10 +299,12 @@ describe('getEndpointExportData', () => {
   it('returns unauthorized before host or endpoint access', async () => {
     authenticationError = new AuthenticationRequiredError('Unauthorized')
 
-    await expect(getEndpointExportData({
-      hostId: 'host-1',
-      scope: 'all',
-    })).resolves.toEqual({ kind: 'unauthorized' })
+    await expect(
+      getEndpointExportData({
+        hostId: 'host-1',
+        scope: 'all',
+      }),
+    ).resolves.toEqual({ kind: 'unauthorized' })
     expect(apicHostFindMany).not.toHaveBeenCalled()
     expect(endpointFindMany).not.toHaveBeenCalled()
   })
@@ -311,20 +312,24 @@ describe('getEndpointExportData', () => {
   it('propagates authentication infrastructure failures', async () => {
     authenticationError = new Error('session database unavailable')
 
-    await expect(getEndpointExportData({
-      hostId: 'host-1',
-      scope: 'all',
-    })).rejects.toThrow('session database unavailable')
+    await expect(
+      getEndpointExportData({
+        hostId: 'host-1',
+        scope: 'all',
+      }),
+    ).rejects.toThrow('session database unavailable')
     expect(apicHostFindMany).not.toHaveBeenCalled()
     expect(endpointFindMany).not.toHaveBeenCalled()
   })
 
   it('validates the host and returns every matching serialized row without pagination', async () => {
-    await expect(getEndpointExportData({
-      hostId: 'host-1',
-      scope: 'filtered',
-      filters: { status: ['active'] },
-    })).resolves.toEqual({
+    await expect(
+      getEndpointExportData({
+        hostId: 'host-1',
+        scope: 'filtered',
+        filters: { status: ['active'] },
+      }),
+    ).resolves.toEqual({
       kind: 'ready',
       host: HOSTS[1],
       rows: expect.arrayContaining([
@@ -334,23 +339,29 @@ describe('getEndpointExportData', () => {
         }),
       ]),
     })
-    expect(endpointFindMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { apicHostId: 'host-1', isActive: true },
-      orderBy: { lastSeenAt: 'desc' },
-    }))
+    expect(endpointFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { apicHostId: 'host-1', isActive: true },
+        orderBy: { lastSeenAt: 'desc' },
+      }),
+    )
   })
 
   it('returns host-not-found and empty result variants', async () => {
-    await expect(getEndpointExportData({
-      hostId: 'missing',
-      scope: 'all',
-    })).resolves.toEqual({ kind: 'host-not-found' })
+    await expect(
+      getEndpointExportData({
+        hostId: 'missing',
+        scope: 'all',
+      }),
+    ).resolves.toEqual({ kind: 'host-not-found' })
 
     endpointRows = []
-    await expect(getEndpointExportData({
-      hostId: 'host-1',
-      scope: 'all',
-    })).resolves.toEqual({ kind: 'empty', host: HOSTS[1] })
+    await expect(
+      getEndpointExportData({
+        hostId: 'host-1',
+        scope: 'all',
+      }),
+    ).resolves.toEqual({ kind: 'empty', host: HOSTS[1] })
   })
 
   it('uses unambiguous cache keys for values that contain commas', async () => {

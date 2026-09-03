@@ -15,11 +15,13 @@
 ## File Structure
 
 **Create:**
+
 - `src/lib/apic/cron-resync.ts` — pure helpers + shared types: `DatasetResult`, `HostResult`, `isAuthorized()`, `summarizeResults()`.
 - `src/lib/apic/cron-resync.test.ts` — `bun:test` unit tests for the pure helpers.
 - `src/app/api/cron/resync/route.ts` — the new bearer-auth POST route.
 
 **Modify:**
+
 - `src/lib/apic/endpoints.ts` — add `resyncEndpoints(...)` (persistence extracted from the manual route).
 - `src/lib/apic/interfaces.ts` — add `resyncInterfaces(...)` (persistence extracted from the manual route).
 - `src/app/api/endpoints/resync/route.ts` — call `resyncEndpoints`, keep session + audit.
@@ -33,6 +35,7 @@
 ## Task 1: Extract `resyncEndpoints` into the endpoints lib
 
 **Files:**
+
 - Modify: `src/lib/apic/endpoints.ts` (append new function)
 - Modify: `src/app/api/endpoints/resync/route.ts` (call it)
 
@@ -203,6 +206,7 @@ git commit -m "refactor: extract resyncEndpoints into endpoints lib"
 ## Task 2: Extract `resyncInterfaces` into the interfaces lib
 
 **Files:**
+
 - Modify: `src/lib/apic/interfaces.ts` (append new function)
 - Modify: `src/app/api/interfaces/resync/route.ts` (call it)
 
@@ -455,6 +459,7 @@ git commit -m "refactor: extract resyncInterfaces into interfaces lib"
 ## Task 3: Pure helpers for the cron route (TDD)
 
 **Files:**
+
 - Create: `src/lib/apic/cron-resync.ts`
 - Test: `src/lib/apic/cron-resync.test.ts`
 
@@ -608,6 +613,7 @@ git commit -m "feat: add cron-resync auth and result-summary helpers"
 ## Task 4: The `/api/cron/resync` route
 
 **Files:**
+
 - Create: `src/app/api/cron/resync/route.ts`
 
 - [ ] **Step 1: Implement the route**
@@ -763,6 +769,7 @@ git commit -m "feat: add POST /api/cron/resync scheduled resync endpoint"
 ## Task 5: Document `SCHEDULER_TOKEN`
 
 **Files:**
+
 - Modify: `.env.example`
 - Modify: `.env` (local only — gitignored, not committed)
 
@@ -805,6 +812,7 @@ Run: `bun run dev`
 curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:3000/api/cron/resync \
   -H 'Content-Type: application/json' -d '{"hosts":[]}'
 ```
+
 Expected: `401`.
 
 - [ ] **Step 3: Reject an empty hosts array with a valid token (expect 400)**
@@ -816,6 +824,7 @@ curl -s -w "\n%{http_code}\n" -X POST http://localhost:3000/api/cron/resync \
   -H 'Authorization: Bearer <TOKEN>' -H 'Content-Type: application/json' \
   -d '{"hosts":[]}'
 ```
+
 Expected: body `{"error":"hosts must be a non-empty array"}`, status `400`.
 
 - [ ] **Step 4: Resync a real host (expect 200 + results)**
@@ -827,6 +836,7 @@ curl -s -X POST http://localhost:3000/api/cron/resync \
   -H 'Authorization: Bearer <TOKEN>' -H 'Content-Type: application/json' \
   -d '{"hosts":[{"apicHostId":"<ID>","username":"<APIC_USER>","password":"<APIC_PASS>"}]}' | jq
 ```
+
 Expected: `status: "success"` with `endpoints` and `interfaces` each showing `{ synced, total }`. Confirm the Endpoints and Interface Health pages show refreshed data, and the History page shows two `scheduler` audit rows.
 
 ---

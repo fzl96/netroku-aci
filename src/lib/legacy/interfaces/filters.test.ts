@@ -9,37 +9,43 @@ import {
 
 describe('legacy interface helpers', () => {
   test('combines inventory search, device, site, state, and presence filters', () => {
-    expect(buildLegacyInterfaceWhere({
-      query: 'uplink',
-      deviceIds: ['device-1'],
-      sites: ['HO'],
-      adminStates: ['up'],
-      operStates: ['down'],
-      presence: 'absent',
-    })).toEqual({
+    expect(
+      buildLegacyInterfaceWhere({
+        query: 'uplink',
+        deviceIds: ['device-1'],
+        sites: ['HO'],
+        adminStates: ['up'],
+        operStates: ['down'],
+        presence: 'absent',
+      }),
+    ).toEqual({
       AND: [
         { deviceId: { in: ['device-1'] } },
         { device: { site: { in: ['HO'] } } },
         { adminSt: { in: ['up'] } },
         { operSt: { in: ['down'] } },
         { present: false },
-        { OR: [
-          { ifName: { contains: 'uplink', mode: 'insensitive' } },
-          { description: { contains: 'uplink', mode: 'insensitive' } },
-          { ipAddress: { contains: 'uplink', mode: 'insensitive' } },
-          { device: { hostname: { contains: 'uplink', mode: 'insensitive' } } },
-          { device: { managementIp: { contains: 'uplink', mode: 'insensitive' } } },
-        ] },
+        {
+          OR: [
+            { ifName: { contains: 'uplink', mode: 'insensitive' } },
+            { description: { contains: 'uplink', mode: 'insensitive' } },
+            { ipAddress: { contains: 'uplink', mode: 'insensitive' } },
+            { device: { hostname: { contains: 'uplink', mode: 'insensitive' } } },
+            { device: { managementIp: { contains: 'uplink', mode: 'insensitive' } } },
+          ],
+        },
       ],
     })
   })
 
   test('combines view interface IDs with device and present constraints', () => {
-    expect(buildLegacyInterfaceWhere({
-      deviceIds: ['device-1'],
-      interfaceIds: ['if-1', 'if-2'],
-      presence: 'present',
-    })).toEqual({
+    expect(
+      buildLegacyInterfaceWhere({
+        deviceIds: ['device-1'],
+        interfaceIds: ['if-1', 'if-2'],
+        presence: 'present',
+      }),
+    ).toEqual({
       AND: [
         { deviceId: { in: ['device-1'] } },
         { id: { in: ['if-1', 'if-2'] } },
@@ -52,19 +58,21 @@ describe('legacy interface helpers', () => {
   })
 
   test('keeps interface counters exact when serializing database rows', () => {
-    expect(serializeLegacyInterfaceSample({
-      id: 'sample-1',
-      collectedAt: new Date('2026-07-21T01:02:03.000Z'),
-      adminSt: 'up',
-      operSt: 'down',
-      speed: '10G',
-      inputErrors: 9_007_199_254_740_993n,
-      outputErrors: 2n,
-      crcErrors: 3n,
-      dInputErrors: null,
-      dOutputErrors: 1n,
-      dCrcErrors: 2n,
-    })).toEqual({
+    expect(
+      serializeLegacyInterfaceSample({
+        id: 'sample-1',
+        collectedAt: new Date('2026-07-21T01:02:03.000Z'),
+        adminSt: 'up',
+        operSt: 'down',
+        speed: '10G',
+        inputErrors: 9_007_199_254_740_993n,
+        outputErrors: 2n,
+        crcErrors: 3n,
+        dInputErrors: null,
+        dOutputErrors: 1n,
+        dCrcErrors: 2n,
+      }),
+    ).toEqual({
       id: 'sample-1',
       collectedAt: '2026-07-21T01:02:03.000Z',
       adminSt: 'up',
@@ -87,7 +95,10 @@ describe('legacy interface helpers', () => {
 
   test('maps supported interface sorts with a stable tie-breaker', () => {
     expect(legacyInterfaceOrderBy('ifName', 'asc')).toEqual([{ ifName: 'asc' }, { id: 'asc' }])
-    expect(legacyInterfaceOrderBy('unknown', 'asc')).toEqual([{ lastSeenAt: 'desc' }, { id: 'asc' }])
+    expect(legacyInterfaceOrderBy('unknown', 'asc')).toEqual([
+      { lastSeenAt: 'desc' },
+      { id: 'asc' },
+    ])
   })
 
   test('normalizes interface table states to up or down', () => {

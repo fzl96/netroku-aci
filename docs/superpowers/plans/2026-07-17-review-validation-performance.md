@@ -21,12 +21,14 @@
 ### Task 1: Request-scoped APIC reader and HTTPS keep-alive
 
 **Files:**
+
 - Create: `src/lib/apic/read-cache.ts`
 - Create: `src/lib/apic/read-cache.test.ts`
 - Create: `src/lib/apic/client.test.ts`
 - Modify: `src/lib/apic/client.ts:1-56`
 
 **Interfaces:**
+
 - Produces: `ApicGetResult<T>`, `ApicReader`, and `createApicReader(host, token, fetcher?)`.
 - Produces: `apicAgent`, the bounded keep-alive HTTPS agent used by `apicFetch`.
 
@@ -92,10 +94,12 @@ Commit: `perf(apic): reuse connections and deduplicate review reads`
 ### Task 2: Static-port validation grouping
 
 **Files:**
+
 - Create: `src/lib/apic/apic.test.ts`
 - Modify: `src/lib/apic/apic.ts:1-81,143-166`
 
 **Interfaces:**
+
 - Consumes: `ApicReader` and `createApicReader` from Task 1.
 - Preserves: public validation signatures, adding only an optional reader argument for direct testing.
 
@@ -122,10 +126,12 @@ Commit: `perf(apic): group static port review reads`
 ### Task 3: Bridge-domain validation grouping
 
 **Files:**
+
 - Create: `src/lib/apic/bridge-domains/apic.test.ts`
 - Modify: `src/lib/apic/bridge-domains/apic.ts:1-268`
 
 **Interfaces:**
+
 - Consumes: `ApicReader` and `createApicReader` from Task 1.
 - Preserves: L2/L3 deploy and rollback validation results and write paths.
 
@@ -152,10 +158,12 @@ Commit: `perf(apic): group bridge domain review reads`
 ### Task 4: EPG validation grouping
 
 **Files:**
+
 - Create: `src/lib/apic/epgs/apic.test.ts`
 - Modify: `src/lib/apic/epgs/apic.ts:1-260,386-439`
 
 **Interfaces:**
+
 - Consumes: `ApicReader` and `createApicReader` from Task 1.
 - Preserves: unified and legacy EPG validation behavior, contract-role handling, and deployment grouping.
 
@@ -182,11 +190,13 @@ Commit: `perf(apic): group epg review reads`
 ### Task 5: Review and issue pagination
 
 **Files:**
+
 - Create: `src/components/review-pagination.ts`
 - Create: `src/components/review-pagination.test.ts`
 - Modify: `src/components/PreviewSection.tsx:1-430`
 
 **Interfaces:**
+
 - Produces: `REVIEW_PAGE_SIZE = 100` and `paginateReviewItems<T>(items, requestedPage)`.
 - Preserves: full-row validation summaries and actionable-row deployment.
 
@@ -222,9 +232,11 @@ Commit: `perf(ui): paginate workflow review results`
 ### Task 6: Full verification
 
 **Files:**
+
 - Verify all modified files.
 
 **Interfaces:**
+
 - Consumes all prior tasks.
 - Produces a verified implementation matching the approved design.
 

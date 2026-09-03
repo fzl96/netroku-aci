@@ -27,8 +27,12 @@ describe('parseFabricNodeRows', () => {
         fabricNode: {
           attributes: {
             dn: 'topology/pod-1/node-101',
-            id: '101', name: 'leaf-101', role: 'leaf',
-            model: 'N9K-C93180', serial: 'FDO123', fabricSt: 'active',
+            id: '101',
+            name: 'leaf-101',
+            role: 'leaf',
+            model: 'N9K-C93180',
+            serial: 'FDO123',
+            fabricSt: 'active',
           },
         },
       },
@@ -58,17 +62,24 @@ describe('parseTopSystemRows', () => {
       {
         topSystem: {
           attributes: {
-            dn: 'topology/pod-1/node-101/sys', id: '101',
-            state: 'in-service', version: 'n9000-15.2', systemUpTime: '01:02:03:04.00',
-            oobMgmtAddr: '10.0.0.1', podId: '1',
+            dn: 'topology/pod-1/node-101/sys',
+            id: '101',
+            state: 'in-service',
+            version: 'n9000-15.2',
+            systemUpTime: '01:02:03:04.00',
+            oobMgmtAddr: '10.0.0.1',
+            podId: '1',
           },
         },
       },
     ]
     const map = parseTopSystemRows(imdata)
     expect(map.get('101')).toEqual({
-      version: 'n9000-15.2', state: 'in-service',
-      uptime: '01:02:03:04.00', oobMgmtAddr: '10.0.0.1', podId: '1',
+      version: 'n9000-15.2',
+      state: 'in-service',
+      uptime: '01:02:03:04.00',
+      oobMgmtAddr: '10.0.0.1',
+      podId: '1',
     })
   })
 })
@@ -76,10 +87,31 @@ describe('parseTopSystemRows', () => {
 describe('mergeNodes', () => {
   it('fills operational fields from the topSystem map when present', () => {
     const fabricNodes = parseFabricNodeRows([
-      { fabricNode: { attributes: { dn: 'topology/pod-1/node-101', id: '101', role: 'leaf', fabricSt: 'active' } } },
+      {
+        fabricNode: {
+          attributes: {
+            dn: 'topology/pod-1/node-101',
+            id: '101',
+            role: 'leaf',
+            fabricSt: 'active',
+          },
+        },
+      },
     ])
     const topMap = parseTopSystemRows([
-      { topSystem: { attributes: { dn: 'topology/pod-1/node-101/sys', id: '101', state: 'in-service', version: 'v1', systemUpTime: 'up', oobMgmtAddr: '10.0.0.1', podId: '1' } } },
+      {
+        topSystem: {
+          attributes: {
+            dn: 'topology/pod-1/node-101/sys',
+            id: '101',
+            state: 'in-service',
+            version: 'v1',
+            systemUpTime: 'up',
+            oobMgmtAddr: '10.0.0.1',
+            podId: '1',
+          },
+        },
+      },
     ])
     const [row] = mergeNodes(fabricNodes, topMap)
     expect(row.version).toBe('v1')
@@ -90,7 +122,11 @@ describe('mergeNodes', () => {
 
   it('leaves operational fields null when no topSystem entry exists', () => {
     const fabricNodes = parseFabricNodeRows([
-      { fabricNode: { attributes: { dn: 'topology/pod-1/node-200', id: '200', fabricSt: 'inactive' } } },
+      {
+        fabricNode: {
+          attributes: { dn: 'topology/pod-1/node-200', id: '200', fabricSt: 'inactive' },
+        },
+      },
     ])
     const [row] = mergeNodes(fabricNodes, new Map())
     expect(row.version).toBeNull()
@@ -105,7 +141,10 @@ describe('parsePsuRows', () => {
         eqptPsu: {
           attributes: {
             dn: 'topology/pod-1/node-101/sys/ch/psuslot-1/psu',
-            id: '1', operSt: 'on', model: 'NXA-PAC-650', ser: 'PSU123',
+            id: '1',
+            operSt: 'on',
+            model: 'NXA-PAC-650',
+            ser: 'PSU123',
           },
         },
       },
@@ -126,7 +165,9 @@ describe('parseFanRows', () => {
         eqptFan: {
           attributes: {
             dn: 'topology/pod-1/node-101/sys/ch/ftslot-1/ft/fan-1',
-            id: '1', operSt: 'ok', model: 'NXA-FAN',
+            id: '1',
+            operSt: 'ok',
+            model: 'NXA-FAN',
           },
         },
       },
@@ -145,8 +186,16 @@ describe('isNodeOnline', () => {
   })
 
   it('treats in-service controllers as online even when fabricSt is not active', () => {
-    expect(isNodeOnline({ role: 'controller', fabricSt: 'unknown', state: 'in-service' } as NodeRow)).toBe(true)
-    expect(isNodeOnline({ role: 'controller', fabricSt: 'commissioned', state: 'in-service' } as NodeRow)).toBe(true)
+    expect(
+      isNodeOnline({ role: 'controller', fabricSt: 'unknown', state: 'in-service' } as NodeRow),
+    ).toBe(true)
+    expect(
+      isNodeOnline({
+        role: 'controller',
+        fabricSt: 'commissioned',
+        state: 'in-service',
+      } as NodeRow),
+    ).toBe(true)
   })
 })
 
@@ -163,14 +212,20 @@ describe('isComponentHealthy', () => {
 describe('summarizeNodes', () => {
   it('counts online nodes and failed components', () => {
     const nodes = [
-      { fabricSt: 'active' }, { fabricSt: 'active' }, { fabricSt: 'inactive' },
+      { fabricSt: 'active' },
+      { fabricSt: 'active' },
+      { fabricSt: 'inactive' },
     ] as NodeRow[]
     const components = [
-      { type: 'psu', operSt: 'on' }, { type: 'psu', operSt: 'shut' },
+      { type: 'psu', operSt: 'on' },
+      { type: 'psu', operSt: 'shut' },
       { type: 'fan', operSt: 'ok' },
     ] as ComponentRow[]
     expect(summarizeNodes(nodes, components)).toEqual({
-      nodesTotal: 3, nodesOnline: 2, componentsTotal: 3, componentsFailed: 1,
+      nodesTotal: 3,
+      nodesOnline: 2,
+      componentsTotal: 3,
+      componentsFailed: 1,
     })
   })
 })
@@ -218,12 +273,15 @@ describe('executeNodeResyncWrites', () => {
       },
     }
     const db = {
-      $transaction: async <T>(fn: (tx: {
-        nodeSnapshot: typeof nodeSnapshot
-        hardwareComponent: typeof hardwareComponent
-        nodeStatusSample: typeof nodeStatusSample
-        apicHost: typeof apicHost
-      }) => Promise<T>, options?: { timeout?: number }) => {
+      $transaction: async <T>(
+        fn: (tx: {
+          nodeSnapshot: typeof nodeSnapshot
+          hardwareComponent: typeof hardwareComponent
+          nodeStatusSample: typeof nodeStatusSample
+          apicHost: typeof apicHost
+        }) => Promise<T>,
+        options?: { timeout?: number },
+      ) => {
         expect(options).toEqual({ timeout: 30000 })
         calls.push('transaction:start')
         inTransaction = true
@@ -237,29 +295,33 @@ describe('executeNodeResyncWrites', () => {
     const result = await executeNodeResyncWrites(
       db as unknown as NodeWriteClient,
       'host-1',
-      [{
-        dn: 'topology/pod-1/node-101',
-        nodeId: '101',
-        name: 'leaf-101',
-        role: 'leaf',
-        model: '',
-        serial: '',
-        version: null,
-        fabricSt: 'active',
-        state: null,
-        podId: '1',
-        uptime: null,
-        oobMgmtAddr: null,
-      }],
-      [{
-        dn: 'topology/pod-1/node-101/sys/ch/psuslot-1/psu',
-        nodeId: '101',
-        type: 'psu',
-        name: '1',
-        operSt: 'on',
-        model: '',
-        serial: '',
-      }],
+      [
+        {
+          dn: 'topology/pod-1/node-101',
+          nodeId: '101',
+          name: 'leaf-101',
+          role: 'leaf',
+          model: '',
+          serial: '',
+          version: null,
+          fabricSt: 'active',
+          state: null,
+          podId: '1',
+          uptime: null,
+          oobMgmtAddr: null,
+        },
+      ],
+      [
+        {
+          dn: 'topology/pod-1/node-101/sys/ch/psuslot-1/psu',
+          nodeId: '101',
+          type: 'psu',
+          name: '1',
+          operSt: 'on',
+          model: '',
+          serial: '',
+        },
+      ],
       new Date('2026-06-19T00:00:00Z'),
     )
 

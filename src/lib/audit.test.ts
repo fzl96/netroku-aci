@@ -19,12 +19,16 @@ describe('audit history cache invalidation', () => {
   })
 
   it('does not invalidate when audit persistence fails', async () => {
-    const createAuditLog = mock(async () => { throw new Error('database unavailable') })
+    const createAuditLog = mock(async () => {
+      throw new Error('database unavailable')
+    })
     const revalidateTag = mock(() => undefined)
     const reportError = mock(() => undefined)
     const recordAudit = createAuditRecorder({ createAuditLog, revalidateTag, reportError })
 
-    await expect(recordAudit({ userName: 'operator', action: 'resync.nodes' })).resolves.toBeUndefined()
+    await expect(
+      recordAudit({ userName: 'operator', action: 'resync.nodes' }),
+    ).resolves.toBeUndefined()
 
     expect(revalidateTag).not.toHaveBeenCalled()
     expect(reportError).toHaveBeenCalledTimes(1)

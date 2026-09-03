@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 
 type Validator<TRow> = (
   rawRows: Record<string, string>[],
-  headers: string[]
+  headers: string[],
 ) => { rows: TRow[]; errors: CsvValidationError[] }
 
 interface UploadSectionProps<TRow> {
@@ -30,7 +30,7 @@ export function UploadSection<TRow = ParsedRow>({
   const [dragging, setDragging] = useState(false)
   const [errors, setErrors] = useState<CsvValidationError[]>([])
 
-  const validate = (validator ?? (validateCsvRows as unknown as Validator<TRow>))
+  const validate = validator ?? (validateCsvRows as unknown as Validator<TRow>)
   const helpText = requiredColumnsHelp ?? DEFAULT_REQUIRED_COLUMNS_HELP
 
   function processFile(file: File) {
@@ -95,8 +95,21 @@ export function UploadSection<TRow = ParsedRow>({
             fill="none"
             className="mx-auto mb-3 text-faint transition-opacity group-hover:opacity-70"
           >
-            <rect x="6" y="2" width="20" height="28" rx="2" stroke="currentColor" strokeWidth="1.5" />
-            <path d="M11 11h10M11 16h10M11 21h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            <rect
+              x="6"
+              y="2"
+              width="20"
+              height="28"
+              rx="2"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M11 11h10M11 16h10M11 21h6"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
           </svg>
           <p className="text-sm font-medium text-muted-foreground">Drop your CSV here</p>
           <p className="mt-1 text-xs text-subtle">or click to browse</p>

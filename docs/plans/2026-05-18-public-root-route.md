@@ -13,6 +13,7 @@
 ### Task 1: Cover the public root route
 
 **Files:**
+
 - Create: `src/proxy.test.ts`
 - Modify: `src/proxy.ts`
 

@@ -13,9 +13,11 @@
 ### Task 1: Add opt-in submenu search
 
 **Files:**
+
 - Modify: `src/app/(app)/endpoints/EndpointsClient.tsx`
 
 **Step 1: Implement local searchable state**
+
 - add a `searchable` prop to the submenu component.
 - keep a local query string per submenu.
 - derive visible options from that query.
@@ -23,20 +25,24 @@
 - render a no-results item when filtering removes every option.
 
 **Step 2: Enable only the intended branches**
+
 - set `searchable` for VLAN.
 - set `searchable` for Interface.
 - leave Node and Status unchanged.
 
 **Step 3: Verify**
 Run:
+
 ```bash
 bun test
 npx eslint "src/app/(app)/endpoints/EndpointsClient.tsx" src/lib/endpoints/query.ts src/lib/endpoints/query.test.ts
 npm run build
 ```
+
 Expected: all PASS.
 
 **Step 4: Manual smoke test**
+
 - VLAN submenu shows a search field.
 - Interface submenu shows a search field.
 - Node and Status do not.
@@ -44,6 +50,7 @@ Expected: all PASS.
 - selecting a filtered result still applies immediately.
 
 **Step 5: Commit**
+
 ```bash
 git add src/app/'(app)'/endpoints/EndpointsClient.tsx docs/plans/2026-05-17-endpoint-filter-submenu-search-design.md docs/plans/2026-05-17-endpoint-filter-submenu-search.md
 git commit -m "feat: add search to endpoint filter submenus"

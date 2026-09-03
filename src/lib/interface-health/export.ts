@@ -76,42 +76,43 @@ function safeFilenameSegment(value: string): string {
       .trim()
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-    || 'host'
+      .replace(/^-+|-+$/g, '') || 'host'
   )
 }
 
 export function buildInterfaceSamplesCsv(samples: InterfaceExportSample[]): string {
   const lines: string[] = [INTERFACE_EXPORT_HEADER.join(',')]
   for (const sample of samples) {
-    lines.push([
-      csvEscape(sample.sampledAt.toISOString()),
-      csvEscape(sample.interface.node),
-      csvEscape(sample.interface.ifName),
-      csvEscape(sample.interface.usage),
-      csvEscape(sample.interface.description),
-      csvEscape(sample.adminSt),
-      csvEscape(sample.operSt),
-      csvEscape(sample.operSpeed),
-      csvEscape(sample.rxBytes.toString()),
-      csvEscape(sample.rxPkts.toString()),
-      csvEscape(sample.rxErrors.toString()),
-      csvEscape(sample.rxDiscards.toString()),
-      csvEscape(sample.rxCrcErrors.toString()),
-      csvEscape(sample.rxAlignErrors.toString()),
-      csvEscape(sample.txBytes.toString()),
-      csvEscape(sample.txPkts.toString()),
-      csvEscape(sample.txErrors.toString()),
-      csvEscape(sample.txDiscards.toString()),
-      csvEscape(bigIntOrEmpty(sample.dRxBytes)),
-      csvEscape(bigIntOrEmpty(sample.dRxErrors)),
-      csvEscape(bigIntOrEmpty(sample.dRxDiscards)),
-      csvEscape(bigIntOrEmpty(sample.dRxCrcErrors)),
-      csvEscape(bigIntOrEmpty(sample.dRxAlignErrors)),
-      csvEscape(bigIntOrEmpty(sample.dTxBytes)),
-      csvEscape(bigIntOrEmpty(sample.dTxErrors)),
-      csvEscape(bigIntOrEmpty(sample.dTxDiscards)),
-    ].join(','))
+    lines.push(
+      [
+        csvEscape(sample.sampledAt.toISOString()),
+        csvEscape(sample.interface.node),
+        csvEscape(sample.interface.ifName),
+        csvEscape(sample.interface.usage),
+        csvEscape(sample.interface.description),
+        csvEscape(sample.adminSt),
+        csvEscape(sample.operSt),
+        csvEscape(sample.operSpeed),
+        csvEscape(sample.rxBytes.toString()),
+        csvEscape(sample.rxPkts.toString()),
+        csvEscape(sample.rxErrors.toString()),
+        csvEscape(sample.rxDiscards.toString()),
+        csvEscape(sample.rxCrcErrors.toString()),
+        csvEscape(sample.rxAlignErrors.toString()),
+        csvEscape(sample.txBytes.toString()),
+        csvEscape(sample.txPkts.toString()),
+        csvEscape(sample.txErrors.toString()),
+        csvEscape(sample.txDiscards.toString()),
+        csvEscape(bigIntOrEmpty(sample.dRxBytes)),
+        csvEscape(bigIntOrEmpty(sample.dRxErrors)),
+        csvEscape(bigIntOrEmpty(sample.dRxDiscards)),
+        csvEscape(bigIntOrEmpty(sample.dRxCrcErrors)),
+        csvEscape(bigIntOrEmpty(sample.dRxAlignErrors)),
+        csvEscape(bigIntOrEmpty(sample.dTxBytes)),
+        csvEscape(bigIntOrEmpty(sample.dTxErrors)),
+        csvEscape(bigIntOrEmpty(sample.dTxDiscards)),
+      ].join(','),
+    )
   }
   return lines.join('\n') + '\n'
 }

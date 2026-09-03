@@ -21,10 +21,12 @@
 ### Task 1: Restore focused exact static-port validators
 
 **Files:**
+
 - Create: `src/lib/apic/static-port-exact.ts`
 - Create: `src/lib/apic/static-port-exact.test.ts`
 
 **Interfaces:**
+
 - Consumes: `ApicReader`, `createApicReader`, the static-port path builders, and `ParsedRow`.
 - Produces: `validateDeployRowsExact(rows, host, token, reader?)` and `validateRollbackRowsExact(rows, host, token, reader?)`.
 
@@ -90,12 +92,14 @@ Commit: `perf(apic): restore exact validation for small reviews`
 ### Task 2: Add the 100-row hybrid dispatcher
 
 **Files:**
+
 - Create: `src/lib/apic/static-port-strategy.ts`
 - Create: `src/lib/apic/static-port-strategy.test.ts`
 - Modify: `src/lib/apic/apic.ts`
 - Modify: `src/lib/apic/apic.test.ts`
 
 **Interfaces:**
+
 - Consumes: exact validators from Task 1 and the existing snapshot loader.
 - Produces: `STATIC_PORT_BULK_THRESHOLD`, `selectStaticPortValidationStrategy(rowCount)`, `validateDeployRowsFromSnapshot`, and `validateRollbackRowsFromSnapshot`.
 - Preserves: public `validateDeployRows(rows, host, token)` and `validateRollbackRows(rows, host, token)` route-handler signatures.
@@ -181,9 +185,11 @@ Commit: `perf(apic): select validation strategy by row count`
 ### Task 3: Verification and PR preparation
 
 **Files:**
+
 - Verify all files changed by Tasks 1 and 2.
 
 **Interfaces:**
+
 - Consumes: complete hybrid validation.
 - Produces: verified commits ready to publish as a follow-up PR.
 

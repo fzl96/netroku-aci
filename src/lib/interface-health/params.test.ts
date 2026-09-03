@@ -30,8 +30,11 @@ describe('parseInterfaceHealthPageParams', () => {
   })
 
   it('splits the comma-separated node filter and drops blanks', () => {
-    expect(parseInterfaceHealthPageParams({ node: 'leaf-1, leaf-2 ,,leaf-3' }).nodes)
-      .toEqual(['leaf-1', 'leaf-2', 'leaf-3'])
+    expect(parseInterfaceHealthPageParams({ node: 'leaf-1, leaf-2 ,,leaf-3' }).nodes).toEqual([
+      'leaf-1',
+      'leaf-2',
+      'leaf-3',
+    ])
   })
 
   it('rejects invalid pages and page sizes', () => {
@@ -66,17 +69,23 @@ describe('parseInterfaceHealthPageParams', () => {
   })
 
   it('ranks by windowed CRC total in the CRC view unless a counter column is chosen', () => {
-    expect(parseInterfaceHealthPageParams({ view: 'crc' }).sort)
-      .toEqual({ kind: 'crc-window', direction: 'desc' })
-    expect(parseInterfaceHealthPageParams({ view: 'crc', sort: 'crcWindowTotal', dir: 'asc' }).sort)
-      .toEqual({ kind: 'crc-window', direction: 'asc' })
-    expect(parseInterfaceHealthPageParams({ view: 'crc', sort: 'rxErrors' }).sort)
-      .toEqual({ kind: 'counter', sort: { key: 'rxErrors', direction: 'desc', mode: 'delta' } })
+    expect(parseInterfaceHealthPageParams({ view: 'crc' }).sort).toEqual({
+      kind: 'crc-window',
+      direction: 'desc',
+    })
+    expect(
+      parseInterfaceHealthPageParams({ view: 'crc', sort: 'crcWindowTotal', dir: 'asc' }).sort,
+    ).toEqual({ kind: 'crc-window', direction: 'asc' })
+    expect(parseInterfaceHealthPageParams({ view: 'crc', sort: 'rxErrors' }).sort).toEqual({
+      kind: 'counter',
+      sort: { key: 'rxErrors', direction: 'desc', mode: 'delta' },
+    })
   })
 
   it('ignores the CRC-only sort key outside the CRC view', () => {
-    expect(parseInterfaceHealthPageParams({ sort: 'crcWindowTotal' }).sort)
-      .toEqual({ kind: 'natural' })
+    expect(parseInterfaceHealthPageParams({ sort: 'crcWindowTotal' }).sort).toEqual({
+      kind: 'natural',
+    })
   })
 })
 
@@ -92,18 +101,20 @@ describe('buildInterfaceHealthPageUrl', () => {
     const base = parseInterfaceHealthPageParams({ apic: 'host-1' })
     expect(buildInterfaceHealthPageUrl(base)).toBe('/interface-health?apic=host-1')
 
-    expect(buildInterfaceHealthPageUrl({
-      ...base,
-      query: 'eth1',
-      nodes: ['leaf-1', 'leaf-2'],
-      page: 3,
-      pageSize: 'all',
-      view: 'crc',
-      window: '30d',
-      counterMode: 'current',
-    })).toBe(
-      '/interface-health?apic=host-1&view=crc&window=30d&query=eth1'
-      + '&node=leaf-1%2Cleaf-2&mode=current&page=3&pageSize=all',
+    expect(
+      buildInterfaceHealthPageUrl({
+        ...base,
+        query: 'eth1',
+        nodes: ['leaf-1', 'leaf-2'],
+        page: 3,
+        pageSize: 'all',
+        view: 'crc',
+        window: '30d',
+        counterMode: 'current',
+      }),
+    ).toBe(
+      '/interface-health?apic=host-1&view=crc&window=30d&query=eth1' +
+        '&node=leaf-1%2Cleaf-2&mode=current&page=3&pageSize=all',
     )
   })
 
@@ -111,13 +122,19 @@ describe('buildInterfaceHealthPageUrl', () => {
     const params = parseInterfaceHealthPageParams({ apic: 'host-1', window: '30d' })
     expect(params.window).toBe('30d')
     expect(buildInterfaceHealthPageUrl(params)).toBe('/interface-health?apic=host-1')
-    expect(buildInterfaceHealthPageUrl({ ...params, view: 'state-changed' }))
-      .toBe('/interface-health?apic=host-1&view=state-changed&window=30d')
+    expect(buildInterfaceHealthPageUrl({ ...params, view: 'state-changed' })).toBe(
+      '/interface-health?apic=host-1&view=state-changed&window=30d',
+    )
   })
 
   it('round-trips through the parser', () => {
     const params = parseInterfaceHealthPageParams({
-      apic: 'host-9', view: 'state-changed', query: 'po1', node: 'leaf-4', page: '2', mode: 'current',
+      apic: 'host-9',
+      view: 'state-changed',
+      query: 'po1',
+      node: 'leaf-4',
+      page: '2',
+      mode: 'current',
     })
     const url = buildInterfaceHealthPageUrl(params)
     const parsed = parseInterfaceHealthPageParams(

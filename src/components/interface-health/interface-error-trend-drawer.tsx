@@ -1,15 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ReferenceArea,
-  ReferenceLine,
-  XAxis,
-  YAxis,
-} from 'recharts'
+import { Bar, BarChart, CartesianGrid, ReferenceArea, ReferenceLine, XAxis, YAxis } from 'recharts'
 import {
   Sheet,
   SheetContent,
@@ -89,18 +81,17 @@ export function InterfaceErrorTrendDrawer({
   const [drawerMode, setDrawerMode] = useState<'errors' | 'status'>('errors')
   const [range, setRange] = useState<ErrorTrendRange>(DEFAULT_ERROR_TREND_RANGE)
 
-  const [errorResult, setErrorResult] = useState<DrawerRequestResult<ErrorTrendPoint[]> | null>(null)
-  const [statusResult, setStatusResult] = useState<DrawerRequestResult<InterfaceStatusDetails> | null>(null)
+  const [errorResult, setErrorResult] = useState<DrawerRequestResult<ErrorTrendPoint[]> | null>(
+    null,
+  )
+  const [statusResult, setStatusResult] =
+    useState<DrawerRequestResult<InterfaceStatusDetails> | null>(null)
   const [hidden, setHidden] = useState<Set<string>>(defaultHidden)
   const [onlyChanges, setOnlyChanges] = useState(false)
 
   const selectedId = selected?.id ?? null
-  const errorRequestKey = selectedId
-    ? makeDrawerRequestKey('errors', selectedId, range)
-    : null
-  const statusRequestKey = selectedId
-    ? makeDrawerRequestKey('status', selectedId, range)
-    : null
+  const errorRequestKey = selectedId ? makeDrawerRequestKey('errors', selectedId, range) : null
+  const statusRequestKey = selectedId ? makeDrawerRequestKey('status', selectedId, range) : null
   const {
     data: errorData,
     loading: errorLoading,
@@ -170,7 +161,10 @@ export function InterfaceErrorTrendDrawer({
 
   const isErrorsEmpty = !errorData || errorData.length === 0
 
-  const resetTimestamps = useMemo(() => (errorData ? findResetTimestamps(errorData) : []), [errorData])
+  const resetTimestamps = useMemo(
+    () => (errorData ? findResetTimestamps(errorData) : []),
+    [errorData],
+  )
   const gaps = useMemo(() => (errorData ? findGapSegments(errorData) : []), [errorData])
   const displayData = useMemo(
     () => (errorData ? insertGapBreaks(errorData, gaps) : []),
@@ -190,13 +184,15 @@ export function InterfaceErrorTrendDrawer({
         if (!open) onClose()
       }}
     >
-      <SheetContent side="right" className="flex w-full flex-col gap-4 p-6 data-[side=right]:sm:max-w-3xl overflow-y-auto">
-        <SheetHeader className="p-0 space-y-3">
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col gap-4 overflow-y-auto p-6 data-[side=right]:sm:max-w-3xl"
+      >
+        <SheetHeader className="space-y-3 p-0">
           <div className="flex items-center justify-between gap-4">
             <div>
               <SheetTitle className="text-base font-semibold">
-                Node {selected?.node || '—'} /{' '}
-                <span className="font-mono">{selected?.ifName}</span>
+                Node {selected?.node || '—'} / <span className="font-mono">{selected?.ifName}</span>
               </SheetTitle>
               <SheetDescription className="mt-0.5 truncate text-xs">
                 {selected?.description || 'No description'}
@@ -246,9 +242,9 @@ export function InterfaceErrorTrendDrawer({
         {drawerMode === 'errors' ? (
           <>
             <p className="text-[11px] leading-relaxed text-muted-foreground">
-              Each bar is the number of new errors counted since the previous sample —
-              a per-interval change, not a running total. Taller bars mean more errors
-              in that interval; no bar means none. Click a label below to show or hide a series.
+              Each bar is the number of new errors counted since the previous sample — a
+              per-interval change, not a running total. Taller bars mean more errors in that
+              interval; no bar means none. Click a label below to show or hide a series.
             </p>
 
             {/* Clickable legend */}
@@ -390,35 +386,51 @@ export function InterfaceErrorTrendDrawer({
                 {/* Status Summary Grid */}
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   <div className="rounded-lg border border-border bg-muted/40 p-3">
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Admin State</div>
-                    <div className="mt-1 font-mono text-sm font-medium">{statusData.adminSt || '—'}</div>
+                    <div className="text-[10px] tracking-wider text-muted-foreground uppercase">
+                      Admin State
+                    </div>
+                    <div className="mt-1 font-mono text-sm font-medium">
+                      {statusData.adminSt || '—'}
+                    </div>
                   </div>
                   <div className="rounded-lg border border-border bg-muted/40 p-3">
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Oper State</div>
+                    <div className="text-[10px] tracking-wider text-muted-foreground uppercase">
+                      Oper State
+                    </div>
                     <div className="mt-1">
                       <OperStBadge st={statusData.operSt} adminSt={statusData.adminSt} />
                     </div>
                   </div>
                   <div className="rounded-lg border border-border bg-muted/40 p-3">
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Speed</div>
+                    <div className="text-[10px] tracking-wider text-muted-foreground uppercase">
+                      Speed
+                    </div>
                     <div className="mt-1 text-sm font-medium">{statusData.operSpeed || '—'}</div>
                   </div>
                   <div className="col-span-2 rounded-lg border border-border bg-muted/40 p-3 sm:col-span-3">
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Last Link Change</div>
+                    <div className="text-[10px] tracking-wider text-muted-foreground uppercase">
+                      Last Link Change
+                    </div>
                     <div className="mt-1 text-sm font-medium">
                       {fmtDate(statusData.lastLinkStChg)}{' '}
-                      <span className="text-xs text-muted-foreground">({fmtRelative(statusData.lastLinkStChg)})</span>
+                      <span className="text-xs text-muted-foreground">
+                        ({fmtRelative(statusData.lastLinkStChg)})
+                      </span>
                     </div>
                   </div>
                   <div className="col-span-2 rounded-lg border border-border bg-muted/40 p-3 sm:col-span-3">
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Distinguished Name (DN)</div>
-                    <div className="mt-1 font-mono text-xs break-all text-muted-foreground">{statusData.dn}</div>
+                    <div className="text-[10px] tracking-wider text-muted-foreground uppercase">
+                      Distinguished Name (DN)
+                    </div>
+                    <div className="mt-1 font-mono text-xs break-all text-muted-foreground">
+                      {statusData.dn}
+                    </div>
                   </div>
                 </div>
 
                 {/* History Header & Filter Toggle */}
                 <div className="flex items-center justify-between gap-2 pt-2">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                  <h4 className="text-xs font-semibold tracking-wider text-foreground uppercase">
                     State Transition History ({filteredStatusSamples.length})
                   </h4>
                   <button
@@ -438,7 +450,7 @@ export function InterfaceErrorTrendDrawer({
                 {/* History Table */}
                 <div className="max-h-[320px] overflow-y-auto rounded-lg border border-border">
                   <table className="w-full text-left text-xs">
-                    <thead className="sticky top-0 bg-muted/90 backdrop-blur border-b border-border text-muted-foreground font-medium">
+                    <thead className="sticky top-0 border-b border-border bg-muted/90 font-medium text-muted-foreground backdrop-blur">
                       <tr>
                         <th className="px-3 py-2">Timestamp</th>
                         <th className="px-3 py-2">Admin</th>
@@ -451,7 +463,9 @@ export function InterfaceErrorTrendDrawer({
                       {filteredStatusSamples.length === 0 ? (
                         <tr>
                           <td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">
-                            {onlyChanges ? 'No state changes recorded in this range.' : 'No resync samples in this range.'}
+                            {onlyChanges
+                              ? 'No state changes recorded in this range.'
+                              : 'No resync samples in this range.'}
                           </td>
                         </tr>
                       ) : (
@@ -460,17 +474,21 @@ export function InterfaceErrorTrendDrawer({
                             key={s.id}
                             className={[
                               'transition-colors',
-                              s.isStateChange ? 'bg-amber-500/5 dark:bg-amber-500/10 font-medium' : 'hover:bg-muted/50',
+                              s.isStateChange
+                                ? 'bg-amber-500/5 font-medium dark:bg-amber-500/10'
+                                : 'hover:bg-muted/50',
                             ].join(' ')}
                           >
-                            <td className="px-3 py-2 tabular-nums text-muted-foreground">
+                            <td className="px-3 py-2 text-muted-foreground tabular-nums">
                               {fmtDate(s.sampledAt)}
                             </td>
                             <td className="px-3 py-2 text-muted-foreground">{s.adminSt || '—'}</td>
                             <td className="px-3 py-2">
                               <OperStBadge st={s.operSt} adminSt={s.adminSt} />
                             </td>
-                            <td className="px-3 py-2 text-muted-foreground">{s.operSpeed || '—'}</td>
+                            <td className="px-3 py-2 text-muted-foreground">
+                              {s.operSpeed || '—'}
+                            </td>
                             <td className="px-3 py-2 text-right">
                               {s.isStateChange ? (
                                 <span className="inline-flex items-center gap-1 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">

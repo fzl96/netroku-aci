@@ -17,11 +17,11 @@ All APIC traffic is proxied through Next.js Route Handlers. The browser never ca
 
 ### Route Handlers
 
-| Route | Purpose |
-|---|---|
-| `POST /api/apic/login` | Forward credentials to APIC `/api/aaaLogin.json`; return token |
+| Route                     | Purpose                                                                   |
+| ------------------------- | ------------------------------------------------------------------------- |
+| `POST /api/apic/login`    | Forward credentials to APIC `/api/aaaLogin.json`; return token            |
 | `POST /api/apic/validate` | For each CSV row, GET the static port path on APIC; return per-row status |
-| `POST /api/apic/deploy` | POST only `deploy`-status rows to APIC; return per-row result |
+| `POST /api/apic/deploy`   | POST only `deploy`-status rows to APIC; return per-row result             |
 
 ### State Management
 
@@ -49,28 +49,28 @@ All state lives in React (`useState`) — no database, no session storage, no pe
 tenant,ap,epg,vlan,node1,node2,port_type,interface_or_ipg,mode,immediacy
 ```
 
-| Column | Type | Rules |
-|---|---|---|
-| `tenant` | string | Required, non-empty |
-| `ap` | string | Required, non-empty |
-| `epg` | string | Required, non-empty |
-| `vlan` | integer | Required, 1–4094 |
-| `node1` | integer | Required |
-| `node2` | integer | Required when `port_type=vpc`; must be blank otherwise |
-| `port_type` | enum | `vpc`, `pc`, or `port` |
-| `interface_or_ipg` | string | Required, non-empty |
-| `mode` | enum | `regular`, `native`, or `untagged` |
-| `immediacy` | enum | `immediate` or `lazy` |
+| Column             | Type    | Rules                                                  |
+| ------------------ | ------- | ------------------------------------------------------ |
+| `tenant`           | string  | Required, non-empty                                    |
+| `ap`               | string  | Required, non-empty                                    |
+| `epg`              | string  | Required, non-empty                                    |
+| `vlan`             | integer | Required, 1–4094                                       |
+| `node1`            | integer | Required                                               |
+| `node2`            | integer | Required when `port_type=vpc`; must be blank otherwise |
+| `port_type`        | enum    | `vpc`, `pc`, or `port`                                 |
+| `interface_or_ipg` | string  | Required, non-empty                                    |
+| `mode`             | enum    | `regular`, `native`, or `untagged`                     |
+| `immediacy`        | enum    | `immediate` or `lazy`                                  |
 
 `pod` is hardcoded to `1` — not a CSV column.
 
 ### Port type semantics
 
-| `port_type` | `node2` | `interface_or_ipg` | Used for |
-|---|---|---|---|
-| `vpc` | required | IPG name | Virtual port-channel across two leaves |
-| `pc` | blank | IPG name | Port-channel on a single leaf |
-| `port` | blank | Interface name (e.g. `eth1/1`) | Single physical port |
+| `port_type` | `node2`  | `interface_or_ipg`             | Used for                               |
+| ----------- | -------- | ------------------------------ | -------------------------------------- |
+| `vpc`       | required | IPG name                       | Virtual port-channel across two leaves |
+| `pc`        | blank    | IPG name                       | Port-channel on a single leaf          |
+| `port`      | blank    | Interface name (e.g. `eth1/1`) | Single physical port                   |
 
 ---
 
@@ -78,11 +78,11 @@ tenant,ap,epg,vlan,node1,node2,port_type,interface_or_ipg,mode,immediacy
 
 Pod is always `1`.
 
-| `port_type` | APIC path segment |
-|---|---|
-| `vpc` | `topology/pod-1/protpaths-{node1}-{node2}/pathep-[{interface_or_ipg}]` |
-| `pc` | `topology/pod-1/paths-{node1}/pathep-[{interface_or_ipg}]` |
-| `port` | `topology/pod-1/paths-{node1}/pathep-[{interface_or_ipg}]` |
+| `port_type` | APIC path segment                                                      |
+| ----------- | ---------------------------------------------------------------------- |
+| `vpc`       | `topology/pod-1/protpaths-{node1}-{node2}/pathep-[{interface_or_ipg}]` |
+| `pc`        | `topology/pod-1/paths-{node1}/pathep-[{interface_or_ipg}]`             |
+| `port`      | `topology/pod-1/paths-{node1}/pathep-[{interface_or_ipg}]`             |
 
 Full MO path for a static port binding:
 
@@ -144,11 +144,11 @@ Shows a loading state during the check (spinner or skeleton rows).
 
 **Row status (left border strip):**
 
-| Status | Border color | Row text | Meaning |
-|---|---|---|---|
-| `deploy` | Green `#16a34a` | Full opacity | Will be deployed |
-| `exists` | Amber `#d97706` | Dimmed | Already exists, will skip |
-| `error` | Red `#dc2626` | Dimmed | Check failed (APIC error) |
+| Status   | Border color    | Row text     | Meaning                   |
+| -------- | --------------- | ------------ | ------------------------- |
+| `deploy` | Green `#16a34a` | Full opacity | Will be deployed          |
+| `exists` | Amber `#d97706` | Dimmed       | Already exists, will skip |
+| `error`  | Red `#dc2626`   | Dimmed       | Check failed (APIC error) |
 
 Footer: summary line (`N to deploy · N skipped · N error`) + "Deploy N rows →" button.
 The deploy button is disabled if there are zero `deploy`-status rows.
@@ -165,19 +165,19 @@ A "Start over" button resets all state.
 
 ## 5. Visual Design
 
-| Token | Value |
-|---|---|
-| Background | `#f5f3ef` (warm off-white) |
-| Surface (card) | `#ffffff` |
-| Border | `#e8e2db` |
-| Text primary | `#1a1814` |
-| Text secondary | `#a89b8f` |
-| Accent / CTA | `#cf6600` (warm orange) |
-| Success | `#16a34a` |
-| Warning (exists) | `#d97706` |
-| Error | `#dc2626` |
-| Heading font | Lora (serif), weights 400/500/600 |
-| Body / UI font | Inter (sans-serif) |
+| Token            | Value                             |
+| ---------------- | --------------------------------- |
+| Background       | `#f5f3ef` (warm off-white)        |
+| Surface (card)   | `#ffffff`                         |
+| Border           | `#e8e2db`                         |
+| Text primary     | `#1a1814`                         |
+| Text secondary   | `#a89b8f`                         |
+| Accent / CTA     | `#cf6600` (warm orange)           |
+| Success          | `#16a34a`                         |
+| Warning (exists) | `#d97706`                         |
+| Error            | `#dc2626`                         |
+| Heading font     | Lora (serif), weights 400/500/600 |
+| Body / UI font   | Inter (sans-serif)                |
 
 Mode: **light only** (no dark mode toggle needed for an internal tool).
 
@@ -185,14 +185,14 @@ Mode: **light only** (no dark mode toggle needed for an internal tool).
 
 ## 6. Tech Stack
 
-| Concern | Choice |
-|---|---|
-| Framework | Next.js 16 (App Router) |
-| UI components | shadcn/ui + Tailwind CSS |
-| CSV parsing | PapaParse |
-| Fonts | Google Fonts — Lora + Inter |
-| State | React `useState` only |
-| API | Next.js Route Handlers (3 routes) |
+| Concern       | Choice                            |
+| ------------- | --------------------------------- |
+| Framework     | Next.js 16 (App Router)           |
+| UI components | shadcn/ui + Tailwind CSS          |
+| CSV parsing   | PapaParse                         |
+| Fonts         | Google Fonts — Lora + Inter       |
+| State         | React `useState` only             |
+| API           | Next.js Route Handlers (3 routes) |
 
 The page (`app/page.tsx`) is a Client Component (`'use client'`). Route handlers live in `app/api/apic/`.
 
@@ -200,15 +200,15 @@ The page (`app/page.tsx`) is a Client Component (`'use client'`). Route handlers
 
 ## 7. Error Handling
 
-| Scenario | Behavior |
-|---|---|
-| APIC login fails | Inline error in Connect section; token not stored |
-| CSV has wrong headers | Per-error list shown in Upload section; no API calls |
-| Validate request fails entirely | Toast/banner error; user can retry |
-| Individual row check fails | Row marked `error`; rest of batch continues |
-| Deploy request fails entirely | Toast/banner error; user can retry |
-| Individual row deploy fails | Row marked failed with APIC error message; rest continue |
-| APIC token expires mid-session | 401 response triggers inline prompt to reconnect |
+| Scenario                        | Behavior                                                 |
+| ------------------------------- | -------------------------------------------------------- |
+| APIC login fails                | Inline error in Connect section; token not stored        |
+| CSV has wrong headers           | Per-error list shown in Upload section; no API calls     |
+| Validate request fails entirely | Toast/banner error; user can retry                       |
+| Individual row check fails      | Row marked `error`; rest of batch continues              |
+| Deploy request fails entirely   | Toast/banner error; user can retry                       |
+| Individual row deploy fails     | Row marked failed with APIC error message; rest continue |
+| APIC token expires mid-session  | 401 response triggers inline prompt to reconnect         |
 
 ---
 

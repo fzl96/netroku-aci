@@ -46,8 +46,7 @@ export const APP_MAIN_CLS = 'min-w-0 flex-1 bg-background'
 // vertical travel — enough for a swipe to latch onto. Nothing is clipped: with
 // no max-height there is no vertical overflow to lose.
 export const TABLE_SCROLL_CLS =
-  'relative overflow-x-auto overflow-y-hidden ' +
-  'md:overflow-auto md:max-h-[calc(100vh-14rem)]'
+  'relative overflow-x-auto overflow-y-hidden ' + 'md:overflow-auto md:max-h-[calc(100vh-14rem)]'
 
 export const DENSE_TABLE_HEAD_CLS =
   'md:sticky md:top-0 z-10 bg-card text-left px-4 pt-3 pb-2.5 ' +
@@ -58,5 +57,4 @@ export const MUTED_TABLE_HEAD_CLS =
   'md:sticky md:top-0 z-10 bg-muted text-left px-4 py-2.5 ' +
   'text-[10px] uppercase tracking-wide font-semibold text-subtle whitespace-nowrap'
 
-export const DASHBOARD_TABLE_HEAD_CLS =
-  'md:sticky md:top-0 z-10 bg-card font-medium'
+export const DASHBOARD_TABLE_HEAD_CLS = 'md:sticky md:top-0 z-10 bg-card font-medium'

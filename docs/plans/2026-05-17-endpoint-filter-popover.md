@@ -13,11 +13,13 @@
 ### Task 1: Add staged composite filter UI
 
 **Files:**
+
 - Modify: `src/app/(app)/endpoints/EndpointsClient.tsx`
 
 **Step 1: Write the failing test**
 
 There is no UI test harness in this repo, so capture the intended behavior as manual verification criteria before implementation:
+
 - Toolbar shows one filter trigger instead of four visible filter buttons.
 - Opening the popover reveals VLAN, Node, Interface, and Status controls.
 - Changing selections does not update the URL or table until Apply is clicked.
@@ -31,6 +33,7 @@ Expected: PASS before the change.
 **Step 3: Write minimal implementation**
 
 In `EndpointsClient.tsx`:
+
 - import a filter icon from Tabler icons.
 - add local staged state for the four filter groups.
 - create a composite `EndpointFiltersPopover` component or equivalent local JSX.
@@ -52,11 +55,13 @@ git commit -m "feat: consolidate endpoint filters into popover"
 ### Task 2: Add Apply/Clear behavior and active-state feedback
 
 **Files:**
+
 - Modify: `src/app/(app)/endpoints/EndpointsClient.tsx`
 
 **Step 1: Define expected behavior**
 
 Manual verification criteria:
+
 - Apply commits all staged filters in one navigation.
 - Clear empties staged selections and can remove all applied filters after Apply.
 - The trigger button shows an active treatment and a count badge based on active filter groups.
@@ -65,6 +70,7 @@ Manual verification criteria:
 **Step 2: Implement behavior**
 
 In `EndpointsClient.tsx`:
+
 - add one bulk apply handler that reuses `buildUrl` and resets page to 1.
 - add clear behavior for staged selections.
 - compute active filter-group count from the applied filters.
@@ -79,6 +85,7 @@ Expected: both PASS.
 
 Run: `npm run dev`
 Expected checks in browser:
+
 - popover opens from one filter button.
 - multiple staged edits do not reload the table until Apply.
 - Apply updates the table once and preserves URL-backed state on refresh.

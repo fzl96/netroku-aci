@@ -45,7 +45,7 @@ const ENDPOINTS: Record<Feature, Partial<Record<Mode, string>>> = {
     deploy: '/api/apic/bridge-domains/l3/deploy',
     rollback: '/api/apic/bridge-domains/l3/rollback',
   },
-  'epg': {
+  epg: {
     deploy: '/api/apic/bridge-domains/epgs/deploy',
     rollback: '/api/apic/bridge-domains/epgs/rollback',
   },
@@ -71,7 +71,7 @@ const DEFAULT_NOUN: Record<Feature, string> = {
   'interface-selectors': 'selector',
   'bridge-domains-l2': 'bridge domain',
   'bridge-domains-l3': 'bridge domain',
-  'epg': 'EPG',
+  epg: 'EPG',
   'epg-consumer': 'EPG',
   'epg-provider': 'EPG',
   'epg-contract': 'EPG',
@@ -79,11 +79,14 @@ const DEFAULT_NOUN: Record<Feature, string> = {
   'epg-provider-contract': 'contract relation',
 }
 
-const MODE_CONFIG: Record<Mode, {
-  title: string
-  loadingVerb: string
-  successVerb: string
-}> = {
+const MODE_CONFIG: Record<
+  Mode,
+  {
+    title: string
+    loadingVerb: string
+    successVerb: string
+  }
+> = {
   deploy: {
     title: 'Deploy',
     loadingVerb: 'Deploying',
@@ -110,8 +113,8 @@ export function DeploySection<TRow extends { rowIndex: number }>({
   const endpoint = ENDPOINTS[feature][mode]
   const noun = itemNoun ?? DEFAULT_NOUN[feature]
 
-  const [results, setResults]       = useState<DeployResult[] | null>(null)
-  const [loading, setLoading]       = useState(false)
+  const [results, setResults] = useState<DeployResult[] | null>(null)
+  const [loading, setLoading] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -123,15 +126,18 @@ export function DeploySection<TRow extends { rowIndex: number }>({
       setFetchError(null)
 
       fetch(endpoint, {
-        method:  'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ rows, apicHost, apicToken }),
-        signal:  controller.signal,
+        body: JSON.stringify({ rows, apicHost, apicToken }),
+        signal: controller.signal,
       })
-        .then(r => r.json() as Promise<{ results?: DeployResult[]; error?: string }>)
-        .then(data => {
+        .then((r) => r.json() as Promise<{ results?: DeployResult[]; error?: string }>)
+        .then((data) => {
           if (controller.signal.aborted) return
-          if (data.error) { setFetchError(data.error); return }
+          if (data.error) {
+            setFetchError(data.error)
+            return
+          }
           setResults(data.results ?? [])
         })
         .catch(() => {
@@ -148,23 +154,25 @@ export function DeploySection<TRow extends { rowIndex: number }>({
     }
   }, [rows, apicHost, apicToken, endpoint, cfg.title, feature, mode])
 
-  const successCount   = results?.filter(r => r.success).length ?? 0
-  const failCount      = results?.filter(r => !r.success).length ?? 0
-  const sessionExpired = results !== null &&
+  const successCount = results?.filter((r) => r.success).length ?? 0
+  const failCount = results?.filter((r) => !r.success).length ?? 0
+  const sessionExpired =
+    results !== null &&
     results.length > 0 &&
-    results.every(r => !r.success && r.message?.includes('401'))
+    results.every((r) => !r.success && r.message?.includes('401'))
 
   if (loading) {
     return (
       <div>
-        <div className="px-6 pt-6 pb-5 border-b border-subtle">
+        <div className="border-b border-subtle px-6 pt-6 pb-5">
           <h2 className="font-serif text-base font-semibold text-foreground">{cfg.title}</h2>
-          <p className="text-xs text-subtle mt-0.5">
-            {cfg.loadingVerb} {rows.length} {noun}{rows.length !== 1 ? 's' : ''}…
+          <p className="mt-0.5 text-xs text-subtle">
+            {cfg.loadingVerb} {rows.length} {noun}
+            {rows.length !== 1 ? 's' : ''}…
           </p>
         </div>
-        <div className="p-6 flex items-center gap-3">
-          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <div className="flex items-center gap-3 p-6">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           <span className="text-sm text-muted-foreground">This may take a moment…</span>
         </div>
       </div>
@@ -174,7 +182,7 @@ export function DeploySection<TRow extends { rowIndex: number }>({
   if (fetchError) {
     return (
       <div>
-        <div className="px-6 pt-6 pb-5 border-b border-subtle">
+        <div className="border-b border-subtle px-6 pt-6 pb-5">
           <h2 className="font-serif text-base font-semibold text-foreground">{cfg.title}</h2>
         </div>
         <div className="space-y-3 px-6 py-5">
@@ -194,11 +202,12 @@ export function DeploySection<TRow extends { rowIndex: number }>({
   return (
     <div>
       {/* Card header */}
-      <div className="px-6 pt-6 pb-5 border-b border-subtle">
+      <div className="border-b border-subtle px-6 pt-6 pb-5">
         <h2 className="font-serif text-base font-semibold text-foreground">{cfg.title}</h2>
         {results && !sessionExpired && (
-          <p className="text-xs text-subtle mt-0.5">
-            {successCount} {cfg.successVerb}{failCount > 0 ? `, ${failCount} failed` : ''}
+          <p className="mt-0.5 text-xs text-subtle">
+            {successCount} {cfg.successVerb}
+            {failCount > 0 ? `, ${failCount} failed` : ''}
           </p>
         )}
       </div>
@@ -209,7 +218,8 @@ export function DeploySection<TRow extends { rowIndex: number }>({
             {sessionExpired ? (
               <div className="flex items-start gap-3 rounded-lg border border-error-border bg-error-bg p-3.5">
                 <p className="flex-1 text-xs text-error">
-                  Your APIC session expired during {cfg.title.toLowerCase()}. Please reconnect and try again.
+                  Your APIC session expired during {cfg.title.toLowerCase()}. Please reconnect and
+                  try again.
                 </p>
                 <button
                   type="button"

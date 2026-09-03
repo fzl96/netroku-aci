@@ -78,7 +78,7 @@ export function createAuditRecorder(dependencies: AuditRecorderDependencies) {
 }
 
 export const recordAudit = createAuditRecorder({
-  createAuditLog: args => prisma.auditLog.create(args),
+  createAuditLog: (args) => prisma.auditLog.create(args),
   revalidateTag,
   reportError: (error, input) => {
     console.error('[audit] failed to record', input.action, error)

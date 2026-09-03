@@ -13,7 +13,7 @@ history in SQLite. It currently covers two data subjects:
   (`InterfaceSnapshot` + `InterfaceSample` with computed deltas)
 
 Each follows the same pattern: a `resync*` lib function (APIC login → class
-query → chunked upsert of a *snapshot* model, plus *sample* rows for trends),
+query → chunked upsert of a _snapshot_ model, plus _sample_ rows for trends),
 an authed `POST /api/<subject>/resync` route, cron wiring in
 `/api/cron/resync`, a server-component page reading SQLite with
 filters/pagination, and a sidebar entry.
@@ -41,38 +41,38 @@ Mirrors `InterfaceSnapshot` + `InterfaceSample`.
 
 ### `FaultSnapshot` — one row per active fault instance
 
-| Field | Notes |
-|---|---|
-| `id` | cuid |
-| `apicHostId` / `apicHost` | relation, `onDelete: Cascade` |
-| `dn` | the `faultInst` DN (e.g. `…/fault-F1394`) — stable identity |
-| `code` | F-code, e.g. `F1394` |
-| `severity` | `critical` \| `major` \| `minor` \| `warning` |
-| `domain` | e.g. `infra`, `tenant`, `access` |
-| `type` | `operational` \| `config` \| `environmental` \| `communications` |
-| `cause` | APIC cause string |
-| `affectedDn` | the fault DN with `/fault-…` stripped (the affected object) |
-| `node` | parsed from `affectedDn` when it matches `topology/pod-x/node-y`, else null |
-| `descr` | fault description |
-| `ack` | bool (APIC `ack` `"yes"`/`"no"`) |
-| `created` | APIC raised time (nullable) |
-| `lastTransition` | APIC last transition time (nullable) |
-| `lifecycle` | `active` \| `cleared` |
-| `firstSeenAt` | first time **we** saw it (default now) |
-| `lastSeenAt` | last time we saw it (default now) |
-| `clearedAt` | set when flipped to `cleared` (nullable) |
+| Field                     | Notes                                                                       |
+| ------------------------- | --------------------------------------------------------------------------- |
+| `id`                      | cuid                                                                        |
+| `apicHostId` / `apicHost` | relation, `onDelete: Cascade`                                               |
+| `dn`                      | the `faultInst` DN (e.g. `…/fault-F1394`) — stable identity                 |
+| `code`                    | F-code, e.g. `F1394`                                                        |
+| `severity`                | `critical` \| `major` \| `minor` \| `warning`                               |
+| `domain`                  | e.g. `infra`, `tenant`, `access`                                            |
+| `type`                    | `operational` \| `config` \| `environmental` \| `communications`            |
+| `cause`                   | APIC cause string                                                           |
+| `affectedDn`              | the fault DN with `/fault-…` stripped (the affected object)                 |
+| `node`                    | parsed from `affectedDn` when it matches `topology/pod-x/node-y`, else null |
+| `descr`                   | fault description                                                           |
+| `ack`                     | bool (APIC `ack` `"yes"`/`"no"`)                                            |
+| `created`                 | APIC raised time (nullable)                                                 |
+| `lastTransition`          | APIC last transition time (nullable)                                        |
+| `lifecycle`               | `active` \| `cleared`                                                       |
+| `firstSeenAt`             | first time **we** saw it (default now)                                      |
+| `lastSeenAt`              | last time we saw it (default now)                                           |
+| `clearedAt`               | set when flipped to `cleared` (nullable)                                    |
 
 Constraints: `@@unique([apicHostId, dn])`, `@@index([apicHostId])`.
 
 ### `FaultCountSample` — one row per resync (trend chart)
 
-| Field | Notes |
-|---|---|
-| `id` | cuid |
-| `apicHostId` / `apicHost` | relation, `onDelete: Cascade` |
-| `sampledAt` | default now |
-| `critical` / `major` / `minor` / `warning` | Int severity tallies |
-| `total` | Int |
+| Field                                      | Notes                         |
+| ------------------------------------------ | ----------------------------- |
+| `id`                                       | cuid                          |
+| `apicHostId` / `apicHost`                  | relation, `onDelete: Cascade` |
+| `sampledAt`                                | default now                   |
+| `critical` / `major` / `minor` / `warning` | Int severity tallies          |
+| `total`                                    | Int                           |
 
 Index: `@@index([apicHostId, sampledAt])`.
 
@@ -121,6 +121,7 @@ two. This prevents a third copy of the login dance from landing.
 ### `POST /api/faults/resync` (session-authed)
 
 Same shape as `src/app/api/interfaces/resync/route.ts`:
+
 - 401 if no session; 400 on invalid body / missing `apicHostId` /
   missing `username`/`password`; 404 if host not found; 502 on APIC failure.
 - On success calls `resyncFaults`, records audit `action: 'resync.faults'`,

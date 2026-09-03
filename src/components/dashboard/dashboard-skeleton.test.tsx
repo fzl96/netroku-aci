@@ -12,13 +12,15 @@ import {
 
 describe('dashboard regional skeletons', () => {
   it('renders shape-matched busy regions with accessible labels', () => {
-    const html = renderToStaticMarkup(<>
-      <DashboardHeaderSkeleton />
-      <DashboardPostureSkeleton />
-      <DashboardMetricsSkeleton />
-      <DashboardAttentionSkeleton />
-      <DashboardInventorySkeleton />
-    </>)
+    const html = renderToStaticMarkup(
+      <>
+        <DashboardHeaderSkeleton />
+        <DashboardPostureSkeleton />
+        <DashboardMetricsSkeleton />
+        <DashboardAttentionSkeleton />
+        <DashboardInventorySkeleton />
+      </>,
+    )
 
     expect(html.match(/aria-busy="true"/g)).toHaveLength(5)
     expect(html).toContain('Loading dashboard status')

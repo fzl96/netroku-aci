@@ -82,17 +82,26 @@ const cacheCalls: Array<{ key: string[]; options: { tags: string[]; revalidate: 
 
 mock.module('server-only', () => ({}))
 mock.module('@/lib/auth', () => ({ AuthenticationRequiredError, requireSession }))
-mock.module('@/lib/prisma', () => ({ prisma: {
-  legacyInterfaceSnapshot: {
-    findMany: snapshotFindMany, count: snapshotCount, findUnique: snapshotFindUnique,
+mock.module('@/lib/prisma', () => ({
+  prisma: {
+    legacyInterfaceSnapshot: {
+      findMany: snapshotFindMany,
+      count: snapshotCount,
+      findUnique: snapshotFindUnique,
+    },
+    legacyInterfaceSample: { findMany: sampleFindMany, count: sampleCount },
+    legacyDevice: { findMany: deviceFindMany },
+    $queryRaw: queryRaw,
   },
-  legacyInterfaceSample: { findMany: sampleFindMany, count: sampleCount },
-  legacyDevice: { findMany: deviceFindMany },
-  $queryRaw: queryRaw,
-} }))
+}))
 mock.module('next/cache', () => ({
-  unstable_cache: (fn: () => unknown, key: string[], options: { tags: string[]; revalidate: number }) => {
-    cacheCalls.push({ key, options }); return fn
+  unstable_cache: (
+    fn: () => unknown,
+    key: string[],
+    options: { tags: string[]; revalidate: number },
+  ) => {
+    cacheCalls.push({ key, options })
+    return fn
   },
   revalidateTag: () => {},
 }))
@@ -100,8 +109,15 @@ mock.module('next/cache', () => ({
 const query = await import('./query')
 
 const base: LegacyInterfaceListState = {
-  query: '', deviceIds: [], view: 'all', mode: 'delta', window: '7d',
-  sortKey: 'hostname', sortDirection: 'asc', page: 1, pageSize: 50,
+  query: '',
+  deviceIds: [],
+  view: 'all',
+  mode: 'delta',
+  window: '7d',
+  sortKey: 'hostname',
+  sortDirection: 'asc',
+  page: 1,
+  pageSize: 50,
 }
 
 beforeEach(() => {
@@ -116,10 +132,12 @@ beforeEach(() => {
 describe('legacy interface authorization', () => {
   it('maps an unauthenticated session to a purpose read error', async () => {
     authenticationError = new AuthenticationRequiredError('nope')
-    await expect(query.getLegacyInterfaceResults(base))
-      .rejects.toBeInstanceOf(query.LegacyInterfaceReadError)
-    await expect(query.getLegacyInterfaceHistory('i1', { range: '24h' }))
-      .rejects.toBeInstanceOf(query.LegacyInterfaceReadError)
+    await expect(query.getLegacyInterfaceResults(base)).rejects.toBeInstanceOf(
+      query.LegacyInterfaceReadError,
+    )
+    await expect(query.getLegacyInterfaceHistory('i1', { range: '24h' })).rejects.toBeInstanceOf(
+      query.LegacyInterfaceReadError,
+    )
   })
 
   it('propagates unexpected authorization failures unchanged', async () => {
@@ -191,15 +209,27 @@ describe('getLegacyInterfaceResults', () => {
 
   it('keys the cache by the filters that change the row set, not by sort or page', async () => {
     await query.getLegacyInterfaceResults({
-      ...base, query: 'edge', deviceIds: ['d2', 'd1'],
-      sortKey: 'crcErrors', sortDirection: 'desc', mode: 'current', page: 4, pageSize: 10,
+      ...base,
+      query: 'edge',
+      deviceIds: ['d2', 'd1'],
+      sortKey: 'crcErrors',
+      sortDirection: 'desc',
+      mode: 'current',
+      page: 4,
+      pageSize: 10,
     })
     // Device order is a URL detail, not a different row set.
     expect(cacheCalls.at(-1)?.key).toEqual([
-      'legacy-interfaces', 'rows', 'edge', 'd1,d2', 'all', '',
+      'legacy-interfaces',
+      'rows',
+      'edge',
+      'd1,d2',
+      'all',
+      '',
     ])
     expect(cacheCalls.at(-1)?.options).toEqual({
-      tags: ['legacy-interfaces:all'], revalidate: 28_800,
+      tags: ['legacy-interfaces:all'],
+      revalidate: 28_800,
     })
   })
 
@@ -215,7 +245,7 @@ describe('getLegacyInterfaceResults', () => {
     expect(snapshotWhereCalls.at(-1)).toMatchObject({
       AND: expect.arrayContaining([{ id: { in: ['i1'] } }]),
     })
-    expect(results.rows.find(row => row.id === 'i1')?.crcWindowTotal).toBe('4')
+    expect(results.rows.find((row) => row.id === 'i1')?.crcWindowTotal).toBe('4')
   })
 
   it('restricts the state-changed view to the ids the raw query reports', async () => {
@@ -230,7 +260,10 @@ describe('getLegacyInterfaceResults', () => {
 describe('getLegacyInterfaceSummary', () => {
   it('counts the interface lifecycle states', async () => {
     expect(await query.getLegacyInterfaceSummary()).toEqual({
-      total: 9, down: 2, absent: 3, withHistory: 2,
+      total: 9,
+      down: 2,
+      absent: 3,
+      withHistory: 2,
     })
   })
 })
@@ -251,7 +284,10 @@ describe('getLegacyInterfaceHistory', () => {
     const history = await query.getLegacyInterfaceHistory('i1', { range: '7d', page: 2 })
     expect(history?.snapshot.id).toBe('i1')
     expect(history?.snapshot.device).toEqual({
-      id: 'd1', hostname: 'edge-1', site: 'hq', managementIp: '10.0.0.254',
+      id: 'd1',
+      hostname: 'edge-1',
+      site: 'hq',
+      managementIp: '10.0.0.254',
     })
     expect(history?.snapshot).not.toHaveProperty('samples')
     expect(history?.range).toBe('7d')

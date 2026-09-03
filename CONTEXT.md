@@ -149,14 +149,14 @@ src/app/api/endpoints/
 
 Create only the files a purpose earns:
 
-| File | Responsibility |
-| --- | --- |
-| `params.ts` | Pure URL parsing, normalization, and canonical URL construction |
-| `query.ts` | Server-only authorization, cached reads, Prisma orchestration, serialization, and safe return shapes |
-| `mutation.ts` | Server-only durable writes, audit behavior, and cache invalidation |
-| `actions.ts` | Browser-invoked Server Action adapters only |
-| `export.ts` | Purpose-owned export selection or document construction when export exists |
-| `sort.ts` and similar | Pure purpose behavior that does not belong in a render component |
+| File                  | Responsibility                                                                                       |
+| --------------------- | ---------------------------------------------------------------------------------------------------- |
+| `params.ts`           | Pure URL parsing, normalization, and canonical URL construction                                      |
+| `query.ts`            | Server-only authorization, cached reads, Prisma orchestration, serialization, and safe return shapes |
+| `mutation.ts`         | Server-only durable writes, audit behavior, and cache invalidation                                   |
+| `actions.ts`          | Browser-invoked Server Action adapters only                                                          |
+| `export.ts`           | Purpose-owned export selection or document construction when export exists                           |
+| `sort.ts` and similar | Pure purpose behavior that does not belong in a render component                                     |
 
 A purpose without browser-invoked Server Actions does not need `actions.ts`. A read-only purpose does not need `mutation.ts`. Manual resync, scheduled resync, legacy ingestion, inventory edits, and changes deployed to APIC all count as mutations because they change durable state or an external system.
 
@@ -217,16 +217,16 @@ Use reusable `requireSession()` and `requireAdmin()` guards from `src/lib/auth.t
 
 Access expectations:
 
-| Area | Expected access |
-| --- | --- |
-| Landing page, docs, docs search | Public |
-| Monitoring and audit history | Authenticated user |
-| ACI CSV workflows | Authenticated user |
-| APIC hosts, scheduler, users | Admin |
-| Inventory reads | Authenticated user |
-| Inventory writes and imports | Admin |
-| `/api/cron/*` | `SCHEDULER_TOKEN` bearer authentication |
-| `/api/ingest/legacy/*` | `LEGACY_INGEST_TOKEN` bearer authentication |
+| Area                            | Expected access                             |
+| ------------------------------- | ------------------------------------------- |
+| Landing page, docs, docs search | Public                                      |
+| Monitoring and audit history    | Authenticated user                          |
+| ACI CSV workflows               | Authenticated user                          |
+| APIC hosts, scheduler, users    | Admin                                       |
+| Inventory reads                 | Authenticated user                          |
+| Inventory writes and imports    | Admin                                       |
+| `/api/cron/*`                   | `SCHEDULER_TOKEN` bearer authentication     |
+| `/api/ingest/legacy/*`          | `LEGACY_INGEST_TOKEN` bearer authentication |
 
 `src/proxy.ts` redirects unauthenticated browser requests, but proxy coverage is not a substitute for authorization near data or side effects. Cron routes are excluded from session proxying and must verify their bearer token. Legacy ingestion routes are public only at the session layer and must verify their dedicated machine token.
 
@@ -359,27 +359,27 @@ Shared inventory render modules belong under `src/components/inventory/`, with n
 
 ### Authentication and audit
 
-| Aggregate | Meaning |
-| --- | --- |
-| `User`, `Session`, `Account`, `Verification` | Better Auth persistence |
-| `AuditLog` | Actor, action, target, status, detail, and optional payload for operational changes |
+| Aggregate                                    | Meaning                                                                             |
+| -------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `User`, `Session`, `Account`, `Verification` | Better Auth persistence                                                             |
+| `AuditLog`                                   | Actor, action, target, status, detail, and optional payload for operational changes |
 
 `AuditLog.userId` is intentionally loose rather than a Prisma relation, so history can survive actor deletion and machine actors can use `null`. `recordAudit()` logs failures but does not fail the primary operation.
 
 ### ACI monitoring
 
-| Aggregate | Key semantics |
-| --- | --- |
-| `ApicHost` | Configured APIC identity and last-sync timestamps |
-| `ResyncSchedule` | One optional encrypted schedule per APIC host |
-| `Endpoint` | Placement history; active rows remain current and cleared rows remain historical |
+| Aggregate           | Key semantics                                                                      |
+| ------------------- | ---------------------------------------------------------------------------------- |
+| `ApicHost`          | Configured APIC identity and last-sync timestamps                                  |
+| `ResyncSchedule`    | One optional encrypted schedule per APIC host                                      |
+| `Endpoint`          | Placement history; active rows remain current and cleared rows remain historical   |
 | `InterfaceSnapshot` | Current interface identity and latest state, unique by host and distinguished name |
-| `InterfaceSample` | Time-series counters and computed deltas |
-| `NodeSnapshot` | Current or no-longer-present fabric nodes |
-| `HardwareComponent` | Current or no-longer-present PSU and fan inventory |
-| `NodeStatusSample` | Time-series aggregate node and component health |
-| `EpgSnapshot` | Latest EPG metadata, unique by host and distinguished name |
-| `EpgPathBinding` | Static path bindings owned by an EPG snapshot |
+| `InterfaceSample`   | Time-series counters and computed deltas                                           |
+| `NodeSnapshot`      | Current or no-longer-present fabric nodes                                          |
+| `HardwareComponent` | Current or no-longer-present PSU and fan inventory                                 |
+| `NodeStatusSample`  | Time-series aggregate node and component health                                    |
+| `EpgSnapshot`       | Latest EPG metadata, unique by host and distinguished name                         |
+| `EpgPathBinding`    | Static path bindings owned by an EPG snapshot                                      |
 
 Deleting an `ApicHost` cascades through its related monitoring aggregates and schedule.
 
@@ -389,15 +389,15 @@ EPG resync replaces the host's EPGs and bindings atomically. Node resync upserts
 
 ### Legacy monitoring
 
-| Aggregate | Key semantics |
-| --- | --- |
-| `LegacyDevice` | Normalized site and hostname identity plus feature freshness |
-| `LegacyIngestReceipt` | Idempotency and counts for one run, device, and feature |
-| `LegacyHealthSample` | Health snapshot associated one-to-one with its receipt |
-| `LegacyLogEntry` | Deduplicated log history |
-| `LegacyInterfaceSnapshot` | Current/past interface presence and identity |
-| `LegacyInterfaceSample` | State and error-counter time series |
-| `LegacyEndpoint` | Active and historical learned endpoint placement |
+| Aggregate                 | Key semantics                                                |
+| ------------------------- | ------------------------------------------------------------ |
+| `LegacyDevice`            | Normalized site and hostname identity plus feature freshness |
+| `LegacyIngestReceipt`     | Idempotency and counts for one run, device, and feature      |
+| `LegacyHealthSample`      | Health snapshot associated one-to-one with its receipt       |
+| `LegacyLogEntry`          | Deduplicated log history                                     |
+| `LegacyInterfaceSnapshot` | Current/past interface presence and identity                 |
+| `LegacyInterfaceSample`   | State and error-counter time series                          |
+| `LegacyEndpoint`          | Active and historical learned endpoint placement             |
 
 Legacy device identity uses normalized `siteKey` and `hostnameKey`. Interface identity uses `ifNameKey`; endpoint reconciliation uses normalized IP and interface keys.
 
@@ -412,22 +412,22 @@ Device many -> optional DeviceStack
 
 ## Route and purpose map
 
-| Purpose | Browser routes | Primary target modules |
-| --- | --- | --- |
-| Dashboard | `/dashboard` | `src/components/dashboard/`, `src/lib/dashboard/` |
-| APIC hosts | `/apic-hosts` | `src/components/apic-hosts/`, `src/lib/apic-hosts/` |
-| Endpoints | `/endpoints` | `src/components/endpoints/`, `src/lib/endpoints/` |
-| EPG inventory | `/epgs` | `src/components/epgs/`, `src/lib/epgs/` |
-| Interface health | `/interface-health` | `src/components/interface-health/`, `src/lib/interface-health/` |
-| Nodes and hardware | `/nodes` | `src/components/nodes/`, `src/lib/nodes/` |
-| Legacy monitoring | `/legacy/*` | `src/components/legacy/`, `src/lib/legacy/` |
-| Inventory | `/inventory/*` | `src/components/inventory/`, `src/lib/inventory/` |
-| Scheduler | `/scheduler` | `src/components/scheduler/`, `src/lib/scheduler/` |
-| Audit history | `/history` | `src/components/history/`, `src/lib/history/` |
-| Users | `/users` | `src/components/users/`, `src/lib/users/` |
-| Settings | `/settings` | `src/components/settings/`, `src/lib/settings/` as earned |
-| ACI workflows | workflow routes listed above | existing workflow components and `src/lib/apic/` |
-| Documentation | `/docs/*` | `content/docs/`, `src/components/docs/`, `src/lib/source.ts` |
+| Purpose            | Browser routes               | Primary target modules                                          |
+| ------------------ | ---------------------------- | --------------------------------------------------------------- |
+| Dashboard          | `/dashboard`                 | `src/components/dashboard/`, `src/lib/dashboard/`               |
+| APIC hosts         | `/apic-hosts`                | `src/components/apic-hosts/`, `src/lib/apic-hosts/`             |
+| Endpoints          | `/endpoints`                 | `src/components/endpoints/`, `src/lib/endpoints/`               |
+| EPG inventory      | `/epgs`                      | `src/components/epgs/`, `src/lib/epgs/`                         |
+| Interface health   | `/interface-health`          | `src/components/interface-health/`, `src/lib/interface-health/` |
+| Nodes and hardware | `/nodes`                     | `src/components/nodes/`, `src/lib/nodes/`                       |
+| Legacy monitoring  | `/legacy/*`                  | `src/components/legacy/`, `src/lib/legacy/`                     |
+| Inventory          | `/inventory/*`               | `src/components/inventory/`, `src/lib/inventory/`               |
+| Scheduler          | `/scheduler`                 | `src/components/scheduler/`, `src/lib/scheduler/`               |
+| Audit history      | `/history`                   | `src/components/history/`, `src/lib/history/`                   |
+| Users              | `/users`                     | `src/components/users/`, `src/lib/users/`                       |
+| Settings           | `/settings`                  | `src/components/settings/`, `src/lib/settings/` as earned       |
+| ACI workflows      | workflow routes listed above | existing workflow components and `src/lib/apic/`                |
+| Documentation      | `/docs/*`                    | `content/docs/`, `src/components/docs/`, `src/lib/source.ts`    |
 
 The navigation shell switches between ACI and legacy scopes using the `netroku_scope` cookie. Scope routing rules live in `src/lib/navigation-scope.ts`. Shared pages such as Dashboard, Docs, History, Settings, and Users preserve the selected scope.
 
@@ -446,18 +446,18 @@ Credential rules:
 
 ## Environment variables
 
-| Variable | Purpose |
-| --- | --- |
-| `DATABASE_URL` | PostgreSQL connection string |
-| `BETTER_AUTH_SECRET` | Better Auth signing secret |
-| `BETTER_AUTH_URL` | Server base URL for Better Auth |
-| `NEXT_PUBLIC_APP_URL` | Browser-visible application URL |
-| `TRUSTED_ORIGINS` | Comma-separated Better Auth origins |
-| `SECURE_COOKIES` | Set to `true` only for HTTPS-only serving |
-| `ENCRYPTION_KEY` | 32-byte hex key for schedule credentials |
-| `ADMIN_USERNAME`, `ADMIN_PASSWORD` | Initial admin seed credentials |
-| `SCHEDULER_TOKEN` | Bearer token for `/api/cron/tick` and `/api/cron/resync` |
-| `LEGACY_INGEST_TOKEN` | Bearer token for `/api/ingest/legacy/*` |
+| Variable                           | Purpose                                                  |
+| ---------------------------------- | -------------------------------------------------------- |
+| `DATABASE_URL`                     | PostgreSQL connection string                             |
+| `BETTER_AUTH_SECRET`               | Better Auth signing secret                               |
+| `BETTER_AUTH_URL`                  | Server base URL for Better Auth                          |
+| `NEXT_PUBLIC_APP_URL`              | Browser-visible application URL                          |
+| `TRUSTED_ORIGINS`                  | Comma-separated Better Auth origins                      |
+| `SECURE_COOKIES`                   | Set to `true` only for HTTPS-only serving                |
+| `ENCRYPTION_KEY`                   | 32-byte hex key for schedule credentials                 |
+| `ADMIN_USERNAME`, `ADMIN_PASSWORD` | Initial admin seed credentials                           |
+| `SCHEDULER_TOKEN`                  | Bearer token for `/api/cron/tick` and `/api/cron/resync` |
+| `LEGACY_INGEST_TOKEN`              | Bearer token for `/api/ingest/legacy/*`                  |
 
 Use `.env.example` as the setup template. Never invent fallback secrets in application code.
 

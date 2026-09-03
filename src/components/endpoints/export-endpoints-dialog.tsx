@@ -26,12 +26,7 @@ interface Props {
   filters: EndpointFilters
 }
 
-export function ExportEndpointsDialog({
-  apicHostId,
-  hostTotal,
-  filteredTotal,
-  filters,
-}: Props) {
+export function ExportEndpointsDialog({ apicHostId, hostTotal, filteredTotal, filters }: Props) {
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<1 | 2>(1)
   const [scope, setScope] = useState<ExportScope>('all')
@@ -72,7 +67,7 @@ export function ExportEndpointsDialog({
       })
 
       if (!res.ok) {
-        const data = await res.json().catch(() => null) as { error?: string } | null
+        const data = (await res.json().catch(() => null)) as { error?: string } | null
         throw new Error(data?.error ?? 'Export failed')
       }
 
@@ -103,10 +98,10 @@ export function ExportEndpointsDialog({
         onClick={openDialog}
         disabled={disabled}
         className={[
-          'flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg border transition-colors shadow-sm',
+          'flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-xs font-semibold shadow-sm transition-colors',
           !disabled
             ? 'border-border bg-card text-foreground hover:bg-muted'
-            : 'border-border bg-muted text-faint cursor-not-allowed',
+            : 'cursor-not-allowed border-border bg-muted text-faint',
         ].join(' ')}
       >
         <IconDownload size={12} stroke={1.75} />
@@ -114,7 +109,7 @@ export function ExportEndpointsDialog({
       </button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="bg-card border-border text-foreground sm:max-w-md">
+        <DialogContent className="border-border bg-card text-foreground sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-serif text-base font-semibold text-foreground">
               Export endpoints
@@ -138,9 +133,11 @@ export function ExportEndpointsDialog({
                 checked={scope === 'filtered'}
                 disabled={filteredUnavailable}
                 title="Current filters"
-                description={filteredUnavailable
-                  ? 'No endpoints match the current filters'
-                  : `${filteredTotal} matching endpoint${filteredTotal === 1 ? '' : 's'} across all pages`}
+                description={
+                  filteredUnavailable
+                    ? 'No endpoints match the current filters'
+                    : `${filteredTotal} matching endpoint${filteredTotal === 1 ? '' : 's'} across all pages`
+                }
                 onClick={() => setScope('filtered')}
               />
             </div>
@@ -161,13 +158,13 @@ export function ExportEndpointsDialog({
             </div>
           )}
 
-          <DialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-between rounded-b-xl border-t border-subtle bg-muted px-4 py-3 gap-2">
+          <DialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-between gap-2 rounded-b-xl border-t border-subtle bg-muted px-4 py-3">
             {step === 2 ? (
               <button
                 type="button"
                 onClick={() => setStep(1)}
                 disabled={exporting}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors px-2 py-2 disabled:opacity-60"
+                className="px-2 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-60"
               >
                 Back
               </button>
@@ -180,7 +177,7 @@ export function ExportEndpointsDialog({
                 type="button"
                 onClick={() => setOpen(false)}
                 disabled={exporting}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2 disabled:opacity-60"
+                className="px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-60"
               >
                 Cancel
               </button>
@@ -189,7 +186,7 @@ export function ExportEndpointsDialog({
                   type="button"
                   onClick={() => setStep(2)}
                   disabled={scope === 'filtered' && filteredUnavailable}
-                  className="bg-primary text-primary-foreground text-sm font-semibold px-5 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60"
+                  className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
                 >
                   Next
                 </button>
@@ -198,7 +195,7 @@ export function ExportEndpointsDialog({
                   type="button"
                   onClick={handleExport}
                   disabled={!groupBy || exporting}
-                  className="bg-primary text-primary-foreground text-sm font-semibold px-5 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60"
+                  className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
                 >
                   {exporting ? 'Exporting…' : 'Export'}
                 </button>
@@ -231,10 +228,8 @@ function ChoiceCard({
       disabled={disabled}
       className={[
         'w-full rounded-xl border px-4 py-3 text-left transition-colors',
-        checked
-          ? 'border-primary bg-primary/8'
-          : 'border-border bg-background hover:bg-muted',
-        disabled ? 'opacity-50 cursor-not-allowed hover:bg-background' : '',
+        checked ? 'border-primary bg-primary/8' : 'border-border bg-background hover:bg-muted',
+        disabled ? 'cursor-not-allowed opacity-50 hover:bg-background' : '',
       ].join(' ')}
     >
       <span className="flex items-start gap-3">
@@ -248,7 +243,7 @@ function ChoiceCard({
         </span>
         <span>
           <span className="block text-sm font-medium text-foreground">{title}</span>
-          <span className="block text-xs text-subtle mt-0.5">{description}</span>
+          <span className="mt-0.5 block text-xs text-subtle">{description}</span>
         </span>
       </span>
     </button>

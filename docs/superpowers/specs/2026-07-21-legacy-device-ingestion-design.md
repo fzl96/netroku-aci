@@ -91,12 +91,12 @@ One invocation creates one UUID `run_id`. All feature payloads produced by that 
 
 Paths resolve relative to the directory containing `legacy_sync.py`, not the caller's current working directory:
 
-| Input | Default |
-|---|---|
-| Monitor inventory | `configs/interfaces/legacy_creds.csv` |
-| Endpoint inventory | `configs/endpoint/legacy_creds.csv` |
-| F5 ARP logs | `configs/endpoint/logs/f5` |
-| Customized templates | `ntc_templates` |
+| Input                | Default                               |
+| -------------------- | ------------------------------------- |
+| Monitor inventory    | `configs/interfaces/legacy_creds.csv` |
+| Endpoint inventory   | `configs/endpoint/legacy_creds.csv`   |
+| F5 ARP logs          | `configs/endpoint/logs/f5`            |
+| Customized templates | `ntc_templates`                       |
 
 All paths can be overridden:
 

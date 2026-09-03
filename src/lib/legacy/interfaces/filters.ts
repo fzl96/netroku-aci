@@ -45,13 +45,15 @@ export function buildLegacyInterfaceWhere(
 
   const query = filters.query?.trim()
   if (query) {
-    and.push({ OR: [
-      { ifName: { contains: query, mode: 'insensitive' } },
-      { description: { contains: query, mode: 'insensitive' } },
-      { ipAddress: { contains: query, mode: 'insensitive' } },
-      { device: { hostname: { contains: query, mode: 'insensitive' } } },
-      { device: { managementIp: { contains: query, mode: 'insensitive' } } },
-    ] })
+    and.push({
+      OR: [
+        { ifName: { contains: query, mode: 'insensitive' } },
+        { description: { contains: query, mode: 'insensitive' } },
+        { ipAddress: { contains: query, mode: 'insensitive' } },
+        { device: { hostname: { contains: query, mode: 'insensitive' } } },
+        { device: { managementIp: { contains: query, mode: 'insensitive' } } },
+      ],
+    })
   }
 
   return and.length ? { AND: and } : {}
@@ -83,9 +85,7 @@ export function legacyInterfaceOrderBy(
   direction: 'asc' | 'desc',
 ): Prisma.LegacyInterfaceSnapshotOrderByWithRelationInput[] {
   const field = INTERFACE_SORT_FIELDS[sort as keyof typeof INTERFACE_SORT_FIELDS]
-  return field
-    ? [{ [field]: direction }, { id: 'asc' }]
-    : [{ lastSeenAt: 'desc' }, { id: 'asc' }]
+  return field ? [{ [field]: direction }, { id: 'asc' }] : [{ lastSeenAt: 'desc' }, { id: 'asc' }]
 }
 
 export function safeLegacyCounterNumber(value: string | null): number | null {

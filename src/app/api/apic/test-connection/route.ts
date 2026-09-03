@@ -11,7 +11,9 @@ async function testLogin(host: string, username: string, password: string): Prom
     const text = await res.text()
     throw new Error(`Authentication failed: ${text.slice(0, 200)}`)
   }
-  const data = await res.json() as { imdata: Array<{ aaaLogin?: { attributes: { token: string } } }> }
+  const data = (await res.json()) as {
+    imdata: Array<{ aaaLogin?: { attributes: { token: string } } }>
+  }
   if (!data.imdata[0]?.aaaLogin?.attributes?.token) {
     throw new Error('No token returned by APIC')
   }

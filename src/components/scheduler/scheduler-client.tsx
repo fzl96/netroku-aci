@@ -79,7 +79,12 @@ function relative(date: Date | null): string {
   const deltaMs = new Date(date).getTime() - Date.now()
   const past = deltaMs < 0
   const mins = Math.round(Math.abs(deltaMs) / 60_000)
-  const text = mins < 60 ? `${mins}m` : mins < 1440 ? `${Math.round(mins / 60)}h` : `${Math.round(mins / 1440)}d`
+  const text =
+    mins < 60
+      ? `${mins}m`
+      : mins < 1440
+        ? `${Math.round(mins / 60)}h`
+        : `${Math.round(mins / 1440)}d`
   return past ? `${text} ago` : `in ${text}`
 }
 
@@ -93,7 +98,7 @@ function StatusPill({ schedule }: { schedule: SafeResyncSchedule }) {
     )
   }
   if (!schedule.lastStatus) {
-    return <span className="text-[10px] text-faint uppercase tracking-[0.08em]">never run</span>
+    return <span className="text-[10px] tracking-[0.08em] text-faint uppercase">never run</span>
   }
   return (
     <span className={`${PILL_CLS} ${STATUS_STYLES[schedule.lastStatus] ?? STATUS_STYLES.failure}`}>
@@ -117,12 +122,16 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
 
-  useEffect(() => startSchedulePolling({
-    load: refreshResyncSchedules,
-    onSnapshot: setSchedules,
-    getMutationVersion: () => mutationVersion.current,
-    isMutationPending: () => pendingMutations.current > 0,
-  }), [])
+  useEffect(
+    () =>
+      startSchedulePolling({
+        load: refreshResyncSchedules,
+        onSnapshot: setSchedules,
+        getMutationVersion: () => mutationVersion.current,
+        isMutationPending: () => pendingMutations.current > 0,
+      }),
+    [],
+  )
 
   const enabledCount = schedules.filter((s) => s.enabled).length
   const attentionCount = schedules.filter((s) => s.isOverdue || s.lastStatus === 'failure').length
@@ -212,54 +221,56 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
 
   return (
     <>
-      <div className="px-8 py-6 space-y-6">
+      <div className="space-y-6 px-8 py-6">
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4">
-          <div className="bg-card border border-border rounded-xl px-5 py-4 animate-fade-up">
+          <div className="animate-fade-up rounded-xl border border-border bg-card px-5 py-4">
             <p className="text-[11px] text-subtle">Controllers</p>
-            <p className="text-[28px] font-semibold text-foreground leading-none mt-2 font-serif tabular-nums">
+            <p className="mt-2 font-serif text-[28px] leading-none font-semibold text-foreground tabular-nums">
               {schedules.length}
             </p>
-            <p className="text-[11px] text-faint mt-1.5">registered APIC hosts</p>
+            <p className="mt-1.5 text-[11px] text-faint">registered APIC hosts</p>
           </div>
-          <div className="bg-card border border-border rounded-xl px-5 py-4 animate-fade-up">
+          <div className="animate-fade-up rounded-xl border border-border bg-card px-5 py-4">
             <p className="text-[11px] text-subtle">Scheduled</p>
-            <p className="text-[28px] font-semibold text-foreground leading-none mt-2 font-serif tabular-nums">
+            <p className="mt-2 font-serif text-[28px] leading-none font-semibold text-foreground tabular-nums">
               {enabledCount}
             </p>
-            <p className="text-[11px] text-faint mt-1.5">resyncing on a schedule</p>
+            <p className="mt-1.5 text-[11px] text-faint">resyncing on a schedule</p>
           </div>
-          <div className="bg-card border border-border rounded-xl px-5 py-4 animate-fade-up">
+          <div className="animate-fade-up rounded-xl border border-border bg-card px-5 py-4">
             <p className="text-[11px] text-subtle">Needs Attention</p>
-            <p className="text-[28px] font-semibold text-foreground leading-none mt-2 font-serif tabular-nums">
+            <p className="mt-2 font-serif text-[28px] leading-none font-semibold text-foreground tabular-nums">
               {attentionCount}
             </p>
-            <p className="text-[11px] text-faint mt-1.5">overdue or last run failed</p>
+            <p className="mt-1.5 text-[11px] text-faint">overdue or last run failed</p>
           </div>
         </div>
 
         {/* Table card */}
-        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm animate-fade-up">
+        <div className="animate-fade-up overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className={TABLE_SCROLL_CLS}>
             <table className="w-full text-xs">
               <thead>
                 <tr>
-                  {['Controller', 'On', 'Interval', 'Runs As', 'Last Run', 'Next Run', ''].map((header, i) => (
-                    <th key={header || `actions-${i}`} className={DENSE_TABLE_HEAD_CLS}>
-                      {header}
-                    </th>
-                  ))}
+                  {['Controller', 'On', 'Interval', 'Runs As', 'Last Run', 'Next Run', ''].map(
+                    (header, i) => (
+                      <th key={header || `actions-${i}`} className={DENSE_TABLE_HEAD_CLS}>
+                        {header}
+                      </th>
+                    ),
+                  )}
                 </tr>
               </thead>
               <tbody>
                 {schedules.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-14 text-center">
-                      <div className="mx-auto mb-4 h-10 w-10 rounded-xl bg-muted border border-border flex items-center justify-center">
+                      <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-muted">
                         <IconClockPlay size={18} stroke={1.5} className="text-faint" />
                       </div>
                       <p className="text-sm text-subtle">No APIC hosts yet</p>
-                      <p className="text-xs text-faint mt-1">
+                      <p className="mt-1 text-xs text-faint">
                         Add a controller on the APIC Hosts page, then schedule its resyncs here.
                       </p>
                     </td>
@@ -268,10 +279,10 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
                   schedules.map((s, index) => (
                     <tr
                       key={s.apicHostId}
-                      className="group border-b border-border-faint last:border-0 hover:bg-muted transition-colors duration-100 animate-fade-up"
+                      className="group animate-fade-up border-b border-border-faint transition-colors duration-100 last:border-0 hover:bg-muted"
                       style={{ animationDelay: `${Math.min(index * 35, 180)}ms` }}
                     >
-                      <td className="px-4 py-2.5 border-l-2 border-l-transparent group-hover:border-l-primary transition-colors duration-100">
+                      <td className="border-l-2 border-l-transparent px-4 py-2.5 transition-colors duration-100 group-hover:border-l-primary">
                         <div className="font-medium text-foreground">{s.hostName}</div>
                         <div className="font-mono text-[11px] text-faint">{s.host}</div>
                       </td>
@@ -279,10 +290,14 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
                         <Switch
                           aria-label={`Automatic resync for ${s.hostName}`}
                           checked={s.enabled}
-                          disabled={isPending || !s.hasPassword || s.username === UNREADABLE_USERNAME}
+                          disabled={
+                            isPending || !s.hasPassword || s.username === UNREADABLE_USERNAME
+                          }
                           onCheckedChange={(next) => {
                             if (s.username === UNREADABLE_USERNAME) {
-                              toast.error('Credentials could not be decrypted — re-enter them before enabling')
+                              toast.error(
+                                'Credentials could not be decrypted — re-enter them before enabling',
+                              )
                               return
                             }
                             runMutation(async () => {
@@ -301,17 +316,25 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
                           }}
                         />
                       </td>
-                      <td className="px-4 py-2.5 tabular-nums text-muted-foreground">
-                        {s.hasPassword ? `${intervalLabel(s.intervalMinutes)} after completion` : '—'}
+                      <td className="px-4 py-2.5 text-muted-foreground tabular-nums">
+                        {s.hasPassword
+                          ? `${intervalLabel(s.intervalMinutes)} after completion`
+                          : '—'}
                       </td>
-                      <td className="px-4 py-2.5 font-mono text-muted-foreground">{s.username || '—'}</td>
+                      <td className="px-4 py-2.5 font-mono text-muted-foreground">
+                        {s.username || '—'}
+                      </td>
                       <td className="px-4 py-2.5">
                         <div className="flex items-center gap-2">
                           <StatusPill schedule={s} />
-                          <span className="text-[11px] text-faint tabular-nums">{relative(s.lastRunAt)}</span>
+                          <span className="text-[11px] text-faint tabular-nums">
+                            {relative(s.lastRunAt)}
+                          </span>
                         </div>
                         {s.lastDetail ? (
-                          <div className="text-[11px] text-faint truncate max-w-[22rem] mt-0.5">{s.lastDetail}</div>
+                          <div className="mt-0.5 max-w-[22rem] truncate text-[11px] text-faint">
+                            {s.lastDetail}
+                          </div>
                         ) : null}
                       </td>
                       <td className="px-4 py-2.5 tabular-nums">
@@ -327,7 +350,7 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
                         )}
                       </td>
                       <td className="px-4 py-2.5">
-                        <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
                           <Button
                             variant="ghost"
                             size="icon-sm"
@@ -372,13 +395,14 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
 
       {/* Edit dialog */}
       <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
-        <DialogContent className="bg-card border-border text-foreground">
+        <DialogContent className="border-border bg-card text-foreground">
           <DialogHeader>
             <DialogTitle className="font-serif text-base font-semibold text-foreground">
               {editing?.hostName} Schedule
             </DialogTitle>
             <DialogDescription className="text-xs text-subtle">
-              Resyncs run with these APIC credentials. The interval starts counting when a run finishes.
+              Resyncs run with these APIC credentials. The interval starts counting when a run
+              finishes.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -448,12 +472,12 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
               Run automatically
             </label>
           </div>
-          <DialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end rounded-b-xl border-t border-subtle bg-muted px-4 py-3 gap-1">
+          <DialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end gap-1 rounded-b-xl border-t border-subtle bg-muted px-4 py-3">
             <button
               type="button"
               onClick={() => setEditing(null)}
               disabled={isPending}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2 disabled:opacity-50"
+              className="px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
             >
               Cancel
             </button>
@@ -461,7 +485,7 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
               type="button"
               onClick={handleSave}
               disabled={isPending}
-              className="bg-primary text-primary-foreground text-sm font-semibold px-5 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isPending ? 'Saving…' : 'Save Schedule'}
             </button>
@@ -471,20 +495,20 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
 
       {/* Remove confirmation */}
       <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
-        <AlertDialogContent className="bg-card border-border">
+        <AlertDialogContent className="border-border bg-card">
           <AlertDialogHeader>
             <AlertDialogTitle className="font-serif text-base font-semibold text-foreground">
               Remove the schedule for &ldquo;{deleting?.hostName}&rdquo;?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-subtle">
-              Automatic resyncs stop and the stored APIC credentials are deleted. You can schedule this
-              controller again at any time.
+              Automatic resyncs stop and the stored APIC credentials are deleted. You can schedule
+              this controller again at any time.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end rounded-b-xl border-t border-subtle bg-muted px-4 py-3 gap-1">
+          <AlertDialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end gap-1 rounded-b-xl border-t border-subtle bg-muted px-4 py-3">
             <AlertDialogCancel
               disabled={isPending}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2 border-0 bg-transparent shadow-none hover:bg-transparent"
+              className="border-0 bg-transparent px-4 py-2 text-sm text-muted-foreground shadow-none transition-colors hover:bg-transparent hover:text-foreground"
             >
               Cancel
             </AlertDialogCancel>
@@ -495,7 +519,7 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
                 handleDelete()
               }}
               disabled={isPending}
-              className="bg-error text-error-foreground text-sm font-semibold px-5 py-2 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-60"
+              className="rounded-lg bg-error px-5 py-2 text-sm font-semibold text-error-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
             >
               {isPending ? 'Removing…' : 'Remove'}
             </AlertDialogAction>

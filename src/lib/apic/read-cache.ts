@@ -2,14 +2,9 @@ import { apicFetch, type ApicRequestInit } from './client'
 import { runParallel } from './parallel'
 
 export type ApicGetResult<T> =
-  | { ok: true; status: number; data: T }
-  | { ok: false; status: number; error: string }
+  { ok: true; status: number; data: T } | { ok: false; status: number; error: string }
 
-export type ApicFetcher = (
-  host: string,
-  path: string,
-  init?: ApicRequestInit,
-) => Promise<Response>
+export type ApicFetcher = (host: string, path: string, init?: ApicRequestInit) => Promise<Response>
 
 export interface ApicReader {
   get<T>(path: string): Promise<ApicGetResult<T>>
@@ -58,9 +53,11 @@ export function createApicReader(
 
   async function getMany<T>(paths: Iterable<string>): Promise<Map<string, ApicGetResult<T>>> {
     const uniquePaths = Array.from(new Set(paths))
-    const entries = await runParallel(uniquePaths, 10, async path => (
-      [path, await get<T>(path)] as const
-    ))
+    const entries = await runParallel(
+      uniquePaths,
+      10,
+      async (path) => [path, await get<T>(path)] as const,
+    )
     return new Map(entries)
   }
 

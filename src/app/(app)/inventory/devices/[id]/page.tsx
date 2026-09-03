@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function Page({ params }: PageProps<'/inventory/devices/[id]'>) {
   return (
     <Suspense fallback={<DeviceDetailSkeleton />}>
-      <DeviceDetailView idPromise={params.then(p => p.id)} />
+      <DeviceDetailView idPromise={params.then((p) => p.id)} />
     </Suspense>
   )
 }

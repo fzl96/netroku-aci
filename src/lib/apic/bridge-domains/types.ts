@@ -22,9 +22,7 @@ export interface ParsedBridgeDomainL3Row extends BridgeDomainL3Row {
   rowIndex: number
 }
 
-export type ParsedBridgeDomainRow =
-  | ParsedBridgeDomainL2Row
-  | ParsedBridgeDomainL3Row
+export type ParsedBridgeDomainRow = ParsedBridgeDomainL2Row | ParsedBridgeDomainL3Row
 
 export interface BridgeDomainValidationResult {
   rowIndex: number

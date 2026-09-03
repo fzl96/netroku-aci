@@ -27,10 +27,7 @@ export async function POST(request: Request) {
   try {
     const result = await resyncEndpointInventory({ apicHostId, username, password })
     if (!result.ok) {
-      return Response.json(
-        { error: result.error },
-        { status: ERROR_STATUS[result.code] },
-      )
+      return Response.json({ error: result.error }, { status: ERROR_STATUS[result.code] })
     }
     return Response.json({ synced: result.synced, total: result.total })
   } catch {

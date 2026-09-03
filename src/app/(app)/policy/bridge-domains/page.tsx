@@ -1,10 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import {
-  MUTED_TABLE_HEAD_CLS,
-  TABLE_SCROLL_CLS,
-} from '@/lib/ui-classes'
+import { MUTED_TABLE_HEAD_CLS, TABLE_SCROLL_CLS } from '@/lib/ui-classes'
 
 type BridgeDomainMode = 'L2 Only' | 'L3'
 type BridgeDomainStatus = 'deployed' | 'configured' | 'review'
@@ -100,10 +97,8 @@ function ModeBadge({ mode }: { mode: BridgeDomainMode }) {
   return (
     <span
       className={[
-        'inline-flex items-center rounded-sm px-2 py-[3px] text-[10px] font-semibold uppercase tracking-wide',
-        isL3
-          ? 'bg-primary/10 text-primary'
-          : 'bg-muted text-subtle',
+        'inline-flex items-center rounded-sm px-2 py-[3px] text-[10px] font-semibold tracking-wide uppercase',
+        isL3 ? 'bg-primary/10 text-primary' : 'bg-muted text-subtle',
       ].join(' ')}
     >
       {mode}
@@ -113,12 +108,7 @@ function ModeBadge({ mode }: { mode: BridgeDomainMode }) {
 
 function BooleanValue({ value }: { value: boolean }) {
   return (
-    <span
-      className={[
-        'font-medium',
-        value ? 'text-success' : 'text-faint',
-      ].join(' ')}
-    >
+    <span className={['font-medium', value ? 'text-success' : 'text-faint'].join(' ')}>
       {value ? 'true' : 'false'}
     </span>
   )
@@ -132,15 +122,9 @@ export default function PolicyBridgeDomainsPage() {
     if (!q) return INITIAL_BRIDGE_DOMAINS
 
     return INITIAL_BRIDGE_DOMAINS.filter((bd) =>
-      [
-        bd.name,
-        bd.tenant,
-        bd.vrf,
-        bd.subnet,
-        bd.mode,
-        bd.l3out,
-        bd.status,
-      ].some((value) => value.toLowerCase().includes(q))
+      [bd.name, bd.tenant, bd.vrf, bd.subnet, bd.mode, bd.l3out, bd.status].some((value) =>
+        value.toLowerCase().includes(q),
+      ),
     )
   }, [search])
 
@@ -152,17 +136,15 @@ export default function PolicyBridgeDomainsPage() {
   return (
     <div className="min-h-full bg-background">
       <div className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">
-        <div className="px-8 h-16 flex flex-col justify-center">
-          <h1 className="font-serif text-[18px] font-semibold text-foreground">
-            Bridge Domains
-          </h1>
-          <p className="text-xs text-subtle mt-0.5">
+        <div className="flex h-16 flex-col justify-center px-8">
+          <h1 className="font-serif text-[18px] font-semibold text-foreground">Bridge Domains</h1>
+          <p className="mt-0.5 text-xs text-subtle">
             Policy inventory placeholder for Bridge Domain data
           </p>
         </div>
       </div>
 
-      <div className="px-8 py-6 space-y-6">
+      <div className="space-y-6 px-8 py-6">
         <div className="grid gap-4 md:grid-cols-4">
           {[
             { label: 'Total BDs', value: INITIAL_BRIDGE_DOMAINS.length, sub: 'policy records' },
@@ -172,22 +154,22 @@ export default function PolicyBridgeDomainsPage() {
           ].map((stat) => (
             <div
               key={stat.label}
-              className="bg-card border border-border rounded-xl px-5 py-4 animate-fade-up"
+              className="animate-fade-up rounded-xl border border-border bg-card px-5 py-4"
             >
               <p className="text-[11px] text-subtle">{stat.label}</p>
-              <p className="text-[28px] font-semibold text-foreground leading-none mt-2 font-serif tabular-nums">
+              <p className="mt-2 font-serif text-[28px] leading-none font-semibold text-foreground tabular-nums">
                 {stat.value}
               </p>
-              <p className="text-[11px] text-faint mt-1.5">{stat.sub}</p>
+              <p className="mt-1.5 text-[11px] text-faint">{stat.sub}</p>
             </div>
           ))}
         </div>
 
-        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm animate-fade-up">
-          <div className="px-5 py-3.5 border-b border-subtle flex items-center gap-3">
-            <div className="relative flex-1 max-w-sm">
+        <div className="animate-fade-up overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          <div className="flex items-center gap-3 border-b border-subtle px-5 py-3.5">
+            <div className="relative max-w-sm flex-1">
               <svg
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-faint"
+                className="absolute top-1/2 left-2.5 -translate-y-1/2 text-faint"
                 width="13"
                 height="13"
                 viewBox="0 0 24 24"
@@ -205,10 +187,10 @@ export default function PolicyBridgeDomainsPage() {
                 placeholder="Search BD, tenant, VRF, subnet, L3Out..."
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-muted border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-foreground placeholder:text-faint transition-colors"
+                className="w-full rounded-lg border border-border bg-muted py-1.5 pr-3 pl-8 text-xs text-foreground transition-colors placeholder:text-faint focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
               />
             </div>
-            <span className="text-xs text-subtle shrink-0 ml-auto">
+            <span className="ml-auto shrink-0 text-xs text-subtle">
               {filtered.length} of {INITIAL_BRIDGE_DOMAINS.length}
             </span>
           </div>
@@ -229,10 +211,7 @@ export default function PolicyBridgeDomainsPage() {
                     'EPGs',
                     'Status',
                   ].map((heading) => (
-                    <th
-                      key={heading}
-                      className={MUTED_TABLE_HEAD_CLS}
-                    >
+                    <th key={heading} className={MUTED_TABLE_HEAD_CLS}>
                       {heading}
                     </th>
                   ))}
@@ -240,32 +219,24 @@ export default function PolicyBridgeDomainsPage() {
               </thead>
               <tbody className="divide-y divide-subtle">
                 {filtered.map((bd) => (
-                  <tr key={bd.id} className="hover:bg-muted/60 transition-colors">
-                    <td className="px-4 py-3 font-semibold text-foreground whitespace-nowrap">
+                  <tr key={bd.id} className="transition-colors hover:bg-muted/60">
+                    <td className="px-4 py-3 font-semibold whitespace-nowrap text-foreground">
                       {bd.name}
                     </td>
-                    <td className="px-4 py-3 text-subtle whitespace-nowrap">
-                      {bd.tenant}
-                    </td>
-                    <td className="px-4 py-3 text-subtle whitespace-nowrap">
-                      {bd.vrf}
-                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-subtle">{bd.tenant}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-subtle">{bd.vrf}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <ModeBadge mode={bd.mode} />
                     </td>
-                    <td className="px-4 py-3 text-subtle whitespace-nowrap">
-                      {bd.subnet}
-                    </td>
-                    <td className="px-4 py-3 text-subtle whitespace-nowrap">
-                      {bd.l3out}
-                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-subtle">{bd.subnet}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-subtle">{bd.l3out}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <BooleanValue value={bd.arpFlood} />
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <BooleanValue value={bd.unicastRoute} />
                     </td>
-                    <td className="px-4 py-3 text-subtle tabular-nums whitespace-nowrap">
+                    <td className="px-4 py-3 whitespace-nowrap text-subtle tabular-nums">
                       {bd.epgs}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
@@ -275,10 +246,7 @@ export default function PolicyBridgeDomainsPage() {
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td
-                      colSpan={10}
-                      className="px-4 py-10 text-center text-sm text-subtle"
-                    >
+                    <td colSpan={10} className="px-4 py-10 text-center text-sm text-subtle">
                       No Bridge Domain data matches the current search.
                     </td>
                   </tr>

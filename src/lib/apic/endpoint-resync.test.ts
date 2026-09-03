@@ -31,8 +31,9 @@ function fetched(overrides: Partial<ApicEndpointRow> = {}): ApicEndpointRow {
 
 describe('epgKeyFromDn', () => {
   it('strips the trailing /cep-<mac> segment', () => {
-    expect(epgKeyFromDn('uni/tn-t/ap-a/epg-web/cep-aa:bb:cc:dd:ee:ff'))
-      .toBe('uni/tn-t/ap-a/epg-web')
+    expect(epgKeyFromDn('uni/tn-t/ap-a/epg-web/cep-aa:bb:cc:dd:ee:ff')).toBe(
+      'uni/tn-t/ap-a/epg-web',
+    )
   })
 
   it('returns the dn unchanged when there is no cep segment', () => {
@@ -65,12 +66,16 @@ describe('planEndpointResync', () => {
   })
 
   it('treats interface, vlan, and epg-dn changes as moves', () => {
-    expect(planEndpointResync([active()], [fetched({ interface: 'eth1/2' })]).inserts).toHaveLength(1)
+    expect(planEndpointResync([active()], [fetched({ interface: 'eth1/2' })]).inserts).toHaveLength(
+      1,
+    )
     expect(planEndpointResync([active()], [fetched({ vlan: 'vlan-200' })]).inserts).toHaveLength(1)
-    expect(planEndpointResync(
-      [active()],
-      [fetched({ dn: 'uni/tn-t/ap-a/epg-db/cep-aa:bb:cc:dd:ee:ff' })],
-    ).inserts).toHaveLength(1)
+    expect(
+      planEndpointResync(
+        [active()],
+        [fetched({ dn: 'uni/tn-t/ap-a/epg-db/cep-aa:bb:cc:dd:ee:ff' })],
+      ).inserts,
+    ).toHaveLength(1)
   })
 
   it('relabels in place when only epgDescr differs (not a move)', () => {
@@ -91,9 +96,9 @@ describe('planEndpointResync', () => {
     const rows = [active({ id: 'ep-1', mac: 'a', ip: '1' })]
     const plan = planEndpointResync(rows, [
       fetched({ mac: 'a', ip: '1', node: '999' }), // move -> clear ep-1 + insert
-      fetched({ mac: 'b', ip: '2' }),               // new -> insert
+      fetched({ mac: 'b', ip: '2' }), // new -> insert
     ])
     expect(plan.clears).toEqual(['ep-1'])
-    expect(plan.inserts.map(r => `${r.mac}|${r.ip}`)).toEqual(['a|1', 'b|2'])
+    expect(plan.inserts.map((r) => `${r.mac}|${r.ip}`)).toEqual(['a|1', 'b|2'])
   })
 })

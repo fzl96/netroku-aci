@@ -1,7 +1,13 @@
 import type { ParsedSelectorRow, IpgType, CsvValidationError } from './types'
 import { checkHeaders, deduplicateRows } from '@/lib/apic/csv-utils'
 
-const REQUIRED_HEADERS = ['interface_profile', 'selector_name', 'port', 'ipg_name', 'ipg_type'] as const
+const REQUIRED_HEADERS = [
+  'interface_profile',
+  'selector_name',
+  'port',
+  'ipg_name',
+  'ipg_type',
+] as const
 const IPG_TYPES: IpgType[] = ['port', 'pc', 'vpc']
 const PORT_RE = /^(\d+)\/(\d+)$/
 const SAFE_NAME_RE = /^[A-Za-z0-9_\-]+$/
@@ -11,7 +17,7 @@ export const SELECTOR_REQUIRED_COLUMNS_HELP =
 
 export function validateSelectorCsv(
   rawRows: Record<string, string>[],
-  headers: string[]
+  headers: string[],
 ): { rows: ParsedSelectorRow[]; errors: CsvValidationError[] } {
   const headerError = checkHeaders(REQUIRED_HEADERS, headers)
   if (headerError) return { rows: [], errors: [headerError] }
@@ -31,7 +37,10 @@ export function validateSelectorCsv(
 
     const selectorName = raw.selector_name?.trim() ?? ''
     if (selectorName && !SAFE_NAME_RE.test(selectorName)) {
-      addError('selector_name', `selector_name must contain only letters, numbers, hyphens, and underscores — got "${selectorName}" (slashes are not allowed)`)
+      addError(
+        'selector_name',
+        `selector_name must contain only letters, numbers, hyphens, and underscores — got "${selectorName}" (slashes are not allowed)`,
+      )
     }
 
     const portRaw = raw.port?.trim() ?? ''
@@ -71,12 +80,14 @@ export function validateSelectorCsv(
 
   const dedupedRows = deduplicateRows(rows, errors, [
     {
-      key: r => `${r.interface_profile}|${r.selector_name}`,
-      message: (r, first) => `Duplicate selector ${r.selector_name} on profile ${r.interface_profile} (first at row ${first})`,
+      key: (r) => `${r.interface_profile}|${r.selector_name}`,
+      message: (r, first) =>
+        `Duplicate selector ${r.selector_name} on profile ${r.interface_profile} (first at row ${first})`,
     },
     {
-      key: r => `${r.interface_profile}|${r.card}/${r.port_num}`,
-      message: (r, first) => `Port ${r.port} already targeted by row ${first} on profile ${r.interface_profile}`,
+      key: (r) => `${r.interface_profile}|${r.card}/${r.port_num}`,
+      message: (r, first) =>
+        `Port ${r.port} already targeted by row ${first} on profile ${r.interface_profile}`,
     },
   ])
 

@@ -33,16 +33,20 @@ describe('loadStaticPortSnapshot', () => {
       if (path.startsWith(EPG_BASE)) {
         return Response.json({
           totalCount: '1',
-          imdata: [{
-            fvAEPg: {
-              attributes: { dn: epgDn },
-              children: [{
-                fvRsPathAtt: {
-                  attributes: { tDn: pathDn, encap: 'vlan-100' },
-                },
-              }],
+          imdata: [
+            {
+              fvAEPg: {
+                attributes: { dn: epgDn },
+                children: [
+                  {
+                    fvRsPathAtt: {
+                      attributes: { tDn: pathDn, encap: 'vlan-100' },
+                    },
+                  },
+                ],
+              },
             },
-          }],
+          ],
         })
       }
       if (path.startsWith(NODE_BASE)) {
@@ -64,11 +68,13 @@ describe('loadStaticPortSnapshot', () => {
       if (path.startsWith(PHYSICAL_BASE)) {
         return Response.json({
           totalCount: '1',
-          imdata: [{
-            fabricPathEp: {
-              attributes: { dn: 'topology/pod-1/paths-101/pathep-[eth1/1]' },
+          imdata: [
+            {
+              fabricPathEp: {
+                attributes: { dn: 'topology/pod-1/paths-101/pathep-[eth1/1]' },
+              },
             },
-          }],
+          ],
         })
       }
       return new Response('unexpected path', { status: 500 })
@@ -88,9 +94,11 @@ describe('loadStaticPortSnapshot', () => {
         tDn: pathDn,
         encap: 'vlan-100',
       })
-      expect(snapshot.epgBindings.value.bindingDnsByPathAndEncap.get(
-        bindingLookupKey(pathDn, 'vlan-100'),
-      )).toEqual([bindingDn])
+      expect(
+        snapshot.epgBindings.value.bindingDnsByPathAndEncap.get(
+          bindingLookupKey(pathDn, 'vlan-100'),
+        ),
+      ).toEqual([bindingDn])
     }
     expect(snapshot.nodes.ok && snapshot.nodes.value).toEqual(new Set([101, 102]))
     expect(snapshot.bundles.ok && snapshot.bundles.value).toEqual(new Set(['WEB-VPC']))
@@ -107,18 +115,15 @@ describe('loadStaticPortSnapshot', () => {
       const page = pageNumber(path)
       return Response.json({
         totalCount: '5001',
-        imdata: [{
-          fvAEPg: { attributes: { dn: `${epgDn}-${page}` } },
-        }],
+        imdata: [
+          {
+            fvAEPg: { attributes: { dn: `${epgDn}-${page}` } },
+          },
+        ],
       })
     }
 
-    const snapshot = await loadStaticPortSnapshot(
-      'apic.local',
-      'token',
-      requirements(),
-      fetcher,
-    )
+    const snapshot = await loadStaticPortSnapshot('apic.local', 'token', requirements(), fetcher)
 
     expect(calls.map(pageNumber)).toEqual([0, 1])
     expect(snapshot.epgBindings.ok).toBe(true)
@@ -150,12 +155,7 @@ describe('loadStaticPortSnapshot', () => {
       })
     }
 
-    const snapshot = await loadStaticPortSnapshot(
-      'apic.local',
-      'token',
-      requirements(),
-      fetcher,
-    )
+    const snapshot = await loadStaticPortSnapshot('apic.local', 'token', requirements(), fetcher)
 
     expect(snapshot.epgBindings).toEqual({
       ok: false,
@@ -171,12 +171,7 @@ describe('loadStaticPortSnapshot', () => {
       return Response.json({ totalCount: '0', imdata: [] })
     }
 
-    const snapshot = await loadStaticPortSnapshot(
-      'apic.local',
-      'token',
-      requirements(),
-      fetcher,
-    )
+    const snapshot = await loadStaticPortSnapshot('apic.local', 'token', requirements(), fetcher)
 
     expect(calls).toHaveLength(1)
     expect(calls[0].startsWith(EPG_BASE)).toBe(true)

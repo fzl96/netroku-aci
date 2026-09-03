@@ -28,7 +28,9 @@ export interface ClaimedSchedule {
  * that then wait behind earlier hosts, and once that wait exceeds the stale window another
  * tick would reclaim and double-run them.
  */
-export async function claimNextDueSchedule(now: Date = new Date()): Promise<ClaimedSchedule | null> {
+export async function claimNextDueSchedule(
+  now: Date = new Date(),
+): Promise<ClaimedSchedule | null> {
   const rows = await prisma.$queryRaw<ClaimedSchedule[]>`
     UPDATE resync_schedule AS s
        SET "runningAt" = ${now}

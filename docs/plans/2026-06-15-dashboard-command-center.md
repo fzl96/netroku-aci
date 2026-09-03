@@ -13,6 +13,7 @@
 ### Task 1: Add Dashboard Summary Helper Tests
 
 **Files:**
+
 - Create: `src/app/(app)/dashboard/summary.test.ts`
 - Later modify: `src/app/(app)/dashboard/summary.ts`
 
@@ -96,6 +97,7 @@ Do not commit yet; commit after Task 2 makes these tests pass.
 ### Task 2: Implement Pure Summary Helpers
 
 **Files:**
+
 - Create: `src/app/(app)/dashboard/summary.ts`
 - Test: `src/app/(app)/dashboard/summary.test.ts`
 
@@ -278,6 +280,7 @@ git commit -m "test: add dashboard summary helpers"
 ### Task 3: Replace Dashboard Tiles With Global Aggregation
 
 **Files:**
+
 - Modify: `src/app/(app)/dashboard/page.tsx`
 - May delete or leave unused: `src/app/(app)/dashboard/FaultsTile.tsx`
 - May delete or leave unused: `src/app/(app)/dashboard/HealthTile.tsx`
@@ -363,6 +366,7 @@ git commit -m "feat: redesign dashboard overview"
 ### Task 4: Verify Build And Dashboard Rendering
 
 **Files:**
+
 - No planned edits unless verification reveals a concrete issue.
 
 **Step 1: Run all tests**

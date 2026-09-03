@@ -40,9 +40,7 @@ export function buildInterfaceSnapshotWhere(
 
   return {
     apicHostId: input.apicHostId,
-    ...(input.view === 'crc'
-      ? { id: { in: input.crcInterfaceIds ?? [] } }
-      : {}),
+    ...(input.view === 'crc' ? { id: { in: input.crcInterfaceIds ?? [] } } : {}),
     ...(input.nodeFilter.length > 0 ? { node: { in: input.nodeFilter } } : {}),
     ...(groups.length > 0 ? { AND: groups } : {}),
   }

@@ -4,12 +4,7 @@ interface SortableInterfaceRow {
 }
 
 export type InterfaceSortKey =
-  | 'rxErrors'
-  | 'txErrors'
-  | 'rxCrcErrors'
-  | 'rxAlignErrors'
-  | 'rxBytes'
-  | 'txBytes'
+  'rxErrors' | 'txErrors' | 'rxCrcErrors' | 'rxAlignErrors' | 'rxBytes' | 'txBytes'
 
 export type InterfaceSortDirection = 'asc' | 'desc'
 export type InterfaceSortMode = 'delta' | 'current'
@@ -34,16 +29,18 @@ export const INTERFACE_SORT_KEYS: InterfaceSortKey[] = [
   'txBytes',
 ]
 
-type InterfaceSampleCounters = Partial<Record<
-  | InterfaceSortKey
-  | 'dRxErrors'
-  | 'dTxErrors'
-  | 'dRxCrcErrors'
-  | 'dRxAlignErrors'
-  | 'dRxBytes'
-  | 'dTxBytes',
-  bigint | null
->>
+type InterfaceSampleCounters = Partial<
+  Record<
+    | InterfaceSortKey
+    | 'dRxErrors'
+    | 'dTxErrors'
+    | 'dRxCrcErrors'
+    | 'dRxAlignErrors'
+    | 'dRxBytes'
+    | 'dTxBytes',
+    bigint | null
+  >
+>
 
 interface SortableInterfaceCounterRow extends SortableInterfaceRow {
   samples?: InterfaceSampleCounters[]

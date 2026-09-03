@@ -74,17 +74,19 @@ export type SafeDeviceWithRack = SafeDevice & {
 }
 
 export type SafeDeviceDetail = SafeDeviceWithRack & {
-  deviceStack: (SafeDeviceStack & {
-    devices: Array<{
-      id: string
-      name: string
-      serialNumber: string
-      stackMember: number | null
-      stackRole: StackRole | null
-      rackPosition: number | null
-      rack: { name: string } | null
-    }>
-  }) | null
+  deviceStack:
+    | (SafeDeviceStack & {
+        devices: Array<{
+          id: string
+          name: string
+          serialNumber: string
+          stackMember: number | null
+          stackRole: StackRole | null
+          rackPosition: number | null
+          rack: { name: string } | null
+        }>
+      })
+    | null
 }
 
 export type DeviceCatalogEntry = {
@@ -165,110 +167,135 @@ const cacheOptions = { tags: [INVENTORY_TAG], revalidate: INVENTORY_CACHE_SECOND
 
 export async function getDevices(params: DeviceListParams): Promise<DeviceListPage> {
   await authorizeInventoryRead()
-  return readInventoryData(() => unstable_cache(async () => {
-    const where = buildDeviceWhere(params)
-    const total = await prisma.device.count({ where })
-    const window = deviceListWindow(params.page, total)
-    const devices = await prisma.device.findMany({
-      where,
-      orderBy: { name: 'asc' },
-      skip: window.skip,
-      take: window.take,
-      select: {
-        ...DEVICE_SCALAR_SELECT,
-        rack: { select: RACK_WITH_SITE_SELECT },
-        deviceStack: { select: { id: true, name: true } },
+  return readInventoryData(() =>
+    unstable_cache(
+      async () => {
+        const where = buildDeviceWhere(params)
+        const total = await prisma.device.count({ where })
+        const window = deviceListWindow(params.page, total)
+        const devices = await prisma.device.findMany({
+          where,
+          orderBy: { name: 'asc' },
+          skip: window.skip,
+          take: window.take,
+          select: {
+            ...DEVICE_SCALAR_SELECT,
+            rack: { select: RACK_WITH_SITE_SELECT },
+            deviceStack: { select: { id: true, name: true } },
+          },
+        })
+        return {
+          devices: devices.map(toSafeWithRack),
+          total,
+          page: window.page,
+          pageSize: window.take,
+        }
       },
-    })
-    return {
-      devices: devices.map(toSafeWithRack),
-      total,
-      page: window.page,
-      pageSize: window.take,
-    }
-  }, ['inventory', 'devices', 'list', params.query, String(params.page)], cacheOptions)())
+      ['inventory', 'devices', 'list', params.query, String(params.page)],
+      cacheOptions,
+    )(),
+  )
 }
 
 /** Wrapped in React `cache()` so a detail page's `generateMetadata` and its
  *  render both resolving the same id within one request share this read. */
 export const getDeviceById = cache(async (id: string): Promise<SafeDeviceDetail | null> => {
   await authorizeInventoryRead()
-  return readInventoryData(() => unstable_cache(async () => {
-    const device = await prisma.device.findUnique({
-      where: { id },
-      select: {
-        ...DEVICE_SCALAR_SELECT,
-        rack: { select: RACK_WITH_SITE_SELECT },
-        deviceStack: {
+  return readInventoryData(() =>
+    unstable_cache(
+      async () => {
+        const device = await prisma.device.findUnique({
+          where: { id },
           select: {
-            id: true,
-            name: true,
-            devices: {
-              where: { id: { not: id } },
+            ...DEVICE_SCALAR_SELECT,
+            rack: { select: RACK_WITH_SITE_SELECT },
+            deviceStack: {
               select: {
                 id: true,
                 name: true,
-                serialNumber: true,
-                stackMember: true,
-                stackRole: true,
-                rackPosition: true,
-                rack: { select: { name: true } },
+                devices: {
+                  where: { id: { not: id } },
+                  select: {
+                    id: true,
+                    name: true,
+                    serialNumber: true,
+                    stackMember: true,
+                    stackRole: true,
+                    rackPosition: true,
+                    rack: { select: { name: true } },
+                  },
+                  orderBy: [{ stackRole: 'asc' }, { stackMember: 'asc' }, { name: 'asc' }],
+                },
               },
-              orderBy: [{ stackRole: 'asc' }, { stackMember: 'asc' }, { name: 'asc' }],
             },
           },
-        },
+        })
+        if (!device) return null
+        return {
+          ...toSafe(device),
+          rack: device.rack,
+          deviceStack: device.deviceStack,
+        }
       },
-    })
-    if (!device) return null
-    return {
-      ...toSafe(device),
-      rack: device.rack,
-      deviceStack: device.deviceStack,
-    }
-  }, ['inventory', 'devices', 'detail', id], cacheOptions)())
+      ['inventory', 'devices', 'detail', id],
+      cacheOptions,
+    )(),
+  )
 })
 
 export async function getAllDevices(): Promise<DeviceCatalogEntry[]> {
   await authorizeInventoryRead()
-  return readInventoryData(() => unstable_cache(() => prisma.device.findMany({
-    select: {
-      id: true,
-      name: true,
-      serialNumber: true,
-      rackId: true,
-      rackPosition: true,
-      rack: { select: { name: true } },
-      deviceStack: { select: { id: true, name: true } },
-      stackMember: true,
-      stackRole: true,
-      vendor: true,
-      model: true,
-      heightU: true,
-    },
-    orderBy: { name: 'asc' },
-  }), ['inventory', 'devices', 'catalog'], cacheOptions)())
+  return readInventoryData(() =>
+    unstable_cache(
+      () =>
+        prisma.device.findMany({
+          select: {
+            id: true,
+            name: true,
+            serialNumber: true,
+            rackId: true,
+            rackPosition: true,
+            rack: { select: { name: true } },
+            deviceStack: { select: { id: true, name: true } },
+            stackMember: true,
+            stackRole: true,
+            vendor: true,
+            model: true,
+            heightU: true,
+          },
+          orderBy: { name: 'asc' },
+        }),
+      ['inventory', 'devices', 'catalog'],
+      cacheOptions,
+    )(),
+  )
 }
 
 export async function getDeviceStacks(): Promise<SafeDeviceStack[]> {
   await authorizeInventoryRead()
-  return readInventoryData(() => unstable_cache(async () => {
-    const stacks = await prisma.deviceStack.findMany({
-      select: {
-        id: true,
-        name: true,
-        devices: {
-          select: { id: true, name: true, stackMember: true, stackRole: true },
-          orderBy: [{ stackRole: 'asc' }, { stackMember: 'asc' }],
-        },
+  return readInventoryData(() =>
+    unstable_cache(
+      async () => {
+        const stacks = await prisma.deviceStack.findMany({
+          select: {
+            id: true,
+            name: true,
+            devices: {
+              select: { id: true, name: true, stackMember: true, stackRole: true },
+              orderBy: [{ stackRole: 'asc' }, { stackMember: 'asc' }],
+            },
+          },
+          orderBy: { name: 'asc' },
+        })
+        return stacks.map((stack) => ({
+          id: stack.id,
+          name: stack.name,
+          memberCount: stack.devices.length,
+          members: stack.devices,
+        }))
       },
-      orderBy: { name: 'asc' },
-    })
-    return stacks.map(stack => ({
-      id: stack.id,
-      name: stack.name,
-      memberCount: stack.devices.length,
-      members: stack.devices,
-    }))
-  }, ['inventory', 'devices', 'stacks'], cacheOptions)())
+      ['inventory', 'devices', 'stacks'],
+      cacheOptions,
+    )(),
+  )
 }

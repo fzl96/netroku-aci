@@ -55,34 +55,42 @@ describe('computeEditedNextRunAt', () => {
   })
 
   it('queues immediately when the edited deadline has already passed', () => {
-    expect(computeEditedNextRunAt({
-      ...base,
-      intervalMinutes: 15,
-      now: min(30),
-    })?.toISOString()).toBe('2026-08-17T12:30:00.000Z')
+    expect(
+      computeEditedNextRunAt({
+        ...base,
+        intervalMinutes: 15,
+        now: min(30),
+      })?.toISOString(),
+    ).toBe('2026-08-17T12:30:00.000Z')
   })
 
   it('preserves the existing deadline when the interval is unchanged', () => {
-    expect(computeEditedNextRunAt({
-      ...base,
-      intervalMinutes: 60,
-      previousIntervalMinutes: 60,
-    })?.toISOString()).toBe('2026-08-17T13:00:00.000Z')
+    expect(
+      computeEditedNextRunAt({
+        ...base,
+        intervalMinutes: 60,
+        previousIntervalMinutes: 60,
+      })?.toISOString(),
+    ).toBe('2026-08-17T13:00:00.000Z')
   })
 
   it('queues immediately when an enabled row has no existing deadline', () => {
-    expect(computeEditedNextRunAt({
-      ...base,
-      previousIntervalMinutes: 240,
-      existingNextRunAt: null,
-    })?.toISOString()).toBe('2026-08-17T12:30:00.000Z')
+    expect(
+      computeEditedNextRunAt({
+        ...base,
+        previousIntervalMinutes: 240,
+        existingNextRunAt: null,
+      })?.toISOString(),
+    ).toBe('2026-08-17T12:30:00.000Z')
   })
 
   it('queues immediately when enabling a disabled schedule', () => {
-    expect(computeEditedNextRunAt({
-      ...base,
-      wasEnabled: false,
-    })?.toISOString()).toBe('2026-08-17T12:30:00.000Z')
+    expect(
+      computeEditedNextRunAt({
+        ...base,
+        wasEnabled: false,
+      })?.toISOString(),
+    ).toBe('2026-08-17T12:30:00.000Z')
   })
 
   it('clears the deadline when disabling a schedule', () => {

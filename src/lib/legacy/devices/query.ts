@@ -84,8 +84,9 @@ export class LegacyDeviceReadError extends Error {
 }
 
 async function authorize(): Promise<void> {
-  try { await requireSession() }
-  catch (error) {
+  try {
+    await requireSession()
+  } catch (error) {
     if (!(error instanceof AuthenticationRequiredError)) throw error
     throw new LegacyDeviceReadError()
   }
@@ -128,67 +129,100 @@ function serializeDevice(record: StoredLegacyDevice): LegacyDeviceRow {
 
 export async function getLegacyDeviceSummary(): Promise<LegacyDeviceSummary> {
   await authorize()
-  return readDeviceData(() => unstable_cache(async () => {
-    const [total, siteRows, withHealth, incomplete] = await Promise.all([
-      prisma.legacyDevice.count(),
-      prisma.legacyDevice.findMany({ distinct: ['site'], select: { site: true } }),
-      prisma.legacyDevice.count({ where: { lastHealthSyncAt: { not: null } } }),
-      prisma.legacyDevice.count({ where: { OR: [
-        { lastHealthSyncAt: null },
-        { lastInterfaceSyncAt: null },
-        { lastEndpointSyncAt: null },
-      ] } }),
-    ])
-    return { total, sites: siteRows.length, withHealth, incomplete }
-  }, ['legacy-devices', 'summary'], cacheOptions)())
+  return readDeviceData(() =>
+    unstable_cache(
+      async () => {
+        const [total, siteRows, withHealth, incomplete] = await Promise.all([
+          prisma.legacyDevice.count(),
+          prisma.legacyDevice.findMany({ distinct: ['site'], select: { site: true } }),
+          prisma.legacyDevice.count({ where: { lastHealthSyncAt: { not: null } } }),
+          prisma.legacyDevice.count({
+            where: {
+              OR: [
+                { lastHealthSyncAt: null },
+                { lastInterfaceSyncAt: null },
+                { lastEndpointSyncAt: null },
+              ],
+            },
+          }),
+        ])
+        return { total, sites: siteRows.length, withHealth, incomplete }
+      },
+      ['legacy-devices', 'summary'],
+      cacheOptions,
+    )(),
+  )
 }
 
 export async function getLegacyDeviceFilterOptions(): Promise<LegacyDeviceFilterOptions> {
   await authorize()
-  return readDeviceData(() => unstable_cache(async () => {
-    const [siteRows, typeRows] = await Promise.all([
-      prisma.legacyDevice.findMany({
-        distinct: ['site'], select: { site: true }, orderBy: { site: 'asc' },
-      }),
-      prisma.legacyDevice.findMany({
-        distinct: ['deviceType'], select: { deviceType: true }, orderBy: { deviceType: 'asc' },
-      }),
-    ])
-    return {
-      siteOptions: siteRows.map(row => row.site),
-      typeOptions: typeRows.map(row => row.deviceType),
-    }
-  }, ['legacy-devices', 'filter-options'], cacheOptions)())
+  return readDeviceData(() =>
+    unstable_cache(
+      async () => {
+        const [siteRows, typeRows] = await Promise.all([
+          prisma.legacyDevice.findMany({
+            distinct: ['site'],
+            select: { site: true },
+            orderBy: { site: 'asc' },
+          }),
+          prisma.legacyDevice.findMany({
+            distinct: ['deviceType'],
+            select: { deviceType: true },
+            orderBy: { deviceType: 'asc' },
+          }),
+        ])
+        return {
+          siteOptions: siteRows.map((row) => row.site),
+          typeOptions: typeRows.map((row) => row.deviceType),
+        }
+      },
+      ['legacy-devices', 'filter-options'],
+      cacheOptions,
+    )(),
+  )
 }
 
 export async function getLegacyDeviceResults(
   params: LegacyDevicePageParams,
 ): Promise<LegacyDeviceResults> {
   await authorize()
-  return readDeviceData(() => unstable_cache(async (): Promise<LegacyDeviceResults> => {
-    const where = buildLegacyDeviceWhere({
-      query: params.query,
-      sites: params.site ? [params.site] : [],
-      deviceTypes: params.deviceType ? [params.deviceType] : [],
-    })
-    const [records, total] = await Promise.all([
-      prisma.legacyDevice.findMany({
-        where,
-        orderBy: legacyDeviceOrderBy(params.sort, params.direction),
-        skip: (params.page - 1) * params.pageSize,
-        take: params.pageSize,
-        select: DEVICE_SELECT,
-      }),
-      prisma.legacyDevice.count({ where }),
-    ])
-    return {
-      rows: records.map(serializeDevice),
-      total,
-      page: params.page,
-      pageSize: params.pageSize,
-    }
-  }, [
-    'legacy-devices', 'results', params.query, params.site, params.deviceType,
-    params.sort, params.direction, String(params.page), String(params.pageSize),
-  ], cacheOptions)())
+  return readDeviceData(() =>
+    unstable_cache(
+      async (): Promise<LegacyDeviceResults> => {
+        const where = buildLegacyDeviceWhere({
+          query: params.query,
+          sites: params.site ? [params.site] : [],
+          deviceTypes: params.deviceType ? [params.deviceType] : [],
+        })
+        const [records, total] = await Promise.all([
+          prisma.legacyDevice.findMany({
+            where,
+            orderBy: legacyDeviceOrderBy(params.sort, params.direction),
+            skip: (params.page - 1) * params.pageSize,
+            take: params.pageSize,
+            select: DEVICE_SELECT,
+          }),
+          prisma.legacyDevice.count({ where }),
+        ])
+        return {
+          rows: records.map(serializeDevice),
+          total,
+          page: params.page,
+          pageSize: params.pageSize,
+        }
+      },
+      [
+        'legacy-devices',
+        'results',
+        params.query,
+        params.site,
+        params.deviceType,
+        params.sort,
+        params.direction,
+        String(params.page),
+        String(params.pageSize),
+      ],
+      cacheOptions,
+    )(),
+  )
 }

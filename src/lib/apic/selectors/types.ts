@@ -5,7 +5,7 @@ export type IpgType = 'port' | 'pc' | 'vpc'
 export interface SelectorCsvRow {
   interface_profile: string
   selector_name: string
-  port: string         // Cisco notation, e.g. "1/1"
+  port: string // Cisco notation, e.g. "1/1"
   ipg_name: string
   ipg_type: IpgType
   description?: string

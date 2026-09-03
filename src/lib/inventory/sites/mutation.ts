@@ -35,10 +35,7 @@ export async function createSiteRecord(data: SiteFormValues): Promise<SafeSite> 
   return toSafeSite(site)
 }
 
-export async function updateSiteRecord(
-  id: string,
-  data: SiteUpdateFormValues,
-): Promise<SafeSite> {
+export async function updateSiteRecord(id: string, data: SiteUpdateFormValues): Promise<SafeSite> {
   const actor = await requireAdmin()
   const parsed = siteUpdateSchema.safeParse(data)
   if (!parsed.success) throw new Error('Invalid data')

@@ -87,23 +87,17 @@ describe('summarizeResults', () => {
   })
 
   it('returns success when every dataset succeeded', () => {
-    const results: HostResult[] = [
-      { apicHostId: 'a', host: 'a', endpoints: ok, interfaces: ok },
-    ]
+    const results: HostResult[] = [{ apicHostId: 'a', host: 'a', endpoints: ok, interfaces: ok }]
     expect(summarizeResults(results)).toBe('success')
   })
 
   it('returns failure when every dataset failed', () => {
-    const results: HostResult[] = [
-      { apicHostId: 'a', host: 'a', endpoints: bad, interfaces: bad },
-    ]
+    const results: HostResult[] = [{ apicHostId: 'a', host: 'a', endpoints: bad, interfaces: bad }]
     expect(summarizeResults(results)).toBe('failure')
   })
 
   it('returns partial when some datasets failed', () => {
-    const results: HostResult[] = [
-      { apicHostId: 'a', host: 'a', endpoints: ok, interfaces: bad },
-    ]
+    const results: HostResult[] = [{ apicHostId: 'a', host: 'a', endpoints: ok, interfaces: bad }]
     expect(summarizeResults(results)).toBe('partial')
   })
 

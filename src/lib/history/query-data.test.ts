@@ -10,18 +10,20 @@ const requireSession = mock(async () => {
 })
 
 const count = mock(async () => 21)
-const findMany = mock(async () => [{
-  id: 'log-1',
-  createdAt: new Date('2026-09-01T10:00:00.000Z'),
-  userId: 'user-1',
-  userName: 'alice',
-  action: 'resync.interfaces',
-  target: 'Fabric A',
-  status: 'success',
-  detail: 'synced 42',
-  payload: [{ secret: 'stored-json-is-visible-by-design' }],
-  internalOnly: 'must-not-cross-the-seam',
-}])
+const findMany = mock(async () => [
+  {
+    id: 'log-1',
+    createdAt: new Date('2026-09-01T10:00:00.000Z'),
+    userId: 'user-1',
+    userName: 'alice',
+    action: 'resync.interfaces',
+    target: 'Fabric A',
+    status: 'success',
+    detail: 'synced 42',
+    payload: [{ secret: 'stored-json-is-visible-by-design' }],
+    internalOnly: 'must-not-cross-the-seam',
+  },
+])
 
 const cacheCalls: Array<{
   key: string[]
@@ -74,21 +76,24 @@ describe('history query interface', () => {
 
   it('maps only a missing session and propagates auth infrastructure failures', async () => {
     authenticationError = new AuthenticationRequiredError('missing')
-    await expect(history.getHistoryPage({ query: '', action: 'all', page: 1 }))
-      .rejects.toBeInstanceOf(history.HistoryReadError)
+    await expect(
+      history.getHistoryPage({ query: '', action: 'all', page: 1 }),
+    ).rejects.toBeInstanceOf(history.HistoryReadError)
     expect(cacheCalls).toHaveLength(0)
 
     authenticationError = new Error('session database unavailable')
-    await expect(history.getHistoryPage({ query: '', action: 'all', page: 1 }))
-      .rejects.toThrow('session database unavailable')
+    await expect(history.getHistoryPage({ query: '', action: 'all', page: 1 })).rejects.toThrow(
+      'session database unavailable',
+    )
     expect(cacheCalls).toHaveLength(0)
   })
 
   it('maps durable read failures to a retryable purpose error after authorization', async () => {
     count.mockRejectedValueOnce(new Error('database unavailable'))
 
-    const error = await history.getHistoryPage({ query: '', action: 'all', page: 1 })
-      .catch(value => value)
+    const error = await history
+      .getHistoryPage({ query: '', action: 'all', page: 1 })
+      .catch((value) => value)
 
     expect(requireSession).toHaveBeenCalledTimes(1)
     expect(error).toBeInstanceOf(history.HistoryReadError)
@@ -98,10 +103,12 @@ describe('history query interface', () => {
   it('caches normalized reads for eight hours and clamps before selecting rows', async () => {
     const result = await history.getHistoryPage({ query: '  core  ', action: 'all', page: 9 })
 
-    expect(cacheCalls).toEqual([{
-      key: ['history', 'page', 'core', 'all', '9'],
-      options: { tags: ['history:all'], revalidate: 28_800 },
-    }])
+    expect(cacheCalls).toEqual([
+      {
+        key: ['history', 'page', 'core', 'all', '9'],
+        options: { tags: ['history:all'], revalidate: 28_800 },
+      },
+    ])
     expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 20, take: 20 }))
     expect(result.page).toBe(2)
   })

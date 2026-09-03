@@ -1,5 +1,8 @@
 import type { LegacyInterfaceListState } from '@/lib/legacy/interfaces/params'
-import { LegacyInterfaceReadError, getLegacyInterfaceFilterOptions } from '@/lib/legacy/interfaces/query'
+import {
+  LegacyInterfaceReadError,
+  getLegacyInterfaceFilterOptions,
+} from '@/lib/legacy/interfaces/query'
 import { LegacyInterfaceFiltersClient } from './interfaces-client'
 import { LegacyInterfaceRegionError } from './interface-region-error'
 

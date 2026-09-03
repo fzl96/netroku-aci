@@ -80,19 +80,23 @@ describe('APIC host endpoint-cache invalidation', () => {
   })
 
   it('returns only the safe host shape after create', async () => {
-    await expect(mutation.createApicHost({
-      name: SAFE_HOST.name,
-      host: SAFE_HOST.host,
-    })).resolves.toEqual({ success: true, data: SAFE_HOST })
+    await expect(
+      mutation.createApicHost({
+        name: SAFE_HOST.name,
+        host: SAFE_HOST.host,
+      }),
+    ).resolves.toEqual({ success: true, data: SAFE_HOST })
   })
 
   it('still invalidates host reads after create when audit persistence rejects', async () => {
     recordAudit.mockRejectedValueOnce(new Error('audit unavailable'))
 
-    await expect(mutation.createApicHost({
-      name: SAFE_HOST.name,
-      host: SAFE_HOST.host,
-    })).resolves.toEqual({ success: true, data: SAFE_HOST })
+    await expect(
+      mutation.createApicHost({
+        name: SAFE_HOST.name,
+        host: SAFE_HOST.host,
+      }),
+    ).resolves.toEqual({ success: true, data: SAFE_HOST })
     expect(invalidateApicHostReads).toHaveBeenCalledTimes(1)
     expect(reportAuditError).toHaveBeenCalledTimes(1)
   })
@@ -100,10 +104,12 @@ describe('APIC host endpoint-cache invalidation', () => {
   it('still invalidates after an update when audit persistence rejects', async () => {
     recordAudit.mockRejectedValueOnce(new Error('audit unavailable'))
 
-    await expect(mutation.updateApicHost('host-1', {
-      name: SAFE_HOST.name,
-      host: SAFE_HOST.host,
-    })).resolves.toEqual({ success: true, data: SAFE_HOST })
+    await expect(
+      mutation.updateApicHost('host-1', {
+        name: SAFE_HOST.name,
+        host: SAFE_HOST.host,
+      }),
+    ).resolves.toEqual({ success: true, data: SAFE_HOST })
     expect(invalidateApicHostReads).toHaveBeenCalledTimes(1)
     expect(invalidateEndpointReads).toHaveBeenCalledWith('host-1')
     expect(invalidateEpgReads).not.toHaveBeenCalled()

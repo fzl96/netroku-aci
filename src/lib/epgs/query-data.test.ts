@@ -8,20 +8,50 @@ const requireSession = mock(async () => {
   return { id: 'u1', userName: 'alice' }
 })
 const hostFindMany = mock(async () => [{ id: 'h1', name: 'Fabric', host: 'apic.local' }])
-const hostFindFirst = mock(async () => ({ id: 'h1', name: 'Fabric', host: 'apic.local', lastEpgSyncAt: new Date('2026-01-01T00:00:00Z') }))
+const hostFindFirst = mock(async () => ({
+  id: 'h1',
+  name: 'Fabric',
+  host: 'apic.local',
+  lastEpgSyncAt: new Date('2026-01-01T00:00:00Z'),
+}))
 const epgCount = mock(async () => 2)
 const epgFindMany = mock(async (args: Record<string, unknown>) => {
   if ('distinct' in args) return []
-  return [{
-    id: 'e1', apicHostId: 'h1', dn: 'dn', name: 'web', tenant: 'T1', appProfile: 'App',
-    description: '', bridgeDomain: 'BD', pcTag: '', preferredGroup: false, isolation: false,
-    domains: [], providedContracts: [], consumedContracts: [], internalSecret: 'omit-me',
-    bindings: [{
-      id: 'binding-1', apicHostId: 'h1', epgId: 'e1', dn: 'binding-dn',
-      pathTDn: 'path', pod: '1', node: '101', port: 'Eth1/1', pathType: 'port',
-      encap: 'vlan-1', mode: 'trunk', internalSecret: 'omit-binding',
-    }],
-  }]
+  return [
+    {
+      id: 'e1',
+      apicHostId: 'h1',
+      dn: 'dn',
+      name: 'web',
+      tenant: 'T1',
+      appProfile: 'App',
+      description: '',
+      bridgeDomain: 'BD',
+      pcTag: '',
+      preferredGroup: false,
+      isolation: false,
+      domains: [],
+      providedContracts: [],
+      consumedContracts: [],
+      internalSecret: 'omit-me',
+      bindings: [
+        {
+          id: 'binding-1',
+          apicHostId: 'h1',
+          epgId: 'e1',
+          dn: 'binding-dn',
+          pathTDn: 'path',
+          pod: '1',
+          node: '101',
+          port: 'Eth1/1',
+          pathType: 'port',
+          encap: 'vlan-1',
+          mode: 'trunk',
+          internalSecret: 'omit-binding',
+        },
+      ],
+    },
+  ]
 })
 const bindingFindMany = mock(async (): Promise<Array<Record<string, unknown>>> => [])
 const cacheCalls: Array<{ key: string[]; options: { tags: string[]; revalidate: number } }> = []
@@ -32,13 +62,19 @@ mock.module('@/lib/auth', () => ({
   requireSession,
   requireAdmin: async () => ({ id: 'admin', userName: 'admin' }),
 }))
-mock.module('@/lib/prisma', () => ({ prisma: {
-  apicHost: { findMany: hostFindMany, findFirst: hostFindFirst },
-  epgSnapshot: { count: epgCount, findMany: epgFindMany },
-  epgPathBinding: { findMany: bindingFindMany },
-} }))
+mock.module('@/lib/prisma', () => ({
+  prisma: {
+    apicHost: { findMany: hostFindMany, findFirst: hostFindFirst },
+    epgSnapshot: { count: epgCount, findMany: epgFindMany },
+    epgPathBinding: { findMany: bindingFindMany },
+  },
+}))
 mock.module('next/cache', () => ({
-  unstable_cache: (fn: () => unknown, key: string[], options: { tags: string[]; revalidate: number }) => {
+  unstable_cache: (
+    fn: () => unknown,
+    key: string[],
+    options: { tags: string[]; revalidate: number },
+  ) => {
     cacheCalls.push({ key, options })
     return fn
   },
@@ -47,17 +83,35 @@ mock.module('next/cache', () => ({
 mock.module('react', () => ({ ...React, cache: (fn: unknown) => fn }))
 
 const query = await import('./query')
-const base = { hostId: 'h1', view: 'epg' as const, query: '', page: 1, pageSize: 50 as const, tenants: [], appProfiles: [], nodes: [] }
+const base = {
+  hostId: 'h1',
+  view: 'epg' as const,
+  query: '',
+  page: 1,
+  pageSize: 50 as const,
+  tenants: [],
+  appProfiles: [],
+  nodes: [],
+}
 
 beforeEach(() => {
   authenticationError = null
-  requireSession.mockClear(); hostFindMany.mockClear(); hostFindFirst.mockClear()
-  epgCount.mockClear(); epgFindMany.mockClear(); bindingFindMany.mockClear(); cacheCalls.length = 0
+  requireSession.mockClear()
+  hostFindMany.mockClear()
+  hostFindFirst.mockClear()
+  epgCount.mockClear()
+  epgFindMany.mockClear()
+  bindingFindMany.mockClear()
+  cacheCalls.length = 0
 })
 
 describe('EPG data interface', () => {
   it('authorizes before host resolution and returns safe purpose-owned hosts', async () => {
-    expect(await query.resolveEpgHost('h1')).toEqual({ kind: 'selected', host: { id: 'h1', name: 'Fabric', host: 'apic.local' }, hosts: [{ id: 'h1', name: 'Fabric', host: 'apic.local' }] })
+    expect(await query.resolveEpgHost('h1')).toEqual({
+      kind: 'selected',
+      host: { id: 'h1', name: 'Fabric', host: 'apic.local' },
+      hosts: [{ id: 'h1', name: 'Fabric', host: 'apic.local' }],
+    })
     expect(requireSession).toHaveBeenCalledTimes(1)
   })
 
@@ -67,21 +121,25 @@ describe('EPG data interface', () => {
 
     authenticationError = new Error('session database unavailable')
     await expect(query.getEpgOverview('h1', base)).rejects.toThrow('session database unavailable')
-    await expect(query.getEpgExportData({ hostId: 'h1', scope: 'all' }))
-      .rejects.toThrow('session database unavailable')
+    await expect(query.getEpgExportData({ hostId: 'h1', scope: 'all' })).rejects.toThrow(
+      'session database unavailable',
+    )
   })
 
   it('maps a missing session to the safe export variant', async () => {
     authenticationError = new AuthenticationRequiredError('missing')
-    await expect(query.getEpgExportData({ hostId: 'h1', scope: 'all' }))
-      .resolves.toEqual({ kind: 'unauthorized' })
+    await expect(query.getEpgExportData({ hostId: 'h1', scope: 'all' })).resolves.toEqual({
+      kind: 'unauthorized',
+    })
   })
 
   it('tags persistent reads for eight hours', async () => {
     await query.getEpgOverview('h1', base)
     await query.getEpgResults(base)
-    expect(cacheCalls.every(call => call.options.revalidate === 28800)).toBe(true)
-    expect(cacheCalls.every(call => call.options.tags.join('|') === 'epgs:all|epgs:host:h1')).toBe(true)
+    expect(cacheCalls.every((call) => call.options.revalidate === 28800)).toBe(true)
+    expect(
+      cacheCalls.every((call) => call.options.tags.join('|') === 'epgs:all|epgs:host:h1'),
+    ).toBe(true)
   })
 
   it('uses unambiguous JSON array cache keys', async () => {
@@ -92,8 +150,35 @@ describe('EPG data interface', () => {
 
   it('groups all matching bindings before port pagination', async () => {
     bindingFindMany.mockImplementationOnce(async () => [
-      { id: 'b1', apicHostId: 'h1', epgId: 'e1', dn: 'd', pathTDn: 'p', pod: '1', node: '101', port: 'Eth1/1', pathType: 'port', encap: 'vlan-1', mode: 'trunk', internalSecret: 'omit-binding', epg: { name: 'web', tenant: 'T1', appProfile: 'App', dn: 'dn', internalSecret: 'omit-epg' } },
-      { id: 'b2', apicHostId: 'h1', epgId: 'e2', dn: 'd2', pathTDn: 'p', pod: '1', node: '101', port: 'Eth1/1', pathType: 'port', encap: 'vlan-2', mode: 'trunk', epg: { name: 'api', tenant: 'T1', appProfile: 'App', dn: 'dn2' } },
+      {
+        id: 'b1',
+        apicHostId: 'h1',
+        epgId: 'e1',
+        dn: 'd',
+        pathTDn: 'p',
+        pod: '1',
+        node: '101',
+        port: 'Eth1/1',
+        pathType: 'port',
+        encap: 'vlan-1',
+        mode: 'trunk',
+        internalSecret: 'omit-binding',
+        epg: { name: 'web', tenant: 'T1', appProfile: 'App', dn: 'dn', internalSecret: 'omit-epg' },
+      },
+      {
+        id: 'b2',
+        apicHostId: 'h1',
+        epgId: 'e2',
+        dn: 'd2',
+        pathTDn: 'p',
+        pod: '1',
+        node: '101',
+        port: 'Eth1/1',
+        pathType: 'port',
+        encap: 'vlan-2',
+        mode: 'trunk',
+        epg: { name: 'api', tenant: 'T1', appProfile: 'App', dn: 'dn2' },
+      },
     ])
     const result = await query.getEpgResults({ ...base, view: 'port', pageSize: 10 })
     expect(result.view).toBe('port')
@@ -108,13 +193,34 @@ describe('EPG data interface', () => {
     expect(JSON.stringify(result)).not.toContain('internalSecret')
     if (result.view === 'epg') {
       expect(Object.keys(result.rows[0]).sort()).toEqual([
-        'apicHostId', 'appProfile', 'bindings', 'bridgeDomain', 'consumedContracts',
-        'description', 'dn', 'domains', 'id', 'isolation', 'name', 'pcTag',
-        'preferredGroup', 'providedContracts', 'tenant',
+        'apicHostId',
+        'appProfile',
+        'bindings',
+        'bridgeDomain',
+        'consumedContracts',
+        'description',
+        'dn',
+        'domains',
+        'id',
+        'isolation',
+        'name',
+        'pcTag',
+        'preferredGroup',
+        'providedContracts',
+        'tenant',
       ])
       expect(Object.keys(result.rows[0].bindings[0]).sort()).toEqual([
-        'apicHostId', 'dn', 'encap', 'epgId', 'id', 'mode', 'node', 'pathTDn',
-        'pathType', 'pod', 'port',
+        'apicHostId',
+        'dn',
+        'encap',
+        'epgId',
+        'id',
+        'mode',
+        'node',
+        'pathTDn',
+        'pathType',
+        'pod',
+        'port',
       ])
     }
   })
@@ -126,13 +232,34 @@ describe('EPG data interface', () => {
     expect(JSON.stringify(result)).not.toContain('internalSecret')
     if (result.kind === 'ready') {
       expect(Object.keys(result.rows[0]).sort()).toEqual([
-        'apicHostId', 'appProfile', 'bindings', 'bridgeDomain', 'consumedContracts',
-        'description', 'dn', 'domains', 'id', 'isolation', 'name', 'pcTag',
-        'preferredGroup', 'providedContracts', 'tenant',
+        'apicHostId',
+        'appProfile',
+        'bindings',
+        'bridgeDomain',
+        'consumedContracts',
+        'description',
+        'dn',
+        'domains',
+        'id',
+        'isolation',
+        'name',
+        'pcTag',
+        'preferredGroup',
+        'providedContracts',
+        'tenant',
       ])
       expect(Object.keys(result.rows[0].bindings[0]).sort()).toEqual([
-        'apicHostId', 'dn', 'encap', 'epgId', 'id', 'mode', 'node', 'pathTDn',
-        'pathType', 'pod', 'port',
+        'apicHostId',
+        'dn',
+        'encap',
+        'epgId',
+        'id',
+        'mode',
+        'node',
+        'pathTDn',
+        'pathType',
+        'pod',
+        'port',
       ])
     }
   })

@@ -17,21 +17,21 @@ export function InterfaceCrcTrendChart({ trend }: { trend: CrcTrendPoint[] }) {
   const totalCrcInPeriod = trend.reduce((sum, item) => sum + item.crcErrorsDelta, 0)
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-4 shadow-sm space-y-3">
+    <div className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <h2 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
             7-Day CRC Error Delta Trend
           </h2>
-          <p className="text-xs text-subtle mt-0.5">
-            Total CRC errors accumulated across affected ports in the last 7 days: {' '}
-            <span className="font-semibold text-danger">{totalCrcInPeriod}</span>
+          <p className="mt-0.5 text-xs text-subtle">
+            Total CRC errors accumulated across affected ports in the last 7 days:{' '}
+            <span className="text-danger font-semibold">{totalCrcInPeriod}</span>
           </p>
         </div>
       </div>
 
       {trend.length === 0 ? (
-        <div className="h-40 flex items-center justify-center text-xs text-subtle border border-dashed border-border/60 rounded-xl">
+        <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-border/60 text-xs text-subtle">
           No CRC error deltas recorded in the last 7 days
         </div>
       ) : (

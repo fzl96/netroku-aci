@@ -29,24 +29,36 @@ const storedDevice = {
 }
 
 let findManyError: unknown = null
-const deviceFindMany = mock(async (args: { distinct?: string[]; select?: Record<string, boolean> }) => {
-  if (findManyError) throw findManyError
-  if (args.distinct?.includes('site')) return [{ site: 'hq' }, { site: 'dc1' }]
-  if (args.distinct?.includes('deviceType')) return [{ deviceType: 'router' }, { deviceType: 'switch' }]
-  return [storedDevice]
-})
-const deviceCount = mock(async (args?: { where?: Record<string, unknown> }) => (args?.where ? 1 : 9))
+const deviceFindMany = mock(
+  async (args: { distinct?: string[]; select?: Record<string, boolean> }) => {
+    if (findManyError) throw findManyError
+    if (args.distinct?.includes('site')) return [{ site: 'hq' }, { site: 'dc1' }]
+    if (args.distinct?.includes('deviceType'))
+      return [{ deviceType: 'router' }, { deviceType: 'switch' }]
+    return [storedDevice]
+  },
+)
+const deviceCount = mock(async (args?: { where?: Record<string, unknown> }) =>
+  args?.where ? 1 : 9,
+)
 
 const cacheCalls: Array<{ key: string[]; options: { tags: string[]; revalidate: number } }> = []
 
 mock.module('server-only', () => ({}))
 mock.module('@/lib/auth', () => ({ AuthenticationRequiredError, requireSession }))
-mock.module('@/lib/prisma', () => ({ prisma: {
-  legacyDevice: { findMany: deviceFindMany, count: deviceCount },
-} }))
+mock.module('@/lib/prisma', () => ({
+  prisma: {
+    legacyDevice: { findMany: deviceFindMany, count: deviceCount },
+  },
+}))
 mock.module('next/cache', () => ({
-  unstable_cache: (fn: () => unknown, key: string[], options: { tags: string[]; revalidate: number }) => {
-    cacheCalls.push({ key, options }); return fn
+  unstable_cache: (
+    fn: () => unknown,
+    key: string[],
+    options: { tags: string[]; revalidate: number },
+  ) => {
+    cacheCalls.push({ key, options })
+    return fn
   },
   revalidateTag: () => {},
 }))
@@ -54,8 +66,13 @@ mock.module('next/cache', () => ({
 const query = await import('./query')
 
 const base: LegacyDevicePageParams = {
-  query: '', site: '', deviceType: '', sort: 'lastSeenAt',
-  direction: 'desc', page: 1, pageSize: 50,
+  query: '',
+  site: '',
+  deviceType: '',
+  sort: 'lastSeenAt',
+  direction: 'desc',
+  page: 1,
+  pageSize: 50,
 }
 
 beforeEach(() => {
@@ -67,10 +84,10 @@ beforeEach(() => {
 describe('legacy device authorization', () => {
   it('maps an unauthenticated session to a purpose read error', async () => {
     authenticationError = new AuthenticationRequiredError('nope')
-    await expect(query.getLegacyDeviceResults(base))
-      .rejects.toBeInstanceOf(query.LegacyDeviceReadError)
-    await expect(query.getLegacyDeviceSummary())
-      .rejects.toBeInstanceOf(query.LegacyDeviceReadError)
+    await expect(query.getLegacyDeviceResults(base)).rejects.toBeInstanceOf(
+      query.LegacyDeviceReadError,
+    )
+    await expect(query.getLegacyDeviceSummary()).rejects.toBeInstanceOf(query.LegacyDeviceReadError)
   })
 
   it('propagates unexpected authorization failures unchanged', async () => {
@@ -121,14 +138,29 @@ describe('getLegacyDeviceResults', () => {
 
   it('keys the cache by every filter that changes the row set', async () => {
     await query.getLegacyDeviceResults({
-      ...base, query: 'edge', site: 'hq', deviceType: 'switch',
-      sort: 'hostname', direction: 'asc', page: 2, pageSize: 100,
+      ...base,
+      query: 'edge',
+      site: 'hq',
+      deviceType: 'switch',
+      sort: 'hostname',
+      direction: 'asc',
+      page: 2,
+      pageSize: 100,
     })
     expect(cacheCalls.at(-1)?.key).toEqual([
-      'legacy-devices', 'results', 'edge', 'hq', 'switch', 'hostname', 'asc', '2', '100',
+      'legacy-devices',
+      'results',
+      'edge',
+      'hq',
+      'switch',
+      'hostname',
+      'asc',
+      '2',
+      '100',
     ])
     expect(cacheCalls.at(-1)?.options).toEqual({
-      tags: ['legacy-devices:all'], revalidate: 28_800,
+      tags: ['legacy-devices:all'],
+      revalidate: 28_800,
     })
   })
 })
@@ -136,7 +168,10 @@ describe('getLegacyDeviceResults', () => {
 describe('getLegacyDeviceSummary', () => {
   it('counts the fleet, sites, and incomplete collections', async () => {
     expect(await query.getLegacyDeviceSummary()).toEqual({
-      total: 9, sites: 2, withHealth: 1, incomplete: 1,
+      total: 9,
+      sites: 2,
+      withHealth: 1,
+      incomplete: 1,
     })
     expect(cacheCalls.at(-1)?.options.tags).toEqual(['legacy-devices:all'])
   })

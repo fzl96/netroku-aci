@@ -85,7 +85,11 @@ export function toSafeSchedule(
     nextRunAt: schedule.nextRunAt,
     isRunning: schedule.runningAt !== null,
     isOverdue: isScheduleOverdue(
-      { enabled: schedule.enabled, nextRunAt: schedule.nextRunAt, intervalMinutes: schedule.intervalMinutes },
+      {
+        enabled: schedule.enabled,
+        nextRunAt: schedule.nextRunAt,
+        intervalMinutes: schedule.intervalMinutes,
+      },
       now,
     ),
   }

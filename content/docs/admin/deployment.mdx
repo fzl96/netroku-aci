@@ -3,8 +3,8 @@ title: Deployment
 description: How to deploy Netroku ACI.
 ---
 
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs'
+import { Callout } from 'fumadocs-ui/components/callout'
 
 Netroku ACI is a Next.js application backed by a PostgreSQL database. The app runs locally; the database can run in Docker or connect to an existing PostgreSQL instance.
 
@@ -20,7 +20,8 @@ bun --version
 ```
 
 <Callout type="warn" title="Windows users">
-Bun has a known compatibility issue with the TLS bypass used for self-signed APIC certificates. Use **WSL2** or Node.js instead.
+  Bun has a known compatibility issue with the TLS bypass used for self-signed APIC certificates.
+  Use **WSL2** or Node.js instead.
 </Callout>
 
   </Tab>
@@ -71,18 +72,18 @@ cp .env.example .env
 
 Open `.env` and fill in the values:
 
-| Variable | Required | Purpose | How to set |
-|---|---|---|---|
-| `DATABASE_URL` | yes | PostgreSQL connection string | See [Set up the database](#4-set-up-the-database) below |
-| `BETTER_AUTH_SECRET` | yes | Session signing secret | `openssl rand -hex 32` |
-| `BETTER_AUTH_URL` | yes | Base URL the app is served from | e.g. `http://localhost:3000` |
-| `NEXT_PUBLIC_APP_URL` | yes | Public base URL used by the browser | e.g. `http://localhost:3000` |
-| `TRUSTED_ORIGINS` | yes | Comma-separated origins Better Auth accepts | Add LAN IPs or Tailscale hosts as needed |
-| `SECURE_COOKIES` | no | Set to `true` only when served exclusively over HTTPS | Leave blank for HTTP/LAN |
-| `ENCRYPTION_KEY` | yes | 32-byte hex key for encrypted fields | `openssl rand -hex 32` |
-| `ADMIN_USERNAME` | yes (seeding) | Username for the first admin account | — |
-| `ADMIN_PASSWORD` | yes (seeding) | Password for the first admin account (≥ 8 chars) | — |
-| `SCHEDULER_TOKEN` | no | Bearer token for `POST /api/cron/resync` | `openssl rand -hex 32` |
+| Variable              | Required      | Purpose                                               | How to set                                              |
+| --------------------- | ------------- | ----------------------------------------------------- | ------------------------------------------------------- |
+| `DATABASE_URL`        | yes           | PostgreSQL connection string                          | See [Set up the database](#4-set-up-the-database) below |
+| `BETTER_AUTH_SECRET`  | yes           | Session signing secret                                | `openssl rand -hex 32`                                  |
+| `BETTER_AUTH_URL`     | yes           | Base URL the app is served from                       | e.g. `http://localhost:3000`                            |
+| `NEXT_PUBLIC_APP_URL` | yes           | Public base URL used by the browser                   | e.g. `http://localhost:3000`                            |
+| `TRUSTED_ORIGINS`     | yes           | Comma-separated origins Better Auth accepts           | Add LAN IPs or Tailscale hosts as needed                |
+| `SECURE_COOKIES`      | no            | Set to `true` only when served exclusively over HTTPS | Leave blank for HTTP/LAN                                |
+| `ENCRYPTION_KEY`      | yes           | 32-byte hex key for encrypted fields                  | `openssl rand -hex 32`                                  |
+| `ADMIN_USERNAME`      | yes (seeding) | Username for the first admin account                  | —                                                       |
+| `ADMIN_PASSWORD`      | yes (seeding) | Password for the first admin account (≥ 8 chars)      | —                                                       |
+| `SCHEDULER_TOKEN`     | no            | Bearer token for `POST /api/cron/resync`              | `openssl rand -hex 32`                                  |
 
 ## 4. Set up the database
 
@@ -117,7 +118,8 @@ DATABASE_URL="postgresql://admin:s3cr3t@db.internal:5432/netroku?schema=public"
 ```
 
 <Callout type="info" title="Network access">
-The machine running the app must be able to reach your database host on the PostgreSQL port (default 5432). The database itself must already exist — migrations will create all tables.
+  The machine running the app must be able to reach your database host on the PostgreSQL port
+  (default 5432). The database itself must already exist — migrations will create all tables.
 </Callout>
 
   </Tab>

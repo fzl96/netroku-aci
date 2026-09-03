@@ -9,6 +9,7 @@
 **Tech Stack:** Next.js (App Router, server components), Prisma + SQLite, better-auth, recharts + shadcn chart primitives, bun test.
 
 **Reference template (read these — the new code mirrors them):**
+
 - `src/lib/apic/health-scores.ts`, `src/app/api/health-scores/resync/route.ts`
 - `src/app/(app)/health-scores/page.tsx`, `src/app/(app)/health-scores/HealthScoresClient.tsx`, `src/app/(app)/health-scores/sort.ts`
 - `src/actions/health-scores.ts`, `src/app/(app)/dashboard/HealthTile.tsx`
@@ -19,6 +20,7 @@
 ## File Structure
 
 **Create:**
+
 - `src/lib/apic/nodes.ts` — types, parse/merge/health helpers, `summarizeNodes`, `fetchNodesFromApic`, `resyncNodes`
 - `src/lib/apic/nodes.test.ts` — parse / merge / health / summarize unit tests
 - `src/app/api/nodes/resync/route.ts` — manual resync endpoint
@@ -30,6 +32,7 @@
 - `src/app/(app)/dashboard/NodesTile.tsx` — dashboard summary tile
 
 **Modify:**
+
 - `prisma/schema.prisma` — add `NodeSnapshot`, `HardwareComponent`, `NodeStatusSample`, `ApicHost.lastNodeSyncAt` + relations
 - `src/lib/audit.ts` — add `'resync.nodes'` action
 - `src/app/(app)/history/HistoryClient.tsx` — add `'resync.nodes'` to `ACTION_LABELS`
@@ -44,6 +47,7 @@
 ## Task 1: Prisma schema — node + hardware models
 
 **Files:**
+
 - Modify: `prisma/schema.prisma`
 
 - [ ] **Step 1: Add `lastNodeSyncAt` and relations to `ApicHost`**
@@ -156,6 +160,7 @@ git commit -m "feat: add NodeSnapshot, HardwareComponent, NodeStatusSample model
 ## Task 2: Node parse + merge helpers
 
 **Files:**
+
 - Create: `src/lib/apic/nodes.ts`
 - Test: `src/lib/apic/nodes.test.ts`
 
@@ -403,6 +408,7 @@ git commit -m "feat: add node parse and merge helpers"
 ## Task 3: Component parse + health/summary helpers
 
 **Files:**
+
 - Modify: `src/lib/apic/nodes.ts`
 - Test: `src/lib/apic/nodes.test.ts`
 
@@ -593,6 +599,7 @@ git commit -m "feat: add component parse, health, and summarize helpers"
 Integration layer — no new unit test (matches `faults.ts` / `health-scores.ts`).
 
 **Files:**
+
 - Modify: `src/lib/apic/nodes.ts`
 
 - [ ] **Step 1: Add the fetch function**
@@ -759,6 +766,7 @@ git commit -m "feat: add fetchNodesFromApic and resyncNodes"
 ## Task 5: Audit action (union + history label)
 
 **Files:**
+
 - Modify: `src/lib/audit.ts`
 - Modify: `src/app/(app)/history/HistoryClient.tsx`
 
@@ -795,6 +803,7 @@ git commit -m "feat: add resync.nodes audit action and history label"
 ## Task 6: `POST /api/nodes/resync` route
 
 **Files:**
+
 - Create: `src/app/api/nodes/resync/route.ts`
 
 - [ ] **Step 1: Write the route** (mirrors `src/app/api/health-scores/resync/route.ts`):
@@ -867,6 +876,7 @@ git commit -m "feat: add POST /api/nodes/resync route"
 ## Task 7: Cron-resync summary support
 
 **Files:**
+
 - Modify: `src/lib/apic/cron-resync.ts`
 - Test: `src/lib/apic/cron-resync.test.ts`
 
@@ -929,6 +939,7 @@ git commit -m "feat: track nodes dataset in cron resync summary"
 ## Task 8: Cron route wiring
 
 **Files:**
+
 - Modify: `src/app/api/cron/resync/route.ts`
 
 - [ ] **Step 1: Import `resyncNodes`**
@@ -984,6 +995,7 @@ git commit -m "feat: resync nodes in scheduled cron job"
 ## Task 9: Sort helpers
 
 **Files:**
+
 - Create: `src/app/(app)/nodes/sort.ts`
 - Test: `src/app/(app)/nodes/sort.test.ts`
 
@@ -1074,6 +1086,7 @@ git commit -m "feat: add node and component sort helpers"
 Mirrors the Health Scores page. **Read `src/app/(app)/health-scores/page.tsx` and `HealthScoresClient.tsx` as the template** — copy host-selector, page-size parsing, search/pagination, resync-credential-dialog, headline, and trend-chart scaffolding, then adapt for nodes. The node-specific pieces are below.
 
 **Files:**
+
 - Create: `src/app/(app)/nodes/page.tsx`
 - Create: `src/app/(app)/nodes/NodesClient.tsx`
 
@@ -1297,7 +1310,7 @@ export interface ComponentRowProps {
 6. **Tables** (render whichever matches `view`):
    - **Nodes table** columns: Node (`nodeId`), Name, Role, Model, Version (`version` else "—"), State (badge from `fabricSt`; show `state` too if present — green when `fabricSt==='active'`, red otherwise), Uptime (`uptime` else "—"), PSU (`{psu.ok}/{psu.total}` — red when `psu.ok < psu.total`, muted "—" when total is 0), Fan (`{fan.ok}/{fan.total}` — same rule).
    - **Components table** columns: Node (`nodeId`), Type (`type`), Name, Status (`operSt` badge — green when `healthy`, red otherwise), Model. Rows arrive failed-first from the server; render in order.
-   Use the same `@/components/ui` table primitives as `HealthScoresClient`.
+     Use the same `@/components/ui` table primitives as `HealthScoresClient`.
 
 7. **Filter control**: in Nodes view a role filter (All/Leaf/Spine/Controller → `role` URL param); in Components view a type filter (All/PSU/Fan → `type` URL param). Same `router.push` pattern as health-scores.
 
@@ -1329,6 +1342,7 @@ git commit -m "feat: add nodes page with headline, trend, and node/component vie
 ## Task 11: Sidebar navigation entry
 
 **Files:**
+
 - Modify: `src/components/AppSidebar.tsx`
 
 - [ ] **Step 1: Import the icon**
@@ -1359,6 +1373,7 @@ git commit -m "feat: add Nodes sidebar navigation entry"
 ## Task 12: Dashboard nodes tile
 
 **Files:**
+
 - Create: `src/actions/nodes.ts`
 - Create: `src/app/(app)/dashboard/NodesTile.tsx`
 - Modify: `src/app/(app)/dashboard/page.tsx`

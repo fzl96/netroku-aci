@@ -52,15 +52,19 @@ function transaction(callback: (tx: unknown) => unknown) {
 mock.module('server-only', () => ({}))
 mock.module('@/lib/auth', () => ({ requireAdmin }))
 mock.module('@/lib/audit', () => ({ recordAudit }))
-mock.module('@/lib/prisma', () => ({ prisma: {
-  site: { findMany: siteFindMany },
-  rack: { findMany: rackFindMany },
-  device: { findMany: deviceFindMany },
-  deviceStack: { findMany: deviceStackFindMany },
-  $transaction: transaction,
-} }))
+mock.module('@/lib/prisma', () => ({
+  prisma: {
+    site: { findMany: siteFindMany },
+    rack: { findMany: rackFindMany },
+    device: { findMany: deviceFindMany },
+    deviceStack: { findMany: deviceStackFindMany },
+    $transaction: transaction,
+  },
+}))
 mock.module('next/cache', () => ({
-  revalidateTag: (tag: string, options: unknown) => { revalidateCalls.push({ tag, options }) },
+  revalidateTag: (tag: string, options: unknown) => {
+    revalidateCalls.push({ tag, options })
+  },
 }))
 
 const mutation = await import('./mutation')
@@ -83,11 +87,26 @@ describe('previewDeviceImport', () => {
   })
 
   it('surfaces client-flagged malformed rows as import errors', async () => {
-    const result = await mutation.previewDeviceImport([], [{
-      rowIndex: 2, hostname: 'bad', serialNumber: '', assetTag: null, managementIp: null,
-      vendor: '', model: '', heightU: 1, site: null, rack: null, rackPosition: null,
-      stackName: null, errors: ['Missing serial number'],
-    }])
+    const result = await mutation.previewDeviceImport(
+      [],
+      [
+        {
+          rowIndex: 2,
+          hostname: 'bad',
+          serialNumber: '',
+          assetTag: null,
+          managementIp: null,
+          vendor: '',
+          model: '',
+          heightU: 1,
+          site: null,
+          rack: null,
+          rackPosition: null,
+          stackName: null,
+          errors: ['Missing serial number'],
+        },
+      ],
+    )
     expect(result.summary.errorCount).toBe(1)
     expect(result.rowStates[0].errors).toEqual(['Missing serial number'])
   })
@@ -100,8 +119,7 @@ describe('commitDeviceImport', () => {
   })
 
   it('refuses to commit when there are no rows to import', async () => {
-    await expect(mutation.commitDeviceImport([]))
-      .rejects.toThrow('No valid devices to import')
+    await expect(mutation.commitDeviceImport([])).rejects.toThrow('No valid devices to import')
     expect(revalidateCalls).toEqual([])
   })
 })

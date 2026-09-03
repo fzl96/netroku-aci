@@ -23,10 +23,7 @@ export function rackIdentityKey(siteName: string | null, rackName: string): stri
   return `${(siteName ?? 'Default').toLowerCase()}::${rackName.toLowerCase()}`
 }
 
-export function requiredRackHeight(
-  rackPosition: number | null,
-  deviceHeight: number,
-): number {
+export function requiredRackHeight(rackPosition: number | null, deviceHeight: number): number {
   if (rackPosition === null) return DEFAULT_RACK_HEIGHT
 
   const topU = rackPosition + deviceHeight - 1
@@ -40,11 +37,7 @@ export function buildNewRackPlan(rows: RackPlanningRow[]): PlannedRack[] {
   const racks = new Map<string, PlannedRack>()
 
   for (const state of rows) {
-    if (
-      state.errors.length > 0 ||
-      state.rackStatus !== 'WILL_CREATE' ||
-      !state.row.rack
-    ) {
+    if (state.errors.length > 0 || state.rackStatus !== 'WILL_CREATE' || !state.row.rack) {
       continue
     }
 

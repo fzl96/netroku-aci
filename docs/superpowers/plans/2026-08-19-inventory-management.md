@@ -23,9 +23,11 @@
 ### Task 1: Fix schema inconsistencies (`@@map` + timestamps) via a new migration
 
 **Files:**
+
 - Modify: `prisma/schema.prisma`
 
 **Interfaces:**
+
 - Produces: `Site.createdAt`, `Site.updatedAt`, `Rack.createdAt`, `Rack.updatedAt`, `Device.createdAt` fields; snake_case table names for `Site`/`Rack`/`DeviceStack`/`Device`. Every later task's Prisma queries assume these fields exist.
 
 - [ ] **Step 1: Edit `prisma/schema.prisma`**
@@ -125,10 +127,12 @@ git commit -m "fix(schema): map inventory tables to snake_case and add timestamp
 ### Task 2: Shared rack-placement collision logic
 
 **Files:**
+
 - Create: `src/lib/inventory/rack-placement.ts`
 - Test: `src/lib/inventory/rack-placement.test.ts`
 
 **Interfaces:**
+
 - Produces: `canPlaceDevice(devices: PlaceableDevice[], deviceId: string, rackPosition: number, heightU: number, rackHeightU: number): boolean` and `type PlaceableDevice = { id: string; rackPosition: number | null; heightU: number }`. Used by Task 6 (device actions, server-side re-validation) and Task 12 (rack visualization client component, live drag preview).
 
 - [ ] **Step 1: Write the failing tests**
@@ -250,9 +254,11 @@ git commit -m "feat(inventory): add rack placement collision logic"
 ### Task 3: Extend `AuditAction` for inventory events
 
 **Files:**
+
 - Modify: `src/lib/audit.ts:4-23`
 
 **Interfaces:**
+
 - Produces: 12 new `AuditAction` string literals consumed by Tasks 4–6.
 
 - [ ] **Step 1: Add the new literals to the union**
@@ -355,10 +361,12 @@ git commit -m "feat(audit): add inventory action types and history labels"
 ### Task 4: Site schema + server actions
 
 **Files:**
+
 - Create: `src/lib/schemas/site.ts`
 - Create: `src/actions/inventory/sites.ts`
 
 **Interfaces:**
+
 - Consumes: `prisma` (`src/lib/prisma.ts`), `getSession` (`src/lib/auth.ts`), `recordAudit` (`src/lib/audit.ts`).
 - Produces: `type SafeSite = { id: string; name: string; address: string | null; latitude: number | null; longitude: number | null; createdAt: Date; updatedAt: Date }`, `getSites(): Promise<SafeSite[]>`, `createSite(data: SiteFormValues): Promise<ActionResult<SafeSite>>`, `updateSite(id: string, data: SiteUpdateFormValues): Promise<ActionResult<SafeSite>>`, `deleteSite(id: string): Promise<ActionResult<void>>`. Consumed by Task 8 (`SiteForm`) and Task 13 (`RacksClient`).
 
@@ -550,10 +558,12 @@ git commit -m "feat(inventory): add site server actions"
 ### Task 5: Device list-query helpers (pure, tested)
 
 **Files:**
+
 - Create: `src/lib/inventory/device-query.ts`
 - Test: `src/lib/inventory/device-query.test.ts`
 
 **Interfaces:**
+
 - Produces: `DEVICE_PAGE_SIZE = 20`, `type DeviceListParams = { query: string; page: number }`, `parseDeviceListParams(input: { q?: string; page?: string }): DeviceListParams`, `buildDeviceWhere(params: DeviceListParams): Prisma.DeviceWhereInput`, `clampDevicePage(page: number, total: number): number`, `deviceListWindow(page: number, total: number): { page: number; skip: number; take: number }`, `buildDeviceListUrl(params: DeviceListParams): string`. Consumed by Task 6 (`getDevices` action) and Task 10 (devices page).
 
 - [ ] **Step 1: Write the failing tests**
@@ -700,10 +710,12 @@ git commit -m "feat(inventory): add device list pagination/search helpers"
 ### Task 6: Device schema + server actions (incl. hardened placement/resize)
 
 **Files:**
+
 - Create: `src/lib/schemas/device.ts`
 - Create: `src/actions/inventory/devices.ts`
 
 **Interfaces:**
+
 - Consumes: `canPlaceDevice`, `type PlaceableDevice` (Task 2), `DEVICE_PAGE_SIZE`, `buildDeviceWhere`, `deviceListWindow`, `type DeviceListParams` (Task 5), `prisma`, `getSession`, `recordAudit`.
 - Produces: `type SafeDevice`, `type SafeDeviceWithRack`, `type DeviceCatalogEntry`, `type DeviceListPage = { devices: SafeDeviceWithRack[]; total: number; page: number }`, `getDevices(params: DeviceListParams): Promise<DeviceListPage>`, `getDeviceById(id: string): Promise<SafeDeviceWithRack | null>`, `getAllDevices(): Promise<DeviceCatalogEntry[]>`, `createDevice`, `updateDevice`, `deleteDevice`, `updateDevicePlacement(deviceId: string, rackId: string, rackPosition: number): Promise<ActionResult<SafeDevice>>`, `clearDevicePlacement(deviceId: string): Promise<ActionResult<SafeDevice>>`, `updateDeviceHeight(deviceId: string, heightU: number): Promise<ActionResult<SafeDevice>>`. Consumed by Task 8 (`DeviceForm`), Task 10 (devices list), Task 11 (device detail), Task 12/13 (rack visualization).
 
@@ -1108,10 +1120,12 @@ git commit -m "feat(inventory): add device server actions with server-side place
 ### Task 7: Rack schema + server actions
 
 **Files:**
+
 - Create: `src/lib/schemas/rack.ts`
 - Create: `src/actions/inventory/racks.ts`
 
 **Interfaces:**
+
 - Consumes: `prisma`, `getSession`, `recordAudit`.
 - Produces: `type SafeRack`, `type SafeRackDevice`, `type SafeRackWithDevices`, `type RackDropdownOption`, `getRacksBySite(siteId: string): Promise<SafeRackWithDevices[]>`, `getAllRacksForDropdown(): Promise<RackDropdownOption[]>`, `createRack`, `updateRack`, `deleteRack`. Consumed by Task 8 (`RackForm`) and Task 13 (`RacksClient`).
 
@@ -1331,12 +1345,14 @@ git commit -m "feat(inventory): add rack server actions"
 ### Task 8: Site/Rack/Device forms + shared dialog footer buttons
 
 **Files:**
+
 - Create: `src/components/inventory/dialog-footer-buttons.tsx`
 - Create: `src/components/inventory/SiteForm.tsx`
 - Create: `src/components/inventory/RackForm.tsx`
 - Create: `src/components/inventory/DeviceForm.tsx`
 
 **Interfaces:**
+
 - Consumes: `SiteFormValues` (Task 4), `RackFormValues`, `RackDropdownOption`-shaped `{id, name}[]` sites list (Task 7), `DeviceFormValues` (Task 6), `INPUT_OVERRIDE_CLS` (`src/lib/ui-classes.ts`).
 - Produces: `FooterCancel`, `FooterSubmit` components; `SiteForm`, `RackForm`, `DeviceForm` components, each taking `{ form, onSubmit, formId, ... }` and rendering a `<form id={formId}>` whose submit button lives in the caller's dialog footer (matches `ApicHostForm`). Consumed by Task 10 (`DevicesClient`) and Task 13 (`RacksClient`).
 
@@ -1762,9 +1778,11 @@ git commit -m "feat(inventory): add Site/Rack/Device form components"
 ### Task 9: Register the "Inventory" nav group
 
 **Files:**
+
 - Modify: `src/components/AppSidebar.tsx`
 
 **Interfaces:**
+
 - Produces: two new sidebar links, `/inventory/devices` and `/inventory/racks`.
 
 - [ ] **Step 1: Add icon imports**
@@ -1818,10 +1836,12 @@ git commit -m "feat(nav): add Inventory sidebar group"
 ### Task 10: Devices list page
 
 **Files:**
+
 - Create: `src/app/(app)/inventory/devices/page.tsx`
 - Create: `src/app/(app)/inventory/devices/DevicesClient.tsx`
 
 **Interfaces:**
+
 - Consumes: `getDevices`, `createDevice`, `updateDevice`, `deleteDevice`, `type SafeDeviceWithRack` (Task 6), `parseDeviceListParams` (Task 5), `DeviceForm`, `FooterCancel`, `FooterSubmit` (Task 8), `getSession` (`src/lib/auth.ts`).
 - Produces: the `/inventory/devices` route. Row click navigates to `/inventory/devices/[id]` (Task 11).
 
@@ -2246,9 +2266,11 @@ git commit -m "feat(inventory): add devices list page"
 ### Task 11: Device detail page
 
 **Files:**
+
 - Create: `src/app/(app)/inventory/devices/[id]/page.tsx`
 
 **Interfaces:**
+
 - Consumes: `getDeviceById`, `type SafeDeviceWithRack` (Task 6).
 - Produces: the `/inventory/devices/[id]` route, linked from Task 10's table rows.
 
@@ -2394,9 +2416,11 @@ git commit -m "feat(inventory): add device detail page"
 ### Task 12: Rack visualization component (core port)
 
 **Files:**
+
 - Create: `src/components/inventory/RackVisualization.tsx`
 
 **Interfaces:**
+
 - Consumes: `canPlaceDevice`, `type PlaceableDevice` (Task 2), `updateDevicePlacement`, `clearDevicePlacement`, `updateDeviceHeight`, `type DeviceCatalogEntry` (Task 6).
 - Produces: `type RackDevice`, `type RackItem`, `type DragPayload`, `type HoverTarget`, the `RackVisualization` component (renders a single rack, takes an `isAdmin: boolean` prop). Consumed by Task 13 (`RacksClient`), which owns all the state this component receives as props (mirrors netroku's split between `RackVisualization` and `RackVisualizationTabs`).
 
@@ -2809,10 +2833,12 @@ git commit -m "feat(inventory): port rack visualization grid component"
 ### Task 13: Racks page (site selection, inline Site/Rack CRUD, visualization grid)
 
 **Files:**
+
 - Create: `src/app/(app)/inventory/racks/page.tsx`
 - Create: `src/app/(app)/inventory/racks/RacksClient.tsx`
 
 **Interfaces:**
+
 - Consumes: `getSites`, `createSite`, `updateSite`, `deleteSite`, `type SafeSite` (Task 4); `getRacksBySite`, `createRack`, `updateRack`, `deleteRack`, `type SafeRackWithDevices` (Task 7); `getAllDevices`, `updateDevicePlacement`, `clearDevicePlacement`, `updateDeviceHeight`, `type DeviceCatalogEntry` (Task 6); `SiteForm`, `RackForm`, `FooterCancel`, `FooterSubmit` (Task 8); `RackVisualization`, `type RackItem`, `type DragPayload`, `type HoverTarget` (Task 12).
 - Produces: the `/inventory/racks` route (final task — completes the feature).
 
@@ -3541,6 +3567,7 @@ Expected: no output (`IconGripVertical`, `IconDots`, `IconPlus`, `IconPencil`, `
 - [ ] **Step 4: Manual walkthrough**
 
 Run the dev server, sign in as admin, go to `/inventory/racks`:
+
 1. Create a site → confirm it becomes selected and the empty-state "No racks for this site" shows.
 2. Create a rack (e.g. 42U) → confirm the rack grid renders with U42 at top, U01 at bottom.
 3. Click an empty unit → confirm the "Add device to U{n}" menu lists the device created in Task 10, search-filters correctly, and selecting it places the device.

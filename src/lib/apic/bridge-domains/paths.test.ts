@@ -30,8 +30,12 @@ const l3Row: ParsedBridgeDomainL3Row = {
 
 describe('bridge domain paths', () => {
   it('builds bridge domain and subnet paths', () => {
-    expect(buildBridgeDomainPath('TenantA', 'BD-100')).toBe('/api/node/mo/uni/tn-TenantA/BD-BD-100.json')
-    expect(buildSubnetPath('TenantA', 'BD-200', '10.0.0.1/24')).toBe('/api/node/mo/uni/tn-TenantA/BD-BD-200/subnet-[10.0.0.1/24].json')
+    expect(buildBridgeDomainPath('TenantA', 'BD-100')).toBe(
+      '/api/node/mo/uni/tn-TenantA/BD-BD-100.json',
+    )
+    expect(buildSubnetPath('TenantA', 'BD-200', '10.0.0.1/24')).toBe(
+      '/api/node/mo/uni/tn-TenantA/BD-BD-200/subnet-[10.0.0.1/24].json',
+    )
   })
 })
 

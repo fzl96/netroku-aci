@@ -101,10 +101,12 @@ function parseDate(value: string | undefined): Date | null {
 // We walk the full subtree because rmon counters nest under ethpmPhysIf, not
 // directly under l1PhysIf, and we don't want to assume a specific depth.
 interface MoNode {
-  [className: string]: {
-    attributes: Record<string, string>
-    children?: MoNode[]
-  } | undefined
+  [className: string]:
+    | {
+        attributes: Record<string, string>
+        children?: MoNode[]
+      }
+    | undefined
 }
 
 interface PhysIfNode {
@@ -176,9 +178,8 @@ export function parseInterfaceRows(imdata: PhysIfNode[]): ApicInterfaceRow[] {
       rxErrors: toBigInt(rmonIn.errors),
       rxDiscards: toBigInt(rmonIn.discards),
       rxCrcErrors: toBigInt(dot3.fCSErrors),
-      rxAlignErrors: dot3.alignmentErrors !== undefined
-        ? toBigInt(dot3.alignmentErrors)
-        : alignFallback,
+      rxAlignErrors:
+        dot3.alignmentErrors !== undefined ? toBigInt(dot3.alignmentErrors) : alignFallback,
       txBytes: toBigInt(rmonOut.octets),
       txPkts,
       txErrors: toBigInt(rmonOut.errors),
@@ -207,10 +208,10 @@ export async function fetchInterfacesFromApic(
 ): Promise<ApicInterfaceRow[]> {
   const token = await apicLogin(host, username, plaintextPassword)
 
-  const path
-    = '/api/node/class/l1PhysIf.json'
-    + '?rsp-subtree=full'
-    + '&rsp-subtree-class=ethpmPhysIf,rmonIfIn,rmonIfOut,rmonDot3Stats,rmonEtherStats'
+  const path =
+    '/api/node/class/l1PhysIf.json' +
+    '?rsp-subtree=full' +
+    '&rsp-subtree-class=ethpmPhysIf,rmonIfIn,rmonIfOut,rmonDot3Stats,rmonEtherStats'
 
   const res = await apicFetch(host, path, { token })
   if (!res.ok) throw new Error(`APIC GET ${path} failed: ${res.status}`)
@@ -262,7 +263,7 @@ export async function resyncInterfaces(
   // Deduplicate by DN — defensive, the class query shouldn't return dupes but be paranoid
   const deduped = new Map<string, (typeof rows)[number]>()
   for (const row of rows) deduped.set(row.dn, row)
-  const uniqueRows = Array.from(deduped.values()).filter(r => r.dn)
+  const uniqueRows = Array.from(deduped.values()).filter((r) => r.dn)
 
   const now = new Date()
 
@@ -277,128 +278,144 @@ export async function executeInterfaceResyncWrites(
   uniqueRows: ApicInterfaceRow[],
   now: Date,
 ): Promise<{ total: number }> {
-  return db.$transaction(async tx => {
-    const snapshotIds = new Map<string, string>()
+  return db.$transaction(
+    async (tx) => {
+      const snapshotIds = new Map<string, string>()
 
-    for (let i = 0; i < uniqueRows.length; i += INTERFACES_CHUNK_SIZE) {
-      const chunk = uniqueRows.slice(i, i + INTERFACES_CHUNK_SIZE)
-      const upserted = await Promise.all(
-        chunk.map(row =>
-          tx.interfaceSnapshot.upsert({
-            where: { apicHostId_dn: { apicHostId, dn: row.dn } },
-            update: {
-              node: row.node,
-              ifName: row.ifName,
-              usage: row.usage,
-              adminSt: row.adminSt,
-              operSt: row.operSt,
-              operSpeed: row.operSpeed,
-              description: row.description,
-              lastLinkStChg: row.lastLinkStChg,
-              lastSeenAt: now,
-            },
-            create: {
-              apicHostId,
-              dn: row.dn,
-              node: row.node,
-              ifName: row.ifName,
-              usage: row.usage,
-              adminSt: row.adminSt,
-              operSt: row.operSt,
-              operSpeed: row.operSpeed,
-              description: row.description,
-              lastLinkStChg: row.lastLinkStChg,
-              firstSeenAt: now,
-              lastSeenAt: now,
-            },
-            select: { id: true, dn: true },
-          }),
-        ),
-      )
-      for (const r of upserted) snapshotIds.set(r.dn, r.id)
-    }
-
-    const ids = Array.from(snapshotIds.values())
-    const previousByInterface = new Map<string, {
-      rxBytes: bigint; rxErrors: bigint; rxDiscards: bigint
-      rxCrcErrors: bigint; rxAlignErrors: bigint
-      txBytes: bigint; txErrors: bigint; txDiscards: bigint
-    }>()
-
-    if (ids.length > 0) {
-      for (let i = 0; i < ids.length; i += 500) {
-        const idChunk = ids.slice(i, i + 500)
-        const previous = await tx.interfaceSample.findMany({
-          where: { interfaceId: { in: idChunk } },
-          orderBy: { sampledAt: 'desc' },
-          select: {
-            interfaceId: true,
-            rxBytes: true, rxErrors: true, rxDiscards: true,
-            rxCrcErrors: true, rxAlignErrors: true,
-            txBytes: true, txErrors: true, txDiscards: true,
-          },
-        })
-        for (const row of previous) {
-          if (previousByInterface.has(row.interfaceId)) continue
-          previousByInterface.set(row.interfaceId, {
-            rxBytes: row.rxBytes,
-            rxErrors: row.rxErrors,
-            rxDiscards: row.rxDiscards,
-            rxCrcErrors: row.rxCrcErrors,
-            rxAlignErrors: row.rxAlignErrors,
-            txBytes: row.txBytes,
-            txErrors: row.txErrors,
-            txDiscards: row.txDiscards,
-          })
-        }
+      for (let i = 0; i < uniqueRows.length; i += INTERFACES_CHUNK_SIZE) {
+        const chunk = uniqueRows.slice(i, i + INTERFACES_CHUNK_SIZE)
+        const upserted = await Promise.all(
+          chunk.map((row) =>
+            tx.interfaceSnapshot.upsert({
+              where: { apicHostId_dn: { apicHostId, dn: row.dn } },
+              update: {
+                node: row.node,
+                ifName: row.ifName,
+                usage: row.usage,
+                adminSt: row.adminSt,
+                operSt: row.operSt,
+                operSpeed: row.operSpeed,
+                description: row.description,
+                lastLinkStChg: row.lastLinkStChg,
+                lastSeenAt: now,
+              },
+              create: {
+                apicHostId,
+                dn: row.dn,
+                node: row.node,
+                ifName: row.ifName,
+                usage: row.usage,
+                adminSt: row.adminSt,
+                operSt: row.operSt,
+                operSpeed: row.operSpeed,
+                description: row.description,
+                lastLinkStChg: row.lastLinkStChg,
+                firstSeenAt: now,
+                lastSeenAt: now,
+              },
+              select: { id: true, dn: true },
+            }),
+          ),
+        )
+        for (const r of upserted) snapshotIds.set(r.dn, r.id)
       }
-    }
 
-    for (let i = 0; i < uniqueRows.length; i += INTERFACES_CHUNK_SIZE) {
-      const chunk = uniqueRows.slice(i, i + INTERFACES_CHUNK_SIZE)
-      await Promise.all(
-        chunk.map((row) => {
-          const interfaceId = snapshotIds.get(row.dn)!
-          const prev = previousByInterface.get(interfaceId) ?? null
+      const ids = Array.from(snapshotIds.values())
+      const previousByInterface = new Map<
+        string,
+        {
+          rxBytes: bigint
+          rxErrors: bigint
+          rxDiscards: bigint
+          rxCrcErrors: bigint
+          rxAlignErrors: bigint
+          txBytes: bigint
+          txErrors: bigint
+          txDiscards: bigint
+        }
+      >()
 
-          return tx.interfaceSample.create({
-            data: {
-              apicHostId,
-              interfaceId,
-              sampledAt: now,
-              adminSt: row.adminSt,
-              operSt: row.operSt,
-              operSpeed: row.operSpeed,
+      if (ids.length > 0) {
+        for (let i = 0; i < ids.length; i += 500) {
+          const idChunk = ids.slice(i, i + 500)
+          const previous = await tx.interfaceSample.findMany({
+            where: { interfaceId: { in: idChunk } },
+            orderBy: { sampledAt: 'desc' },
+            select: {
+              interfaceId: true,
+              rxBytes: true,
+              rxErrors: true,
+              rxDiscards: true,
+              rxCrcErrors: true,
+              rxAlignErrors: true,
+              txBytes: true,
+              txErrors: true,
+              txDiscards: true,
+            },
+          })
+          for (const row of previous) {
+            if (previousByInterface.has(row.interfaceId)) continue
+            previousByInterface.set(row.interfaceId, {
               rxBytes: row.rxBytes,
-              rxPkts: row.rxPkts,
               rxErrors: row.rxErrors,
               rxDiscards: row.rxDiscards,
               rxCrcErrors: row.rxCrcErrors,
               rxAlignErrors: row.rxAlignErrors,
               txBytes: row.txBytes,
-              txPkts: row.txPkts,
               txErrors: row.txErrors,
               txDiscards: row.txDiscards,
-              dRxBytes: computeDelta(row.rxBytes, prev?.rxBytes ?? null),
-              dRxErrors: computeDelta(row.rxErrors, prev?.rxErrors ?? null),
-              dRxDiscards: computeDelta(row.rxDiscards, prev?.rxDiscards ?? null),
-              dRxCrcErrors: computeDelta(row.rxCrcErrors, prev?.rxCrcErrors ?? null),
-              dRxAlignErrors: computeDelta(row.rxAlignErrors, prev?.rxAlignErrors ?? null),
-              dTxBytes: computeDelta(row.txBytes, prev?.txBytes ?? null),
-              dTxErrors: computeDelta(row.txErrors, prev?.txErrors ?? null),
-              dTxDiscards: computeDelta(row.txDiscards, prev?.txDiscards ?? null),
-            },
-          })
-        }),
-      )
-    }
+            })
+          }
+        }
+      }
 
-    await tx.apicHost.update({
-      where: { id: apicHostId },
-      data: { lastInterfaceSyncAt: now },
-    })
+      for (let i = 0; i < uniqueRows.length; i += INTERFACES_CHUNK_SIZE) {
+        const chunk = uniqueRows.slice(i, i + INTERFACES_CHUNK_SIZE)
+        await Promise.all(
+          chunk.map((row) => {
+            const interfaceId = snapshotIds.get(row.dn)!
+            const prev = previousByInterface.get(interfaceId) ?? null
 
-    const total = await tx.interfaceSnapshot.count({ where: { apicHostId } })
-    return { total }
-  }, { timeout: INTERFACES_TRANSACTION_TIMEOUT_MS })
+            return tx.interfaceSample.create({
+              data: {
+                apicHostId,
+                interfaceId,
+                sampledAt: now,
+                adminSt: row.adminSt,
+                operSt: row.operSt,
+                operSpeed: row.operSpeed,
+                rxBytes: row.rxBytes,
+                rxPkts: row.rxPkts,
+                rxErrors: row.rxErrors,
+                rxDiscards: row.rxDiscards,
+                rxCrcErrors: row.rxCrcErrors,
+                rxAlignErrors: row.rxAlignErrors,
+                txBytes: row.txBytes,
+                txPkts: row.txPkts,
+                txErrors: row.txErrors,
+                txDiscards: row.txDiscards,
+                dRxBytes: computeDelta(row.rxBytes, prev?.rxBytes ?? null),
+                dRxErrors: computeDelta(row.rxErrors, prev?.rxErrors ?? null),
+                dRxDiscards: computeDelta(row.rxDiscards, prev?.rxDiscards ?? null),
+                dRxCrcErrors: computeDelta(row.rxCrcErrors, prev?.rxCrcErrors ?? null),
+                dRxAlignErrors: computeDelta(row.rxAlignErrors, prev?.rxAlignErrors ?? null),
+                dTxBytes: computeDelta(row.txBytes, prev?.txBytes ?? null),
+                dTxErrors: computeDelta(row.txErrors, prev?.txErrors ?? null),
+                dTxDiscards: computeDelta(row.txDiscards, prev?.txDiscards ?? null),
+              },
+            })
+          }),
+        )
+      }
+
+      await tx.apicHost.update({
+        where: { id: apicHostId },
+        data: { lastInterfaceSyncAt: now },
+      })
+
+      const total = await tx.interfaceSnapshot.count({ where: { apicHostId } })
+      return { total }
+    },
+    { timeout: INTERFACES_TRANSACTION_TIMEOUT_MS },
+  )
 }

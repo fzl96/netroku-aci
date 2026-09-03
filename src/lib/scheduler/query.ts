@@ -22,7 +22,9 @@ async function readSchedules(): Promise<SafeResyncSchedule[]> {
     orderBy: { createdAt: 'asc' },
     include: { schedule: true },
   })
-  return hosts.map(host => toSafeSchedule({ id: host.id, name: host.name, host: host.host }, host.schedule))
+  return hosts.map((host) =>
+    toSafeSchedule({ id: host.id, name: host.name, host: host.host }, host.schedule),
+  )
 }
 
 /** Deliberately uncached: `enabled`, `runningAt`, `lastRunAt`, and `nextRunAt`

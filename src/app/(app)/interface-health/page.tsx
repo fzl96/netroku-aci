@@ -8,7 +8,5 @@ export const metadata: Metadata = {
 }
 
 export default function Page({ searchParams }: PageProps<'/interface-health'>) {
-  return (
-    <InterfaceHealthView paramsPromise={searchParams.then(parseInterfaceHealthPageParams)} />
-  )
+  return <InterfaceHealthView paramsPromise={searchParams.then(parseInterfaceHealthPageParams)} />
 }

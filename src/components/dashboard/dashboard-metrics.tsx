@@ -27,18 +27,29 @@ type MetricCardProps = {
 
 function MetricCard(props: MetricCardProps) {
   return (
-    <Link href={props.href} className="group rounded-lg border border-border bg-card p-5 shadow-sm transition-colors hover:border-foreground/20 hover:bg-card/80">
+    <Link
+      href={props.href}
+      className="group rounded-lg border border-border bg-card p-5 shadow-sm transition-colors hover:border-foreground/20 hover:bg-card/80"
+    >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          <span className={`inline-flex size-8 items-center justify-center rounded-lg border ${dashboardToneSurfaceClass(props.tone)}`}>
+          <span
+            className={`inline-flex size-8 items-center justify-center rounded-lg border ${dashboardToneSurfaceClass(props.tone)}`}
+          >
             {props.icon}
           </span>
           {props.title}
         </div>
-        <IconArrowUpRight size={14} stroke={1.75} className="text-faint transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-foreground" />
+        <IconArrowUpRight
+          size={14}
+          stroke={1.75}
+          className="text-faint transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-foreground"
+        />
       </div>
       <div className="mt-5">
-        <p className={`text-3xl font-semibold ${dashboardToneTextClass(props.tone)}`}>{props.value}</p>
+        <p className={`text-3xl font-semibold ${dashboardToneTextClass(props.tone)}`}>
+          {props.value}
+        </p>
         <p className="mt-1 text-xs text-muted-foreground">{props.label}</p>
       </div>
       <p className="mt-4 text-sm text-foreground">{props.detail}</p>
@@ -70,30 +81,34 @@ export async function DashboardMetrics({
   }
 
   return (
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-3" aria-label="Operational metrics">
-        <MetricCard
-          title="Endpoints"
-          href="/endpoints"
-          icon={<IconDeviceDesktopSearch size={17} stroke={1.75} />}
-          value={formatDashboardNumber(endpoints.active)}
-          label="active endpoints"
-          detail={`${formatDashboardNumber(endpoints.historical)} historical / ${formatDashboardNumber(endpoints.vlanCount)} VLANs`}
-          footer={`${formatDashboardNumber(endpoints.nodeCount)} nodes, ${formatDashboardNumber(endpoints.interfaceCount)} interfaces`}
-          tone={endpoints.active > 0 ? 'healthy' : 'unknown'}
-        />
-        <MetricCard
-          title="Interfaces"
-          href="/interface-health"
-          icon={<IconActivity size={17} stroke={1.75} />}
-          value={formatDashboardNumber(interfaces.total)}
-          label="tracked interfaces"
-          detail={`${formatDashboardNumber(interfaces.noisy)} with recent errors`}
-          footer={`${formatDashboardNumber(interfaces.operDown)} oper down, ${formatDashboardNumber(interfaces.adminDown)} admin down`}
-          tone={interfaces.noisy > 0 || interfaces.operDown > 0
+    <section className="grid grid-cols-1 gap-4 md:grid-cols-3" aria-label="Operational metrics">
+      <MetricCard
+        title="Endpoints"
+        href="/endpoints"
+        icon={<IconDeviceDesktopSearch size={17} stroke={1.75} />}
+        value={formatDashboardNumber(endpoints.active)}
+        label="active endpoints"
+        detail={`${formatDashboardNumber(endpoints.historical)} historical / ${formatDashboardNumber(endpoints.vlanCount)} VLANs`}
+        footer={`${formatDashboardNumber(endpoints.nodeCount)} nodes, ${formatDashboardNumber(endpoints.interfaceCount)} interfaces`}
+        tone={endpoints.active > 0 ? 'healthy' : 'unknown'}
+      />
+      <MetricCard
+        title="Interfaces"
+        href="/interface-health"
+        icon={<IconActivity size={17} stroke={1.75} />}
+        value={formatDashboardNumber(interfaces.total)}
+        label="tracked interfaces"
+        detail={`${formatDashboardNumber(interfaces.noisy)} with recent errors`}
+        footer={`${formatDashboardNumber(interfaces.operDown)} oper down, ${formatDashboardNumber(interfaces.adminDown)} admin down`}
+        tone={
+          interfaces.noisy > 0 || interfaces.operDown > 0
             ? 'warning'
-            : interfaces.total === 0 ? 'unknown' : 'healthy'}
-        />
-        <NodesTile nodes={nodes} />
-      </section>
+            : interfaces.total === 0
+              ? 'unknown'
+              : 'healthy'
+        }
+      />
+      <NodesTile nodes={nodes} />
+    </section>
   )
 }

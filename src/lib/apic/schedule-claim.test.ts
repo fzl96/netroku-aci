@@ -7,9 +7,11 @@ let currentEnabled = true
 let transactionCalls = 0
 
 const tx = {
-  $queryRaw: mock(async () => currentIntervalMinutes === 0
-    ? []
-    : [{ enabled: currentEnabled, intervalMinutes: currentIntervalMinutes }]),
+  $queryRaw: mock(async () =>
+    currentIntervalMinutes === 0
+      ? []
+      : [{ enabled: currentEnabled, intervalMinutes: currentIntervalMinutes }],
+  ),
   resyncSchedule: {
     update: mock(async ({ data }: { data: Record<string, unknown> }) => {
       persistedData = data
@@ -74,10 +76,12 @@ describe('finalizeSchedule', () => {
       completedAt,
     })
 
-    expect(persistedData).toEqual(expect.objectContaining({
-      lastRunAt: completedAt,
-      nextRunAt: null,
-      runningAt: null,
-    }))
+    expect(persistedData).toEqual(
+      expect.objectContaining({
+        lastRunAt: completedAt,
+        nextRunAt: null,
+        runningAt: null,
+      }),
+    )
   })
 })

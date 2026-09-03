@@ -37,23 +37,17 @@ describe('canPlaceDevice', () => {
   })
 
   it('excludes the device being moved from its own collision check', () => {
-    const devices: PlaceableDevice[] = [
-      { id: 'dev-1', rackPosition: 10, heightU: 2 },
-    ]
+    const devices: PlaceableDevice[] = [{ id: 'dev-1', rackPosition: 10, heightU: 2 }]
     expect(canPlaceDevice(devices, 'dev-1', 10, 2, 42)).toBe(true)
   })
 
   it('ignores unassigned devices (null rackPosition) in the same list', () => {
-    const devices: PlaceableDevice[] = [
-      { id: 'dev-2', rackPosition: null, heightU: 4 },
-    ]
+    const devices: PlaceableDevice[] = [{ id: 'dev-2', rackPosition: null, heightU: 4 }]
     expect(canPlaceDevice(devices, 'dev-1', 1, 4, 42)).toBe(true)
   })
 
   it('treats zero/negative heightU on an existing device as at least 1U for overlap purposes', () => {
-    const devices: PlaceableDevice[] = [
-      { id: 'dev-2', rackPosition: 5, heightU: 0 },
-    ]
+    const devices: PlaceableDevice[] = [{ id: 'dev-2', rackPosition: 5, heightU: 0 }]
     expect(canPlaceDevice(devices, 'dev-1', 5, 1, 42)).toBe(false)
     expect(canPlaceDevice(devices, 'dev-1', 6, 1, 42)).toBe(true)
   })

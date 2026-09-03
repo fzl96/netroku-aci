@@ -1,6 +1,5 @@
 export type ScheduleRefreshResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: string }
+  { success: true; data: T } | { success: false; error: string }
 
 export type PollingTimers = {
   setInterval: (callback: () => void, milliseconds: number) => ReturnType<typeof setInterval>

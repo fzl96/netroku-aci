@@ -9,7 +9,7 @@ The monitoring side of the ACI Toolkit polls APIC on a schedule and stores
 history in SQLite, reporting per data subject. Built so far: **Endpoints**,
 **Interfaces**, **Faults**, **Health Scores** — each following the same
 collector pattern (a `resync*` lib → APIC login → class query → chunked upsert
-of a *snapshot* model + per-resync *sample* rows; an authed
+of a _snapshot_ model + per-resync _sample_ rows; an authed
 `POST /api/<subject>/resync` route; cron wiring; a server-component page; a
 sidebar entry; a dashboard tile).
 
@@ -22,6 +22,7 @@ Faults/Health Scores slices (`src/lib/apic/faults.ts`,
 Primary job: **reporting / overview** — "is the iron healthy."
 
 Decisions made during brainstorming:
+
 - Hardware depth: **Nodes + PSU + Fan** (temperature sensors deferred — their
   ACI classes vary by hardware and add parsing risk).
 - **Light trend**: one sample per resync (nodes-online + failed-component
@@ -39,12 +40,12 @@ resync flows, with a headline + light trend and a dashboard tile. Read-only.
 
 ## Data sources (one login, four GETs)
 
-| Class | Query | Yields |
-|---|---|---|
+| Class        | Query                             | Yields                                                                                                                                            |
+| ------------ | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `fabricNode` | `/api/node/class/fabricNode.json` | node identity: `id`, `name`, `role` (leaf/spine/controller), `model`, `serial`/`ser`, `fabricSt` (registration state), dn `topology/pod-N/node-M` |
-| `topSystem` | `/api/node/class/topSystem.json` | operational: `state`, `version`, `systemUpTime`, `oobMgmtAddr`, `podId` — joined to nodes by node id |
-| `eqptPsu` | `/api/node/class/eqptPsu.json` | power supplies: `operSt`, `model`, `ser`, `id`; node parsed from dn |
-| `eqptFan` | `/api/node/class/eqptFan.json` | fans: `operSt`, `model`, `id`; node parsed from dn |
+| `topSystem`  | `/api/node/class/topSystem.json`  | operational: `state`, `version`, `systemUpTime`, `oobMgmtAddr`, `podId` — joined to nodes by node id                                              |
+| `eqptPsu`    | `/api/node/class/eqptPsu.json`    | power supplies: `operSt`, `model`, `ser`, `id`; node parsed from dn                                                                               |
+| `eqptFan`    | `/api/node/class/eqptFan.json`    | fans: `operSt`, `model`, `id`; node parsed from dn                                                                                                |
 
 ## Data model (Prisma)
 
@@ -52,24 +53,24 @@ resync flows, with a headline + light trend and a dashboard tile. Read-only.
 
 Upsert by `(apicHostId, dn)`.
 
-| Field | Notes |
-|---|---|
-| `id` | cuid |
-| `apicHostId` / `apicHost` | relation, `onDelete: Cascade` |
-| `dn` | `fabricNode` dn (`topology/pod-N/node-M`) |
-| `nodeId` | node id (e.g. `101`), parsed from dn |
-| `name` | node name |
-| `role` | `leaf` \| `spine` \| `controller` (`role` attr) |
-| `model` | hardware model |
-| `serial` | serial (`ser`) |
-| `version` | software version (from `topSystem`, nullable) |
-| `fabricSt` | registration state (`active`, `inactive`, `disabled`, ...) |
-| `state` | operational state from `topSystem` (e.g. `in-service`), nullable |
-| `podId` | pod id (from `topSystem` or parsed dn) |
-| `uptime` | `systemUpTime` string from `topSystem`, nullable |
-| `oobMgmtAddr` | OOB mgmt address from `topSystem`, nullable |
-| `present` | Bool default true (flipped false when absent — decommissioned node) |
-| `firstSeenAt` / `lastSeenAt` | DateTime default now |
+| Field                        | Notes                                                               |
+| ---------------------------- | ------------------------------------------------------------------- |
+| `id`                         | cuid                                                                |
+| `apicHostId` / `apicHost`    | relation, `onDelete: Cascade`                                       |
+| `dn`                         | `fabricNode` dn (`topology/pod-N/node-M`)                           |
+| `nodeId`                     | node id (e.g. `101`), parsed from dn                                |
+| `name`                       | node name                                                           |
+| `role`                       | `leaf` \| `spine` \| `controller` (`role` attr)                     |
+| `model`                      | hardware model                                                      |
+| `serial`                     | serial (`ser`)                                                      |
+| `version`                    | software version (from `topSystem`, nullable)                       |
+| `fabricSt`                   | registration state (`active`, `inactive`, `disabled`, ...)          |
+| `state`                      | operational state from `topSystem` (e.g. `in-service`), nullable    |
+| `podId`                      | pod id (from `topSystem` or parsed dn)                              |
+| `uptime`                     | `systemUpTime` string from `topSystem`, nullable                    |
+| `oobMgmtAddr`                | OOB mgmt address from `topSystem`, nullable                         |
+| `present`                    | Bool default true (flipped false when absent — decommissioned node) |
+| `firstSeenAt` / `lastSeenAt` | DateTime default now                                                |
 
 Constraints: `@@unique([apicHostId, dn])`, `@@index([apicHostId])`,
 `@@index([apicHostId, role])`, `@@map("node_snapshot")`.
@@ -78,19 +79,19 @@ Constraints: `@@unique([apicHostId, dn])`, `@@index([apicHostId])`,
 
 Upsert by `(apicHostId, dn)`.
 
-| Field | Notes |
-|---|---|
-| `id` | cuid |
-| `apicHostId` / `apicHost` | relation, `onDelete: Cascade` |
-| `dn` | component dn |
-| `nodeId` | owning node id, parsed from dn |
-| `type` | `psu` \| `fan` |
-| `name` | component id/slot (`id` attr) |
-| `operSt` | operational status string |
-| `model` | model, nullable-as-empty |
-| `serial` | serial (`ser`), nullable-as-empty |
-| `present` | Bool default true (flipped false when absent) |
-| `firstSeenAt` / `lastSeenAt` | DateTime default now |
+| Field                        | Notes                                         |
+| ---------------------------- | --------------------------------------------- |
+| `id`                         | cuid                                          |
+| `apicHostId` / `apicHost`    | relation, `onDelete: Cascade`                 |
+| `dn`                         | component dn                                  |
+| `nodeId`                     | owning node id, parsed from dn                |
+| `type`                       | `psu` \| `fan`                                |
+| `name`                       | component id/slot (`id` attr)                 |
+| `operSt`                     | operational status string                     |
+| `model`                      | model, nullable-as-empty                      |
+| `serial`                     | serial (`ser`), nullable-as-empty             |
+| `present`                    | Bool default true (flipped false when absent) |
+| `firstSeenAt` / `lastSeenAt` | DateTime default now                          |
 
 Constraints: `@@unique([apicHostId, dn])`, `@@index([apicHostId, nodeId])`,
 `@@index([apicHostId, type])`, `@@map("hardware_component")`.
@@ -118,12 +119,12 @@ Applied independently to `NodeSnapshot` and `HardwareComponent`. Pages filter
 Pure, tested helpers:
 
 - `NodeRow` — `{ dn, nodeId, name, role, model, serial, version, fabricSt,
-  state, podId, uptime, oobMgmtAddr }`.
+state, podId, uptime, oobMgmtAddr }`.
 - `ComponentRow` — `{ dn, nodeId, type, name, operSt, model, serial }`.
 - `parseFabricNodeRows(imdata)` — base node rows from `fabricNode` (node id
   parsed from dn via `topology/pod-(\d+)/node-(\d+)`).
 - `parseTopSystemRows(imdata)` — `Map<nodeId, { version, state, uptime,
-  oobMgmtAddr, podId }>`.
+oobMgmtAddr, podId }>`.
 - `mergeNodes(fabricNodes, topSystemByNode)` — `NodeRow[]` (left-join on nodeId;
   topSystem fields null when absent).
 - `parsePsuRows(imdata)` / `parseFanRows(imdata)` — `ComponentRow[]`.
@@ -131,14 +132,14 @@ Pure, tested helpers:
 - `isComponentHealthy(type, operSt)` — PSU good = `on`/`ok`; fan good =
   `ok`/`on` (case-insensitive); else failed.
 - `summarizeNodes(nodes, components)` — `{ nodesTotal, nodesOnline,
-  componentsTotal, componentsFailed }`.
+componentsTotal, componentsFailed }`.
 - `fetchNodesFromApic(host, user, pwd)` — login once, 4 GETs, return
   `{ nodes: NodeRow[], components: ComponentRow[] }`.
 - `resyncNodes(args)`: dedupe by dn → chunked upsert `NodeSnapshot` →
   present-detection for nodes → chunked upsert `HardwareComponent` →
   present-detection for components → insert one `NodeStatusSample` from
   `summarizeNodes` → set `lastNodeSyncAt`. Returns `{ syncedNodes,
-  syncedComponents, nodesOnline }`.
+syncedComponents, nodesOnline }`.
 
 All read-only: GET queries plus the `aaaLogin` auth POST only.
 

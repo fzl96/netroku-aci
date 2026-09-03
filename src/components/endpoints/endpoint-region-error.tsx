@@ -15,10 +15,15 @@ export function EndpointRegionError({
   const [retrying, startTransition] = useTransition()
 
   return (
-    <div role="alert" className={`flex items-center justify-between gap-4 border border-border bg-card ${compact ? 'rounded-lg px-3 py-2' : 'rounded-2xl px-4 py-5'}`}>
+    <div
+      role="alert"
+      className={`flex items-center justify-between gap-4 border border-border bg-card ${compact ? 'rounded-lg px-3 py-2' : 'rounded-2xl px-4 py-5'}`}
+    >
       <div>
         <p className="text-sm font-medium text-foreground">Could not load endpoint {region}</p>
-        {!compact && <p className="mt-1 text-xs text-subtle">The rest of the page is still available.</p>}
+        {!compact && (
+          <p className="mt-1 text-xs text-subtle">The rest of the page is still available.</p>
+        )}
       </div>
       <button
         type="button"

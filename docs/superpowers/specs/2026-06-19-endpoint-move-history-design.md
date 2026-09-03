@@ -84,7 +84,7 @@ Replaces the current `updateMany(isActive=false) → chunked upsert` flow.
      `{ isActive: false, clearedAt: now }`; insert new active row.
    - Mark `mac|ip` as seen.
 4. Any active row NOT seen in this fetch → update `{ isActive: false,
-   clearedAt: now }` (endpoint left the fabric).
+clearedAt: now }` (endpoint left the fabric).
 
 `attrsEqual(a, b)` compares `node`, `interface`, `vlan`, and EPG-from-`dn`.
 
@@ -130,4 +130,7 @@ can be added later if churn is high. Out of scope for v1.
 - A → B → A yields three rows; exactly one is active.
 - An endpoint absent from a fetch is flipped inactive with `clearedAt` set.
 - Invariant: after any resync, at most one active row exists per (mac, ip).
+
+```
+
 ```

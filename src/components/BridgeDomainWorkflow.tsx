@@ -25,38 +25,49 @@ type BridgeDomainValidator = (
 ) => { rows: ParsedBridgeDomainRow[]; errors: CsvValidationError[] }
 
 const L2_COLUMNS: PreviewColumn<ParsedBridgeDomainL2Row>[] = [
-  { header: '#', cell: (_r, i) => i + 1, className: 'font-mono text-faint tabular-nums select-none' },
-  { header: 'Tenant', cell: r => r.tenant, className: 'text-foreground' },
-  { header: 'Bridge Domain', cell: r => r.bd, className: 'font-mono text-foreground' },
-  { header: 'VRF', cell: r => r.vrf, className: 'font-mono text-foreground' },
+  {
+    header: '#',
+    cell: (_r, i) => i + 1,
+    className: 'font-mono text-faint tabular-nums select-none',
+  },
+  { header: 'Tenant', cell: (r) => r.tenant, className: 'text-foreground' },
+  { header: 'Bridge Domain', cell: (r) => r.bd, className: 'font-mono text-foreground' },
+  { header: 'VRF', cell: (r) => r.vrf, className: 'font-mono text-foreground' },
   { header: 'Mode', cell: () => 'L2 Only', className: 'text-foreground' },
   { header: 'Unknown MAC', cell: () => 'flood', className: 'font-mono text-foreground' },
   { header: 'ARP Flood', cell: () => 'true', className: 'font-mono text-foreground' },
   { header: 'Unicast Route', cell: () => 'no', className: 'font-mono text-foreground' },
-  { header: 'Description', cell: r => r.bd_desc ?? '', className: 'text-subtle' },
+  { header: 'Description', cell: (r) => r.bd_desc ?? '', className: 'text-subtle' },
 ]
 
 const L3_COLUMNS: PreviewColumn<ParsedBridgeDomainL3Row>[] = [
-  { header: '#', cell: (_r, i) => i + 1, className: 'font-mono text-faint tabular-nums select-none' },
-  { header: 'Tenant', cell: r => r.tenant, className: 'text-foreground' },
-  { header: 'Bridge Domain', cell: r => r.bd, className: 'font-mono text-foreground' },
-  { header: 'VRF', cell: r => r.vrf, className: 'font-mono text-foreground' },
-  { header: 'Subnet', cell: r => r.subnet, className: 'font-mono text-foreground' },
-  { header: 'L3Out', cell: r => r.l3out, className: 'font-mono text-foreground' },
+  {
+    header: '#',
+    cell: (_r, i) => i + 1,
+    className: 'font-mono text-faint tabular-nums select-none',
+  },
+  { header: 'Tenant', cell: (r) => r.tenant, className: 'text-foreground' },
+  { header: 'Bridge Domain', cell: (r) => r.bd, className: 'font-mono text-foreground' },
+  { header: 'VRF', cell: (r) => r.vrf, className: 'font-mono text-foreground' },
+  { header: 'Subnet', cell: (r) => r.subnet, className: 'font-mono text-foreground' },
+  { header: 'L3Out', cell: (r) => r.l3out, className: 'font-mono text-foreground' },
   { header: 'Unknown MAC', cell: () => 'proxy', className: 'font-mono text-foreground' },
   { header: 'ARP Flood', cell: () => 'false', className: 'font-mono text-foreground' },
   { header: 'Unicast Route', cell: () => 'yes', className: 'font-mono text-foreground' },
-  { header: 'Description', cell: r => r.bd_desc ?? '', className: 'text-subtle' },
+  { header: 'Description', cell: (r) => r.bd_desc ?? '', className: 'text-subtle' },
 ]
 
-const CONFIG: Record<Variant, {
-  pageBadge: Record<Mode, string>
-  pageSubtitle: Record<Mode, string>
-  feature: 'bridge-domains-l2' | 'bridge-domains-l3'
-  requiredColumnsHelp: string
-  columns: PreviewColumn<ParsedBridgeDomainRow>[]
-  validator: BridgeDomainValidator
-}> = {
+const CONFIG: Record<
+  Variant,
+  {
+    pageBadge: Record<Mode, string>
+    pageSubtitle: Record<Mode, string>
+    feature: 'bridge-domains-l2' | 'bridge-domains-l3'
+    requiredColumnsHelp: string
+    columns: PreviewColumn<ParsedBridgeDomainRow>[]
+    validator: BridgeDomainValidator
+  }
+> = {
   l2: {
     pageBadge: { deploy: 'L2 Only', rollback: 'L2 Rollback' },
     pageSubtitle: {
@@ -88,7 +99,13 @@ function rowLabel(row: ParsedBridgeDomainRow): string {
   return `Row ${row.rowIndex} - ${row.tenant}/${row.bd}`
 }
 
-export function BridgeDomainWorkflow({ variant, mode = 'deploy' }: { variant: Variant; mode?: Mode }) {
+export function BridgeDomainWorkflow({
+  variant,
+  mode = 'deploy',
+}: {
+  variant: Variant
+  mode?: Mode
+}) {
   const cfg = CONFIG[variant]
   return (
     <WorkflowShell<ParsedBridgeDomainRow>

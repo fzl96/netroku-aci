@@ -1,16 +1,11 @@
-import type {
-  CsvValidationError,
-  ParsedBridgeDomainL2Row,
-  ParsedBridgeDomainL3Row,
-} from './types'
+import type { CsvValidationError, ParsedBridgeDomainL2Row, ParsedBridgeDomainL3Row } from './types'
 import { checkHeaders, deduplicateRows } from '@/lib/apic/csv-utils'
 
 const L2_REQUIRED_HEADERS = ['tenant', 'bd', 'vrf'] as const
 const L3_REQUIRED_HEADERS = ['tenant', 'bd', 'vrf', 'subnet', 'l3out'] as const
 const SAFE_DN_SEGMENT_RE = /^[^\s/[\]](?:[^/[\]]*[^\s/[\]])?$/
 
-export const BD_L2_REQUIRED_COLUMNS_HELP =
-  'Required columns: tenant, bd, vrf. Optional: bd_desc'
+export const BD_L2_REQUIRED_COLUMNS_HELP = 'Required columns: tenant, bd, vrf. Optional: bd_desc'
 
 export const BD_L3_REQUIRED_COLUMNS_HELP =
   'Required columns: tenant, bd, vrf, subnet, l3out. Optional: bd_desc'
@@ -35,15 +30,18 @@ function validateCommonFields(
   rowIndex: number,
 ): { tenant: string; bd: string; vrf: string; bd_desc?: string; errors: CsvValidationError[] } {
   const errors: CsvValidationError[] = []
-  const addError = (field: string, message: string) =>
-    errors.push({ rowIndex, field, message })
+  const addError = (field: string, message: string) => errors.push({ rowIndex, field, message })
 
   const tenant = raw.tenant?.trim() ?? ''
   const bd = raw.bd?.trim() ?? ''
   const vrf = raw.vrf?.trim() ?? ''
   const bd_desc = raw.bd_desc?.trim() || undefined
 
-  for (const [field, value] of [['tenant', tenant], ['bd', bd], ['vrf', vrf]] as const) {
+  for (const [field, value] of [
+    ['tenant', tenant],
+    ['bd', bd],
+    ['vrf', vrf],
+  ] as const) {
     if (!value) {
       addError(field, `${field} is required`)
     } else if (!SAFE_DN_SEGMENT_RE.test(value)) {
@@ -82,10 +80,13 @@ export function validateBridgeDomainL2Csv(
   })
 
   return {
-    rows: deduplicateRows(rows, errors, [{
-      key: r => `${r.tenant}|${r.bd}`,
-      message: (r, first) => `Duplicate bridge domain ${r.tenant}/${r.bd} (first at row ${first})`,
-    }]),
+    rows: deduplicateRows(rows, errors, [
+      {
+        key: (r) => `${r.tenant}|${r.bd}`,
+        message: (r, first) =>
+          `Duplicate bridge domain ${r.tenant}/${r.bd} (first at row ${first})`,
+      },
+    ]),
     errors,
   }
 }
@@ -139,10 +140,12 @@ export function validateBridgeDomainL3Csv(
   })
 
   return {
-    rows: deduplicateRows(rows, errors, [{
-      key: r => `${r.tenant}|${r.bd}|${r.subnet}|${r.l3out}`,
-      message: (_, first) => `Duplicate bridge domain L3 row (first at row ${first})`,
-    }]),
+    rows: deduplicateRows(rows, errors, [
+      {
+        key: (r) => `${r.tenant}|${r.bd}|${r.subnet}|${r.l3out}`,
+        message: (_, first) => `Duplicate bridge domain L3 row (first at row ${first})`,
+      },
+    ]),
     errors,
   }
 }

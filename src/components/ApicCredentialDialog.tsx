@@ -60,21 +60,19 @@ export function ApicCredentialDialog({
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent className="bg-card border-border text-foreground">
+      <DialogContent className="border-border bg-card text-foreground">
         <DialogHeader>
           <DialogTitle className="font-serif text-base font-semibold text-foreground">
             {title}
           </DialogTitle>
-          <DialogDescription className="text-xs text-subtle">
-            {description}
-          </DialogDescription>
+          <DialogDescription className="text-xs text-subtle">{description}</DialogDescription>
         </DialogHeader>
         <form id="apic-credential-form" onSubmit={handleSubmit} className="space-y-4">
           <label className="flex flex-col gap-1.5 text-xs font-medium text-foreground">
             APIC Username
             <Input
               value={username}
-              onChange={event => setUsername(event.target.value)}
+              onChange={(event) => setUsername(event.target.value)}
               autoComplete="username"
               required
               className={INPUT_OVERRIDE_CLS}
@@ -85,7 +83,7 @@ export function ApicCredentialDialog({
             APIC Password
             <Input
               value={password}
-              onChange={event => setPassword(event.target.value)}
+              onChange={(event) => setPassword(event.target.value)}
               type="password"
               autoComplete="current-password"
               required
@@ -94,12 +92,12 @@ export function ApicCredentialDialog({
             />
           </label>
         </form>
-        <DialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end rounded-b-xl border-t border-subtle bg-muted px-4 py-3 gap-1">
+        <DialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end gap-1 rounded-b-xl border-t border-subtle bg-muted px-4 py-3">
           <button
             type="button"
             onClick={() => close(false)}
             disabled={submitting}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2 disabled:opacity-50"
+            className="px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
           >
             Cancel
           </button>
@@ -107,7 +105,7 @@ export function ApicCredentialDialog({
             type="submit"
             form="apic-credential-form"
             disabled={submitting || !username.trim() || !password}
-            className="bg-primary text-primary-foreground text-sm font-semibold px-5 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? 'Connecting…' : 'Resync'}
           </button>

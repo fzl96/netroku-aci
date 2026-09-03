@@ -7,7 +7,10 @@ export function getDefaultExportScope(active: boolean, filteredTotal: number): E
   return active && filteredTotal > 0 ? 'filtered' : 'all'
 }
 export function buildEpgExportPayload(input: {
-  apicHostId: string; scope: ExportScope; groupBy: ExportGrouping; filters: EpgFilters
+  apicHostId: string
+  scope: ExportScope
+  groupBy: ExportGrouping
+  filters: EpgFilters
 }): EpgExportRequest {
   return input.scope === 'all'
     ? { apicHostId: input.apicHostId, scope: input.scope, groupBy: input.groupBy }

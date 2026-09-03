@@ -13,6 +13,7 @@
 ## File Structure
 
 **Create:**
+
 - `src/lib/apic/faults.ts` — fault types, `parseFaultRows`, `tallyFaultCounts`, `selectClearedDns`, `fetchFaultsFromApic`, `resyncFaults`
 - `src/lib/apic/faults.test.ts` — parse / tally / cleared-detection unit tests
 - `src/app/api/faults/resync/route.ts` — manual resync endpoint
@@ -24,6 +25,7 @@
 - `src/app/(app)/dashboard/FaultsTile.tsx` — dashboard summary tile
 
 **Modify:**
+
 - `prisma/schema.prisma` — add `FaultSnapshot`, `FaultCountSample`, `ApicHost.lastFaultSyncAt` + relations
 - `src/lib/apic/client.ts` — extract shared `apicLogin` helper
 - `src/lib/apic/interfaces.ts` — use `apicLogin`
@@ -40,6 +42,7 @@
 ## Task 1: Prisma schema — fault models
 
 **Files:**
+
 - Modify: `prisma/schema.prisma`
 
 - [ ] **Step 1: Add `lastFaultSyncAt` and relations to `ApicHost`**
@@ -128,6 +131,7 @@ git commit -m "feat: add FaultSnapshot and FaultCountSample models"
 `fetchInterfacesFromApic` and `resyncEndpoints` each re-implement the `aaaLogin` request + token extraction. Extract it so faults reuses it instead of adding a third copy.
 
 **Files:**
+
 - Modify: `src/lib/apic/client.ts`
 - Modify: `src/lib/apic/interfaces.ts:~205-220` (the login block inside `fetchInterfacesFromApic`)
 - Modify: `src/lib/apic/endpoints.ts` (its login block)
@@ -190,6 +194,7 @@ git commit -m "refactor: extract shared apicLogin helper"
 ## Task 3: Fault parsing — `parseFaultRows`
 
 **Files:**
+
 - Create: `src/lib/apic/faults.ts`
 - Test: `src/lib/apic/faults.test.ts`
 
@@ -370,6 +375,7 @@ git commit -m "feat: add parseFaultRows fault parser"
 ## Task 4: Count tally + cleared-detection helpers
 
 **Files:**
+
 - Modify: `src/lib/apic/faults.ts`
 - Test: `src/lib/apic/faults.test.ts`
 
@@ -462,6 +468,7 @@ git commit -m "feat: add fault count tally and cleared-detection helpers"
 These are the network/DB integration layer — kept thin since the testable logic is already covered. No new unit test (matches `interfaces.ts`, whose fetch/resync are untested integration code).
 
 **Files:**
+
 - Modify: `src/lib/apic/faults.ts`
 
 - [ ] **Step 1: Add the fetch function**
@@ -610,6 +617,7 @@ git commit -m "feat: add fetchFaultsFromApic and resyncFaults"
 ## Task 6: Audit action
 
 **Files:**
+
 - Modify: `src/lib/audit.ts:4-13`
 
 - [ ] **Step 1: Add the action to the union**
@@ -637,6 +645,7 @@ git commit -m "feat: add resync.faults audit action"
 ## Task 7: `POST /api/faults/resync` route
 
 **Files:**
+
 - Create: `src/app/api/faults/resync/route.ts`
 
 - [ ] **Step 1: Write the route**
@@ -714,6 +723,7 @@ git commit -m "feat: add POST /api/faults/resync route"
 ## Task 8: Cron-resync summary support
 
 **Files:**
+
 - Modify: `src/lib/apic/cron-resync.ts`
 - Test: `src/lib/apic/cron-resync.test.ts`
 
@@ -779,6 +789,7 @@ git commit -m "feat: track faults dataset in cron resync summary"
 ## Task 9: Cron route wiring
 
 **Files:**
+
 - Modify: `src/app/api/cron/resync/route.ts`
 
 - [ ] **Step 1: Import `resyncFaults`**
@@ -838,6 +849,7 @@ git commit -m "feat: resync faults in scheduled cron job"
 ## Task 10: Faults page sort helper
 
 **Files:**
+
 - Create: `src/app/(app)/faults/sort.ts`
 - Test: `src/app/(app)/faults/sort.test.ts`
 
@@ -937,6 +949,7 @@ git commit -m "feat: add fault severity sort helper"
 This mirrors the Interfaces page. **Open `src/app/(app)/interface-health/page.tsx` and `InterfaceHealthClient.tsx` as the template** — copy the host-selector, page-size parsing, search/pagination, and resync-credential-dialog scaffolding, then adapt the columns/filters/chart for faults. Reproducing the full ~700-line client here would be noise; the concrete fault-specific pieces are below.
 
 **Files:**
+
 - Create: `src/app/(app)/faults/page.tsx`
 - Create: `src/app/(app)/faults/FaultsClient.tsx`
 
@@ -1152,6 +1165,7 @@ git commit -m "feat: add faults page with table and severity trend"
 ## Task 12: Sidebar navigation entry
 
 **Files:**
+
 - Modify: `src/components/AppSidebar.tsx` (after the Interfaces entry, ~line 106-109; imports ~line 61)
 
 - [ ] **Step 1: Import the icon**
@@ -1187,6 +1201,7 @@ git commit -m "feat: add Faults sidebar navigation entry"
 ## Task 13: Dashboard faults tile
 
 **Files:**
+
 - Create: `src/actions/faults.ts`
 - Create: `src/app/(app)/dashboard/FaultsTile.tsx`
 - Modify: `src/app/(app)/dashboard/page.tsx`

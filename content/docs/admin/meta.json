@@ -1,10 +1,4 @@
 {
   "title": "Admin & Setup",
-  "pages": [
-    "index",
-    "deployment",
-    "apic-hosts",
-    "scheduled-resync",
-    "users"
-  ]
+  "pages": ["index", "deployment", "apic-hosts", "scheduled-resync", "users"]
 }

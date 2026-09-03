@@ -4,7 +4,13 @@ import { EpgReadError, getEpgResults, type EpgHostResolution } from '@/lib/epgs/
 import { EpgResultsClient } from './epgs-client'
 import { EpgRegionError } from './epg-region-error'
 
-export async function EpgResults({ paramsPromise, hostPromise }: { paramsPromise: Promise<EpgPageParams>; hostPromise: Promise<EpgHostResolution> }) {
+export async function EpgResults({
+  paramsPromise,
+  hostPromise,
+}: {
+  paramsPromise: Promise<EpgPageParams>
+  hostPromise: Promise<EpgHostResolution>
+}) {
   let params: EpgPageParams
   let resolution: EpgHostResolution
   try {
@@ -17,8 +23,9 @@ export async function EpgResults({ paramsPromise, hostPromise }: { paramsPromise
   if (resolution.kind === 'redirect') redirect(resolution.location)
   if (resolution.kind === 'empty') return null
   let results: Awaited<ReturnType<typeof getEpgResults>>
-  try { results = await getEpgResults(params) }
-  catch (error) {
+  try {
+    results = await getEpgResults(params)
+  } catch (error) {
     if (!(error instanceof EpgReadError)) throw error
     console.error('[epgs] failed to load result data', error)
     return <EpgRegionError region="results" />

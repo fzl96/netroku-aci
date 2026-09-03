@@ -83,8 +83,9 @@ export class LegacyHealthReadError extends Error {
 }
 
 async function authorize(): Promise<void> {
-  try { await requireSession() }
-  catch (error) {
+  try {
+    await requireSession()
+  } catch (error) {
     if (!(error instanceof AuthenticationRequiredError)) throw error
     throw new LegacyHealthReadError()
   }
@@ -114,68 +115,99 @@ const DEVICE_SELECT = {
 
 export async function getLegacyHealthSummary(): Promise<LegacyHealthSummary> {
   await authorize()
-  return readHealthData(() => unstable_cache(async () => {
-    const [devices, samples, logs, latest] = await Promise.all([
-      prisma.legacyDevice.count({ where: { healthSamples: { some: {} } } }),
-      prisma.legacyHealthSample.count(),
-      prisma.legacyLogEntry.count(),
-      prisma.legacyHealthSample.findFirst({
-        orderBy: { collectedAt: 'desc' }, select: { collectedAt: true },
-      }),
-    ])
-    return { devices, samples, logs, latest: latest?.collectedAt.toISOString() ?? null }
-  }, ['legacy-health', 'summary'], cacheOptions)())
+  return readHealthData(() =>
+    unstable_cache(
+      async () => {
+        const [devices, samples, logs, latest] = await Promise.all([
+          prisma.legacyDevice.count({ where: { healthSamples: { some: {} } } }),
+          prisma.legacyHealthSample.count(),
+          prisma.legacyLogEntry.count(),
+          prisma.legacyHealthSample.findFirst({
+            orderBy: { collectedAt: 'desc' },
+            select: { collectedAt: true },
+          }),
+        ])
+        return { devices, samples, logs, latest: latest?.collectedAt.toISOString() ?? null }
+      },
+      ['legacy-health', 'summary'],
+      cacheOptions,
+    )(),
+  )
 }
 
 export async function getLegacyHealthFilterOptions(): Promise<LegacyHealthFilterOptions> {
   await authorize()
-  return readHealthData(() => unstable_cache(async () => {
-    const rows = await prisma.legacyDevice.findMany({
-      where: { healthSamples: { some: {} } },
-      distinct: ['site'],
-      select: { site: true },
-      orderBy: { site: 'asc' },
-    })
-    return { sites: rows.map(row => row.site) }
-  }, ['legacy-health', 'filter-options'], cacheOptions)())
+  return readHealthData(() =>
+    unstable_cache(
+      async () => {
+        const rows = await prisma.legacyDevice.findMany({
+          where: { healthSamples: { some: {} } },
+          distinct: ['site'],
+          select: { site: true },
+          orderBy: { site: 'asc' },
+        })
+        return { sites: rows.map((row) => row.site) }
+      },
+      ['legacy-health', 'filter-options'],
+      cacheOptions,
+    )(),
+  )
 }
 
 export async function getLegacyHealthResults(
   params: LegacyHealthPageParams,
 ): Promise<LegacyHealthResults> {
   await authorize()
-  return readHealthData(() => unstable_cache(async (): Promise<LegacyHealthResults> => {
-    const where = buildLegacyHealthDeviceWhere({
-      query: params.query,
-      sites: params.site ? [params.site] : [],
-    })
-    const [devices, total] = await Promise.all([
-      prisma.legacyDevice.findMany({
-        where,
-        orderBy: legacyHealthOrderBy(params.sort, params.direction),
-        skip: (params.page - 1) * params.pageSize,
-        take: params.pageSize,
-        select: DEVICE_SELECT,
-      }),
-      prisma.legacyDevice.count({ where }),
-    ])
-    return {
-      // Devices without a sample have nothing to show in a health row.
-      rows: devices.flatMap(device => device.healthSamples[0] ? [{
-        deviceId: device.id,
-        hostname: device.hostname,
-        site: device.site,
-        managementIp: device.managementIp,
-        sample: serializeLegacyHealthSample(device.healthSamples[0]),
-      }] : []),
-      total,
-      page: params.page,
-      pageSize: params.pageSize,
-    }
-  }, [
-    'legacy-health', 'results', params.query, params.site,
-    params.sort, params.direction, String(params.page), String(params.pageSize),
-  ], cacheOptions)())
+  return readHealthData(() =>
+    unstable_cache(
+      async (): Promise<LegacyHealthResults> => {
+        const where = buildLegacyHealthDeviceWhere({
+          query: params.query,
+          sites: params.site ? [params.site] : [],
+        })
+        const [devices, total] = await Promise.all([
+          prisma.legacyDevice.findMany({
+            where,
+            orderBy: legacyHealthOrderBy(params.sort, params.direction),
+            skip: (params.page - 1) * params.pageSize,
+            take: params.pageSize,
+            select: DEVICE_SELECT,
+          }),
+          prisma.legacyDevice.count({ where }),
+        ])
+        return {
+          // Devices without a sample have nothing to show in a health row.
+          rows: devices.flatMap((device) =>
+            device.healthSamples[0]
+              ? [
+                  {
+                    deviceId: device.id,
+                    hostname: device.hostname,
+                    site: device.site,
+                    managementIp: device.managementIp,
+                    sample: serializeLegacyHealthSample(device.healthSamples[0]),
+                  },
+                ]
+              : [],
+          ),
+          total,
+          page: params.page,
+          pageSize: params.pageSize,
+        }
+      },
+      [
+        'legacy-health',
+        'results',
+        params.query,
+        params.site,
+        params.sort,
+        params.direction,
+        String(params.page),
+        String(params.pageSize),
+      ],
+      cacheOptions,
+    )(),
+  )
 }
 
 /** Drawer history is an on-demand detail read for one device, so it stays
@@ -196,10 +228,13 @@ export async function getLegacyHealthHistory(
 
     const [device, chartDesc, samples, sampleTotal, logs, logTotal] = await Promise.all([
       prisma.legacyDevice.findUnique({
-        where: { id: deviceId }, select: { id: true, hostname: true, site: true },
+        where: { id: deviceId },
+        select: { id: true, hostname: true, site: true },
       }),
       prisma.legacyHealthSample.findMany({
-        where: collectedWhere, orderBy: { collectedAt: 'desc' }, take: CHART_POINT_LIMIT,
+        where: collectedWhere,
+        orderBy: { collectedAt: 'desc' },
+        take: CHART_POINT_LIMIT,
       }),
       prisma.legacyHealthSample.findMany({
         where: collectedWhere,
@@ -225,7 +260,7 @@ export async function getLegacyHealthHistory(
       samples: samples.map(serializeLegacyHealthSample),
       samplePage,
       sampleTotal,
-      logs: logs.map(log => ({
+      logs: logs.map((log) => ({
         id: log.id,
         eventAt: log.eventAt?.toISOString() ?? null,
         collectedAt: log.collectedAt.toISOString(),

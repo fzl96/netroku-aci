@@ -4,7 +4,11 @@ import { NodeReadError, type NodeHostResolution, type NodeOverviewData } from '@
 import { NodeHeaderActionsClient } from './nodes-client'
 import { NodeRegionError } from './node-region-error'
 
-export async function NodeHeaderActions({ paramsPromise, hostPromise, overviewPromise }: {
+export async function NodeHeaderActions({
+  paramsPromise,
+  hostPromise,
+  overviewPromise,
+}: {
   paramsPromise: Promise<NodePageParams>
   hostPromise: Promise<NodeHostResolution>
   overviewPromise: Promise<NodeOverviewData | null>
@@ -20,5 +24,11 @@ export async function NodeHeaderActions({ paramsPromise, hostPromise, overviewPr
   const [params, resolution, overview] = data
   if (resolution.kind === 'redirect') redirect(resolution.location)
   if (resolution.kind === 'empty' || !overview) return null
-  return <NodeHeaderActionsClient params={params} hosts={resolution.hosts} lastNodeSyncAt={overview.lastNodeSyncAt} />
+  return (
+    <NodeHeaderActionsClient
+      params={params}
+      hosts={resolution.hosts}
+      lastNodeSyncAt={overview.lastNodeSyncAt}
+    />
+  )
 }

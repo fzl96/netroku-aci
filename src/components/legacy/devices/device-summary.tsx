@@ -23,7 +23,10 @@ export async function LegacyDeviceSummary() {
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {cards.map(([label, value, Icon]) => (
         <div key={label} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <div className="flex items-center justify-between text-subtle"><span className="text-[11px] font-semibold uppercase tracking-wide">{label}</span><Icon size={15} /></div>
+          <div className="flex items-center justify-between text-subtle">
+            <span className="text-[11px] font-semibold tracking-wide uppercase">{label}</span>
+            <Icon size={15} />
+          </div>
           <p className="mt-2 text-2xl font-semibold text-foreground">{value}</p>
         </div>
       ))}

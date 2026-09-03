@@ -8,13 +8,16 @@ import type { ParsedRow } from '@/lib/apic/types'
 
 type Mode = 'deploy' | 'rollback'
 
-const MODE_CONFIG: Record<Mode, {
-  pageBadge: string
-  pageSubtitle: string
-  step3label: string
-  step3sub: string
-  queuedNoun: string
-}> = {
+const MODE_CONFIG: Record<
+  Mode,
+  {
+    pageBadge: string
+    pageSubtitle: string
+    step3label: string
+    step3sub: string
+    queuedNoun: string
+  }
+> = {
   deploy: {
     pageBadge: 'Deployer',
     pageSubtitle: 'Deploy VLAN/port bindings to the ACI fabric from CSV',

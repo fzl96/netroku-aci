@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { createApicReader } from './read-cache'
-import {
-  buildEncapConflictQuery,
-  buildMoPath,
-  buildNodePath,
-  buildPortPath,
-} from './paths'
+import { buildEncapConflictQuery, buildMoPath, buildNodePath, buildPortPath } from './paths'
 import { validateDeployRowsExact, validateRollbackRowsExact } from './static-port-exact'
 import type { ParsedRow } from './types'
 
@@ -71,12 +66,7 @@ describe('exact static-port validation', () => {
     const duplicateRows = [rows[0], { ...rows[0], rowIndex: 2 }]
     const { calls, reader } = countingReader()
 
-    const results = await validateRollbackRowsExact(
-      duplicateRows,
-      'apic.local',
-      'token',
-      reader,
-    )
+    const results = await validateRollbackRowsExact(duplicateRows, 'apic.local', 'token', reader)
 
     expect(results).toEqual([
       { rowIndex: 1, status: 'missing' },

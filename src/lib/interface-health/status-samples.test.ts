@@ -29,32 +29,38 @@ describe('serializeStatusSamples', () => {
       operSt: 'up',
       operSpeed: '10G',
     }
-    const visible = [{
-      id: 'visible',
-      sampledAt: new Date('2026-07-01T00:00:00Z'),
-      adminSt: 'up',
-      operSt: 'down',
-      operSpeed: 'unknown',
-    }]
+    const visible = [
+      {
+        id: 'visible',
+        sampledAt: new Date('2026-07-01T00:00:00Z'),
+        adminSt: 'up',
+        operSt: 'down',
+        operSpeed: 'unknown',
+      },
+    ]
 
-    expect(serializeStatusSamples(visible, baseline)).toEqual([{
-      id: 'visible',
-      sampledAt: '2026-07-01T00:00:00.000Z',
-      adminSt: 'up',
-      operSt: 'down',
-      operSpeed: 'unknown',
-      isStateChange: true,
-    }])
+    expect(serializeStatusSamples(visible, baseline)).toEqual([
+      {
+        id: 'visible',
+        sampledAt: '2026-07-01T00:00:00.000Z',
+        adminSt: 'up',
+        operSt: 'down',
+        operSpeed: 'unknown',
+        isStateChange: true,
+      },
+    ])
   })
 
   it('does not mark the first visible sample when no baseline exists', () => {
-    const visible = [{
-      id: 'visible',
-      sampledAt: new Date('2026-07-01T00:00:00Z'),
-      adminSt: 'up',
-      operSt: 'down',
-      operSpeed: 'unknown',
-    }]
+    const visible = [
+      {
+        id: 'visible',
+        sampledAt: new Date('2026-07-01T00:00:00Z'),
+        adminSt: 'up',
+        operSt: 'down',
+        operSpeed: 'unknown',
+      },
+    ]
 
     expect(serializeStatusSamples(visible)[0].isStateChange).toBe(false)
   })

@@ -3,7 +3,7 @@ title: APIC Hosts
 description: Configuring APIC controller connections.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Callout } from 'fumadocs-ui/components/callout'
 
 APIC hosts are the Cisco APIC controllers that Netroku ACI connects to for fabric data. Each host entry stores a display name and the controller's IP address or hostname. Credentials are **not** stored — they are entered at the time of connection.
 
@@ -15,15 +15,16 @@ Managing APIC hosts requires an **admin** account.
 2. Click **Add host**.
 3. Fill in the two fields:
 
-| Field | Description | Limit |
-|---|---|---|
-| **Name** | A display label for this controller (e.g. `prod-apic-1`) | 64 characters |
+| Field    | Description                                                             | Limit          |
+| -------- | ----------------------------------------------------------------------- | -------------- |
+| **Name** | A display label for this controller (e.g. `prod-apic-1`)                | 64 characters  |
 | **Host** | IP address or hostname of the APIC (e.g. `10.0.0.1` or `apic.internal`) | 253 characters |
 
 4. Click **Save**.
 
 <Callout type="info" title="TLS">
-Netroku ACI bypasses TLS certificate verification when talking to APIC controllers, so self-signed certificates work out of the box.
+  Netroku ACI bypasses TLS certificate verification when talking to APIC controllers, so self-signed
+  certificates work out of the box.
 </Callout>
 
 ## Test connectivity

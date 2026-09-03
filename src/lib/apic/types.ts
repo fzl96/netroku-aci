@@ -7,9 +7,9 @@ export interface CsvRow {
   tenant: string
   ap: string
   epg: string
-  vlan: number          // 1–4094
+  vlan: number // 1–4094
   node1: number
-  node2: number | null  // null for pc/port, required for vpc
+  node2: number | null // null for pc/port, required for vpc
   port_type: PortType
   interface_or_ipg: string
   mode: Mode
@@ -17,19 +17,19 @@ export interface CsvRow {
 }
 
 export interface ParsedRow extends CsvRow {
-  rowIndex: number  // 1-based row number for error messages
+  rowIndex: number // 1-based row number for error messages
 }
 
 export interface ValidationResult {
   rowIndex: number
   status: RowStatus
-  message?: string  // populated when status === 'error'
+  message?: string // populated when status === 'error'
 }
 
 export interface DeployResult {
   rowIndex: number
   success: boolean
-  message?: string  // APIC error message on failure
+  message?: string // APIC error message on failure
 }
 
 export interface CsvValidationError {

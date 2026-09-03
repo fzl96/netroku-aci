@@ -83,73 +83,77 @@ export async function executeEpgResyncWrites(
   epgs: EpgRow[],
   now: Date,
 ): Promise<ResyncEpgsResult> {
-  return db.$transaction(async tx => {
-    const acquired = await tryAcquireEpgResyncAdvisoryLock(tx, apicHostId)
-    if (!acquired) throw new EpgResyncInProgressError(apicHostId)
+  return db.$transaction(
+    async (tx) => {
+      const acquired = await tryAcquireEpgResyncAdvisoryLock(tx, apicHostId)
+      if (!acquired) throw new EpgResyncInProgressError(apicHostId)
 
-    // Purge previous state for this host
-    await tx.epgPathBinding.deleteMany({ where: { apicHostId } })
-    await tx.epgSnapshot.deleteMany({ where: { apicHostId } })
+      // Purge previous state for this host
+      await tx.epgPathBinding.deleteMany({ where: { apicHostId } })
+      await tx.epgSnapshot.deleteMany({ where: { apicHostId } })
 
-    // Bulk insert EPG snapshots
-    if (epgs.length > 0) {
-      await tx.epgSnapshot.createMany({
-        data: epgs.map(e => ({
-          apicHostId,
-          dn: e.dn,
-          name: e.name,
-          tenant: e.tenant,
-          appProfile: e.appProfile,
-          description: e.description,
-          bridgeDomain: e.bridgeDomain,
-          pcTag: e.pcTag,
-          preferredGroup: e.preferredGroup,
-          isolation: e.isolation,
-          domains: e.domains,
-          providedContracts: e.providedContracts,
-          consumedContracts: e.consumedContracts,
-        })),
-      })
-    }
-
-    const createdEpgs = epgs.length > 0
-      ? await tx.epgSnapshot.findMany({
-          where: { apicHostId },
-          select: { id: true, dn: true },
+      // Bulk insert EPG snapshots
+      if (epgs.length > 0) {
+        await tx.epgSnapshot.createMany({
+          data: epgs.map((e) => ({
+            apicHostId,
+            dn: e.dn,
+            name: e.name,
+            tenant: e.tenant,
+            appProfile: e.appProfile,
+            description: e.description,
+            bridgeDomain: e.bridgeDomain,
+            pcTag: e.pcTag,
+            preferredGroup: e.preferredGroup,
+            isolation: e.isolation,
+            domains: e.domains,
+            providedContracts: e.providedContracts,
+            consumedContracts: e.consumedContracts,
+          })),
         })
-      : []
-    const idByDn = new Map<string, string>()
-    for (const e of createdEpgs) idByDn.set(e.dn, e.id)
+      }
 
-    // Collect and deduplicate bindings by dn
-    const bindingByDn = new Map<string, { epgDn: string; binding: EpgRow['bindings'][number] }>()
-    for (const e of epgs) {
-      for (const b of e.bindings) bindingByDn.set(b.dn, { epgDn: e.dn, binding: b })
-    }
-    const uniqueBindings = Array.from(bindingByDn.values())
+      const createdEpgs =
+        epgs.length > 0
+          ? await tx.epgSnapshot.findMany({
+              where: { apicHostId },
+              select: { id: true, dn: true },
+            })
+          : []
+      const idByDn = new Map<string, string>()
+      for (const e of createdEpgs) idByDn.set(e.dn, e.id)
 
-    if (uniqueBindings.length > 0) {
-      await tx.epgPathBinding.createMany({
-        data: uniqueBindings.map(({ epgDn, binding: b }) => ({
-          apicHostId,
-          epgId: idByDn.get(epgDn)!,
-          dn: b.dn,
-          pathTDn: b.pathTDn,
-          pod: b.pod,
-          node: b.node,
-          port: b.port,
-          pathType: b.pathType,
-          encap: b.encap,
-          mode: b.mode,
-        })),
+      // Collect and deduplicate bindings by dn
+      const bindingByDn = new Map<string, { epgDn: string; binding: EpgRow['bindings'][number] }>()
+      for (const e of epgs) {
+        for (const b of e.bindings) bindingByDn.set(b.dn, { epgDn: e.dn, binding: b })
+      }
+      const uniqueBindings = Array.from(bindingByDn.values())
+
+      if (uniqueBindings.length > 0) {
+        await tx.epgPathBinding.createMany({
+          data: uniqueBindings.map(({ epgDn, binding: b }) => ({
+            apicHostId,
+            epgId: idByDn.get(epgDn)!,
+            dn: b.dn,
+            pathTDn: b.pathTDn,
+            pod: b.pod,
+            node: b.node,
+            port: b.port,
+            pathType: b.pathType,
+            encap: b.encap,
+            mode: b.mode,
+          })),
+        })
+      }
+
+      await tx.apicHost.update({
+        where: { id: apicHostId },
+        data: { lastEpgSyncAt: now },
       })
-    }
 
-    await tx.apicHost.update({
-      where: { id: apicHostId },
-      data: { lastEpgSyncAt: now },
-    })
-
-    return { syncedEpgs: epgs.length, syncedBindings: uniqueBindings.length }
-  }, { timeout: EPG_TRANSACTION_TIMEOUT_MS })
+      return { syncedEpgs: epgs.length, syncedBindings: uniqueBindings.length }
+    },
+    { timeout: EPG_TRANSACTION_TIMEOUT_MS },
+  )
 }

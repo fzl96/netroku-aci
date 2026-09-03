@@ -1,5 +1,8 @@
 import type { LegacyEndpointPageParams } from '@/lib/legacy/endpoints/params'
-import { LegacyEndpointReadError, getLegacyEndpointFilterOptions } from '@/lib/legacy/endpoints/query'
+import {
+  LegacyEndpointReadError,
+  getLegacyEndpointFilterOptions,
+} from '@/lib/legacy/endpoints/query'
 import { LegacyEndpointFiltersClient } from './endpoints-client'
 import { LegacyEndpointRegionError } from './endpoint-region-error'
 

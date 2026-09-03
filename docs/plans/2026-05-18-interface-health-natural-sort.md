@@ -13,10 +13,12 @@
 ### Task 1: Add natural sorting helper with tests
 
 **Files:**
+
 - Create: `src/app/(app)/interface-health/sort.ts`
 - Create: `src/app/(app)/interface-health/sort.test.ts`
 
 **Steps:**
+
 1. Write a failing test proving `eth1/2` sorts before `eth1/10` and node `2` sorts before node `10`.
 2. Run the focused test and confirm it fails because the helper does not exist yet.
 3. Implement a natural comparator using numeric collation and a row sort helper.
@@ -25,9 +27,11 @@
 ### Task 2: Sort before pagination
 
 **Files:**
+
 - Modify: `src/app/(app)/interface-health/page.tsx`
 
 **Steps:**
+
 1. Import the sort helper.
 2. Load the filtered snapshot rows without database pagination.
 3. Natural-sort the rows, then apply `skip`/`take` in memory.
@@ -36,6 +40,7 @@
 ### Task 3: Verify
 
 **Steps:**
+
 1. Run the focused sort test.
 2. Run `bun test`.
 3. Run targeted lint on touched files.

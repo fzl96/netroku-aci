@@ -4,9 +4,7 @@ import type { SiteFormValues, SiteUpdateFormValues } from '@/lib/schemas/site'
 import { createSiteRecord, deleteSiteRecord, updateSiteRecord } from './mutation'
 import type { SafeSite } from './query'
 
-type ActionResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: string }
+type ActionResult<T> = { success: true; data: T } | { success: false; error: string }
 
 export async function createSite(data: SiteFormValues): Promise<ActionResult<SafeSite>> {
   try {

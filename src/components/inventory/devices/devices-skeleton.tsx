@@ -1,6 +1,6 @@
 export function DeviceDetailSkeleton() {
   return (
-    <div className="px-8 py-6 space-y-6" aria-busy="true" aria-label="Loading device">
+    <div className="space-y-6 px-8 py-6" aria-busy="true" aria-label="Loading device">
       <div className="flex items-center gap-4 rounded-xl border border-border p-6">
         <div className="size-16 animate-pulse rounded-lg bg-muted" />
         <div className="space-y-2">
@@ -10,7 +10,10 @@ export function DeviceDetailSkeleton() {
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, card) => (
-          <div key={card} className="h-32 animate-pulse rounded-xl border border-border bg-muted/40" />
+          <div
+            key={card}
+            className="h-32 animate-pulse rounded-xl border border-border bg-muted/40"
+          />
         ))}
       </div>
     </div>
@@ -51,7 +54,10 @@ export function DeviceImportContentSkeleton() {
       <div className="h-56 animate-pulse rounded-xl border border-dashed border-border bg-muted/30" />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {Array.from({ length: 3 }).map((_, card) => (
-          <div key={card} className="h-24 animate-pulse rounded-xl border border-border bg-muted/40" />
+          <div
+            key={card}
+            className="h-24 animate-pulse rounded-xl border border-border bg-muted/40"
+          />
         ))}
       </div>
     </div>

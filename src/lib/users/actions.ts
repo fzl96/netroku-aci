@@ -3,9 +3,7 @@
 import { createUserRecord, deleteUserRecord, type CreateUserValues } from './mutation'
 import type { SafeUser } from './query'
 
-type ActionResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: string }
+type ActionResult<T> = { success: true; data: T } | { success: false; error: string }
 
 export async function createUser(data: CreateUserValues): Promise<ActionResult<SafeUser>> {
   try {

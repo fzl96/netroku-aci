@@ -4,9 +4,7 @@ import type { RackFormValues, RackUpdateFormValues } from '@/lib/schemas/rack'
 import { createRackRecord, deleteRackRecord, updateRackRecord } from './mutation'
 import type { SafeRack } from './query'
 
-type ActionResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: string }
+type ActionResult<T> = { success: true; data: T } | { success: false; error: string }
 
 export async function createRack(data: RackFormValues): Promise<ActionResult<SafeRack>> {
   try {

@@ -53,17 +53,17 @@ Copy the example and fill in the values:
 cp .env.example .env
 ```
 
-| Variable                            | Required          | Purpose                                                                                                                |
-| ----------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                      | yes               | Postgres connection string. For local Docker, use `postgresql://netroku:netroku@localhost:5432/netroku?schema=public`. |
-| `BETTER_AUTH_SECRET`                | yes               | Session signing secret. Generate with `openssl rand -hex 32`.                                                          |
-| `BETTER_AUTH_URL`                   | yes               | Base URL the app is served from (e.g. `http://localhost:3000`).                                                        |
-| `NEXT_PUBLIC_APP_URL`               | yes               | Public base URL used by the browser.                                                                                   |
-| `TRUSTED_ORIGINS`                   | yes               | Comma-separated origins Better Auth accepts (add LAN IPs / Tailscale hosts here).                                      |
-| `SECURE_COOKIES`                    | no                | Set to `true` **only** when served exclusively over HTTPS. Leave blank for HTTP/LAN.                                   |
+| Variable                            | Required          | Purpose                                                                                                                                                                                                                           |
+| ----------------------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                      | yes               | Postgres connection string. For local Docker, use `postgresql://netroku:netroku@localhost:5432/netroku?schema=public`.                                                                                                            |
+| `BETTER_AUTH_SECRET`                | yes               | Session signing secret. Generate with `openssl rand -hex 32`.                                                                                                                                                                     |
+| `BETTER_AUTH_URL`                   | yes               | Base URL the app is served from (e.g. `http://localhost:3000`).                                                                                                                                                                   |
+| `NEXT_PUBLIC_APP_URL`               | yes               | Public base URL used by the browser.                                                                                                                                                                                              |
+| `TRUSTED_ORIGINS`                   | yes               | Comma-separated origins Better Auth accepts (add LAN IPs / Tailscale hosts here).                                                                                                                                                 |
+| `SECURE_COOKIES`                    | no                | Set to `true` **only** when served exclusively over HTTPS. Leave blank for HTTP/LAN.                                                                                                                                              |
 | `ENCRYPTION_KEY`                    | yes               | 64-char hex (32 bytes) used by `src/lib/crypto.ts` to encrypt scheduled-resync credentials stored in the `resync_schedule` table. Generate with `openssl rand -hex 32`. Changing it invalidates every stored schedule credential. |
-| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | yes (for seeding) | First admin account created by the seed script. Password ≥ 8 chars.                                                    |
-| `SCHEDULER_TOKEN`                   | no                | Bearer token the ticker and any external scheduler must send to `POST /api/cron/tick` / `POST /api/cron/resync`. Generate with `openssl rand -hex 32`. |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | yes (for seeding) | First admin account created by the seed script. Password ≥ 8 chars.                                                                                                                                                               |
+| `SCHEDULER_TOKEN`                   | no                | Bearer token the ticker and any external scheduler must send to `POST /api/cron/tick` / `POST /api/cron/resync`. Generate with `openssl rand -hex 32`.                                                                            |
 
 ### 5. Start Postgres
 
@@ -184,12 +184,12 @@ python legacy_sync.py all
 
 Default private/runtime paths are relative to `legacy_sync.py`:
 
-| Input | Default path |
-|---|---|
-| Monitor inventory | `configs/interfaces/legacy_creds.csv` |
-| Endpoint inventory | `configs/endpoint/legacy_creds.csv` |
-| F5 ARP logs | `configs/endpoint/logs/f5/*.txt` |
-| Customized TextFSM templates | `ntc_templates/` |
+| Input                        | Default path                          |
+| ---------------------------- | ------------------------------------- |
+| Monitor inventory            | `configs/interfaces/legacy_creds.csv` |
+| Endpoint inventory           | `configs/endpoint/legacy_creds.csv`   |
+| F5 ARP logs                  | `configs/endpoint/logs/f5/*.txt`      |
+| Customized TextFSM templates | `ntc_templates/`                      |
 
 Override any path when deployments use a different layout:
 
@@ -413,16 +413,16 @@ Recurring resyncs are configured in-app on the **Scheduler** page (admin-only): 
 `/api/cron/tick`:
 
 ```yaml
-  scheduler:
-    image: curlimages/curl:8.11.0
-    depends_on: [app]
-    env_file: [.env]
-    environment:
-      TICK_URL: http://app:3000/api/cron/tick
-      TICK_INTERVAL_SECONDS: 60
-    volumes: ["./scheduler/tick.sh:/tick.sh:ro"]
-    entrypoint: ["/bin/sh", "/tick.sh"]
-    restart: unless-stopped
+scheduler:
+  image: curlimages/curl:8.11.0
+  depends_on: [app]
+  env_file: [.env]
+  environment:
+    TICK_URL: http://app:3000/api/cron/tick
+    TICK_INTERVAL_SECONDS: 60
+  volumes: ['./scheduler/tick.sh:/tick.sh:ro']
+  entrypoint: ['/bin/sh', '/tick.sh']
+  restart: unless-stopped
 ```
 
 `scheduler/tick.sh` is the script the container runs — it holds no state, so restarting it
@@ -432,15 +432,15 @@ scheduling, stop just that service (`docker compose stop scheduler`).
 
 ### Page → APIC endpoint → storage
 
-| Page                 | APIC class endpoint(s) queried                                                                                                                         | Resync route                  | Stored in                                                                                                                                                                                               |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Dashboard**        | _none directly_ — aggregates the snapshot/sample tables below                                                                                          | _(reads only)_                | reads `NodeStatusSample`, `Endpoint`, `InterfaceSnapshot`                                                                                                                                               |
-| **Endpoints**        | `GET /api/node/class/fvCEp.json?rsp-subtree=children&rsp-subtree-class=fvIp` (endpoints + IPs), `GET /api/node/class/fvAEPg.json` (EPG descriptions) | `POST /api/endpoints/resync`  | `Endpoint` (`mac`, `ip`, `vlan`, `dn`, `node`, `interface`, `epgDescr`, `isActive`)                                                                                                                     |
-| **EPGs**             | `GET /api/node/class/fvAEPg.json?rsp-subtree=children&rsp-subtree-class=fvRsPathAtt,fvRsBd,fvRsDomAtt,fvRsProv,fvRsCons` (EPGs + BD/domain/contract relations + static path bindings) | `POST /api/epgs/resync`       | `EpgSnapshot` (tenant, app profile, BD, pcTag, preferred group, isolation, domains, provided/consumed contracts) + `EpgPathBinding` (pod, node, port, path type, encap, mode) — bulk-replaced each sync |
-| **Interface Health** | `GET /api/node/class/l1PhysIf.json?rsp-subtree=full&rsp-subtree-class=ethpmPhysIf,rmonIfIn,rmonIfOut,rmonDot3Stats,rmonEtherStats`                    | `POST /api/interfaces/resync` | `InterfaceSnapshot` (admin/oper state, speed, usage) + `InterfaceSample` (rx/tx bytes, pkts, errors, discards, CRC/align errors, plus per-sync deltas)                                                  |
+| Page                 | APIC class endpoint(s) queried                                                                                                                                                                         | Resync route                  | Stored in                                                                                                                                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Dashboard**        | _none directly_ — aggregates the snapshot/sample tables below                                                                                                                                          | _(reads only)_                | reads `NodeStatusSample`, `Endpoint`, `InterfaceSnapshot`                                                                                                                                               |
+| **Endpoints**        | `GET /api/node/class/fvCEp.json?rsp-subtree=children&rsp-subtree-class=fvIp` (endpoints + IPs), `GET /api/node/class/fvAEPg.json` (EPG descriptions)                                                   | `POST /api/endpoints/resync`  | `Endpoint` (`mac`, `ip`, `vlan`, `dn`, `node`, `interface`, `epgDescr`, `isActive`)                                                                                                                     |
+| **EPGs**             | `GET /api/node/class/fvAEPg.json?rsp-subtree=children&rsp-subtree-class=fvRsPathAtt,fvRsBd,fvRsDomAtt,fvRsProv,fvRsCons` (EPGs + BD/domain/contract relations + static path bindings)                  | `POST /api/epgs/resync`       | `EpgSnapshot` (tenant, app profile, BD, pcTag, preferred group, isolation, domains, provided/consumed contracts) + `EpgPathBinding` (pod, node, port, path type, encap, mode) — bulk-replaced each sync |
+| **Interface Health** | `GET /api/node/class/l1PhysIf.json?rsp-subtree=full&rsp-subtree-class=ethpmPhysIf,rmonIfIn,rmonIfOut,rmonDot3Stats,rmonEtherStats`                                                                     | `POST /api/interfaces/resync` | `InterfaceSnapshot` (admin/oper state, speed, usage) + `InterfaceSample` (rx/tx bytes, pkts, errors, discards, CRC/align errors, plus per-sync deltas)                                                  |
 | **Nodes**            | `GET /api/node/class/fabricNode.json` (inventory), `GET /api/node/class/topSystem.json` (state/uptime/mgmt addr), `GET /api/node/class/eqptPsu.json` (PSUs), `GET /api/node/class/eqptFan.json` (fans) | `POST /api/nodes/resync`      | `NodeSnapshot` (role, model, serial, version, fabric state, uptime) + `HardwareComponent` (PSU/fan oper state + health) + `NodeStatusSample` (nodes total/online, components total/failed)              |
-| **History**          | _none_ — read-only view of sync and admin activity                                                                                                     | _(reads only)_                | `AuditLog`                                                                                                                                                                                              |
-| **APIC Hosts**       | _none_ — `aaaLogin` test on save                                                                                                                       | _(CRUD)_                      | `ApicHost` (name, host, last-sync timestamps per feature)                                                                                                                                               |
+| **History**          | _none_ — read-only view of sync and admin activity                                                                                                                                                     | _(reads only)_                | `AuditLog`                                                                                                                                                                                              |
+| **APIC Hosts**       | _none_ — `aaaLogin` test on save                                                                                                                                                                       | _(CRUD)_                      | `ApicHost` (name, host, last-sync timestamps per feature)                                                                                                                                               |
 
 All monitoring queries use the read-only `GET /api/node/class/<class>.json` form of the APIC REST API; the provisioning routes below use `GET`/`POST`/`DELETE` against `/api/node/mo/<dn>.json`.
 
@@ -490,9 +490,9 @@ These handlers query read-only APIC classes and persist the results (see [Monito
 | `POST /api/nodes/resync`      | Pull `fabricNode`/`topSystem`/`eqptPsu`/`eqptFan` into `NodeSnapshot` / `HardwareComponent` / `NodeStatusSample`             |
 | `POST /api/cron/resync`       | External scheduler entry point — runs all syncs for the supplied hosts (Bearer `SCHEDULER_TOKEN`)                            |
 | `POST /api/cron/tick`         | Ticker entry point — runs any due schedules from the `resync_schedule` table (Bearer `SCHEDULER_TOKEN`)                      |
-| `POST /api/endpoints/export`     | Excel (`.xlsx`) export of the stored endpoints, honouring the active filters and grouped by node or VLAN                     |
-| `POST /api/epgs/export`          | Excel (`.xlsx`) export of the stored EPGs, grouped by EPG or by port                                                         |
-| `POST /api/interfaces/export`    | CSV export of the stored interface samples                                                                                   |
+| `POST /api/endpoints/export`  | Excel (`.xlsx`) export of the stored endpoints, honouring the active filters and grouped by node or VLAN                     |
+| `POST /api/epgs/export`       | Excel (`.xlsx`) export of the stored EPGs, grouped by EPG or by port                                                         |
+| `POST /api/interfaces/export` | CSV export of the stored interface samples                                                                                   |
 
 ## Running Tests
 

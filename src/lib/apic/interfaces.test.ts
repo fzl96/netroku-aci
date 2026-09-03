@@ -168,8 +168,28 @@ describe('parseInterfaceRows', () => {
             descr: '',
           },
           children: [
-            { rmonIfIn: { attributes: { octets: '500', ucastPkts: '3', nUcastPkts: '1', errors: '11', discards: '0' } } },
-            { rmonIfOut: { attributes: { octets: '600', ucastPkts: '4', nUcastPkts: '1', errors: '0', discards: '0' } } },
+            {
+              rmonIfIn: {
+                attributes: {
+                  octets: '500',
+                  ucastPkts: '3',
+                  nUcastPkts: '1',
+                  errors: '11',
+                  discards: '0',
+                },
+              },
+            },
+            {
+              rmonIfOut: {
+                attributes: {
+                  octets: '600',
+                  ucastPkts: '4',
+                  nUcastPkts: '1',
+                  errors: '0',
+                  discards: '0',
+                },
+              },
+            },
           ],
         },
       },
@@ -246,11 +266,14 @@ describe('executeInterfaceResyncWrites', () => {
       },
     }
     const db = {
-      $transaction: async <T>(fn: (tx: {
-        interfaceSnapshot: typeof interfaceSnapshot
-        interfaceSample: typeof interfaceSample
-        apicHost: typeof apicHost
-      }) => Promise<T>, options?: { timeout?: number }) => {
+      $transaction: async <T>(
+        fn: (tx: {
+          interfaceSnapshot: typeof interfaceSnapshot
+          interfaceSample: typeof interfaceSample
+          apicHost: typeof apicHost
+        }) => Promise<T>,
+        options?: { timeout?: number },
+      ) => {
         expect(options).toEqual({ timeout: 30000 })
         calls.push('transaction:start')
         inTransaction = true

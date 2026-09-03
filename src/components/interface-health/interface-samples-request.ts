@@ -11,7 +11,7 @@ async function readSamples<T>(
   if (!response.ok) {
     throw new Error(`Interface ${kind} request failed with ${response.status}`)
   }
-  return await response.json() as T
+  return (await response.json()) as T
 }
 
 export function fetchInterfaceErrorSamples(

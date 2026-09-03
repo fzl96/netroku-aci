@@ -5,7 +5,13 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
-import { IconPlus, IconPencil, IconTrash, IconSearch, IconFileSpreadsheet } from '@tabler/icons-react'
+import {
+  IconPlus,
+  IconPencil,
+  IconTrash,
+  IconSearch,
+  IconFileSpreadsheet,
+} from '@tabler/icons-react'
 import { DeviceStatus } from '@prisma/client'
 
 import { createDevice, updateDevice, deleteDevice } from '@/lib/inventory/devices/actions'
@@ -40,11 +46,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import {
-  DENSE_TABLE_HEAD_CLS,
-  SEARCH_INPUT_CLS,
-  TABLE_SCROLL_CLS,
-} from '@/lib/ui-classes'
+import { DENSE_TABLE_HEAD_CLS, SEARCH_INPUT_CLS, TABLE_SCROLL_CLS } from '@/lib/ui-classes'
 
 const STATUS_BADGE_CLS: Record<string, string> = {
   ACTIVE: 'bg-green-500/15 text-green-700 dark:text-green-400',
@@ -239,7 +241,9 @@ export function DevicesTableClient({
     if (result.success) {
       setDevices((prev) => [result.data, ...prev])
       if (result.data.deviceStack && !stacks.some((s) => s.id === result.data.deviceStack?.id)) {
-        setStacks((prev) => [...prev, result.data.deviceStack!].sort((a, b) => a.name.localeCompare(b.name)))
+        setStacks((prev) =>
+          [...prev, result.data.deviceStack!].sort((a, b) => a.name.localeCompare(b.name)),
+        )
       }
       createForm.reset(emptyDefaults)
       setCreateOpen(false)
@@ -255,11 +259,11 @@ export function DevicesTableClient({
     const result = await updateDevice(editingDevice.id, data)
     setIsMutating(false)
     if (result.success) {
-      setDevices((prev) =>
-        prev.map((d) => (d.id === editingDevice.id ? result.data : d)),
-      )
+      setDevices((prev) => prev.map((d) => (d.id === editingDevice.id ? result.data : d)))
       if (result.data.deviceStack && !stacks.some((s) => s.id === result.data.deviceStack?.id)) {
-        setStacks((prev) => [...prev, result.data.deviceStack!].sort((a, b) => a.name.localeCompare(b.name)))
+        setStacks((prev) =>
+          [...prev, result.data.deviceStack!].sort((a, b) => a.name.localeCompare(b.name)),
+        )
       }
       setEditOpen(false)
       setEditingDevice(null)
@@ -286,10 +290,14 @@ export function DevicesTableClient({
 
   return (
     <>
-      <div className="px-8 py-6 space-y-4">
+      <div className="space-y-4 px-8 py-6">
         <div className="flex items-center justify-between gap-4">
-          <form onSubmit={submitSearch} className="relative flex-1 max-w-xs">
-            <IconSearch size={13} stroke={1.75} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-faint" />
+          <form onSubmit={submitSearch} className="relative max-w-xs flex-1">
+            <IconSearch
+              size={13}
+              stroke={1.75}
+              className="absolute top-1/2 left-2.5 -translate-y-1/2 text-faint"
+            />
             <input
               value={searchValue}
               onChange={(e) => handleSearchChange(e.target.value)}
@@ -310,7 +318,7 @@ export function DevicesTableClient({
                   createForm.reset(emptyDefaults)
                   setCreateOpen(true)
                 }}
-                className="flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3.5 py-2 rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
+                className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
               >
                 <IconPlus size={11} stroke={1.75} />
                 Add Device
@@ -319,13 +327,24 @@ export function DevicesTableClient({
           )}
         </div>
 
-        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className={TABLE_SCROLL_CLS}>
             <table className="w-full text-xs">
               <thead>
                 <tr>
-                  {['Name', 'Serial', 'Management IP', 'Status', 'Vendor / Model', 'Rack', 'Stack', ...(isAdmin ? [''] : [])].map((h) => (
-                    <th key={h} className={DENSE_TABLE_HEAD_CLS}>{h}</th>
+                  {[
+                    'Name',
+                    'Serial',
+                    'Management IP',
+                    'Status',
+                    'Vendor / Model',
+                    'Rack',
+                    'Stack',
+                    ...(isAdmin ? [''] : []),
+                  ].map((h) => (
+                    <th key={h} className={DENSE_TABLE_HEAD_CLS}>
+                      {h}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -340,15 +359,20 @@ export function DevicesTableClient({
                   devices.map((device) => (
                     <tr
                       key={device.id}
-                      className="group border-b border-border-faint last:border-0 hover:bg-muted transition-colors duration-100"
+                      className="group border-b border-border-faint transition-colors duration-100 last:border-0 hover:bg-muted"
                     >
-                      <td className="px-4 py-2.5 border-l-2 border-l-transparent group-hover:border-l-primary transition-colors duration-100">
-                        <Link href={`/inventory/devices/${device.id}`} className="font-medium text-foreground hover:underline">
+                      <td className="border-l-2 border-l-transparent px-4 py-2.5 transition-colors duration-100 group-hover:border-l-primary">
+                        <Link
+                          href={`/inventory/devices/${device.id}`}
+                          className="font-medium text-foreground hover:underline"
+                        >
                           {device.name}
                         </Link>
                       </td>
                       <td className="px-4 py-2.5">
-                        <span className="font-mono text-muted-foreground">{device.serialNumber}</span>
+                        <span className="font-mono text-muted-foreground">
+                          {device.serialNumber}
+                        </span>
                       </td>
                       <td className="px-4 py-2.5">
                         {device.managementIp ? (
@@ -358,19 +382,23 @@ export function DevicesTableClient({
                         )}
                       </td>
                       <td className="px-4 py-2.5">
-                        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_BADGE_CLS[device.status] ?? ''}`}>
+                        <span
+                          className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_BADGE_CLS[device.status] ?? ''}`}
+                        >
                           {device.status}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 text-subtle">{device.vendor} {device.model}</td>
+                      <td className="px-4 py-2.5 text-subtle">
+                        {device.vendor} {device.model}
+                      </td>
                       <td className="px-4 py-2.5 text-subtle">
                         {device.rack ? `${device.rack.site.name} · ${device.rack.name}` : '—'}
                       </td>
                       <td className="px-4 py-2.5 text-subtle">
                         {device.deviceStack ? (
-                          <span className="inline-flex items-center gap-1 font-mono text-[11px] text-foreground bg-muted px-2 py-0.5 rounded border border-border">
+                          <span className="inline-flex items-center gap-1 rounded border border-border bg-muted px-2 py-0.5 font-mono text-[11px] text-foreground">
                             <span>{device.deviceStack.name}</span>
-                            <span className="text-muted-foreground text-[10px]">
+                            <span className="text-[10px] text-muted-foreground">
                               · {device.stackRole === 'MASTER' ? 'Master' : 'Member'}
                               {device.stackMember != null ? ` (SW #${device.stackMember})` : ''}
                             </span>
@@ -381,8 +409,13 @@ export function DevicesTableClient({
                       </td>
                       {isAdmin && (
                         <td className="px-4 py-2.5">
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
-                            <Button variant="ghost" size="icon-sm" onClick={() => openEdit(device)} title="Edit">
+                          <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => openEdit(device)}
+                              title="Edit"
+                            >
                               <IconPencil size={13} stroke={1.75} />
                             </Button>
                             <Button
@@ -407,12 +440,24 @@ export function DevicesTableClient({
 
         {totalPages > 1 && (
           <div className="flex items-center justify-between text-xs text-subtle">
-            <span>Page {page} of {totalPages} ({total} total)</span>
+            <span>
+              Page {page} of {totalPages} ({total} total)
+            </span>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1 || isNavigationPending} onClick={() => goToPage(page - 1)}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1 || isNavigationPending}
+                onClick={() => goToPage(page - 1)}
+              >
                 Previous
               </Button>
-              <Button variant="outline" size="sm" disabled={page >= totalPages || isNavigationPending} onClick={() => goToPage(page + 1)}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages || isNavigationPending}
+                onClick={() => goToPage(page + 1)}
+              >
                 Next
               </Button>
             </div>
@@ -420,42 +465,90 @@ export function DevicesTableClient({
         )}
       </div>
 
-      <Sheet open={createOpen} onOpenChange={(open) => { if (!open) createForm.reset(emptyDefaults); setCreateOpen(open) }}>
-        <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 border-l border-border bg-card shadow-2xl data-[side=right]:sm:max-w-md">
-          <SheetHeader className="px-6 py-5 border-b border-subtle shrink-0">
-            <SheetTitle className="font-serif text-base font-semibold text-foreground">Add Device</SheetTitle>
+      <Sheet
+        open={createOpen}
+        onOpenChange={(open) => {
+          if (!open) createForm.reset(emptyDefaults)
+          setCreateOpen(open)
+        }}
+      >
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col gap-0 border-l border-border bg-card p-0 shadow-2xl data-[side=right]:sm:max-w-md"
+        >
+          <SheetHeader className="shrink-0 border-b border-subtle px-6 py-5">
+            <SheetTitle className="font-serif text-base font-semibold text-foreground">
+              Add Device
+            </SheetTitle>
             <SheetDescription className="text-xs text-subtle">
               Register a new device. Rack placement is done from the Racks page.
             </SheetDescription>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto px-6 py-5">
-            <DeviceForm form={createForm} onSubmit={handleCreate} formId="create-device-form" existingStacks={effectiveStacks} />
+            <DeviceForm
+              form={createForm}
+              onSubmit={handleCreate}
+              formId="create-device-form"
+              existingStacks={effectiveStacks}
+            />
           </div>
-          <SheetFooter className="flex flex-row items-center justify-end border-t border-subtle bg-muted px-6 py-3.5 gap-2 shrink-0">
+          <SheetFooter className="flex shrink-0 flex-row items-center justify-end gap-2 border-t border-subtle bg-muted px-6 py-3.5">
             <FooterCancel onClick={() => setCreateOpen(false)} disabled={isMutating} />
-            <FooterSubmit form="create-device-form" disabled={isMutating} label={isMutating ? 'Adding…' : 'Add Device'} />
+            <FooterSubmit
+              form="create-device-form"
+              disabled={isMutating}
+              label={isMutating ? 'Adding…' : 'Add Device'}
+            />
           </SheetFooter>
         </SheetContent>
       </Sheet>
 
-      <Sheet open={editOpen} onOpenChange={(open) => { if (!open) setEditingDevice(null); setEditOpen(open) }}>
-        <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 border-l border-border bg-card shadow-2xl data-[side=right]:sm:max-w-md">
-          <SheetHeader className="px-6 py-5 border-b border-subtle shrink-0">
-            <SheetTitle className="font-serif text-base font-semibold text-foreground">Edit Device</SheetTitle>
-            <SheetDescription className="text-xs text-subtle">Update device identity and hardware details.</SheetDescription>
+      <Sheet
+        open={editOpen}
+        onOpenChange={(open) => {
+          if (!open) setEditingDevice(null)
+          setEditOpen(open)
+        }}
+      >
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col gap-0 border-l border-border bg-card p-0 shadow-2xl data-[side=right]:sm:max-w-md"
+        >
+          <SheetHeader className="shrink-0 border-b border-subtle px-6 py-5">
+            <SheetTitle className="font-serif text-base font-semibold text-foreground">
+              Edit Device
+            </SheetTitle>
+            <SheetDescription className="text-xs text-subtle">
+              Update device identity and hardware details.
+            </SheetDescription>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto px-6 py-5">
-            <DeviceForm form={editForm} onSubmit={handleUpdate} formId="edit-device-form" existingStacks={effectiveStacks} />
+            <DeviceForm
+              form={editForm}
+              onSubmit={handleUpdate}
+              formId="edit-device-form"
+              existingStacks={effectiveStacks}
+            />
           </div>
-          <SheetFooter className="flex flex-row items-center justify-end border-t border-subtle bg-muted px-6 py-3.5 gap-2 shrink-0">
+          <SheetFooter className="flex shrink-0 flex-row items-center justify-end gap-2 border-t border-subtle bg-muted px-6 py-3.5">
             <FooterCancel onClick={() => setEditOpen(false)} disabled={isMutating} />
-            <FooterSubmit form="edit-device-form" disabled={isMutating} label={isMutating ? 'Saving…' : 'Save Changes'} />
+            <FooterSubmit
+              form="edit-device-form"
+              disabled={isMutating}
+              label={isMutating ? 'Saving…' : 'Save Changes'}
+            />
           </SheetFooter>
         </SheetContent>
       </Sheet>
 
-      <AlertDialog open={deleteOpen} onOpenChange={(open) => { if (!open) setDeletingDevice(null); setDeleteOpen(open) }}>
-        <AlertDialogContent className="bg-card border-border">
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          if (!open) setDeletingDevice(null)
+          setDeleteOpen(open)
+        }}
+      >
+        <AlertDialogContent className="border-border bg-card">
           <AlertDialogHeader>
             <AlertDialogTitle className="font-serif text-base font-semibold text-foreground">
               Delete &ldquo;{deletingDevice?.name}&rdquo;?
@@ -464,15 +557,18 @@ export function DevicesTableClient({
               This will permanently remove the device from inventory. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end rounded-b-xl border-t border-subtle bg-muted px-4 py-3 gap-1">
-            <AlertDialogCancel disabled={isMutating} className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2 border-0 bg-transparent shadow-none hover:bg-transparent">
+          <AlertDialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-end gap-1 rounded-b-xl border-t border-subtle bg-muted px-4 py-3">
+            <AlertDialogCancel
+              disabled={isMutating}
+              className="border-0 bg-transparent px-4 py-2 text-sm text-muted-foreground shadow-none transition-colors hover:bg-transparent hover:text-foreground"
+            >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={handleDelete}
               disabled={isMutating}
-              className="bg-error text-error-foreground text-sm font-semibold px-5 py-2 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-60"
+              className="rounded-lg bg-error px-5 py-2 text-sm font-semibold text-error-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
             >
               {isMutating ? 'Deleting…' : 'Delete'}
             </AlertDialogAction>

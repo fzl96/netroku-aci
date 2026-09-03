@@ -1,8 +1,4 @@
-import {
-  parseLegacyPage,
-  parseLegacyPageSize,
-  type LegacyPageSize,
-} from '@/lib/legacy/query'
+import { parseLegacyPage, parseLegacyPageSize, type LegacyPageSize } from '@/lib/legacy/query'
 
 export type LegacyInterfaceView = 'all' | 'crc' | 'state-changed'
 export type LegacyInterfaceCounterMode = 'delta' | 'current'
@@ -77,7 +73,14 @@ export function initialLegacyInterfaceSortDirection(
 }
 
 function uniqueDeviceIds(value: string): string[] {
-  return [...new Set(value.split(',').map(id => id.trim()).filter(Boolean))]
+  return [
+    ...new Set(
+      value
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean),
+    ),
+  ]
 }
 
 /** A repeated search param arrives as an array; the list state reads one value
@@ -91,7 +94,7 @@ export function parseLegacyInterfaceListState(
 ): LegacyInterfaceListState {
   const sort = first(params.sort)
   const sortKey = LEGACY_INTERFACE_SORT_KEYS.includes(sort as LegacyInterfaceSortKey)
-    ? sort as LegacyInterfaceSortKey
+    ? (sort as LegacyInterfaceSortKey)
     : 'hostname'
   const direction = first(params.dir)
   const view = first(params.view)
@@ -103,9 +106,10 @@ export function parseLegacyInterfaceListState(
     mode: first(params.mode) === 'current' ? 'current' : 'delta',
     window: first(params.window) === '30d' ? '30d' : '7d',
     sortKey,
-    sortDirection: direction === 'asc' || direction === 'desc'
-      ? direction
-      : initialLegacyInterfaceSortDirection(sortKey),
+    sortDirection:
+      direction === 'asc' || direction === 'desc'
+        ? direction
+        : initialLegacyInterfaceSortDirection(sortKey),
     page: parseLegacyPage(first(params.page) || undefined),
     pageSize: parseLegacyPageSize(first(params.pageSize) || undefined),
   }
@@ -114,7 +118,7 @@ export function parseLegacyInterfaceListState(
 export function buildLegacyInterfaceUrl(state: LegacyInterfaceListState): string {
   const params = new URLSearchParams()
   const query = state.query.trim()
-  const deviceIds = [...new Set(state.deviceIds.map(id => id.trim()).filter(Boolean))]
+  const deviceIds = [...new Set(state.deviceIds.map((id) => id.trim()).filter(Boolean))]
   const initialDirection = initialLegacyInterfaceSortDirection(state.sortKey)
 
   if (query) params.set('query', query)

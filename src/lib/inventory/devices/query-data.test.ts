@@ -52,9 +52,7 @@ function transaction(callback: (tx: unknown) => unknown) {
   return callback({
     device: {
       findFirst: async () => null,
-      findUnique: placementCollides
-        ? async () => ({ heightU: 2 })
-        : deviceFindUnique,
+      findUnique: placementCollides ? async () => ({ heightU: 2 }) : deviceFindUnique,
       findMany: placementCollides
         ? async () => [{ id: 'other', rackPosition: 5, heightU: 2 }]
         : async () => [],
@@ -75,25 +73,34 @@ const revalidateCalls: Array<{ tag: string; options: unknown }> = []
 mock.module('server-only', () => ({}))
 mock.module('@/lib/auth', () => ({ AuthenticationRequiredError, requireSession, requireAdmin }))
 mock.module('@/lib/audit', () => ({ recordAudit }))
-mock.module('@/lib/prisma', () => ({ prisma: {
-  device: {
-    findMany: (args: { skip?: number; select?: { rack?: unknown } }) => {
-      // Both the paged list and the flat catalog select now use `select`;
-      // only the paged list passes skip/take, so key off that instead.
-      return args.skip === undefined ? Promise.resolve([storedDevice]) : deviceFindMany(args)
+mock.module('@/lib/prisma', () => ({
+  prisma: {
+    device: {
+      findMany: (args: { skip?: number; select?: { rack?: unknown } }) => {
+        // Both the paged list and the flat catalog select now use `select`;
+        // only the paged list passes skip/take, so key off that instead.
+        return args.skip === undefined ? Promise.resolve([storedDevice]) : deviceFindMany(args)
+      },
+      count: deviceCount,
+      findUnique: deviceFindUnique,
+      findUniqueOrThrow: deviceFindUniqueOrThrow,
     },
-    count: deviceCount,
-    findUnique: deviceFindUnique,
-    findUniqueOrThrow: deviceFindUniqueOrThrow,
+    deviceStack: { findMany: deviceStackFindMany },
+    $transaction: transaction,
   },
-  deviceStack: { findMany: deviceStackFindMany },
-  $transaction: transaction,
-} }))
+}))
 mock.module('next/cache', () => ({
-  unstable_cache: (fn: () => unknown, key: string[], options: { tags: string[]; revalidate: number }) => {
-    cacheCalls.push({ key, options }); return fn
+  unstable_cache: (
+    fn: () => unknown,
+    key: string[],
+    options: { tags: string[]; revalidate: number },
+  ) => {
+    cacheCalls.push({ key, options })
+    return fn
   },
-  revalidateTag: (tag: string, options: unknown) => { revalidateCalls.push({ tag, options }) },
+  revalidateTag: (tag: string, options: unknown) => {
+    revalidateCalls.push({ tag, options })
+  },
 }))
 
 const query = await import('./query')
@@ -162,12 +169,15 @@ describe('device mutations', () => {
 
   it('rejects a placement that collides with an existing device', async () => {
     placementCollides = true
-    await expect(mutation.updateDevicePlacementRecord('d1', 'r1', 5))
-      .rejects.toThrow('Cannot place device here due to rack collision')
+    await expect(mutation.updateDevicePlacementRecord('d1', 'r1', 5)).rejects.toThrow(
+      'Cannot place device here due to rack collision',
+    )
   })
 
   it('requires the admin role, not just a session', async () => {
-    requireAdmin.mockImplementationOnce(async () => { throw new Error('Forbidden') })
+    requireAdmin.mockImplementationOnce(async () => {
+      throw new Error('Forbidden')
+    })
     await expect(mutation.deleteDeviceRecord('d1')).rejects.toThrow('Forbidden')
   })
 })

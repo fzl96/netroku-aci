@@ -11,5 +11,5 @@ export async function fetchLegacyInterfaceHistory(
   if (!response.ok) {
     throw new Error(`Legacy interface history request failed with ${response.status}`)
   }
-  return await response.json() as LegacyInterfaceHistory
+  return (await response.json()) as LegacyInterfaceHistory
 }

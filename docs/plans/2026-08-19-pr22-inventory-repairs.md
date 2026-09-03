@@ -13,6 +13,7 @@
 ### Task 1: Repair import audit typing and device-list build output
 
 **Files:**
+
 - Modify: `src/lib/audit.ts`
 - Modify: `src/lib/history/query.ts`
 - Modify: `src/lib/history/query.test.ts`
@@ -64,6 +65,7 @@ git commit -m "fix(inventory): integrate import audit history"
 ### Task 2: Skip repeated CSV headers through aliases
 
 **Files:**
+
 - Modify: `src/lib/inventory/csv.test.ts`
 - Modify: `src/lib/inventory/csv.ts`
 
@@ -112,6 +114,7 @@ git commit -m "fix(inventory): skip repeated CSV alias headers"
 ### Task 3: Share and persist dynamic rack capacity
 
 **Files:**
+
 - Create: `src/lib/inventory/import-planning.ts`
 - Create: `src/lib/inventory/import-planning.test.ts`
 - Modify: `src/actions/inventory/import.ts`
@@ -178,6 +181,7 @@ git commit -m "fix(inventory): size dynamically imported racks"
 ### Task 4: Enforce automatic stack-master promotion
 
 **Files:**
+
 - Create: `src/lib/inventory/stack-master.ts`
 - Create: `src/lib/inventory/stack-master.test.ts`
 - Modify: `src/actions/inventory/devices.ts`
@@ -246,6 +250,7 @@ git commit -m "fix(inventory): auto-promote stack masters"
 ### Task 5: Add live search and remove effect-derived form state
 
 **Files:**
+
 - Create: `src/lib/inventory/device-form-state.ts`
 - Create: `src/lib/inventory/device-form-state.test.ts`
 - Modify: `src/components/inventory/DeviceForm.tsx`
@@ -311,6 +316,7 @@ git commit -m "fix(inventory): add live device search"
 ### Task 6: Full verification and final review
 
 **Files:**
+
 - Review all files changed since `48d7ad2c0dd2885551aea225a086895553862e8f`.
 
 **Step 1: Run focused inventory tests**

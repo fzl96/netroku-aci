@@ -1,7 +1,7 @@
 export async function runParallel<T, R>(
   items: T[],
   concurrency: number,
-  fn: (item: T, index: number) => Promise<R>
+  fn: (item: T, index: number) => Promise<R>,
 ): Promise<R[]> {
   if (items.length === 0) return []
 
@@ -15,10 +15,7 @@ export async function runParallel<T, R>(
     }
   }
 
-  const workers = Array.from(
-    { length: Math.min(concurrency, items.length) },
-    worker
-  )
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, worker)
   await Promise.all(workers)
   return results
 }

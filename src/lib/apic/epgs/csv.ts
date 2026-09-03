@@ -25,7 +25,11 @@ function validateSegment(
   if (!value) {
     errors.push({ rowIndex, field, message: `${field} is required` })
   } else if (!SAFE_DN_SEGMENT_RE.test(value)) {
-    errors.push({ rowIndex, field, message: `${field} must not contain slashes or square brackets` })
+    errors.push({
+      rowIndex,
+      field,
+      message: `${field} must not contain slashes or square brackets`,
+    })
   }
 }
 
@@ -37,7 +41,7 @@ function parseContractList(
 ): string[] {
   const values = (raw ?? '')
     .split(',')
-    .map(value => value.trim())
+    .map((value) => value.trim())
     .filter(Boolean)
 
   const seen = new Set<string>()
@@ -118,19 +122,23 @@ export function validateEpgCsv(
   rawRows: Record<string, string>[],
   headers: string[],
 ): { rows: ParsedEpgRow[]; errors: CsvValidationError[] } {
-  const missingHeaders = EPG_REQUIRED_HEADERS.filter(h => !headers.includes(h))
+  const missingHeaders = EPG_REQUIRED_HEADERS.filter((h) => !headers.includes(h))
   const hasAnpHeader = headers.includes('anp') || headers.includes('ap')
   if (missingHeaders.length > 0 || !hasAnpHeader) {
     return {
       rows: [],
-      errors: [{
-        rowIndex: 0,
-        field: 'headers',
-        message: `Missing required columns: ${[
-          ...missingHeaders,
-          !hasAnpHeader ? 'anp (or ap)' : '',
-        ].filter(Boolean).join(', ')}`,
-      }],
+      errors: [
+        {
+          rowIndex: 0,
+          field: 'headers',
+          message: `Missing required columns: ${[
+            ...missingHeaders,
+            !hasAnpHeader ? 'anp (or ap)' : '',
+          ]
+            .filter(Boolean)
+            .join(', ')}`,
+        },
+      ],
     }
   }
 
@@ -162,14 +170,29 @@ export function validateEpgCsv(
       return
     }
 
-    rows.push({ rowIndex, tenant, anp, epg, bd, bd_tenant, contract_tenant, phys_domain, consContracts, provContracts, epg_desc })
+    rows.push({
+      rowIndex,
+      tenant,
+      anp,
+      epg,
+      bd,
+      bd_tenant,
+      contract_tenant,
+      phys_domain,
+      consContracts,
+      provContracts,
+      epg_desc,
+    })
   })
 
   return {
-    rows: deduplicateRows(rows, errors, [{
-      key: row => `${row.tenant}|${row.anp}|${row.epg}|${effectiveBridgeDomainTenant(row)}|${row.bd}|${effectiveContractTenant(row)}|${row.phys_domain ?? ''}|${contractKey(row.consContracts)}|${contractKey(row.provContracts)}`,
-      message: (_, first) => `Duplicate EPG row (first at row ${first})`,
-    }]),
+    rows: deduplicateRows(rows, errors, [
+      {
+        key: (row) =>
+          `${row.tenant}|${row.anp}|${row.epg}|${effectiveBridgeDomainTenant(row)}|${row.bd}|${effectiveContractTenant(row)}|${row.phys_domain ?? ''}|${contractKey(row.consContracts)}|${contractKey(row.provContracts)}`,
+        message: (_, first) => `Duplicate EPG row (first at row ${first})`,
+      },
+    ]),
     errors,
   }
 }
@@ -178,19 +201,23 @@ export function validateEpgContractCsv(
   rawRows: Record<string, string>[],
   headers: string[],
 ): { rows: ParsedEpgContractRow[]; errors: CsvValidationError[] } {
-  const missingHeaders = CONTRACT_REQUIRED_HEADERS.filter(h => !headers.includes(h))
+  const missingHeaders = CONTRACT_REQUIRED_HEADERS.filter((h) => !headers.includes(h))
   const hasAnpHeader = headers.includes('anp') || headers.includes('ap')
   if (missingHeaders.length > 0 || !hasAnpHeader) {
     return {
       rows: [],
-      errors: [{
-        rowIndex: 0,
-        field: 'headers',
-        message: `Missing required columns: ${[
-          ...missingHeaders,
-          !hasAnpHeader ? 'anp (or ap)' : '',
-        ].filter(Boolean).join(', ')}`,
-      }],
+      errors: [
+        {
+          rowIndex: 0,
+          field: 'headers',
+          message: `Missing required columns: ${[
+            ...missingHeaders,
+            !hasAnpHeader ? 'anp (or ap)' : '',
+          ]
+            .filter(Boolean)
+            .join(', ')}`,
+        },
+      ],
     }
   }
 
@@ -222,14 +249,28 @@ export function validateEpgContractCsv(
       return
     }
 
-    rows.push({ rowIndex, tenant, anp, epg, bd, bd_tenant, contract_tenant, phys_domain, contract, epg_desc })
+    rows.push({
+      rowIndex,
+      tenant,
+      anp,
+      epg,
+      bd,
+      bd_tenant,
+      contract_tenant,
+      phys_domain,
+      contract,
+      epg_desc,
+    })
   })
 
   return {
-    rows: deduplicateRows(rows, errors, [{
-      key: row => `${row.tenant}|${row.anp}|${row.epg}|${effectiveBridgeDomainTenant(row)}|${row.bd}|${effectiveContractTenant(row)}|${row.phys_domain ?? ''}|${row.contract}`,
-      message: (_, first) => `Duplicate EPG contract row (first at row ${first})`,
-    }]),
+    rows: deduplicateRows(rows, errors, [
+      {
+        key: (row) =>
+          `${row.tenant}|${row.anp}|${row.epg}|${effectiveBridgeDomainTenant(row)}|${row.bd}|${effectiveContractTenant(row)}|${row.phys_domain ?? ''}|${row.contract}`,
+        message: (_, first) => `Duplicate EPG contract row (first at row ${first})`,
+      },
+    ]),
     errors,
   }
 }

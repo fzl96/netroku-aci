@@ -14,7 +14,7 @@ export const LEGACY_DEVICE_SORTS = [
   'lastSeenAt',
 ] as const
 
-export type LegacyDeviceSort = typeof LEGACY_DEVICE_SORTS[number]
+export type LegacyDeviceSort = (typeof LEGACY_DEVICE_SORTS)[number]
 
 export type RawLegacyDeviceParam = string | string[] | undefined
 export type RawLegacyDevicePageParams = {

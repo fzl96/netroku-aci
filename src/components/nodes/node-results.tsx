@@ -4,7 +4,11 @@ import { NodeReadError, type NodeHostResolution, type NodeResultsData } from '@/
 import { NodeResultsClient } from './nodes-client'
 import { NodeRegionError } from './node-region-error'
 
-export async function NodeResults({ paramsPromise, hostPromise, resultsPromise }: {
+export async function NodeResults({
+  paramsPromise,
+  hostPromise,
+  resultsPromise,
+}: {
   paramsPromise: Promise<NodePageParams>
   hostPromise: Promise<NodeHostResolution>
   resultsPromise: Promise<NodeResultsData | null>

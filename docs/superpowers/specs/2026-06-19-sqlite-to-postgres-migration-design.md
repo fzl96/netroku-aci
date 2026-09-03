@@ -51,6 +51,7 @@ spec only covers the migration itself.
 ## Phases
 
 ### Phase A — Postgres infrastructure
+
 - Add `docker-compose.yml`: service `postgres:17`, named volume for persistence,
   `5432:5432`, env `POSTGRES_USER=netroku`, `POSTGRES_PASSWORD=netroku`,
   `POSTGRES_DB=netroku`.
@@ -60,6 +61,7 @@ spec only covers the migration itself.
 - README: document `docker compose up -d` as a setup step.
 
 ### Phase B — Schema cutover (code)
+
 - `prisma/schema.prisma`: `provider = "sqlite"` → `provider = "postgresql"`.
   No other schema field edits (BigInt/Json port natively).
 - **Reset migration history:** delete the contents of `prisma/migrations/`
@@ -74,6 +76,7 @@ spec only covers the migration itself.
 - Run `bun test` + `bun run lint`: app code must still compile and pass.
 
 ### Phase C — Data migration (Prisma-to-Prisma)
+
 A Prisma client has its provider baked in at generate time, so one client cannot
 talk to both databases. Use two clients:
 
@@ -96,12 +99,14 @@ talk to both databases. Use two clients:
   client.
 
 Type notes for the copy:
+
 - `BigInt` columns (`InterfaceSample` counters): Prisma returns/accepts `bigint`;
   passes through to Postgres `bigint` unchanged.
 - `Json?` (`AuditLog.payload`): Prisma returns a JS value; writes to `jsonb`.
 - `DateTime`: copied as `Date` objects; no timezone reinterpretation.
 
 ### Phase D — Verify & rollback
+
 - Start the app against Postgres and smoke-test:
   - Endpoint/fault/interface search returns case-insensitively (e.g. upper-case
     query matches lower-case MAC) — confirms Phase B's `mode: 'insensitive'`.
@@ -112,11 +117,13 @@ Type notes for the copy:
   regenerate the client. Document this in the README.
 
 ## Out of scope (follow-ups, not this spec)
+
 - Postgres partial unique index (`WHERE is_active`) for the endpoint invariant.
 - Wrapping the endpoint resync in a single atomic transaction.
 - Production/remote Postgres, pooling, HA.
 
 ## Risk summary
+
 Low. No raw SQL to port. Two watch items: the 14 search filters (mechanical,
 verified by smoke test) and data-copy correctness (verified by per-table
 row-count assertions). Everything else is configuration. `dev.db` retained as a

@@ -10,7 +10,10 @@ export function UsersRegionError() {
 
   return (
     <div className="px-8 py-6">
-      <div role="alert" className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-card px-4 py-5">
+      <div
+        role="alert"
+        className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-card px-4 py-5"
+      >
         <div>
           <p className="text-sm font-medium text-foreground">Could not load users</p>
           <p className="mt-1 text-xs text-subtle">Try again in a moment.</p>

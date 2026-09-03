@@ -2,10 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { renderToStaticMarkup } from 'react-dom/server'
-import {
-  EndpointOverviewSkeleton,
-  EndpointResultsSkeleton,
-} from './endpoints-skeleton'
+import { EndpointOverviewSkeleton, EndpointResultsSkeleton } from './endpoints-skeleton'
 
 describe('Endpoint skeletons', () => {
   it('matches the overview controls and status summary shape', () => {

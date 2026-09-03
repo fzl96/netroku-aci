@@ -32,7 +32,7 @@ export function planLegacyEndpointReconcile(
   active: ActiveLegacyEndpoint[],
   fetched: FetchedEndpoint[],
 ): LegacyEndpointPlan {
-  const activeByIdentity = new Map(active.map(row => [identity(row), row]))
+  const activeByIdentity = new Map(active.map((row) => [identity(row), row]))
   const fetchedByIdentity = new Map<string, FetchedEndpoint>()
   for (const endpoint of fetched) fetchedByIdentity.set(identity(endpoint), endpoint)
   const plan: LegacyEndpointPlan = { inserts: [], updates: [], clears: [] }
@@ -42,8 +42,8 @@ export function planLegacyEndpointReconcile(
     if (!current) {
       plan.inserts.push(endpoint)
     } else if (
-      current.interfaceKey !== normalizeLegacyKey(endpoint.interface)
-      || current.vlan !== endpoint.vlan
+      current.interfaceKey !== normalizeLegacyKey(endpoint.interface) ||
+      current.vlan !== endpoint.vlan
     ) {
       plan.clears.push(current.id)
       plan.inserts.push(endpoint)
@@ -52,7 +52,7 @@ export function planLegacyEndpointReconcile(
     }
     activeByIdentity.delete(key)
   }
-  plan.clears.push(...Array.from(activeByIdentity.values(), row => row.id))
+  plan.clears.push(...Array.from(activeByIdentity.values(), (row) => row.id))
   return plan
 }
 
@@ -67,12 +67,13 @@ export async function applyLegacyEndpoints(
   })
   const plan = planLegacyEndpointReconcile(active, payload.endpoints)
 
-  const cleared = plan.clears.length > 0
-    ? await tx.legacyEndpoint.updateMany({
-        where: { id: { in: plan.clears }, isActive: true },
-        data: { isActive: false, clearedAt: collectedAt },
-      })
-    : { count: 0 }
+  const cleared =
+    plan.clears.length > 0
+      ? await tx.legacyEndpoint.updateMany({
+          where: { id: { in: plan.clears }, isActive: true },
+          data: { isActive: false, clearedAt: collectedAt },
+        })
+      : { count: 0 }
 
   for (const update of plan.updates) {
     await tx.legacyEndpoint.update({
@@ -89,25 +90,26 @@ export async function applyLegacyEndpoints(
     })
   }
 
-  const inserted = plan.inserts.length > 0
-    ? await tx.legacyEndpoint.createMany({
-        data: plan.inserts.map(endpoint => ({
-          deviceId,
-          mac: endpoint.mac,
-          ip: endpoint.ip,
-          ipKey: endpoint.ip ?? '',
-          vlan: endpoint.vlan,
-          vlanName: endpoint.vlan_name,
-          interface: endpoint.interface,
-          interfaceKey: normalizeLegacyKey(endpoint.interface),
-          learningType: endpoint.learning_type,
-          macFlag: endpoint.mac_flag,
-          isActive: true,
-          firstSeenAt: collectedAt,
-          lastSeenAt: collectedAt,
-        })),
-      })
-    : { count: 0 }
+  const inserted =
+    plan.inserts.length > 0
+      ? await tx.legacyEndpoint.createMany({
+          data: plan.inserts.map((endpoint) => ({
+            deviceId,
+            mac: endpoint.mac,
+            ip: endpoint.ip,
+            ipKey: endpoint.ip ?? '',
+            vlan: endpoint.vlan,
+            vlanName: endpoint.vlan_name,
+            interface: endpoint.interface,
+            interfaceKey: normalizeLegacyKey(endpoint.interface),
+            learningType: endpoint.learning_type,
+            macFlag: endpoint.mac_flag,
+            isActive: true,
+            firstSeenAt: collectedAt,
+            lastSeenAt: collectedAt,
+          })),
+        })
+      : { count: 0 }
 
   await tx.legacyDevice.update({
     where: { id: deviceId },
@@ -125,10 +127,7 @@ export function ingestLegacyEndpoints(
   payload: LegacyEndpointPayload,
   db = defaultLegacyDb,
 ): Promise<LegacyIngestResult> {
-  return ingestLegacyFeature(
-    db,
-    'endpoints',
-    payload,
-    context => applyLegacyEndpoints(context, payload),
+  return ingestLegacyFeature(db, 'endpoints', payload, (context) =>
+    applyLegacyEndpoints(context, payload),
   )
 }

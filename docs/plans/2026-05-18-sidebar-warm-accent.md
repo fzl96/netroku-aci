@@ -13,13 +13,16 @@
 ### Task 1: Warm the sidebar accent token
 
 **Files:**
+
 - Modify: `src/app/globals.css`
 
 **Steps:**
+
 1. Change the light-mode `--sidebar-accent` token from a nearly neutral warm gray to a slightly more chromatic clay tint.
 2. Keep dark mode unchanged.
 
 ### Task 2: Verify
 
 **Steps:**
+
 1. Run targeted lint/build verification as appropriate for a CSS-only token change.

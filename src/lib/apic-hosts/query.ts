@@ -50,10 +50,14 @@ export const getApicHosts = cache(async (): Promise<SafeApicHost[]> => {
   }
 
   try {
-    return await unstable_cache(async () => {
-      const hosts = await prisma.apicHost.findMany({ orderBy: { createdAt: 'desc' } })
-      return hosts.map(toSafeApicHost)
-    }, ['apic-hosts', 'all'], { tags: [APIC_HOSTS_TAG], revalidate: APIC_HOSTS_CACHE_SECONDS })()
+    return await unstable_cache(
+      async () => {
+        const hosts = await prisma.apicHost.findMany({ orderBy: { createdAt: 'desc' } })
+        return hosts.map(toSafeApicHost)
+      },
+      ['apic-hosts', 'all'],
+      { tags: [APIC_HOSTS_TAG], revalidate: APIC_HOSTS_CACHE_SECONDS },
+    )()
   } catch (error) {
     if (error instanceof ApicHostReadError) throw error
     throw new ApicHostReadError('read-failed', { cause: error })

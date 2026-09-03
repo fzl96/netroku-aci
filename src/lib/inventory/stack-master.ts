@@ -7,10 +7,7 @@ export type StackMemberCandidate = {
   stackRole: StackRole | null
 }
 
-function compareStackMembers(
-  left: StackMemberCandidate,
-  right: StackMemberCandidate,
-): number {
+function compareStackMembers(left: StackMemberCandidate, right: StackMemberCandidate): number {
   if (left.stackMember === null && right.stackMember !== null) return 1
   if (left.stackMember !== null && right.stackMember === null) return -1
   if (left.stackMember !== null && right.stackMember !== null) {
@@ -46,9 +43,7 @@ export async function ensureStackHasMaster(
   stackId: string,
   excludedDeviceId?: string,
 ): Promise<StackMemberCandidate | null> {
-  await tx.$queryRaw(
-    Prisma.sql`SELECT "id" FROM "device_stack" WHERE "id" = ${stackId} FOR UPDATE`,
-  )
+  await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "device_stack" WHERE "id" = ${stackId} FOR UPDATE`)
 
   const members = await tx.device.findMany({
     where: { deviceStackId: stackId },

@@ -5,15 +5,8 @@ import { unstable_cache } from 'next/cache'
 import { cache } from 'react'
 import { AuthenticationRequiredError, requireSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import type {
-  EndpointFilters,
-  EndpointPageParams,
-  EndpointPageSize,
-} from './params'
-import {
-  groupEndpointsByPort,
-  type EndpointPortSummary,
-} from './sort'
+import type { EndpointFilters, EndpointPageParams, EndpointPageSize } from './params'
+import { groupEndpointsByPort, type EndpointPortSummary } from './sort'
 
 const ENDPOINT_CACHE_SECONDS = 8 * 60 * 60
 const NATURAL_COLLATOR = new Intl.Collator(undefined, {
@@ -51,10 +44,7 @@ export type EndpointHostResolution =
   | { kind: 'redirect'; location: string; hosts: EndpointHostOption[] }
   | { kind: 'empty'; hosts: [] }
 
-export type EndpointRow = Omit<
-  StoredEndpointRow,
-  'firstSeenAt' | 'lastSeenAt' | 'clearedAt'
-> & {
+export type EndpointRow = Omit<StoredEndpointRow, 'firstSeenAt' | 'lastSeenAt' | 'clearedAt'> & {
   firstSeenAt: string
   lastSeenAt: string
   clearedAt: string | null
@@ -141,10 +131,12 @@ function pagination(total: number, requestedPage: number, pageSize: EndpointPage
 }
 
 function normalizedFilters(filters: EndpointFilters = {}): EndpointFilters {
-  const normalize = (values?: string[]) => values
-    ? Array.from(new Set(values.map(value => value.trim()).filter(Boolean)))
-      .sort(NATURAL_COLLATOR.compare)
-    : []
+  const normalize = (values?: string[]) =>
+    values
+      ? Array.from(new Set(values.map((value) => value.trim()).filter(Boolean))).sort(
+          NATURAL_COLLATOR.compare,
+        )
+      : []
 
   return {
     query: filters.query?.trim() ?? '',
@@ -192,9 +184,7 @@ export function buildEndpointWhere(
   return {
     apicHostId,
     ...(filters.vlan?.length ? { vlan: { in: filters.vlan } } : {}),
-    ...(filters.node?.length
-      ? { AND: [{ OR: filters.node.flatMap(nodeConditions) }] }
-      : {}),
+    ...(filters.node?.length ? { AND: [{ OR: filters.node.flatMap(nodeConditions) }] } : {}),
     ...(filters.iface?.length ? { interface: { in: filters.iface } } : {}),
     ...(filters.status?.length === 1 ? { isActive: filters.status[0] === 'active' } : {}),
     ...(query
@@ -235,7 +225,7 @@ async function resolveEndpointHostForRequest(
 
   if (hosts.length === 0) return { kind: 'empty', hosts: [] }
 
-  const host = hosts.find(candidate => candidate.id === requestedHostId)
+  const host = hosts.find((candidate) => candidate.id === requestedHostId)
   if (host) return { kind: 'selected', host, hosts }
 
   return {
@@ -280,9 +270,9 @@ export async function getEndpointOverview(hostId: string): Promise<EndpointOverv
         activeTotal,
         historicalTotal,
         choices: {
-          vlans: vlanRows.map(row => row.vlan).filter(Boolean),
-          nodes: expandNodeOptions(nodeRows.map(row => row.node).filter(Boolean)),
-          interfaces: interfaceRows.map(row => row.interface).filter(Boolean),
+          vlans: vlanRows.map((row) => row.vlan).filter(Boolean),
+          nodes: expandNodeOptions(nodeRows.map((row) => row.node).filter(Boolean)),
+          interfaces: interfaceRows.map((row) => row.interface).filter(Boolean),
         },
       }
     },
@@ -291,9 +281,7 @@ export async function getEndpointOverview(hostId: string): Promise<EndpointOverv
   )()
 }
 
-export async function getEndpointResults(
-  params: EndpointPageParams,
-): Promise<EndpointResultsData> {
+export async function getEndpointResults(params: EndpointPageParams): Promise<EndpointResultsData> {
   await authorizeEndpointRead()
   const filters = normalizedFilters({
     query: params.query,
@@ -315,9 +303,10 @@ export async function getEndpointResults(
         })
         const rows = groupEndpointsByPort(storedRows.map(serializeEndpoint))
         const page = pagination(rows.length, params.page, params.pageSize)
-        const visibleRows = params.pageSize === 'all'
-          ? rows
-          : rows.slice((page.page - 1) * params.pageSize, page.page * params.pageSize)
+        const visibleRows =
+          params.pageSize === 'all'
+            ? rows
+            : rows.slice((page.page - 1) * params.pageSize, page.page * params.pageSize)
 
         return { view: 'port', rows: visibleRows, pagination: page }
       }
@@ -365,9 +354,8 @@ export async function getEndpointExportData(
     if (!(error instanceof AuthenticationRequiredError)) throw error
     return { kind: 'unauthorized' }
   }
-  const filters = selection.scope === 'filtered'
-    ? normalizedFilters(selection.filters)
-    : normalizedFilters()
+  const filters =
+    selection.scope === 'filtered' ? normalizedFilters(selection.filters) : normalizedFilters()
 
   const host = await prisma.apicHost.findFirst({
     where: { id: selection.hostId },
@@ -376,20 +364,16 @@ export async function getEndpointExportData(
   if (!host) return { kind: 'host-not-found' }
 
   const storedRows = await unstable_cache(
-    async () => prisma.endpoint.findMany({
-      where: selection.scope === 'all'
-        ? { apicHostId: selection.hostId }
-        : buildEndpointWhere(selection.hostId, filters),
-      select: ENDPOINT_ROW_SELECT,
-      orderBy: { lastSeenAt: 'desc' },
-    }),
-    [
-      'endpoints',
-      'export',
-      selection.hostId,
-      selection.scope,
-      ...filterCacheParts(filters),
-    ],
+    async () =>
+      prisma.endpoint.findMany({
+        where:
+          selection.scope === 'all'
+            ? { apicHostId: selection.hostId }
+            : buildEndpointWhere(selection.hostId, filters),
+        select: ENDPOINT_ROW_SELECT,
+        orderBy: { lastSeenAt: 'desc' },
+      }),
+    ['endpoints', 'export', selection.hostId, selection.scope, ...filterCacheParts(filters)],
     endpointCacheOptions(selection.hostId),
   )()
 

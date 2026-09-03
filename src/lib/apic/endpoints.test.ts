@@ -109,15 +109,17 @@ function plan(overrides: Partial<EndpointResyncPlan> = {}): EndpointResyncPlan {
     bumps: ['bump-1'],
     clears: ['clear-1'],
     relabels: [{ id: 'relabel-1', epgDescr: 'New Label' }],
-    inserts: [{
-      mac: 'aa:bb:cc:dd:ee:ff',
-      ip: '10.0.0.1',
-      vlan: 'vlan-100',
-      dn: 'uni/tn-t/ap-a/epg-web/cep-aa:bb:cc:dd:ee:ff',
-      node: '101',
-      interface: 'eth1/1',
-      epgDescr: 'Web',
-    }],
+    inserts: [
+      {
+        mac: 'aa:bb:cc:dd:ee:ff',
+        ip: '10.0.0.1',
+        vlan: 'vlan-100',
+        dn: 'uni/tn-t/ap-a/epg-web/cep-aa:bb:cc:dd:ee:ff',
+        node: '101',
+        interface: 'eth1/1',
+        epgDescr: 'Web',
+      },
+    ],
     ...overrides,
   }
 }
@@ -237,15 +239,17 @@ describe('reconcileFetchedEndpoints', () => {
     const result = await reconcileFetchedEndpoints(
       db as unknown as EndpointResyncWriteClient,
       'host-1',
-      [{
-        mac: 'aa:bb:cc:dd:ee:ff',
-        ip: '10.0.0.1',
-        vlan: 'vlan-100',
-        dn: 'uni/tn-t/ap-a/epg-web/cep-aa:bb:cc:dd:ee:ff',
-        node: '101',
-        interface: 'eth1/1',
-        epgDescr: 'Web',
-      }],
+      [
+        {
+          mac: 'aa:bb:cc:dd:ee:ff',
+          ip: '10.0.0.1',
+          vlan: 'vlan-100',
+          dn: 'uni/tn-t/ap-a/epg-web/cep-aa:bb:cc:dd:ee:ff',
+          node: '101',
+          interface: 'eth1/1',
+          epgDescr: 'Web',
+        },
+      ],
       new Date('2026-06-19T00:00:00Z'),
     )
 
@@ -323,10 +327,6 @@ describe('reconcileFetchedEndpoints', () => {
     }
 
     expect(thrown).toBeInstanceOf(EndpointResyncInProgressError)
-    expect(calls).toEqual([
-      'transaction:start',
-      'advisory-lock',
-      'transaction:end',
-    ])
+    expect(calls).toEqual(['transaction:start', 'advisory-lock', 'transaction:end'])
   })
 })

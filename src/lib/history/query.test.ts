@@ -10,11 +10,13 @@ import { buildHistoryWhere } from './filters'
 
 describe('parseHistoryPageParams', () => {
   it('trims query and accepts a supported action and positive page', () => {
-    expect(parseHistoryPageParams({
-      query: '  switch  ',
-      action: 'resync.interfaces',
-      page: '3',
-    })).toEqual({
+    expect(
+      parseHistoryPageParams({
+        query: '  switch  ',
+        action: 'resync.interfaces',
+        page: '3',
+      }),
+    ).toEqual({
       query: 'switch',
       action: 'resync.interfaces',
       page: 3,
@@ -22,10 +24,12 @@ describe('parseHistoryPageParams', () => {
   })
 
   it('falls back for invalid actions and pages', () => {
-    expect(parseHistoryPageParams({
-      action: 'not-supported',
-      page: '-4',
-    })).toEqual({ query: '', action: 'all', page: 1 })
+    expect(
+      parseHistoryPageParams({
+        action: 'not-supported',
+        page: '-4',
+      }),
+    ).toEqual({ query: '', action: 'all', page: 1 })
   })
 
   it('supports filtering device import audit events', () => {
@@ -39,11 +43,13 @@ describe('parseHistoryPageParams', () => {
 describe('buildHistoryUrl', () => {
   it('omits defaults and preserves active filters while paging', () => {
     expect(buildHistoryUrl({ query: '', action: 'all', page: 1 })).toBe('/history')
-    expect(buildHistoryUrl({
-      query: '  admin  ',
-      action: 'user.create',
-      page: 2,
-    })).toBe('/history?query=admin&action=user.create&page=2')
+    expect(
+      buildHistoryUrl({
+        query: '  admin  ',
+        action: 'user.create',
+        page: 2,
+      }),
+    ).toBe('/history?query=admin&action=user.create&page=2')
   })
 })
 
@@ -77,11 +83,13 @@ describe('buildHistoryWhere', () => {
   })
 
   it('combines an exact action filter with free-text search', () => {
-    expect(buildHistoryWhere({
-      query: 'failed',
-      action: 'resync.interfaces',
-      page: 1,
-    })).toEqual({
+    expect(
+      buildHistoryWhere({
+        query: 'failed',
+        action: 'resync.interfaces',
+        page: 1,
+      }),
+    ).toEqual({
       action: 'resync.interfaces',
       OR: [
         { userName: { contains: 'failed', mode: 'insensitive' } },

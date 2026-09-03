@@ -91,6 +91,7 @@ Follow `src/actions/apic-hosts.ts` exactly:
 - Cached list reads via React `cache()`.
 
 Reads:
+
 - `getSites()` — all sites, ordered by name.
 - `getRacksBySite(siteId)` — racks for a site, each with `devices` ordered by
   name (mirrors netroku's `getRackById`/site-scoped rack fetch).
@@ -102,6 +103,7 @@ Reads:
 - `getDeviceById(id)`.
 
 Mutations:
+
 - `createSite`, `updateSite`, `deleteSite`.
 - `createRack`, `updateRack`, `deleteRack`.
 - `createDevice`, `updateDevice`, `deleteDevice`.
@@ -156,6 +158,7 @@ each page are admin-gated in the UI and enforced server-side).
 of netroku's `rack-visualization-tabs.tsx`, adapted to string ids:
 
 **Grid math** (unchanged from netroku):
+
 ```ts
 function toRackPlacement(rackHeight: number, device: RackDevice) {
   if (!device.rackPosition) return null;
@@ -166,6 +169,7 @@ function toRackPlacement(rackHeight: number, device: RackDevice) {
   return { rowStart, rowSpan: height };
 }
 ```
+
 - U labels count down from top (`heightU`) to bottom (`1`).
 - Base grid: `grid-cols-[52px_1fr]`, `gridTemplateRows: repeat(heightU, minmax(32px,1fr))`.
 - Device cards render in an absolutely-positioned overlay grid with the same
@@ -176,6 +180,7 @@ function toRackPlacement(rackHeight: number, device: RackDevice) {
   targets.
 
 **Drag-and-drop** (unchanged — native HTML5 DnD, no library):
+
 - `onDragStart` on a grip handle: serializes `{deviceId, heightU}` via
   `dataTransfer.setData`, custom drag image via `setDragImage`.
 - `onDragEnter`/`onDragOver` on unit cells: sets `hoverTarget` (unit is always
@@ -208,6 +213,7 @@ structure and aci's existing `ApicHostForm` convention.
 ## 6. Testing
 
 `bun test` (bun:test) unit tests:
+
 - `canPlaceDevice`: bounds edge cases (top/bottom of rack), overlap detection,
   self-exclusion (device doesn't collide with itself), zero/negative height
   guard.

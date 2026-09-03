@@ -108,13 +108,11 @@ export function buildEndpointWorkbook(
   const usedNames = new Set<string>()
 
   for (const [groupName, rows] of grouped) {
-    const orderedRows = [...rows].sort(
-      (a, b) => timestamp(b.lastSeenAt) - timestamp(a.lastSeenAt),
-    )
-    const worksheet = XLSX.utils.json_to_sheet(
-      orderedRows.map(toExportRow),
-      { header: [...EXPORT_COLUMNS], cellDates: true },
-    )
+    const orderedRows = [...rows].sort((a, b) => timestamp(b.lastSeenAt) - timestamp(a.lastSeenAt))
+    const worksheet = XLSX.utils.json_to_sheet(orderedRows.map(toExportRow), {
+      header: [...EXPORT_COLUMNS],
+      cellDates: true,
+    })
 
     worksheet['!cols'] = [
       { wch: 20 },
@@ -144,12 +142,13 @@ export function serializeEndpointWorkbook(workbook: XLSX.WorkBook): Uint8Array {
 }
 
 function safeFilenameSegment(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    || 'host'
+  return (
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'host'
+  )
 }
 
 export function buildEndpointExportFilename({
@@ -164,11 +163,8 @@ export function buildEndpointExportFilename({
   now?: Date
 }): string {
   const timestampPart = now.toISOString().replace(/[:.]/g, '-')
-  return [
-    'endpoints',
-    safeFilenameSegment(hostName),
-    scope,
-    `by-${groupBy}`,
-    timestampPart,
-  ].join('-') + '.xlsx'
+  return (
+    ['endpoints', safeFilenameSegment(hostName), scope, `by-${groupBy}`, timestampPart].join('-') +
+    '.xlsx'
+  )
 }

@@ -23,11 +23,13 @@
 ### Task 1: Postgres infrastructure (Docker + env)
 
 **Files:**
+
 - Create: `docker-compose.yml`
 - Modify: `.env.example` (line 2)
 - Modify: `.env` (DATABASE_URL line — local, gitignored)
 
 **Interfaces:**
+
 - Produces: a running Postgres reachable at `postgresql://netroku:netroku@localhost:5432/netroku`.
 
 - [ ] **Step 1: Create `docker-compose.yml`**
@@ -43,7 +45,7 @@ services:
       POSTGRES_PASSWORD: netroku
       POSTGRES_DB: netroku
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - netroku-pgdata:/var/lib/postgresql/data
 
@@ -59,10 +61,13 @@ Expected: `/var/run/postgresql:5432 - accepting connections`
 - [ ] **Step 3: Update `.env.example`**
 
 Change line 2 from:
+
 ```
 DATABASE_URL="file:./dev.db"
 ```
+
 to:
+
 ```
 DATABASE_URL="postgresql://netroku:netroku@localhost:5432/netroku?schema=public"
 ```
@@ -70,9 +75,11 @@ DATABASE_URL="postgresql://netroku:netroku@localhost:5432/netroku?schema=public"
 - [ ] **Step 4: Update local `.env`**
 
 In `.env`, change the `DATABASE_URL` line to the same Postgres URL:
+
 ```
 DATABASE_URL="postgresql://netroku:netroku@localhost:5432/netroku?schema=public"
 ```
+
 (`.env` is gitignored — it won't be committed, but the running app needs it.)
 
 - [ ] **Step 5: Commit**
@@ -87,30 +94,36 @@ git commit -m "chore(db): add dockerized postgres and point DATABASE_URL at it"
 ### Task 2: Schema provider flip + migration reset
 
 **Files:**
+
 - Modify: `prisma/schema.prisma:7-10` (datasource block)
 - Delete: `prisma/migrations/` (all 10 SQLite migrations + lock)
 - Create: `prisma/migrations/<timestamp>_init/` (generated)
 
 **Interfaces:**
+
 - Consumes: running Postgres from Task 1.
 - Produces: Postgres schema with all tables empty; regenerated Prisma client targeting Postgres.
 
 - [ ] **Step 1: Flip the datasource provider**
 
 In `prisma/schema.prisma`, change the datasource block (lines 7-10) from:
+
 ```prisma
 datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 ```
+
 to:
+
 ```prisma
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 ```
+
 Leave all model definitions unchanged — `BigInt` and `Json?` port natively to Postgres.
 
 - [ ] **Step 2: Remove the SQLite migration history**
@@ -141,6 +154,7 @@ git commit -m "feat(db): switch prisma datasource to postgresql with fresh basel
 ### Task 3: Case-insensitive search filters
 
 **Files:**
+
 - Modify: `src/lib/endpoints/query.ts:43-51`
 - Test: `src/lib/endpoints/query.test.ts:32-43`
 - Modify: `src/app/(app)/faults/page.tsx:72-74`
@@ -149,11 +163,13 @@ git commit -m "feat(db): switch prisma datasource to postgresql with fresh basel
 - Modify: `src/app/(app)/interface-health/page.tsx:81-84`
 
 **Interfaces:**
+
 - Produces: all 22 production `contains:` filters carry `mode: 'insensitive'`, restoring SQLite's default case-insensitive search behavior on Postgres.
 
 - [ ] **Step 1: Update the endpoints search test to expect `mode: 'insensitive'` (failing test)**
 
 In `src/lib/endpoints/query.test.ts`, replace the `OR` assertion block (lines 33-42) with:
+
 ```ts
       OR: [
         { mac: { contains: 'needle', mode: 'insensitive' } },
@@ -174,6 +190,7 @@ Expected: FAIL — the `buildEndpointWhere` output lacks `mode: 'insensitive'`, 
 - [ ] **Step 3: Add `mode: 'insensitive'` in `query.ts`**
 
 In `src/lib/endpoints/query.ts`, replace the `OR` array (lines 43-51) with:
+
 ```ts
           OR: [
             { mac: { contains: query, mode: 'insensitive' } },
@@ -194,6 +211,7 @@ Expected: PASS.
 - [ ] **Step 5: Update the four page-level search builders**
 
 In `src/app/(app)/faults/page.tsx` (lines 72-74):
+
 ```tsx
               { code: { contains: query.trim(), mode: 'insensitive' } },
               { descr: { contains: query.trim(), mode: 'insensitive' } },
@@ -201,18 +219,22 @@ In `src/app/(app)/faults/page.tsx` (lines 72-74):
 ```
 
 In `src/app/(app)/nodes/page.tsx` (lines 92-94 and 123-124):
+
 ```tsx
                 { name: { contains: trimmedQuery, mode: 'insensitive' } },
                 { nodeId: { contains: trimmedQuery, mode: 'insensitive' } },
                 { dn: { contains: trimmedQuery, mode: 'insensitive' } },
 ```
+
 and (the second block, lines 123-124):
+
 ```tsx
                 { name: { contains: trimmedQuery, mode: 'insensitive' } },
                 { nodeId: { contains: trimmedQuery, mode: 'insensitive' } },
 ```
 
 In `src/app/(app)/health-scores/page.tsx` (lines 69-71):
+
 ```tsx
               { name: { contains: query.trim(), mode: 'insensitive' } },
               { node: { contains: query.trim(), mode: 'insensitive' } },
@@ -220,6 +242,7 @@ In `src/app/(app)/health-scores/page.tsx` (lines 69-71):
 ```
 
 In `src/app/(app)/interface-health/page.tsx` (lines 81-84):
+
 ```tsx
               { ifName: { contains: query.trim(), mode: 'insensitive' } },
               { node: { contains: query.trim(), mode: 'insensitive' } },
@@ -244,49 +267,60 @@ git commit -m "fix(search): make contains filters case-insensitive for postgres"
 ### Task 4: Data migration (Prisma-to-Prisma)
 
 **Files:**
+
 - Create: `prisma/schema.sqlite.prisma` (temporary read-only schema)
 - Create: `scripts/migrate-sqlite-to-postgres.ts`
 - Modify: `.gitignore` (add generated client path)
 - Modify: `package.json` (add `migrate:data` script)
 
 **Interfaces:**
+
 - Consumes: empty Postgres tables (Task 2), untouched `prisma/dev.db`.
 - Produces: all rows copied into Postgres, verified by per-table count assertions.
 
 - [ ] **Step 1: Create the temporary SQLite read schema**
 
 Copy the current schema, then point it at the old DB with its own generated client. Run:
+
 ```bash
 cp prisma/schema.prisma prisma/schema.sqlite.prisma
 ```
+
 Then in `prisma/schema.sqlite.prisma` replace the `generator` block with:
+
 ```prisma
 generator sqliteClient {
   provider = "prisma-client-js"
   output   = "./generated/sqlite"
 }
 ```
+
 and replace the `datasource` block with:
+
 ```prisma
 datasource db {
   provider = "sqlite"
   url      = "file:./dev.db"
 }
 ```
+
 Leave all model definitions identical (they match the schema `dev.db` was last migrated to).
 
 - [ ] **Step 2: Ignore the generated client and generate it**
 
 Append to `.gitignore`:
+
 ```
 prisma/generated/
 ```
+
 Then run: `bunx prisma generate --schema=prisma/schema.sqlite.prisma`
 Expected: "Generated Prisma Client" into `prisma/generated/sqlite`.
 
 - [ ] **Step 3: Add a `migrate:data` script to `package.json`**
 
 In the `"scripts"` block, add:
+
 ```json
     "migrate:data": "tsx --env-file=.env scripts/migrate-sqlite-to-postgres.ts",
 ```
@@ -294,6 +328,7 @@ In the `"scripts"` block, add:
 - [ ] **Step 4: Write the migration script**
 
 Create `scripts/migrate-sqlite-to-postgres.ts`:
+
 ```ts
 import { PrismaClient as PgClient, Prisma } from '@prisma/client'
 import { PrismaClient as SqliteClient } from '../prisma/generated/sqlite'
@@ -362,6 +397,7 @@ main()
     await sqlite.$disconnect()
   })
 ```
+
 Note: the `as Prisma.*CreateManyInput[]` casts bridge the two generated clients' separate type namespaces (the runtime shapes are identical). `BigInt` columns pass through as `bigint`; `AuditLog.payload` JSON values pass through (a `null` payload becomes SQL NULL).
 
 - [ ] **Step 5: Run the migration and verify counts**
@@ -386,9 +422,11 @@ git commit -m "feat(db): add sqlite->postgres data migration script"
 ### Task 5: README setup + rollback documentation
 
 **Files:**
+
 - Modify: `README.md` (add a database section)
 
 **Interfaces:**
+
 - Produces: documented setup (`docker compose up`, migrate, optional data import) and a rollback procedure.
 
 - [ ] **Step 1: Read the current README to find the setup section**
@@ -399,6 +437,7 @@ Locate where setup/getting-started instructions live so the new section fits the
 - [ ] **Step 2: Add a database section to `README.md`**
 
 Insert (under the setup/getting-started area, matching surrounding heading style):
+
 ```markdown
 ## Database (Postgres via Docker)
 
@@ -443,4 +482,7 @@ These cannot be done by an automated subagent — run them after the plan comple
 1. **App boots on Postgres:** `bun run dev`, log in, load the dashboard — counts match pre-migration values.
 2. **Case-insensitive search:** on the Endpoints page, search an upper-cased fragment of a known lower-case MAC (e.g. `AA:BB`) — it must still match. Repeat on Faults / Nodes / Health Scores / Interface Health.
 3. **Resync works end-to-end:** trigger an endpoint resync against a host and confirm it succeeds and the lock releases (a second immediate resync is rejected with 409, then succeeds once the first finishes).
+
+```
+
 ```

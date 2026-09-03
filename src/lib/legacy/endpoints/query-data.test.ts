@@ -30,7 +30,8 @@ let findManyError: unknown = null
 const endpointFindMany = mock(async (args: { distinct?: string[] }) => {
   if (findManyError) throw findManyError
   if (args.distinct?.includes('vlan')) return [{ vlan: '100' }, { vlan: '20' }]
-  if (args.distinct?.includes('interface')) return [{ interface: 'Gi1/0/2' }, { interface: 'Gi1/0/1' }]
+  if (args.distinct?.includes('interface'))
+    return [{ interface: 'Gi1/0/2' }, { interface: 'Gi1/0/1' }]
   return [storedEndpoint]
 })
 const endpointCount = mock(async (args?: { where?: { isActive?: boolean } }) => {
@@ -47,13 +48,20 @@ const cacheCalls: Array<{ key: string[]; options: { tags: string[]; revalidate: 
 
 mock.module('server-only', () => ({}))
 mock.module('@/lib/auth', () => ({ AuthenticationRequiredError, requireSession }))
-mock.module('@/lib/prisma', () => ({ prisma: {
-  legacyEndpoint: { findMany: endpointFindMany, count: endpointCount },
-  legacyDevice: { findMany: deviceFindMany },
-} }))
+mock.module('@/lib/prisma', () => ({
+  prisma: {
+    legacyEndpoint: { findMany: endpointFindMany, count: endpointCount },
+    legacyDevice: { findMany: deviceFindMany },
+  },
+}))
 mock.module('next/cache', () => ({
-  unstable_cache: (fn: () => unknown, key: string[], options: { tags: string[]; revalidate: number }) => {
-    cacheCalls.push({ key, options }); return fn
+  unstable_cache: (
+    fn: () => unknown,
+    key: string[],
+    options: { tags: string[]; revalidate: number },
+  ) => {
+    cacheCalls.push({ key, options })
+    return fn
   },
   revalidateTag: () => {},
 }))
@@ -61,8 +69,16 @@ mock.module('next/cache', () => ({
 const query = await import('./query')
 
 const base: LegacyEndpointPageParams = {
-  query: '', site: '', device: '', vlan: '', interface: '',
-  status: 'active', sort: 'lastSeen', direction: 'desc', page: 1, pageSize: 50,
+  query: '',
+  site: '',
+  device: '',
+  vlan: '',
+  interface: '',
+  status: 'active',
+  sort: 'lastSeen',
+  direction: 'desc',
+  page: 1,
+  pageSize: 50,
 }
 
 beforeEach(() => {
@@ -74,8 +90,9 @@ beforeEach(() => {
 describe('legacy endpoint authorization', () => {
   it('maps an unauthenticated session to a purpose read error', async () => {
     authenticationError = new AuthenticationRequiredError('nope')
-    await expect(query.getLegacyEndpointResults(base))
-      .rejects.toBeInstanceOf(query.LegacyEndpointReadError)
+    await expect(query.getLegacyEndpointResults(base)).rejects.toBeInstanceOf(
+      query.LegacyEndpointReadError,
+    )
   })
 
   it('propagates unexpected authorization failures unchanged', async () => {
@@ -124,15 +141,35 @@ describe('getLegacyEndpointResults', () => {
 
   it('keys the cache by every filter that changes the row set', async () => {
     await query.getLegacyEndpointResults({
-      ...base, query: 'aa', site: 'hq', device: 'd1', vlan: '100',
-      interface: 'Gi1/0/1', status: 'all', sort: 'mac', direction: 'asc', page: 2, pageSize: 100,
+      ...base,
+      query: 'aa',
+      site: 'hq',
+      device: 'd1',
+      vlan: '100',
+      interface: 'Gi1/0/1',
+      status: 'all',
+      sort: 'mac',
+      direction: 'asc',
+      page: 2,
+      pageSize: 100,
     })
     expect(cacheCalls.at(-1)?.key).toEqual([
-      'legacy-endpoints', 'results', 'aa', 'hq', 'd1', '100', 'Gi1/0/1',
-      'all', 'mac', 'asc', '2', '100',
+      'legacy-endpoints',
+      'results',
+      'aa',
+      'hq',
+      'd1',
+      '100',
+      'Gi1/0/1',
+      'all',
+      'mac',
+      'asc',
+      '2',
+      '100',
     ])
     expect(cacheCalls.at(-1)?.options).toEqual({
-      tags: ['legacy-endpoints:all'], revalidate: 28_800,
+      tags: ['legacy-endpoints:all'],
+      revalidate: 28_800,
     })
   })
 })
@@ -140,7 +177,10 @@ describe('getLegacyEndpointResults', () => {
 describe('getLegacyEndpointSummary', () => {
   it('splits the lifecycle counts and distinct VLANs', async () => {
     expect(await query.getLegacyEndpointSummary()).toEqual({
-      total: 6, active: 4, historical: 2, vlans: 2,
+      total: 6,
+      active: 4,
+      historical: 2,
+      vlans: 2,
     })
   })
 })

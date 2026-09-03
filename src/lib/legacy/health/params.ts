@@ -6,14 +6,9 @@ import {
   type LegacyPageSize,
 } from '@/lib/legacy/query'
 
-export const LEGACY_HEALTH_SORTS = [
-  'collected',
-  'hostname',
-  'site',
-  'managementIp',
-] as const
+export const LEGACY_HEALTH_SORTS = ['collected', 'hostname', 'site', 'managementIp'] as const
 
-export type LegacyHealthSort = typeof LEGACY_HEALTH_SORTS[number]
+export type LegacyHealthSort = (typeof LEGACY_HEALTH_SORTS)[number]
 
 export type RawLegacyHealthParam = string | string[] | undefined
 export type RawLegacyHealthPageParams = {

@@ -19,9 +19,7 @@ const requireSession = mock(async () => {
 })
 const findFirst = mock(async () => {
   callOrder.push('host')
-  return hostFound
-    ? { id: 'host-1', name: 'APIC One', host: '192.0.2.1' }
-    : null
+  return hostFound ? { id: 'host-1', name: 'APIC One', host: '192.0.2.1' } : null
 })
 const resyncEndpoints = mock(async () => {
   callOrder.push('sync')
@@ -37,23 +35,20 @@ const revalidateTag = mock((tag: string, profile: { expire: number }) => {
   callOrder.push(`invalidate:${tag}`)
 })
 
-const {
-  invalidateEndpointReads,
-  resyncEndpointInventory,
-  resyncEndpointInventoryForScheduler,
-} = createEndpointMutation({
-  requireSession,
-  findHost: async id => {
-    expect(id).toBeString()
-    return findFirst()
-  },
-  resyncEndpoints,
-  recordAudit,
-  revalidateTag,
-  isInProgressError: error => error instanceof EndpointResyncInProgressError,
-  isAuthenticationRequiredError: error => error instanceof AuthenticationRequiredError,
-  reportAuditError,
-})
+const { invalidateEndpointReads, resyncEndpointInventory, resyncEndpointInventoryForScheduler } =
+  createEndpointMutation({
+    requireSession,
+    findHost: async (id) => {
+      expect(id).toBeString()
+      return findFirst()
+    },
+    resyncEndpoints,
+    recordAudit,
+    revalidateTag,
+    isInProgressError: (error) => error instanceof EndpointResyncInProgressError,
+    isAuthenticationRequiredError: (error) => error instanceof AuthenticationRequiredError,
+    reportAuditError,
+  })
 
 beforeEach(() => {
   authenticationError = null
@@ -72,11 +67,13 @@ describe('resyncEndpointInventory', () => {
   it('rejects unauthenticated calls before host or APIC access', async () => {
     authenticationError = new AuthenticationRequiredError('Unauthorized')
 
-    await expect(resyncEndpointInventory({
-      apicHostId: 'host-1',
-      username: ' operator ',
-      password: 'secret',
-    })).resolves.toEqual({
+    await expect(
+      resyncEndpointInventory({
+        apicHostId: 'host-1',
+        username: ' operator ',
+        password: 'secret',
+      }),
+    ).resolves.toEqual({
       ok: false,
       code: 'unauthorized',
       error: 'Unauthorized',
@@ -87,22 +84,26 @@ describe('resyncEndpointInventory', () => {
   it('propagates authentication infrastructure failures', async () => {
     authenticationError = new Error('session database unavailable')
 
-    await expect(resyncEndpointInventory({
-      apicHostId: 'host-1',
-      username: 'operator',
-      password: 'secret',
-    })).rejects.toThrow('session database unavailable')
+    await expect(
+      resyncEndpointInventory({
+        apicHostId: 'host-1',
+        username: 'operator',
+        password: 'secret',
+      }),
+    ).rejects.toThrow('session database unavailable')
     expect(callOrder).toEqual(['auth'])
   })
 
   it('returns host-not-found without calling APIC', async () => {
     hostFound = false
 
-    await expect(resyncEndpointInventory({
-      apicHostId: 'missing',
-      username: 'operator',
-      password: 'secret',
-    })).resolves.toEqual({
+    await expect(
+      resyncEndpointInventory({
+        apicHostId: 'missing',
+        username: 'operator',
+        password: 'secret',
+      }),
+    ).resolves.toEqual({
       ok: false,
       code: 'host-not-found',
       error: 'Host not found',
@@ -111,11 +112,13 @@ describe('resyncEndpointInventory', () => {
   })
 
   it('syncs with the resolved host, audits, then invalidates both endpoint tags', async () => {
-    await expect(resyncEndpointInventory({
-      apicHostId: 'host-1',
-      username: ' operator ',
-      password: 'secret',
-    })).resolves.toEqual({ ok: true, synced: 4, total: 9 })
+    await expect(
+      resyncEndpointInventory({
+        apicHostId: 'host-1',
+        username: ' operator ',
+        password: 'secret',
+      }),
+    ).resolves.toEqual({ ok: true, synced: 4, total: 9 })
 
     expect(findFirst).toHaveBeenCalledTimes(1)
     expect(resyncEndpoints).toHaveBeenCalledWith({
@@ -145,22 +148,26 @@ describe('resyncEndpointInventory', () => {
 
   it('classifies concurrent and unknown failures without auditing or invalidating', async () => {
     resyncError = new EndpointResyncInProgressError('internal host details')
-    await expect(resyncEndpointInventory({
-      apicHostId: 'host-1',
-      username: 'operator',
-      password: 'secret',
-    })).resolves.toEqual({
+    await expect(
+      resyncEndpointInventory({
+        apicHostId: 'host-1',
+        username: 'operator',
+        password: 'secret',
+      }),
+    ).resolves.toEqual({
       ok: false,
       code: 'in-progress',
       error: 'Endpoint resync is already in progress',
     })
 
     resyncError = new Error('database host secret')
-    await expect(resyncEndpointInventory({
-      apicHostId: 'host-1',
-      username: 'operator',
-      password: 'secret',
-    })).resolves.toEqual({
+    await expect(
+      resyncEndpointInventory({
+        apicHostId: 'host-1',
+        username: 'operator',
+        password: 'secret',
+      }),
+    ).resolves.toEqual({
       ok: false,
       code: 'sync-failed',
       error: 'Failed to resync endpoints',
@@ -174,11 +181,13 @@ describe('resyncEndpointInventory', () => {
       throw new Error('audit database unavailable')
     })
 
-    await expect(resyncEndpointInventory({
-      apicHostId: 'host-1',
-      username: 'operator',
-      password: 'secret',
-    })).resolves.toEqual({ ok: true, synced: 4, total: 9 })
+    await expect(
+      resyncEndpointInventory({
+        apicHostId: 'host-1',
+        username: 'operator',
+        password: 'secret',
+      }),
+    ).resolves.toEqual({ ok: true, synced: 4, total: 9 })
 
     expect(reportAuditError).toHaveBeenCalledTimes(1)
     expect(revalidateTag).toHaveBeenCalledTimes(2)
@@ -187,13 +196,15 @@ describe('resyncEndpointInventory', () => {
 
 describe('trusted scheduled resync', () => {
   it('uses the shared executor without interactive auth and records the scheduler actor', async () => {
-    await expect(resyncEndpointInventoryForScheduler({
-      apicHostId: 'host-1',
-      hostName: 'APIC One',
-      host: '192.0.2.1',
-      username: 'scheduler-user',
-      password: 'secret',
-    })).resolves.toEqual({ synced: 4, total: 9 })
+    await expect(
+      resyncEndpointInventoryForScheduler({
+        apicHostId: 'host-1',
+        hostName: 'APIC One',
+        host: '192.0.2.1',
+        username: 'scheduler-user',
+        password: 'secret',
+      }),
+    ).resolves.toEqual({ synced: 4, total: 9 })
 
     expect(requireSession).not.toHaveBeenCalled()
     expect(findFirst).not.toHaveBeenCalled()
@@ -211,13 +222,15 @@ describe('trusted scheduled resync', () => {
   it('audits scheduler failures, skips invalidation, and rethrows', async () => {
     resyncError = new Error('APIC unavailable')
 
-    await expect(resyncEndpointInventoryForScheduler({
-      apicHostId: 'host-1',
-      hostName: 'APIC One',
-      host: '192.0.2.1',
-      username: 'scheduler-user',
-      password: 'secret',
-    })).rejects.toThrow('APIC unavailable')
+    await expect(
+      resyncEndpointInventoryForScheduler({
+        apicHostId: 'host-1',
+        hostName: 'APIC One',
+        host: '192.0.2.1',
+        username: 'scheduler-user',
+        password: 'secret',
+      }),
+    ).rejects.toThrow('APIC unavailable')
 
     expect(recordAudit).toHaveBeenCalledWith({
       userId: null,

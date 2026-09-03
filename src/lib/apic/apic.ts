@@ -56,17 +56,21 @@ export async function validateDeployRowsFromSnapshot(
 ): Promise<ValidationResult[]> {
   const snapshot = await loadSnapshot(apicHost, apicToken, {
     nodes: true,
-    bundles: rows.some(row => row.port_type === 'pc' || row.port_type === 'vpc'),
-    physicalPaths: rows.some(row => row.port_type === 'port'),
+    bundles: rows.some((row) => row.port_type === 'pc' || row.port_type === 'vpc'),
+    physicalPaths: rows.some((row) => row.port_type === 'port'),
   })
 
-  return rows.map(row => {
+  return rows.map((row) => {
     const epgError = snapshotError(snapshot.epgBindings, 'EPG/binding')
     if (epgError) return { rowIndex: row.rowIndex, status: 'error', message: epgError }
     if (!snapshot.epgBindings.ok) throw new Error('unreachable')
     const index = snapshot.epgBindings.value
     if (!index.epgDns.has(buildEpgDn(row))) {
-      return { rowIndex: row.rowIndex, status: 'error', message: `EPG not found: ${row.tenant}/${row.ap}/${row.epg}` }
+      return {
+        rowIndex: row.rowIndex,
+        status: 'error',
+        message: `EPG not found: ${row.tenant}/${row.ap}/${row.epg}`,
+      }
     }
 
     const nodeError = snapshotError(snapshot.nodes, 'Node')
@@ -74,32 +78,49 @@ export async function validateDeployRowsFromSnapshot(
     if (!snapshot.nodes.ok) throw new Error('unreachable')
     const availableNodeIds = snapshot.nodes.value
     const nodeIds = row.port_type === 'vpc' ? [row.node1, row.node2!] : [row.node1]
-    const missingNodes = nodeIds.filter(nodeId => !availableNodeIds.has(nodeId))
+    const missingNodes = nodeIds.filter((nodeId) => !availableNodeIds.has(nodeId))
     if (missingNodes.length > 0) {
-      return { rowIndex: row.rowIndex, status: 'error', message: `Node(s) not found in fabric: ${missingNodes.join(', ')}` }
+      return {
+        rowIndex: row.rowIndex,
+        status: 'error',
+        message: `Node(s) not found in fabric: ${missingNodes.join(', ')}`,
+      }
     }
 
     const portState = row.port_type === 'port' ? snapshot.physicalPaths : snapshot.bundles
     const portError = snapshotError(portState, 'Port')
     if (portError) return { rowIndex: row.rowIndex, status: 'error', message: portError }
     if (!portState.ok) throw new Error('unreachable')
-    const portExists = row.port_type === 'port'
-      ? portState.value.has(buildPathSegment(row))
-      : portState.value.has(row.interface_or_ipg)
+    const portExists =
+      row.port_type === 'port'
+        ? portState.value.has(buildPathSegment(row))
+        : portState.value.has(row.interface_or_ipg)
     if (!portExists) {
-      return { rowIndex: row.rowIndex, status: 'error', message: `Port/IPG not found in fabric: ${row.interface_or_ipg}` }
+      return {
+        rowIndex: row.rowIndex,
+        status: 'error',
+        message: `Port/IPG not found in fabric: ${row.interface_or_ipg}`,
+      }
     }
 
     const intendedDn = buildMoDn(row)
-    const conflictDns = index.bindingDnsByPathAndEncap.get(
-      bindingLookupKey(buildPathSegment(row), `vlan-${row.vlan}`),
-    ) ?? []
-    const conflictDn = conflictDns.find(dn => dn !== intendedDn)
+    const conflictDns =
+      index.bindingDnsByPathAndEncap.get(
+        bindingLookupKey(buildPathSegment(row), `vlan-${row.vlan}`),
+      ) ?? []
+    const conflictDn = conflictDns.find((dn) => dn !== intendedDn)
     if (conflictDn) {
-      return { rowIndex: row.rowIndex, status: 'error', message: `VLAN ${row.vlan} already in use on this port by: ${conflictDn}` }
+      return {
+        rowIndex: row.rowIndex,
+        status: 'error',
+        message: `VLAN ${row.vlan} already in use on this port by: ${conflictDn}`,
+      }
     }
 
-    return { rowIndex: row.rowIndex, status: index.bindingsByDn.has(intendedDn) ? 'exists' : 'deploy' }
+    return {
+      rowIndex: row.rowIndex,
+      status: index.bindingsByDn.has(intendedDn) ? 'exists' : 'deploy',
+    }
   })
 }
 
@@ -117,10 +138,18 @@ export async function deployRows(
       },
     })
     try {
-      const res = await apicFetch(apicHost, moPath, { method: 'POST', body: payload, token: apicToken })
+      const res = await apicFetch(apicHost, moPath, {
+        method: 'POST',
+        body: payload,
+        token: apicToken,
+      })
       if (!res.ok) {
         const text = await res.text()
-        return { rowIndex: row.rowIndex, success: false, message: `APIC ${res.status}: ${text.slice(0, 200)}` }
+        return {
+          rowIndex: row.rowIndex,
+          success: false,
+          message: `APIC ${res.status}: ${text.slice(0, 200)}`,
+        }
       }
       return { rowIndex: row.rowIndex, success: true }
     } catch (err) {
@@ -145,10 +174,18 @@ export async function rollbackRows(
       fvRsPathAtt: { attributes: { dn, status: 'deleted' } },
     })
     try {
-      const res = await apicFetch(apicHost, moPath, { method: 'POST', body: payload, token: apicToken })
+      const res = await apicFetch(apicHost, moPath, {
+        method: 'POST',
+        body: payload,
+        token: apicToken,
+      })
       if (!res.ok) {
         const text = await res.text()
-        return { rowIndex: row.rowIndex, success: false, message: `APIC ${res.status}: ${text.slice(0, 200)}` }
+        return {
+          rowIndex: row.rowIndex,
+          success: false,
+          message: `APIC ${res.status}: ${text.slice(0, 200)}`,
+        }
       }
       return { rowIndex: row.rowIndex, success: true }
     } catch (err) {
@@ -183,7 +220,7 @@ export async function validateRollbackRowsFromSnapshot(
     physicalPaths: false,
   })
 
-  return rows.map(row => {
+  return rows.map((row) => {
     const error = snapshotError(snapshot.epgBindings, 'EPG/binding')
     if (error) return { rowIndex: row.rowIndex, status: 'error', message: error }
     if (!snapshot.epgBindings.ok) throw new Error('unreachable')

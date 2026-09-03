@@ -23,9 +23,7 @@ describe('sumCrcByInterface', () => {
   })
 
   it('omits interfaces with no positive samples', () => {
-    const totals = sumCrcByInterface([
-      { interfaceId: 'a', dRxCrcErrors: null },
-    ])
+    const totals = sumCrcByInterface([{ interfaceId: 'a', dRxCrcErrors: null }])
     expect(totals.has('a')).toBe(false)
   })
 
@@ -47,12 +45,12 @@ describe('sortByCrcWindowTotal', () => {
 
   it('sorts by windowed total descending by default, worst first', () => {
     const sorted = sortByCrcWindowTotal(rows, totals)
-    expect(sorted.map(r => r.id)).toEqual(['c', 'a', 'b'])
+    expect(sorted.map((r) => r.id)).toEqual(['c', 'a', 'b'])
   })
 
   it('sorts ascending when asked', () => {
     const sorted = sortByCrcWindowTotal(rows, totals, 'asc')
-    expect(sorted.map(r => r.id)).toEqual(['b', 'a', 'c'])
+    expect(sorted.map((r) => r.id)).toEqual(['b', 'a', 'c'])
   })
 
   it('breaks ties by natural node/ifName order', () => {
@@ -61,12 +59,12 @@ describe('sortByCrcWindowTotal', () => {
       { id: 'y', node: '1806', ifName: 'eth1/3' },
     ]
     const sorted = sortByCrcWindowTotal(tied, new Map())
-    expect(sorted.map(r => r.id)).toEqual(['y', 'x'])
+    expect(sorted.map((r) => r.id)).toEqual(['y', 'x'])
   })
 
   it('does not mutate the input array', () => {
     const input = [...rows]
     sortByCrcWindowTotal(input, totals)
-    expect(input.map(r => r.id)).toEqual(['a', 'b', 'c'])
+    expect(input.map((r) => r.id)).toEqual(['a', 'b', 'c'])
   })
 })

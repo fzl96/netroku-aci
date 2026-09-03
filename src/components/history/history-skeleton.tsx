@@ -19,12 +19,7 @@ export function HistoryControlsSkeleton() {
 
 export function HistoryResultsSkeleton() {
   return (
-    <div
-      className="space-y-4"
-      aria-busy="true"
-      aria-label="Loading history results"
-      role="status"
-    >
+    <div className="space-y-4" aria-busy="true" aria-label="Loading history results" role="status">
       <div className="flex justify-end">
         <Skeleton className="h-3 w-20" />
       </div>
@@ -34,7 +29,7 @@ export function HistoryResultsSkeleton() {
           <table className="w-full text-xs">
             <thead>
               <tr>
-                {HEADERS.map(header => (
+                {HEADERS.map((header) => (
                   <th key={header} className={DENSE_TABLE_HEAD_CLS}>
                     {header}
                   </th>

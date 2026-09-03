@@ -154,9 +154,14 @@ export function RackVisualization({
     <Card className="border-border bg-card shadow-sm">
       <CardHeader className="p-4 pb-3">
         <div className="flex items-center justify-between gap-3">
-          <CardTitle className="font-serif text-base font-semibold text-foreground truncate">{rack.name}</CardTitle>
-          <div className="flex items-center gap-2 shrink-0">
-            <Badge variant="outline" className="text-xs font-mono font-normal text-muted-foreground border-border bg-muted/50">
+          <CardTitle className="truncate font-serif text-base font-semibold text-foreground">
+            {rack.name}
+          </CardTitle>
+          <div className="flex shrink-0 items-center gap-2">
+            <Badge
+              variant="outline"
+              className="border-border bg-muted/50 font-mono text-xs font-normal text-muted-foreground"
+            >
               {rack.heightU}U
             </Badge>
             {headerActions}
@@ -183,7 +188,7 @@ export function RackVisualization({
 
               return (
                 <React.Fragment key={unit}>
-                  <div className="border-b border-border/70 px-2 py-1 text-right text-[11px] font-mono font-medium text-subtle select-none">
+                  <div className="border-b border-border/70 px-2 py-1 text-right font-mono text-[11px] font-medium text-subtle select-none">
                     U{String(unit).padStart(2, '0')}
                   </div>
                   {occupiedUnits.has(unit) || !isAdmin ? (
@@ -197,7 +202,8 @@ export function RackVisualization({
                               event.preventDefault()
                               onHoverUnit(rack.id, unit)
                             },
-                            onDrop: (event: React.DragEvent<HTMLDivElement>) => handleDropEvent(event, unit),
+                            onDrop: (event: React.DragEvent<HTMLDivElement>) =>
+                              handleDropEvent(event, unit),
                           }
                         : {})}
                     />
@@ -228,11 +234,17 @@ export function RackVisualization({
                           return (
                             <>
                               <DropdownMenuLabel>Add device to U{unit}</DropdownMenuLabel>
-                              <div className="px-2 pb-2" onPointerDown={(event) => event.stopPropagation()}>
+                              <div
+                                className="px-2 pb-2"
+                                onPointerDown={(event) => event.stopPropagation()}
+                              >
                                 <Input
                                   value={rowSearchByKey[searchKey] ?? ''}
                                   onChange={(event) =>
-                                    setRowSearchByKey((prev) => ({ ...prev, [searchKey]: event.target.value }))
+                                    setRowSearchByKey((prev) => ({
+                                      ...prev,
+                                      [searchKey]: event.target.value,
+                                    }))
                                   }
                                   onKeyDown={(event) => event.stopPropagation()}
                                   placeholder="Search device or serial..."
@@ -253,8 +265,10 @@ export function RackVisualization({
                                     }}
                                   >
                                     <div className="flex w-full items-center justify-between gap-2">
-                                      <span className="truncate">{device.name} · {device.serialNumber}</span>
-                                      <span className="text-subtle shrink-0 text-[10px] font-mono">
+                                      <span className="truncate">
+                                        {device.name} · {device.serialNumber}
+                                      </span>
+                                      <span className="shrink-0 font-mono text-[10px] text-subtle">
                                         {device.rackPosition !== null
                                           ? device.rack?.name
                                             ? `Rack ${device.rack.name} · U${device.rackPosition}`
@@ -287,7 +301,7 @@ export function RackVisualization({
                 <div
                   data-device-card="true"
                   className={[
-                    'pointer-events-auto relative z-10 mx-1 my-0.5 flex h-[calc(100%-4px)] min-h-0 cursor-pointer flex-col justify-center overflow-hidden rounded border border-border bg-secondary text-secondary-foreground py-1 pr-2 pl-7 text-xs shadow-xs transition-all hover:border-primary/40 hover:bg-accent/80',
+                    'pointer-events-auto relative z-10 mx-1 my-0.5 flex h-[calc(100%-4px)] min-h-0 cursor-pointer flex-col justify-center overflow-hidden rounded border border-border bg-secondary py-1 pr-2 pl-7 text-xs text-secondary-foreground shadow-xs transition-all hover:border-primary/40 hover:bg-accent/80',
                     draggingPayload?.deviceId === device.id
                       ? '-translate-y-0.5 scale-[1.02] bg-accent shadow-xl ring-2 ring-primary/40'
                       : '',
@@ -295,7 +309,9 @@ export function RackVisualization({
                   style={{
                     gridRow: `${device.rowStart} / span ${device.rowSpan}`,
                     opacity:
-                      pendingDeviceIds.has(device.id) || draggingPayload?.deviceId === device.id ? 0.55 : 1,
+                      pendingDeviceIds.has(device.id) || draggingPayload?.deviceId === device.id
+                        ? 0.55
+                        : 1,
                   }}
                   title={`${device.name} (${device.serialNumber})`}
                 >
@@ -309,9 +325,15 @@ export function RackVisualization({
                           deviceId: device.id,
                           heightU: Math.max(1, device.heightU),
                         }
-                        const dragCard = event.currentTarget.closest("[data-device-card='true']") as HTMLElement | null
+                        const dragCard = event.currentTarget.closest(
+                          "[data-device-card='true']",
+                        ) as HTMLElement | null
                         if (dragCard) {
-                          event.dataTransfer.setDragImage(dragCard, dragCard.clientWidth / 2, dragCard.clientHeight / 2)
+                          event.dataTransfer.setDragImage(
+                            dragCard,
+                            dragCard.clientWidth / 2,
+                            dragCard.clientHeight / 2,
+                          )
                         }
                         onDragStartDevice(payload)
                         onMenuDeviceChange(null)
@@ -328,10 +350,13 @@ export function RackVisualization({
                   {device.rowSpan === 1 ? (
                     <div className="flex w-full items-center justify-between gap-1.5 overflow-hidden">
                       <div className="truncate text-[11px] leading-none font-medium text-foreground">
-                        {device.name} <span className="font-mono text-subtle text-[10px]">· {device.serialNumber}</span>
+                        {device.name}{' '}
+                        <span className="font-mono text-[10px] text-subtle">
+                          · {device.serialNumber}
+                        </span>
                       </div>
                       {device.deviceStack && (
-                        <span className="shrink-0 font-mono text-[9px] text-muted-foreground bg-muted px-1 py-0.5 rounded border border-border">
+                        <span className="shrink-0 rounded border border-border bg-muted px-1 py-0.5 font-mono text-[9px] text-muted-foreground">
                           {device.stackMember != null ? `#${device.stackMember}` : 'Stk'}
                           {device.stackRole === 'MASTER' ? ' ★' : ''}
                         </span>
@@ -340,11 +365,15 @@ export function RackVisualization({
                   ) : (
                     <div className="flex w-full items-start justify-between gap-1.5 overflow-hidden">
                       <div className="overflow-hidden">
-                        <div className="truncate font-medium text-foreground leading-tight">{device.name}</div>
-                        <div className="truncate font-mono text-subtle text-[10px] leading-tight">{device.serialNumber}</div>
+                        <div className="truncate leading-tight font-medium text-foreground">
+                          {device.name}
+                        </div>
+                        <div className="truncate font-mono text-[10px] leading-tight text-subtle">
+                          {device.serialNumber}
+                        </div>
                       </div>
                       {device.deviceStack && (
-                        <span className="shrink-0 font-mono text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded border border-border">
+                        <span className="shrink-0 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground">
                           {device.deviceStack.name} #{device.stackMember ?? ''}
                           {device.stackRole === 'MASTER' ? ' (Master)' : ''}
                         </span>

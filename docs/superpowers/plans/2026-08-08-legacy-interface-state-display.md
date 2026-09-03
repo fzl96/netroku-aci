@@ -23,10 +23,12 @@
 ### Task 1: Binary Legacy interface display-state normalization
 
 **Files:**
+
 - Modify: `src/lib/legacy-ui/interfaces.test.ts`
 - Modify: `src/lib/legacy-ui/interfaces.ts`
 
 **Interfaces:**
+
 - Produces: `normalizeLegacyInterfaceState(value: string): 'up' | 'down'`.
 - Consumes: Raw Legacy interface Admin and Oper strings.
 
@@ -80,9 +82,11 @@ git commit -m "feat: normalize legacy interface display states"
 ### Task 2: ACI-style state cells and Speed removal
 
 **Files:**
+
 - Modify: `src/app/(app)/legacy/interfaces/LegacyInterfacesClient.tsx`
 
 **Interfaces:**
+
 - Consumes: `normalizeLegacyInterfaceState(value: string): 'up' | 'down'` from Task 1.
 - Produces: A Legacy Interfaces desktop table with plain binary Admin text, an ACI-style binary Oper indicator, no Speed column, and no visible Speed sort option; mobile cards use the same Oper indicator.
 

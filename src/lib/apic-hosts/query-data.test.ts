@@ -33,8 +33,13 @@ mock.module('@/lib/auth', () => ({
 }))
 mock.module('@/lib/prisma', () => ({ prisma: { apicHost: { findMany: apicHostFindMany } } }))
 mock.module('next/cache', () => ({
-  unstable_cache: (fn: () => unknown, key: string[], options: { tags: string[]; revalidate: number }) => {
-    cacheCalls.push({ key, options }); return fn
+  unstable_cache: (
+    fn: () => unknown,
+    key: string[],
+    options: { tags: string[]; revalidate: number },
+  ) => {
+    cacheCalls.push({ key, options })
+    return fn
   },
   revalidateTag: () => {},
 }))

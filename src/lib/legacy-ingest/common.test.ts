@@ -13,8 +13,10 @@ const payload = {
   collected_at: '2026-07-21T14:30:00+07:00',
   complete: true as const,
   device: {
-    site: ' Jakarta ', hostname: ' SW-JKT-01 ',
-    management_ip: '10.10.0.11', device_type: 'cisco_ios',
+    site: ' Jakarta ',
+    hostname: ' SW-JKT-01 ',
+    management_ip: '10.10.0.11',
+    device_type: 'cisco_ios',
     vendor: 'Cisco',
   },
 }
@@ -55,12 +57,8 @@ describe('legacy ingestion common helpers', () => {
   })
 
   it('hashes object keys canonically while preserving array order', () => {
-    expect(canonicalPayloadHash({ a: 1, b: 2 })).toBe(
-      canonicalPayloadHash({ b: 2, a: 1 }),
-    )
-    expect(canonicalPayloadHash({ a: [1, 2] })).not.toBe(
-      canonicalPayloadHash({ a: [2, 1] }),
-    )
+    expect(canonicalPayloadHash({ a: 1, b: 2 })).toBe(canonicalPayloadHash({ b: 2, a: 1 }))
+    expect(canonicalPayloadHash({ a: [1, 2] })).not.toBe(canonicalPayloadHash({ a: [2, 1] }))
   })
 
   it('upserts the device, applies writes, and returns receipt counts', async () => {
@@ -70,7 +68,7 @@ describe('legacy ingestion common helpers', () => {
       client as never,
       'health',
       payload,
-      async context => {
+      async (context) => {
         expect(context.deviceId).toBe('device-1')
         expect(context.receiptId).toBe('receipt-1')
         return counts
@@ -78,7 +76,10 @@ describe('legacy ingestion common helpers', () => {
     )
 
     expect(result).toEqual({
-      receipt_id: 'receipt-1', duplicate: false, device_id: 'device-1', counts,
+      receipt_id: 'receipt-1',
+      duplicate: false,
+      device_id: 'device-1',
+      counts,
     })
     expect(state.upsertArgs).not.toBeNull()
     expect(state.receiptUpdate).not.toBeNull()
@@ -87,19 +88,18 @@ describe('legacy ingestion common helpers', () => {
   it('returns an identical receipt without applying feature writes', async () => {
     const hash = canonicalPayloadHash(payload)
     const { client } = fakeDb({
-      id: 'receipt-existing', payloadHash: hash,
-      inserted: 1, updated: 0, cleared: 0, samples: 1,
+      id: 'receipt-existing',
+      payloadHash: hash,
+      inserted: 1,
+      updated: 0,
+      cleared: 0,
+      samples: 1,
     })
     let calls = 0
-    const result = await ingestLegacyFeature(
-      client as never,
-      'health',
-      payload,
-      async () => {
-        calls += 1
-        return { inserted: 0, updated: 0, cleared: 0, samples: 0 }
-      },
-    )
+    const result = await ingestLegacyFeature(client as never, 'health', payload, async () => {
+      calls += 1
+      return { inserted: 0, updated: 0, cleared: 0, samples: 0 }
+    })
 
     expect(calls).toBe(0)
     expect(result.duplicate).toBe(true)
@@ -108,14 +108,20 @@ describe('legacy ingestion common helpers', () => {
 
   it('rejects reuse of an idempotency key with changed content', async () => {
     const { client } = fakeDb({
-      id: 'receipt-existing', payloadHash: 'different',
-      inserted: 0, updated: 0, cleared: 0, samples: 0,
+      id: 'receipt-existing',
+      payloadHash: 'different',
+      inserted: 0,
+      updated: 0,
+      cleared: 0,
+      samples: 0,
     })
-    expect(ingestLegacyFeature(
-      client as never,
-      'health',
-      payload,
-      async () => ({ inserted: 0, updated: 0, cleared: 0, samples: 0 }),
-    )).rejects.toBeInstanceOf(IdempotencyConflictError)
+    expect(
+      ingestLegacyFeature(client as never, 'health', payload, async () => ({
+        inserted: 0,
+        updated: 0,
+        cleared: 0,
+        samples: 0,
+      })),
+    ).rejects.toBeInstanceOf(IdempotencyConflictError)
   })
 })

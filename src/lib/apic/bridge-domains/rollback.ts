@@ -1,7 +1,4 @@
-import type {
-  ParsedBridgeDomainL2Row,
-  ParsedBridgeDomainL3Row,
-} from './types'
+import type { ParsedBridgeDomainL2Row, ParsedBridgeDomainL3Row } from './types'
 
 export interface BridgeDomainAttrs {
   arpFlood?: string
@@ -22,21 +19,20 @@ function normalizedBoolean(value: string | undefined): string | undefined {
 }
 
 function vrfName(children: BridgeDomainChild[]): string | undefined {
-  const ctx = children.find((item): item is { fvRsCtx: { attributes: { tDn?: string; tnFvCtxName?: string } } } =>
-    'fvRsCtx' in item
+  const ctx = children.find(
+    (item): item is { fvRsCtx: { attributes: { tDn?: string; tnFvCtxName?: string } } } =>
+      'fvRsCtx' in item,
   )
   return ctx?.fvRsCtx.attributes.tnFvCtxName ?? ctx?.fvRsCtx.attributes.tDn?.split('/ctx-')[1]
 }
 
 function hasSubnet(children: BridgeDomainChild[], subnet: string): boolean {
-  return children.some((item) =>
-    'fvSubnet' in item && item.fvSubnet.attributes.ip === subnet
-  )
+  return children.some((item) => 'fvSubnet' in item && item.fvSubnet.attributes.ip === subnet)
 }
 
 function hasL3Out(children: BridgeDomainChild[], l3out: string): boolean {
-  return children.some((item) =>
-    'fvRsBDToOut' in item && item.fvRsBDToOut.attributes.tnL3extOutName === l3out
+  return children.some(
+    (item) => 'fvRsBDToOut' in item && item.fvRsBDToOut.attributes.tnL3extOutName === l3out,
   )
 }
 
@@ -44,7 +40,10 @@ function hasAnyL3Child(children: BridgeDomainChild[]): boolean {
   return children.some((item) => 'fvSubnet' in item || 'fvRsBDToOut' in item)
 }
 
-function validateCommonVrf(row: { tenant: string; bd: string; vrf: string }, children: BridgeDomainChild[]): string | null {
+function validateCommonVrf(
+  row: { tenant: string; bd: string; vrf: string },
+  children: BridgeDomainChild[],
+): string | null {
   const existingVrf = vrfName(children)
   if (existingVrf && existingVrf !== row.vrf) {
     return `Bridge domain ${row.tenant}/${row.bd} exists with VRF ${existingVrf}, not ${row.vrf}`

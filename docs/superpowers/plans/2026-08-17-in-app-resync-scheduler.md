@@ -25,26 +25,26 @@
 
 ## File Structure
 
-| File | Responsibility |
-| --- | --- |
-| `src/lib/apic/schedule-timing.ts` (create) | Pure timing logic: due check, next-run math, stale-claim check, constants |
-| `src/lib/apic/schedule-timing.test.ts` (create) | Tests for the above |
-| `src/lib/crypto.test.ts` (create) | Roundtrip + tamper-rejection for the now load-bearing crypto module |
-| `src/lib/schemas/resync-schedule.ts` (create) | zod schemas + form value types |
-| `src/lib/schemas/resync-schedule.test.ts` (create) | Interval bound + credential validation tests |
-| `prisma/schema.prisma` (modify) | `ResyncSchedule` model, `ApicHost.schedule` back-relation |
-| `src/lib/apic/resync-host.ts` (create) | `resyncHost()` — all four datasets for one host, extracted from the cron route |
-| `src/app/api/cron/resync/route.ts` (modify) | Becomes a thin wrapper over `resyncHost()`; contract unchanged |
-| `src/app/api/cron/tick/route.ts` (create) | Claim-one-run-one-finalize loop |
-| `src/lib/apic/schedule-claim.ts` (create) | The raw claim/finalize SQL, isolated from the route |
-| `src/actions/resync-schedules.ts` (create) | Admin CRUD server actions + `toSafe` |
-| `src/actions/resync-schedules.test.ts` (create) | `toSafe` leak-proofing |
-| `src/lib/audit.ts` (modify) | Add schedule actions to the `AuditAction` union |
-| `src/app/(app)/scheduler/page.tsx` (create) | Admin-gated server component |
-| `src/app/(app)/scheduler/SchedulerClient.tsx` (create) | Table + edit dialog |
-| `src/components/AppSidebar.tsx` (modify) | Nav entry, `adminOnly: true` |
-| `scheduler/tick.sh` (create) | Ticker loop script |
-| `README.md`, `content/docs/admin/scheduled-resync.mdx` (modify) | Docs + corrected security claims |
+| File                                                            | Responsibility                                                                 |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `src/lib/apic/schedule-timing.ts` (create)                      | Pure timing logic: due check, next-run math, stale-claim check, constants      |
+| `src/lib/apic/schedule-timing.test.ts` (create)                 | Tests for the above                                                            |
+| `src/lib/crypto.test.ts` (create)                               | Roundtrip + tamper-rejection for the now load-bearing crypto module            |
+| `src/lib/schemas/resync-schedule.ts` (create)                   | zod schemas + form value types                                                 |
+| `src/lib/schemas/resync-schedule.test.ts` (create)              | Interval bound + credential validation tests                                   |
+| `prisma/schema.prisma` (modify)                                 | `ResyncSchedule` model, `ApicHost.schedule` back-relation                      |
+| `src/lib/apic/resync-host.ts` (create)                          | `resyncHost()` — all four datasets for one host, extracted from the cron route |
+| `src/app/api/cron/resync/route.ts` (modify)                     | Becomes a thin wrapper over `resyncHost()`; contract unchanged                 |
+| `src/app/api/cron/tick/route.ts` (create)                       | Claim-one-run-one-finalize loop                                                |
+| `src/lib/apic/schedule-claim.ts` (create)                       | The raw claim/finalize SQL, isolated from the route                            |
+| `src/actions/resync-schedules.ts` (create)                      | Admin CRUD server actions + `toSafe`                                           |
+| `src/actions/resync-schedules.test.ts` (create)                 | `toSafe` leak-proofing                                                         |
+| `src/lib/audit.ts` (modify)                                     | Add schedule actions to the `AuditAction` union                                |
+| `src/app/(app)/scheduler/page.tsx` (create)                     | Admin-gated server component                                                   |
+| `src/app/(app)/scheduler/SchedulerClient.tsx` (create)          | Table + edit dialog                                                            |
+| `src/components/AppSidebar.tsx` (modify)                        | Nav entry, `adminOnly: true`                                                   |
+| `scheduler/tick.sh` (create)                                    | Ticker loop script                                                             |
+| `README.md`, `content/docs/admin/scheduled-resync.mdx` (modify) | Docs + corrected security claims                                               |
 
 **Out of scope for this branch:** adding the `scheduler` service to `docker-compose.yml`. `main`'s compose has no `app` service — it exists only on `feat/docker-compose-deployment`. Task 9 ships `scheduler/tick.sh` and documents the compose snippet; wiring it in happens when that branch merges.
 
@@ -55,10 +55,12 @@
 Pure functions with no DB or clock dependency — every function takes `now` explicitly so tests are deterministic.
 
 **Files:**
+
 - Create: `src/lib/apic/schedule-timing.ts`
 - Test: `src/lib/apic/schedule-timing.test.ts`
 
 **Interfaces:**
+
 - Consumes: nothing
 - Produces:
   - `INTERVAL_MIN_MINUTES = 15`, `INTERVAL_MAX_MINUTES = 10080`, `DEFAULT_INTERVAL_MINUTES = 480`, `STALE_CLAIM_MINUTES = 120`
@@ -278,11 +280,13 @@ git commit -m "feat: add resync schedule timing primitives"
 `src/lib/crypto.ts` is currently imported by nothing and has no tests. It becomes load-bearing here, so it gets covered first.
 
 **Files:**
+
 - Create: `src/lib/crypto.test.ts`
 - Create: `src/lib/schemas/resync-schedule.ts`
 - Create: `src/lib/schemas/resync-schedule.test.ts`
 
 **Interfaces:**
+
 - Consumes: `encrypt`/`decrypt` from `src/lib/crypto.ts`; interval constants from Task 1
 - Produces:
   - `resyncScheduleSchema` — requires `username` + `password`
@@ -477,10 +481,12 @@ git commit -m "feat: add resync schedule validation schema and crypto tests"
 ### Task 3: Prisma model and migration
 
 **Files:**
+
 - Modify: `prisma/schema.prisma` (add model; add back-relation to `ApicHost` around line 99-117)
 - Create: `prisma/migrations/<timestamp>_add_resync_schedule/migration.sql` (generated)
 
 **Interfaces:**
+
 - Consumes: nothing
 - Produces: Prisma model `ResyncSchedule`, accessible as `prisma.resyncSchedule`; `ApicHost.schedule` relation
 
@@ -543,10 +549,12 @@ git commit -m "feat: add ResyncSchedule model and migration"
 Pure refactor — behavior and the HTTP contract must not change. The existing `/api/cron/resync` body moves into a reusable lib function so the tick route can share it.
 
 **Files:**
+
 - Create: `src/lib/apic/resync-host.ts`
 - Modify: `src/app/api/cron/resync/route.ts` (replace the per-host loop body, lines ~44-169)
 
 **Interfaces:**
+
 - Consumes: `resyncEndpoints`, `resyncInterfaces`, `resyncNodes`, `resyncEpgs`; `HostResult`/`DatasetResult` and `summarizeResults` from `./cron-resync`; `recordAudit`
 - Produces:
   - `resyncHost(input: { apicHostId: string; hostName: string; host: string; username: string; password: string }): Promise<HostResult>` — never throws; per-dataset failures are captured into the returned `HostResult` and audited
@@ -736,9 +744,11 @@ git commit -m "refactor: extract resyncHost() from the cron resync route"
 Isolated from the route so the route stays readable and the SQL is reviewable in one place.
 
 **Files:**
+
 - Create: `src/lib/apic/schedule-claim.ts`
 
 **Interfaces:**
+
 - Consumes: `prisma`; `STALE_CLAIM_MINUTES`, `computeNextRunAt` from Task 1
 - Produces:
   - `type ClaimedSchedule = { id: string; apicHostId: string; encUsername: string; encPassword: string; intervalMinutes: number; hostName: string; host: string }`
@@ -839,9 +849,11 @@ git commit -m "feat: add atomic schedule claim and finalize helpers"
 ### Task 6: The tick endpoint
 
 **Files:**
+
 - Create: `src/app/api/cron/tick/route.ts`
 
 **Interfaces:**
+
 - Consumes: `isAuthorized`, `summarizeResults` from `@/lib/apic/cron-resync`; `resyncHost` (Task 4); `claimNextDueSchedule`, `finalizeSchedule` (Task 5); `decrypt`; `recordAudit`
 - Produces: `POST /api/cron/tick` → `200 { ran: number; results: Array<{ apicHostId: string; host: string; status: string }> }`
 
@@ -980,10 +992,12 @@ git commit -m "feat: add /api/cron/tick scheduler endpoint"
 ### Task 7: Server actions
 
 **Files:**
+
 - Create: `src/actions/resync-schedules.ts`
 - Test: `src/actions/resync-schedules.test.ts`
 
 **Interfaces:**
+
 - Consumes: schemas (Task 2), timing helpers (Task 1), `encrypt`/`decrypt`, `prisma`, `recordAudit`, `getSession`
 - Produces:
   - `type SafeResyncSchedule` (exact shape below)
@@ -1325,11 +1339,13 @@ git commit -m "feat: add resync schedule server actions"
 ### Task 8: Scheduler page and UI
 
 **Files:**
+
 - Create: `src/app/(app)/scheduler/page.tsx`
 - Create: `src/app/(app)/scheduler/SchedulerClient.tsx`
 - Modify: `src/components/AppSidebar.tsx` (add to the `Infrastructure` group of `ACI_NAV`, after the `/apic-hosts` entry)
 
 **Interfaces:**
+
 - Consumes: `getResyncSchedules`, `upsertResyncSchedule`, `runResyncScheduleNow`, `deleteResyncSchedule`, `SafeResyncSchedule` (Task 7)
 - Produces: `/scheduler` route
 
@@ -1696,11 +1712,13 @@ git commit -m "feat: add scheduler admin page"
 ### Task 9: Ticker script and documentation
 
 **Files:**
+
 - Create: `scheduler/tick.sh`
 - Modify: `README.md` (env table ~line 66; scheduler paragraph line 402; credentials claim line 404; route table ~line 464)
 - Modify: `content/docs/admin/scheduled-resync.mdx`
 
 **Interfaces:**
+
 - Consumes: `/api/cron/tick` (Task 6)
 - Produces: `scheduler/tick.sh`
 
@@ -1748,21 +1766,21 @@ Replace the blockquote at line 404 — it is false once schedules exist:
 - In the deployment section, document the compose service (noting it belongs with the `app` service from the Docker branch):
 
 ```yaml
-  scheduler:
-    image: curlimages/curl:8.11.0
-    depends_on: [app]
-    env_file: [.env]
-    environment:
-      TICK_URL: http://app:3000/api/cron/tick
-      TICK_INTERVAL_SECONDS: 60
-    volumes: ["./scheduler/tick.sh:/tick.sh:ro"]
-    entrypoint: ["/bin/sh", "/tick.sh"]
-    restart: unless-stopped
+scheduler:
+  image: curlimages/curl:8.11.0
+  depends_on: [app]
+  env_file: [.env]
+  environment:
+    TICK_URL: http://app:3000/api/cron/tick
+    TICK_INTERVAL_SECONDS: 60
+  volumes: ['./scheduler/tick.sh:/tick.sh:ro']
+  entrypoint: ['/bin/sh', '/tick.sh']
+  restart: unless-stopped
 ```
 
 - [ ] **Step 4: Rewrite `content/docs/admin/scheduled-resync.mdx`**
 
-Its opening line — *"Netroku ACI does not have a built-in scheduler"* — is now wrong. Restructure to:
+Its opening line — _"Netroku ACI does not have a built-in scheduler"_ — is now wrong. Restructure to:
 
 1. **In-app scheduling (recommended)** — the Scheduler page, one schedule per host, interval measured from completion, credentials stored encrypted, "Run now" queues within a minute, the overdue badge meaning the ticker is not running.
 2. **The ticker** — what `POST /api/cron/tick` is and the compose service that calls it.

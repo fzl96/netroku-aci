@@ -27,44 +27,83 @@ export async function validateSelectorDeployRows(
 ): Promise<SelectorValidationResult[]> {
   return runParallel<ParsedSelectorRow, SelectorValidationResult>(rows, 10, async (row) => {
     try {
-      const profRes = await apicFetch(apicHost, buildProfilePath(row.interface_profile), { token: apicToken })
+      const profRes = await apicFetch(apicHost, buildProfilePath(row.interface_profile), {
+        token: apicToken,
+      })
       if (profRes.status === 404) {
-        return { rowIndex: row.rowIndex, status: 'error', message: `Interface profile not found: ${row.interface_profile}` }
+        return {
+          rowIndex: row.rowIndex,
+          status: 'error',
+          message: `Interface profile not found: ${row.interface_profile}`,
+        }
       }
       if (!profRes.ok) {
         const text = await profRes.text()
-        return { rowIndex: row.rowIndex, status: 'error', message: `Profile check failed (APIC ${profRes.status}): ${text.slice(0, 200)}` }
+        return {
+          rowIndex: row.rowIndex,
+          status: 'error',
+          message: `Profile check failed (APIC ${profRes.status}): ${text.slice(0, 200)}`,
+        }
       }
-      const profData = await profRes.json() as { imdata: unknown[] }
+      const profData = (await profRes.json()) as { imdata: unknown[] }
       if (profData.imdata.length === 0) {
-        return { rowIndex: row.rowIndex, status: 'error', message: `Interface profile not found: ${row.interface_profile}` }
+        return {
+          rowIndex: row.rowIndex,
+          status: 'error',
+          message: `Interface profile not found: ${row.interface_profile}`,
+        }
       }
 
-      const ipgRes = await apicFetch(apicHost, buildIpgPath(row.ipg_type, row.ipg_name), { token: apicToken })
+      const ipgRes = await apicFetch(apicHost, buildIpgPath(row.ipg_type, row.ipg_name), {
+        token: apicToken,
+      })
       if (ipgRes.status === 404) {
-        return { rowIndex: row.rowIndex, status: 'error', message: `IPG not found (${row.ipg_type}): ${row.ipg_name}` }
+        return {
+          rowIndex: row.rowIndex,
+          status: 'error',
+          message: `IPG not found (${row.ipg_type}): ${row.ipg_name}`,
+        }
       }
       if (!ipgRes.ok) {
         const text = await ipgRes.text()
-        return { rowIndex: row.rowIndex, status: 'error', message: `IPG check failed (APIC ${ipgRes.status}): ${text.slice(0, 200)}` }
+        return {
+          rowIndex: row.rowIndex,
+          status: 'error',
+          message: `IPG check failed (APIC ${ipgRes.status}): ${text.slice(0, 200)}`,
+        }
       }
-      const ipgData = await ipgRes.json() as { imdata: unknown[] }
+      const ipgData = (await ipgRes.json()) as { imdata: unknown[] }
       if (ipgData.imdata.length === 0) {
-        return { rowIndex: row.rowIndex, status: 'error', message: `IPG not found (${row.ipg_type}): ${row.ipg_name}` }
+        return {
+          rowIndex: row.rowIndex,
+          status: 'error',
+          message: `IPG not found (${row.ipg_type}): ${row.ipg_name}`,
+        }
       }
 
       const [selRes, blksRes] = await Promise.all([
-        apicFetch(apicHost, buildSelectorChildrenPath(row.interface_profile, row.selector_name), { token: apicToken }),
+        apicFetch(apicHost, buildSelectorChildrenPath(row.interface_profile, row.selector_name), {
+          token: apicToken,
+        }),
         apicFetch(apicHost, buildProfilePortBlksQuery(row.interface_profile), { token: apicToken }),
       ])
 
-      let allBlks: { dn: string; fromCard: number; toCard: number; fromPort: number; toPort: number; selectorDn: string }[] = []
+      let allBlks: {
+        dn: string
+        fromCard: number
+        toCard: number
+        fromPort: number
+        toPort: number
+        selectorDn: string
+      }[] = []
       if (blksRes.ok) {
-        const blksData = await blksRes.json() as { imdata: { infraPortBlk: { attributes: PortBlkAttrs } }[] }
+        const blksData = (await blksRes.json()) as {
+          imdata: { infraPortBlk: { attributes: PortBlkAttrs } }[]
+        }
         allBlks = blksData.imdata
-          .map(item => item.infraPortBlk?.attributes)
+          .map((item) => item.infraPortBlk?.attributes)
           .filter((a): a is PortBlkAttrs => !!a)
-          .map(a => ({
+          .map((a) => ({
             dn: a.dn,
             fromCard: parseInt(a.fromCard, 10),
             toCard: parseInt(a.toCard, 10),
@@ -75,10 +114,13 @@ export async function validateSelectorDeployRows(
       }
 
       const ourSelectorDn = `uni/infra/accportprof-${row.interface_profile}/hports-${row.selector_name}-typ-range`
-      const conflictingBlk = allBlks.find(b =>
-        b.selectorDn !== ourSelectorDn &&
-        row.card >= b.fromCard && row.card <= b.toCard &&
-        row.port_num >= b.fromPort && row.port_num <= b.toPort
+      const conflictingBlk = allBlks.find(
+        (b) =>
+          b.selectorDn !== ourSelectorDn &&
+          row.card >= b.fromCard &&
+          row.card <= b.toCard &&
+          row.port_num >= b.fromPort &&
+          row.port_num <= b.toPort,
       )
       if (conflictingBlk) {
         return {
@@ -93,9 +135,13 @@ export async function validateSelectorDeployRows(
       }
       if (!selRes.ok) {
         const text = await selRes.text()
-        return { rowIndex: row.rowIndex, status: 'error', message: `Selector check failed (APIC ${selRes.status}): ${text.slice(0, 200)}` }
+        return {
+          rowIndex: row.rowIndex,
+          status: 'error',
+          message: `Selector check failed (APIC ${selRes.status}): ${text.slice(0, 200)}`,
+        }
       }
-      const selData = await selRes.json() as {
+      const selData = (await selRes.json()) as {
         imdata: (
           | { infraPortBlk: { attributes: PortBlkAttrs } }
           | { infraRsAccBaseGrp: { attributes: { tDn: string } } }
@@ -107,18 +153,19 @@ export async function validateSelectorDeployRows(
       }
 
       const existingBlks = selData.imdata
-        .map(item => 'infraPortBlk' in item ? item.infraPortBlk.attributes : null)
+        .map((item) => ('infraPortBlk' in item ? item.infraPortBlk.attributes : null))
         .filter((a): a is PortBlkAttrs => a !== null)
       const existingRef = selData.imdata
-        .map(item => 'infraRsAccBaseGrp' in item ? item.infraRsAccBaseGrp.attributes.tDn : null)
+        .map((item) => ('infraRsAccBaseGrp' in item ? item.infraRsAccBaseGrp.attributes.tDn : null))
         .find((tDn): tDn is string => tDn !== null)
 
       const expectedTDn = buildIpgDn(row.ipg_type, row.ipg_name)
-      const portMatches = existingBlks.some(b =>
-        parseInt(b.fromCard, 10) === row.card &&
-        parseInt(b.toCard, 10) === row.card &&
-        parseInt(b.fromPort, 10) === row.port_num &&
-        parseInt(b.toPort, 10) === row.port_num
+      const portMatches = existingBlks.some(
+        (b) =>
+          parseInt(b.fromCard, 10) === row.card &&
+          parseInt(b.toCard, 10) === row.card &&
+          parseInt(b.fromPort, 10) === row.port_num &&
+          parseInt(b.toPort, 10) === row.port_num,
       )
 
       if (portMatches && existingRef === expectedTDn) {
@@ -147,18 +194,30 @@ export async function deploySelectorRows(
 ): Promise<SelectorDeployResult[]> {
   return runParallel<ParsedSelectorRow, SelectorDeployResult>(rows, 5, async (row) => {
     try {
-      const res = await apicFetch(apicHost, buildSelectorPath(row.interface_profile, row.selector_name), {
-        method: 'POST',
-        body: selectorDeployPayload(row),
-        token: apicToken,
-      })
+      const res = await apicFetch(
+        apicHost,
+        buildSelectorPath(row.interface_profile, row.selector_name),
+        {
+          method: 'POST',
+          body: selectorDeployPayload(row),
+          token: apicToken,
+        },
+      )
       if (!res.ok) {
         const text = await res.text()
-        return { rowIndex: row.rowIndex, success: false, message: `APIC ${res.status}: ${text.slice(0, 200)}` }
+        return {
+          rowIndex: row.rowIndex,
+          success: false,
+          message: `APIC ${res.status}: ${text.slice(0, 200)}`,
+        }
       }
       return { rowIndex: row.rowIndex, success: true }
     } catch (err) {
-      return { rowIndex: row.rowIndex, success: false, message: err instanceof Error ? err.message : 'Network error' }
+      return {
+        rowIndex: row.rowIndex,
+        success: false,
+        message: err instanceof Error ? err.message : 'Network error',
+      }
     }
   })
 }
@@ -170,18 +229,30 @@ export async function rollbackSelectorRows(
 ): Promise<SelectorDeployResult[]> {
   return runParallel<ParsedSelectorRow, SelectorDeployResult>(rows, 5, async (row) => {
     try {
-      const res = await apicFetch(apicHost, buildSelectorPath(row.interface_profile, row.selector_name), {
-        method: 'POST',
-        body: selectorDeletePayload(row),
-        token: apicToken,
-      })
+      const res = await apicFetch(
+        apicHost,
+        buildSelectorPath(row.interface_profile, row.selector_name),
+        {
+          method: 'POST',
+          body: selectorDeletePayload(row),
+          token: apicToken,
+        },
+      )
       if (!res.ok) {
         const text = await res.text()
-        return { rowIndex: row.rowIndex, success: false, message: `APIC ${res.status}: ${text.slice(0, 200)}` }
+        return {
+          rowIndex: row.rowIndex,
+          success: false,
+          message: `APIC ${res.status}: ${text.slice(0, 200)}`,
+        }
       }
       return { rowIndex: row.rowIndex, success: true }
     } catch (err) {
-      return { rowIndex: row.rowIndex, success: false, message: err instanceof Error ? err.message : 'Network error' }
+      return {
+        rowIndex: row.rowIndex,
+        success: false,
+        message: err instanceof Error ? err.message : 'Network error',
+      }
     }
   })
 }
@@ -193,16 +264,28 @@ export async function validateSelectorRollbackRows(
 ): Promise<SelectorValidationResult[]> {
   return runParallel<ParsedSelectorRow, SelectorValidationResult>(rows, 10, async (row) => {
     try {
-      const res = await apicFetch(apicHost, buildSelectorPath(row.interface_profile, row.selector_name), { token: apicToken })
+      const res = await apicFetch(
+        apicHost,
+        buildSelectorPath(row.interface_profile, row.selector_name),
+        { token: apicToken },
+      )
       if (res.status === 404) return { rowIndex: row.rowIndex, status: 'missing' }
       if (!res.ok) {
         const text = await res.text()
-        return { rowIndex: row.rowIndex, status: 'error', message: `APIC ${res.status}: ${text.slice(0, 200)}` }
+        return {
+          rowIndex: row.rowIndex,
+          status: 'error',
+          message: `APIC ${res.status}: ${text.slice(0, 200)}`,
+        }
       }
-      const data = await res.json() as { imdata: unknown[] }
+      const data = (await res.json()) as { imdata: unknown[] }
       return { rowIndex: row.rowIndex, status: data.imdata.length === 0 ? 'missing' : 'rollback' }
     } catch (err) {
-      return { rowIndex: row.rowIndex, status: 'error', message: err instanceof Error ? err.message : 'Network error' }
+      return {
+        rowIndex: row.rowIndex,
+        status: 'error',
+        message: err instanceof Error ? err.message : 'Network error',
+      }
     }
   })
 }

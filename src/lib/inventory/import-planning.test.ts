@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import {
-  buildNewRackPlan,
-  rackIdentityKey,
-  requiredRackHeight,
-} from './import-planning'
+import { buildNewRackPlan, rackIdentityKey, requiredRackHeight } from './import-planning'
 
 describe('rackIdentityKey', () => {
   it('matches an omitted site to a persisted rack under the Default site', () => {
@@ -46,9 +42,7 @@ describe('buildNewRackPlan', () => {
       },
     ])
 
-    expect(plan).toEqual([
-      { key: 'dc1::r1', siteName: 'DC1', rackName: 'R1', heightU: 43 },
-    ])
+    expect(plan).toEqual([{ key: 'dc1::r1', siteName: 'DC1', rackName: 'R1', heightU: 43 }])
   })
 
   it('does not plan a rack referenced only by invalid rows', () => {

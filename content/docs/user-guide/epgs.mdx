@@ -9,26 +9,26 @@ The EPGs page shows all End Point Groups (`fvAEPg`) from the ACI fabric, along w
 
 **EPG view** — one row per EPG.
 
-| Column | Description |
-|---|---|
-| EPG | EPG name |
-| Tenant | Tenant the EPG belongs to |
-| App Profile | Application profile containing the EPG |
-| Bridge Domain | Bridge domain the EPG is bound to |
-| Ports | Number of static port bindings |
-| Contracts | Consumed and provided contracts |
+| Column        | Description                            |
+| ------------- | -------------------------------------- |
+| EPG           | EPG name                               |
+| Tenant        | Tenant the EPG belongs to              |
+| App Profile   | Application profile containing the EPG |
+| Bridge Domain | Bridge domain the EPG is bound to      |
+| Ports         | Number of static port bindings         |
+| Contracts     | Consumed and provided contracts        |
 
 **Port view** — one row per static port binding, showing which EPGs are present on each physical port.
 
-| Column | Description |
-|---|---|
-| Node | Leaf node |
-| Port | Physical interface |
-| Type | Binding type (e.g. `vpc`, `access`) |
-| EPGs | EPGs bound to this port |
-| Tenants | Tenants represented on this port |
-| Encaps / VLANs | VLAN encapsulations in use |
-| Mode | Encapsulation mode |
+| Column         | Description                         |
+| -------------- | ----------------------------------- |
+| Node           | Leaf node                           |
+| Port           | Physical interface                  |
+| Type           | Binding type (e.g. `vpc`, `access`) |
+| EPGs           | EPGs bound to this port             |
+| Tenants        | Tenants represented on this port    |
+| Encaps / VLANs | VLAN encapsulations in use          |
+| Mode           | Encapsulation mode                  |
 
 ## Filters
 

@@ -18,9 +18,7 @@ import { toSafeApicHost, type SafeApicHost } from './query'
 
 export type { SafeApicHost }
 
-export type ApicHostActionResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: string }
+export type ApicHostActionResult<T> = { success: true; data: T } | { success: false; error: string }
 
 type Actor = { id: string; userName: string }
 type AuditInput = Parameters<typeof recordAudit>[0]
@@ -28,10 +26,7 @@ type AuditInput = Parameters<typeof recordAudit>[0]
 export type ApicHostMutationDependencies = {
   requireAdmin: () => Promise<Actor>
   createHost: (data: { name: string; host: string }) => Promise<SafeApicHost>
-  updateHost: (
-    id: string,
-    data: { name: string; host: string },
-  ) => Promise<SafeApicHost | null>
+  updateHost: (id: string, data: { name: string; host: string }) => Promise<SafeApicHost | null>
   deleteHost: (id: string) => Promise<SafeApicHost | null>
   recordAudit: (input: AuditInput) => Promise<void>
   invalidateEndpointReads: (id: string) => void
@@ -150,13 +145,13 @@ export function createApicHostMutation(dependencies: ApicHostMutationDependencie
 
 const apicHostMutation = createApicHostMutation({
   requireAdmin,
-  createHost: data => prisma.apicHost.create({ data }),
+  createHost: (data) => prisma.apicHost.create({ data }),
   updateHost: async (id, data) => {
     const result = await prisma.apicHost.updateMany({ where: { id }, data })
     if (result.count === 0) return null
     return prisma.apicHost.findUniqueOrThrow({ where: { id } })
   },
-  deleteHost: async id => {
+  deleteHost: async (id) => {
     const existing = await prisma.apicHost.findUnique({ where: { id } })
     const result = await prisma.apicHost.deleteMany({ where: { id } })
     return result.count === 0 ? null : existing
@@ -167,12 +162,8 @@ const apicHostMutation = createApicHostMutation({
   invalidateNodeReads,
   invalidateInterfaceReads,
   invalidateApicHostReads,
-  reportAuditError: error => console.error('[apic-hosts] failed to record audit', error),
-  reportInvalidationError: error => console.error('[apic-hosts] failed to expire cache', error),
+  reportAuditError: (error) => console.error('[apic-hosts] failed to record audit', error),
+  reportInvalidationError: (error) => console.error('[apic-hosts] failed to expire cache', error),
 })
 
-export const {
-  createApicHost,
-  updateApicHost,
-  deleteApicHost,
-} = apicHostMutation
+export const { createApicHost, updateApicHost, deleteApicHost } = apicHostMutation

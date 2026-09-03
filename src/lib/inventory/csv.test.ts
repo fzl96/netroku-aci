@@ -68,7 +68,20 @@ describe('parseCsvRows', () => {
         member: '1',
       },
     ]
-    const headers = ['name', 'serial', 'tag', 'vendor', 'model', 'height', 'site', 'rack', 'position', 'stack', 'role', 'member']
+    const headers = [
+      'name',
+      'serial',
+      'tag',
+      'vendor',
+      'model',
+      'height',
+      'site',
+      'rack',
+      'position',
+      'stack',
+      'role',
+      'member',
+    ]
     const { rows, errors } = parseCsvRows(rawRows, headers)
 
     expect(errors).toHaveLength(0)
@@ -104,7 +117,15 @@ describe('parseCsvRows', () => {
         stack_role: 'LEADER',
       },
     ]
-    const { errors } = parseCsvRows(rawRows, ['hostname', 'serial_number', 'vendor', 'model', 'status', 'stack_name', 'stack_role'])
+    const { errors } = parseCsvRows(rawRows, [
+      'hostname',
+      'serial_number',
+      'vendor',
+      'model',
+      'status',
+      'stack_name',
+      'stack_role',
+    ])
     expect(errors.some((e) => e.field === 'status')).toBe(true)
     expect(errors.some((e) => e.field === 'stackRole')).toBe(true)
   })
@@ -115,7 +136,11 @@ describe('parseCsvRows', () => {
       { hostname: 'sw-02', serial_number: 'SN-DUPE', vendor: 'Cisco', model: 'C9300' },
     ]
     const { errors } = parseCsvRows(rawRows, ['hostname', 'serial_number', 'vendor', 'model'])
-    expect(errors.some((e) => e.field === 'serialNumber' && e.message.includes('Duplicate serial number'))).toBe(true)
+    expect(
+      errors.some(
+        (e) => e.field === 'serialNumber' && e.message.includes('Duplicate serial number'),
+      ),
+    ).toBe(true)
   })
 
   it('detects intra-CSV rack collisions considering multi-U height', () => {
@@ -141,27 +166,76 @@ describe('parseCsvRows', () => {
         rack_position: '11', // collides with U11!
       },
     ]
-    const { errors } = parseCsvRows(rawRows, ['hostname', 'serial_number', 'vendor', 'model', 'height_u', 'site', 'rack', 'rack_position'])
-    expect(errors.some((e) => e.field === 'rackPosition' && e.message.includes('Rack collision'))).toBe(true)
+    const { errors } = parseCsvRows(rawRows, [
+      'hostname',
+      'serial_number',
+      'vendor',
+      'model',
+      'height_u',
+      'site',
+      'rack',
+      'rack_position',
+    ])
+    expect(
+      errors.some((e) => e.field === 'rackPosition' && e.message.includes('Rack collision')),
+    ).toBe(true)
   })
 
   it('detects duplicate switch IDs in the same stack inside the CSV', () => {
     const rawRows = [
-      { hostname: 'sw-01', serial_number: 'SN-1', vendor: 'Cisco', model: 'C9300', stack_name: 'STK-1', switch_id: '1' },
-      { hostname: 'sw-02', serial_number: 'SN-2', vendor: 'Cisco', model: 'C9300', stack_name: 'STK-1', switch_id: '1' },
+      {
+        hostname: 'sw-01',
+        serial_number: 'SN-1',
+        vendor: 'Cisco',
+        model: 'C9300',
+        stack_name: 'STK-1',
+        switch_id: '1',
+      },
+      {
+        hostname: 'sw-02',
+        serial_number: 'SN-2',
+        vendor: 'Cisco',
+        model: 'C9300',
+        stack_name: 'STK-1',
+        switch_id: '1',
+      },
     ]
-    const { errors } = parseCsvRows(rawRows, ['hostname', 'serial_number', 'vendor', 'model', 'stack_name', 'switch_id'])
-    expect(errors.some((e) => e.field === 'switchId' && e.message.includes('Duplicate switch #1 in stack'))).toBe(true)
+    const { errors } = parseCsvRows(rawRows, [
+      'hostname',
+      'serial_number',
+      'vendor',
+      'model',
+      'stack_name',
+      'switch_id',
+    ])
+    expect(
+      errors.some(
+        (e) => e.field === 'switchId' && e.message.includes('Duplicate switch #1 in stack'),
+      ),
+    ).toBe(true)
   })
 
   it('validates managementIp format and detects intra-CSV duplicates', () => {
     const rawRows = [
       { hostname: 'sw-01', serial_number: 'SN-1', vendor: 'Cisco', model: 'C9300', ip: '10.0.0.1' },
       { hostname: 'sw-02', serial_number: 'SN-2', vendor: 'Cisco', model: 'C9300', ip: '10.0.0.1' },
-      { hostname: 'sw-03', serial_number: 'SN-3', vendor: 'Cisco', model: 'C9300', ip: 'not-an-ip' },
+      {
+        hostname: 'sw-03',
+        serial_number: 'SN-3',
+        vendor: 'Cisco',
+        model: 'C9300',
+        ip: 'not-an-ip',
+      },
     ]
     const { errors } = parseCsvRows(rawRows, ['hostname', 'serial_number', 'vendor', 'model', 'ip'])
-    expect(errors.some((e) => e.field === 'managementIp' && e.message.includes('Duplicate management IP "10.0.0.1"'))).toBe(true)
-    expect(errors.some((e) => e.field === 'managementIp' && e.message.includes('Invalid IP address'))).toBe(true)
+    expect(
+      errors.some(
+        (e) =>
+          e.field === 'managementIp' && e.message.includes('Duplicate management IP "10.0.0.1"'),
+      ),
+    ).toBe(true)
+    expect(
+      errors.some((e) => e.field === 'managementIp' && e.message.includes('Invalid IP address')),
+    ).toBe(true)
   })
 })

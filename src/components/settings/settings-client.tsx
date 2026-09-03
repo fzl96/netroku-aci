@@ -6,13 +6,7 @@ import { IconKey, IconShieldCheck, IconUser } from '@tabler/icons-react'
 import { authClient } from '@/lib/auth-client'
 import { INPUT_CLS } from '@/lib/ui-classes'
 
-export function SettingsClient({
-  username,
-  role,
-}: {
-  username: string
-  role: 'admin' | 'member'
-}) {
+export function SettingsClient({ username, role }: { username: string; role: 'admin' | 'member' }) {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -46,91 +40,93 @@ export function SettingsClient({
   }
 
   return (
-    <div className="px-8 py-6 space-y-6">
-        <div className="grid grid-cols-2 gap-4 max-w-3xl">
-          <div className="bg-card border border-border rounded-xl px-5 py-4 animate-fade-up">
-            <p className="text-[11px] text-subtle">Signed In As</p>
-            <div className="mt-2 flex items-center gap-2">
-              <div className="h-7 w-7 rounded-lg bg-muted border border-border flex items-center justify-center">
-                <IconUser size={14} stroke={1.75} className="text-muted-foreground" />
-              </div>
-              <p className="text-sm font-medium text-foreground">{username}</p>
+    <div className="space-y-6 px-8 py-6">
+      <div className="grid max-w-3xl grid-cols-2 gap-4">
+        <div className="animate-fade-up rounded-xl border border-border bg-card px-5 py-4">
+          <p className="text-[11px] text-subtle">Signed In As</p>
+          <div className="mt-2 flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-muted">
+              <IconUser size={14} stroke={1.75} className="text-muted-foreground" />
             </div>
+            <p className="text-sm font-medium text-foreground">{username}</p>
           </div>
-          <div className="bg-card border border-border rounded-xl px-5 py-4 animate-fade-up">
-            <p className="text-[11px] text-subtle">Role</p>
-            <div className="mt-2 flex items-center gap-2">
-              <div className="h-7 w-7 rounded-lg bg-muted border border-border flex items-center justify-center">
-                <IconShieldCheck size={14} stroke={1.75} className="text-muted-foreground" />
-              </div>
-              <p className="text-sm font-medium text-foreground capitalize">{role}</p>
+        </div>
+        <div className="animate-fade-up rounded-xl border border-border bg-card px-5 py-4">
+          <p className="text-[11px] text-subtle">Role</p>
+          <div className="mt-2 flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-muted">
+              <IconShieldCheck size={14} stroke={1.75} className="text-muted-foreground" />
             </div>
+            <p className="text-sm font-medium text-foreground capitalize">{role}</p>
+          </div>
+        </div>
+      </div>
+
+      <section className="animate-fade-up max-w-3xl overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <div className="flex items-center gap-2 border-b border-border px-5 py-4">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted">
+            <IconKey size={15} stroke={1.75} className="text-muted-foreground" />
+          </div>
+          <div>
+            <h2 className="font-serif text-base font-semibold text-foreground">Change Password</h2>
+            <p className="mt-0.5 text-xs text-subtle">
+              Update the password used to sign in to this app.
+            </p>
           </div>
         </div>
 
-        <section className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm animate-fade-up max-w-3xl">
-          <div className="px-5 py-4 border-b border-border flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-muted border border-border flex items-center justify-center">
-              <IconKey size={15} stroke={1.75} className="text-muted-foreground" />
-            </div>
-            <div>
-              <h2 className="font-serif text-base font-semibold text-foreground">Change Password</h2>
-              <p className="text-xs text-subtle mt-0.5">Update the password used to sign in to this app.</p>
-            </div>
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-4 px-5 py-5">
+          <label className="flex flex-col gap-1.5 text-xs font-medium text-foreground">
+            Current Password
+            <input
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              type="password"
+              className={INPUT_CLS}
+              required
+              autoComplete="current-password"
+            />
+          </label>
 
-          <form onSubmit={handleSubmit} className="px-5 py-5 space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
             <label className="flex flex-col gap-1.5 text-xs font-medium text-foreground">
-              Current Password
+              New Password
               <input
-                value={currentPassword}
-                onChange={event => setCurrentPassword(event.target.value)}
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
                 type="password"
                 className={INPUT_CLS}
+                minLength={8}
                 required
-                autoComplete="current-password"
+                autoComplete="new-password"
               />
             </label>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="flex flex-col gap-1.5 text-xs font-medium text-foreground">
-                New Password
-                <input
-                  value={newPassword}
-                  onChange={event => setNewPassword(event.target.value)}
-                  type="password"
-                  className={INPUT_CLS}
-                  minLength={8}
-                  required
-                  autoComplete="new-password"
-                />
-              </label>
+            <label className="flex flex-col gap-1.5 text-xs font-medium text-foreground">
+              Confirm New Password
+              <input
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                type="password"
+                className={INPUT_CLS}
+                minLength={8}
+                required
+                autoComplete="new-password"
+              />
+            </label>
+          </div>
 
-              <label className="flex flex-col gap-1.5 text-xs font-medium text-foreground">
-                Confirm New Password
-                <input
-                  value={confirmPassword}
-                  onChange={event => setConfirmPassword(event.target.value)}
-                  type="password"
-                  className={INPUT_CLS}
-                  minLength={8}
-                  required
-                  autoComplete="new-password"
-                />
-              </label>
-            </div>
-
-            <div className="flex justify-end border-t border-border pt-4">
-              <button
-                type="submit"
-                disabled={pending}
-                className="bg-primary text-primary-foreground text-sm font-semibold px-5 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {pending ? 'Saving...' : 'Change Password'}
-              </button>
-            </div>
-          </form>
-        </section>
+          <div className="flex justify-end border-t border-border pt-4">
+            <button
+              type="submit"
+              disabled={pending}
+              className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {pending ? 'Saving...' : 'Change Password'}
+            </button>
+          </div>
+        </form>
+      </section>
     </div>
   )
 }

@@ -56,22 +56,37 @@ describe('buildLegacyEndpointPageUrl', () => {
   it('omits defaults and preserves active filters', () => {
     const base = parseLegacyEndpointPageParams({})
     expect(buildLegacyEndpointPageUrl(base)).toBe('/legacy/endpoints')
-    expect(buildLegacyEndpointPageUrl({
-      ...base, query: 'aa:bb', site: 'hq', device: 'd1', vlan: '100',
-      interface: 'Gi1/0/1', status: 'all', sort: 'mac', direction: 'asc', page: 2,
-    })).toBe(
-      '/legacy/endpoints?query=aa%3Abb&site=hq&device=d1&vlan=100'
-      + '&interface=Gi1%2F0%2F1&status=all&sort=mac&dir=asc&page=2',
+    expect(
+      buildLegacyEndpointPageUrl({
+        ...base,
+        query: 'aa:bb',
+        site: 'hq',
+        device: 'd1',
+        vlan: '100',
+        interface: 'Gi1/0/1',
+        status: 'all',
+        sort: 'mac',
+        direction: 'asc',
+        page: 2,
+      }),
+    ).toBe(
+      '/legacy/endpoints?query=aa%3Abb&site=hq&device=d1&vlan=100' +
+        '&interface=Gi1%2F0%2F1&status=all&sort=mac&dir=asc&page=2',
     )
   })
 
   it('round-trips through the parser', () => {
     const params = parseLegacyEndpointPageParams({
-      query: 'core', vlan: '10', status: 'historical', sort: 'vlan', dir: 'asc', page: '4',
+      query: 'core',
+      vlan: '10',
+      status: 'historical',
+      sort: 'vlan',
+      dir: 'asc',
+      page: '4',
     })
-    const parsed = parseLegacyEndpointPageParams(Object.fromEntries(
-      new URL(buildLegacyEndpointPageUrl(params), 'http://x').searchParams,
-    ))
+    const parsed = parseLegacyEndpointPageParams(
+      Object.fromEntries(new URL(buildLegacyEndpointPageUrl(params), 'http://x').searchParams),
+    )
     expect(parsed).toEqual(params)
   })
 })

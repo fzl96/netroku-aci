@@ -11,11 +11,11 @@ import {
 } from './mutation'
 import type { SafeDevice, SafeDeviceWithRack } from './query'
 
-type ActionResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: string }
+type ActionResult<T> = { success: true; data: T } | { success: false; error: string }
 
-export async function createDevice(data: DeviceFormValues): Promise<ActionResult<SafeDeviceWithRack>> {
+export async function createDevice(
+  data: DeviceFormValues,
+): Promise<ActionResult<SafeDeviceWithRack>> {
   try {
     return { success: true, data: await createDeviceRecord(data) }
   } catch (err) {
@@ -49,7 +49,10 @@ export async function updateDevicePlacement(
   rackPosition: number,
 ): Promise<ActionResult<SafeDevice>> {
   try {
-    return { success: true, data: await updateDevicePlacementRecord(deviceId, rackId, rackPosition) }
+    return {
+      success: true,
+      data: await updateDevicePlacementRecord(deviceId, rackId, rackPosition),
+    }
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
   }

@@ -8,7 +8,7 @@ export type SchedulePollingRow = Omit<SafeResyncSchedule, 'lastRunAt' | 'nextRun
 export function serializeSchedulePollingSnapshot(
   schedules: SafeResyncSchedule[],
 ): SchedulePollingRow[] {
-  return schedules.map(schedule => ({
+  return schedules.map((schedule) => ({
     ...schedule,
     lastRunAt: schedule.lastRunAt?.toISOString() ?? null,
     nextRunAt: schedule.nextRunAt?.toISOString() ?? null,
@@ -25,7 +25,7 @@ function parseDate(value: string | null): Date | null {
 export function parseSchedulePollingSnapshot(
   schedules: SchedulePollingRow[],
 ): SafeResyncSchedule[] {
-  return schedules.map(schedule => ({
+  return schedules.map((schedule) => ({
     ...schedule,
     lastRunAt: parseDate(schedule.lastRunAt),
     nextRunAt: parseDate(schedule.nextRunAt),

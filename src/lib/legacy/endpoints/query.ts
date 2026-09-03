@@ -84,8 +84,9 @@ export class LegacyEndpointReadError extends Error {
 }
 
 async function authorize(): Promise<void> {
-  try { await requireSession() }
-  catch (error) {
+  try {
+    await requireSession()
+  } catch (error) {
     if (!(error instanceof AuthenticationRequiredError)) throw error
     throw new LegacyEndpointReadError()
   }
@@ -106,8 +107,9 @@ const cacheOptions = {
 }
 
 function unique(values: string[]): string[] {
-  return [...new Set(values.filter(Boolean))]
-    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+  return [...new Set(values.filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b, undefined, { numeric: true }),
+  )
 }
 
 function serializeEndpoint(record: StoredLegacyEndpoint): LegacyEndpointRow {
@@ -133,72 +135,104 @@ function serializeEndpoint(record: StoredLegacyEndpoint): LegacyEndpointRow {
 
 export async function getLegacyEndpointSummary(): Promise<LegacyEndpointSummary> {
   await authorize()
-  return readEndpointData(() => unstable_cache(async () => {
-    const [total, active, historical, vlanRows] = await Promise.all([
-      prisma.legacyEndpoint.count(),
-      prisma.legacyEndpoint.count({ where: { isActive: true } }),
-      prisma.legacyEndpoint.count({ where: { isActive: false } }),
-      prisma.legacyEndpoint.findMany({ distinct: ['vlan'], select: { vlan: true } }),
-    ])
-    return { total, active, historical, vlans: vlanRows.length }
-  }, ['legacy-endpoints', 'summary'], cacheOptions)())
+  return readEndpointData(() =>
+    unstable_cache(
+      async () => {
+        const [total, active, historical, vlanRows] = await Promise.all([
+          prisma.legacyEndpoint.count(),
+          prisma.legacyEndpoint.count({ where: { isActive: true } }),
+          prisma.legacyEndpoint.count({ where: { isActive: false } }),
+          prisma.legacyEndpoint.findMany({ distinct: ['vlan'], select: { vlan: true } }),
+        ])
+        return { total, active, historical, vlans: vlanRows.length }
+      },
+      ['legacy-endpoints', 'summary'],
+      cacheOptions,
+    )(),
+  )
 }
 
 export async function getLegacyEndpointFilterOptions(): Promise<LegacyEndpointFilterOptions> {
   await authorize()
-  return readEndpointData(() => unstable_cache(async () => {
-    const [devices, vlanRows, interfaceRows] = await Promise.all([
-      prisma.legacyDevice.findMany({
-        select: { id: true, hostname: true, site: true }, orderBy: { hostname: 'asc' },
-      }),
-      prisma.legacyEndpoint.findMany({
-        distinct: ['vlan'], select: { vlan: true }, orderBy: { vlan: 'asc' },
-      }),
-      prisma.legacyEndpoint.findMany({
-        distinct: ['interface'], select: { interface: true }, orderBy: { interface: 'asc' },
-      }),
-    ])
-    return {
-      sites: unique(devices.map(device => device.site)),
-      devices,
-      vlans: unique(vlanRows.map(row => row.vlan)),
-      interfaces: unique(interfaceRows.map(row => row.interface)),
-    }
-  }, ['legacy-endpoints', 'filter-options'], cacheOptions)())
+  return readEndpointData(() =>
+    unstable_cache(
+      async () => {
+        const [devices, vlanRows, interfaceRows] = await Promise.all([
+          prisma.legacyDevice.findMany({
+            select: { id: true, hostname: true, site: true },
+            orderBy: { hostname: 'asc' },
+          }),
+          prisma.legacyEndpoint.findMany({
+            distinct: ['vlan'],
+            select: { vlan: true },
+            orderBy: { vlan: 'asc' },
+          }),
+          prisma.legacyEndpoint.findMany({
+            distinct: ['interface'],
+            select: { interface: true },
+            orderBy: { interface: 'asc' },
+          }),
+        ])
+        return {
+          sites: unique(devices.map((device) => device.site)),
+          devices,
+          vlans: unique(vlanRows.map((row) => row.vlan)),
+          interfaces: unique(interfaceRows.map((row) => row.interface)),
+        }
+      },
+      ['legacy-endpoints', 'filter-options'],
+      cacheOptions,
+    )(),
+  )
 }
 
 export async function getLegacyEndpointResults(
   params: LegacyEndpointPageParams,
 ): Promise<LegacyEndpointResults> {
   await authorize()
-  return readEndpointData(() => unstable_cache(async (): Promise<LegacyEndpointResults> => {
-    const where = buildLegacyEndpointWhere({
-      query: params.query,
-      sites: params.site ? [params.site] : [],
-      deviceIds: params.device ? [params.device] : [],
-      vlans: params.vlan ? [params.vlan] : [],
-      interfaces: params.interface ? [params.interface] : [],
-      statuses: legacyEndpointStatuses(params.status),
-    })
-    const [records, total] = await Promise.all([
-      prisma.legacyEndpoint.findMany({
-        where,
-        orderBy: legacyEndpointOrderBy(params.sort, params.direction),
-        skip: (params.page - 1) * params.pageSize,
-        take: params.pageSize,
-        select: ENDPOINT_SELECT,
-      }),
-      prisma.legacyEndpoint.count({ where }),
-    ])
-    return {
-      rows: records.map(serializeEndpoint),
-      total,
-      page: params.page,
-      pageSize: params.pageSize,
-    }
-  }, [
-    'legacy-endpoints', 'results', params.query, params.site, params.device,
-    params.vlan, params.interface, params.status, params.sort, params.direction,
-    String(params.page), String(params.pageSize),
-  ], cacheOptions)())
+  return readEndpointData(() =>
+    unstable_cache(
+      async (): Promise<LegacyEndpointResults> => {
+        const where = buildLegacyEndpointWhere({
+          query: params.query,
+          sites: params.site ? [params.site] : [],
+          deviceIds: params.device ? [params.device] : [],
+          vlans: params.vlan ? [params.vlan] : [],
+          interfaces: params.interface ? [params.interface] : [],
+          statuses: legacyEndpointStatuses(params.status),
+        })
+        const [records, total] = await Promise.all([
+          prisma.legacyEndpoint.findMany({
+            where,
+            orderBy: legacyEndpointOrderBy(params.sort, params.direction),
+            skip: (params.page - 1) * params.pageSize,
+            take: params.pageSize,
+            select: ENDPOINT_SELECT,
+          }),
+          prisma.legacyEndpoint.count({ where }),
+        ])
+        return {
+          rows: records.map(serializeEndpoint),
+          total,
+          page: params.page,
+          pageSize: params.pageSize,
+        }
+      },
+      [
+        'legacy-endpoints',
+        'results',
+        params.query,
+        params.site,
+        params.device,
+        params.vlan,
+        params.interface,
+        params.status,
+        params.sort,
+        params.direction,
+        String(params.page),
+        String(params.pageSize),
+      ],
+      cacheOptions,
+    )(),
+  )
 }

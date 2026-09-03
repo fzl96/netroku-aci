@@ -19,7 +19,10 @@ const storedUser = {
 let findManyError: unknown = null
 const userFindMany = mock(async () => {
   if (findManyError) throw findManyError
-  return [storedUser, { ...storedUser, id: 'u2', username: null, displayUsername: null, name: 'bob', role: null }]
+  return [
+    storedUser,
+    { ...storedUser, id: 'u2', username: null, displayUsername: null, name: 'bob', role: null },
+  ]
 })
 
 mock.module('server-only', () => ({}))
@@ -59,11 +62,17 @@ describe('getUsers', () => {
   it('falls back to the internal name when username is unset, and defaults role to member', async () => {
     const users = await query.getUsers()
     expect(users[0]).toEqual({
-      id: 'u1', username: 'alice', displayUsername: 'Alice', role: 'admin',
+      id: 'u1',
+      username: 'alice',
+      displayUsername: 'Alice',
+      role: 'admin',
       createdAt: storedUser.createdAt,
     })
     expect(users[1]).toEqual({
-      id: 'u2', username: 'bob', displayUsername: 'bob', role: 'member',
+      id: 'u2',
+      username: 'bob',
+      displayUsername: 'bob',
+      role: 'member',
       createdAt: storedUser.createdAt,
     })
   })

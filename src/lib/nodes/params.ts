@@ -3,9 +3,9 @@ export const NODE_ROLES = ['leaf', 'spine', 'controller'] as const
 export const NODE_COMPONENT_TYPES = ['psu', 'fan'] as const
 
 export type NodeView = 'nodes' | 'components'
-export type NodePageSize = typeof NODE_PAGE_SIZES[number] | 'all'
-export type NodeRole = typeof NODE_ROLES[number]
-export type NodeComponentType = typeof NODE_COMPONENT_TYPES[number]
+export type NodePageSize = (typeof NODE_PAGE_SIZES)[number] | 'all'
+export type NodeRole = (typeof NODE_ROLES)[number]
+export type NodeComponentType = (typeof NODE_COMPONENT_TYPES)[number]
 export type RawNodePageParam = string | string[] | undefined
 export type RawNodePageParams = {
   apic?: RawNodePageParam
@@ -40,9 +40,7 @@ function positivePage(value: string): number {
 function pageSize(value: string): NodePageSize {
   if (value === 'all') return 'all'
   const parsed = Number(value)
-  return (NODE_PAGE_SIZES as readonly number[]).includes(parsed)
-    ? parsed as NodePageSize
-    : 50
+  return (NODE_PAGE_SIZES as readonly number[]).includes(parsed) ? (parsed as NodePageSize) : 50
 }
 
 export function parseNodePageParams(input: RawNodePageParams): NodePageParams {
@@ -53,12 +51,14 @@ export function parseNodePageParams(input: RawNodePageParams): NodePageParams {
     hostId: first(input.apic),
     query: first(input.query),
     view,
-    role: view === 'nodes' && (NODE_ROLES as readonly string[]).includes(role)
-      ? role as NodeRole
-      : null,
-    componentType: view === 'components' && (NODE_COMPONENT_TYPES as readonly string[]).includes(componentType)
-      ? componentType as NodeComponentType
-      : null,
+    role:
+      view === 'nodes' && (NODE_ROLES as readonly string[]).includes(role)
+        ? (role as NodeRole)
+        : null,
+    componentType:
+      view === 'components' && (NODE_COMPONENT_TYPES as readonly string[]).includes(componentType)
+        ? (componentType as NodeComponentType)
+        : null,
     page: positivePage(first(input.page)),
     pageSize: pageSize(first(input.pageSize)),
   }

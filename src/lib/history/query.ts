@@ -6,10 +6,7 @@ import { AuthenticationRequiredError, requireSession } from '@/lib/auth'
 import type { AuditAction, AuditStatus } from '@/lib/audit'
 import { prisma } from '@/lib/prisma'
 import { buildHistoryWhere } from './filters'
-import {
-  historyPageWindow,
-  type HistoryPageParams,
-} from './params'
+import { historyPageWindow, type HistoryPageParams } from './params'
 
 const HISTORY_CACHE_SECONDS = 8 * 60 * 60
 
@@ -100,31 +97,31 @@ export async function getHistoryPage(params: HistoryPageParams): Promise<History
     page: params.page,
   }
 
-  return readHistoryData(() => unstable_cache(async (): Promise<HistoryPageData> => {
-    const where = buildHistoryWhere(normalized)
-    const total = await prisma.auditLog.count({ where })
-    const window = historyPageWindow(normalized.page, total)
-    const logs = await prisma.auditLog.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      skip: window.skip,
-      take: window.take,
-      select: AUDIT_LOG_SELECT,
-    })
+  return readHistoryData(() =>
+    unstable_cache(
+      async (): Promise<HistoryPageData> => {
+        const where = buildHistoryWhere(normalized)
+        const total = await prisma.auditLog.count({ where })
+        const window = historyPageWindow(normalized.page, total)
+        const logs = await prisma.auditLog.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          skip: window.skip,
+          take: window.take,
+          select: AUDIT_LOG_SELECT,
+        })
 
-    return {
-      logs: logs.map(serializeAuditLog),
-      total,
-      page: window.page,
-    }
-  }, [
-    'history',
-    'page',
-    normalized.query,
-    normalized.action,
-    String(normalized.page),
-  ], {
-    tags: ['history:all'],
-    revalidate: HISTORY_CACHE_SECONDS,
-  })())
+        return {
+          logs: logs.map(serializeAuditLog),
+          total,
+          page: window.page,
+        }
+      },
+      ['history', 'page', normalized.query, normalized.action, String(normalized.page)],
+      {
+        tags: ['history:all'],
+        revalidate: HISTORY_CACHE_SECONDS,
+      },
+    )(),
+  )
 }

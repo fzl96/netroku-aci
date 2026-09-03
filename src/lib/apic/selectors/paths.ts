@@ -36,7 +36,11 @@ export function selectorDeployPayload(row: ParsedSelectorRow): string {
   const tDn = buildIpgDn(row.ipg_type, row.ipg_name)
   return JSON.stringify({
     infraHPortS: {
-      attributes: { name: row.selector_name, type: 'range', ...(row.description ? { descr: row.description } : {}) },
+      attributes: {
+        name: row.selector_name,
+        type: 'range',
+        ...(row.description ? { descr: row.description } : {}),
+      },
       children: [
         {
           infraPortBlk: {
@@ -56,7 +60,10 @@ export function selectorDeployPayload(row: ParsedSelectorRow): string {
   })
 }
 
-export function selectorDeletePayload(row: { interface_profile: string; selector_name: string }): string {
+export function selectorDeletePayload(row: {
+  interface_profile: string
+  selector_name: string
+}): string {
   return JSON.stringify({
     infraHPortS: {
       attributes: {

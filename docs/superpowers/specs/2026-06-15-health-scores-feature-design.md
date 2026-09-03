@@ -10,7 +10,7 @@ history in SQLite, reporting per data subject. Built so far: **Endpoints**,
 **Interfaces**, **Faults** — each following the same collector pattern:
 
 - a `resync*` lib function (APIC login → class query → chunked upsert of a
-  *snapshot* model, plus per-resync *sample* rows for trends),
+  _snapshot_ model, plus per-resync _sample_ rows for trends),
 - an authed `POST /api/<subject>/resync` route,
 - cron wiring in `/api/cron/resync`,
 - a server-component page reading SQLite with filters/pagination,
@@ -36,11 +36,11 @@ resync flows, and surface a health summary tile on the dashboard. Read-only.
 Collected from **three** APIC sources (decided: three-source query, not a single
 broad `healthInst` query which would pull a score for every EPG/BD/contract):
 
-| Source class | Query | Yields |
-|---|---|---|
-| `fabricHealthTotal` | `/api/node/class/fabricHealthTotal.json` | fabric total (`dn = topology/health`) + per-pod (`topology/pod-N/health`) |
-| `topSystem` | `/api/node/class/topSystem.json?rsp-subtree-include=health` | per-node score (node's `healthInst` child) |
-| `fvTenant` | `/api/node/class/fvTenant.json?rsp-subtree-include=health` | per-tenant score (tenant's `healthInst` child) |
+| Source class        | Query                                                       | Yields                                                                    |
+| ------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `fabricHealthTotal` | `/api/node/class/fabricHealthTotal.json`                    | fabric total (`dn = topology/health`) + per-pod (`topology/pod-N/health`) |
+| `topSystem`         | `/api/node/class/topSystem.json?rsp-subtree-include=health` | per-node score (node's `healthInst` child)                                |
+| `fvTenant`          | `/api/node/class/fvTenant.json?rsp-subtree-include=health`  | per-tenant score (tenant's `healthInst` child)                            |
 
 `scope` is derived: `fabric` | `pod` | `node` | `tenant`.
 
@@ -50,35 +50,35 @@ Mirrors `FaultSnapshot` + `FaultCountSample`.
 
 ### `HealthScoreSnapshot` — current score per scored object
 
-| Field | Notes |
-|---|---|
-| `id` | cuid |
-| `apicHostId` / `apicHost` | relation, `onDelete: Cascade` |
-| `dn` | parent object DN (the `/health` RN stripped for fabricHealthTotal; the parent DN for topSystem/fvTenant) |
-| `scope` | `fabric` \| `pod` \| `node` \| `tenant` |
-| `name` | friendly label: "Fabric", "Pod N", node name/id, tenant name |
-| `node` | node id when `scope=node`, else null |
-| `score` | Int — `cur` (0–100) |
-| `twScore` | Int? — time-weighted score (`twScore`) |
-| `prevScore` | Int? — previous score (`prev`) |
-| `maxSeverity` | String? — worst contributing fault severity (`maxSev`) |
-| `present` | Bool default true — flipped false when the object is absent from a resync (decommissioned node / deleted tenant), like Faults' cleared detection |
-| `firstSeenAt` | DateTime default now |
-| `lastSeenAt` | DateTime default now |
+| Field                     | Notes                                                                                                                                            |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`                      | cuid                                                                                                                                             |
+| `apicHostId` / `apicHost` | relation, `onDelete: Cascade`                                                                                                                    |
+| `dn`                      | parent object DN (the `/health` RN stripped for fabricHealthTotal; the parent DN for topSystem/fvTenant)                                         |
+| `scope`                   | `fabric` \| `pod` \| `node` \| `tenant`                                                                                                          |
+| `name`                    | friendly label: "Fabric", "Pod N", node name/id, tenant name                                                                                     |
+| `node`                    | node id when `scope=node`, else null                                                                                                             |
+| `score`                   | Int — `cur` (0–100)                                                                                                                              |
+| `twScore`                 | Int? — time-weighted score (`twScore`)                                                                                                           |
+| `prevScore`               | Int? — previous score (`prev`)                                                                                                                   |
+| `maxSeverity`             | String? — worst contributing fault severity (`maxSev`)                                                                                           |
+| `present`                 | Bool default true — flipped false when the object is absent from a resync (decommissioned node / deleted tenant), like Faults' cleared detection |
+| `firstSeenAt`             | DateTime default now                                                                                                                             |
+| `lastSeenAt`              | DateTime default now                                                                                                                             |
 
 Constraints: `@@unique([apicHostId, dn])`, `@@index([apicHostId])`,
 `@@index([apicHostId, scope])`, `@@map("health_score_snapshot")`.
 
 ### `HealthScoreSample` — one row per resync (trend chart)
 
-| Field | Notes |
-|---|---|
-| `id` | cuid |
-| `apicHostId` / `apicHost` | relation, `onDelete: Cascade` |
-| `sampledAt` | default now |
-| `overall` | Int — fabric total score |
-| `worstScore` | Int — min across node + tenant scores |
-| `degradedCount` | Int — count of node+tenant objects with `score < DEGRADED_THRESHOLD` |
+| Field                     | Notes                                                                |
+| ------------------------- | -------------------------------------------------------------------- |
+| `id`                      | cuid                                                                 |
+| `apicHostId` / `apicHost` | relation, `onDelete: Cascade`                                        |
+| `sampledAt`               | default now                                                          |
+| `overall`                 | Int — fabric total score                                             |
+| `worstScore`              | Int — min across node + tenant scores                                |
+| `degradedCount`           | Int — count of node+tenant objects with `score < DEGRADED_THRESHOLD` |
 
 Index: `@@index([apicHostId, sampledAt])`, `@@map("health_score_sample")`.
 
@@ -97,7 +97,7 @@ default.
 ## Collector — `src/lib/apic/health-scores.ts`
 
 - `ParsedHealthRow` — `{ dn, scope, name, node, score, twScore, prevScore,
-  maxSeverity }`.
+maxSeverity }`.
 - Three pure parse helpers (one per source) that derive `scope`/`name`/`node`
   from the DN and read the score:
   - `parseFabricHealthRows(imdata)` — `fabricHealthTotal`; `topology/health` →
@@ -111,7 +111,7 @@ default.
   `GOOD_MIN = 95`, `FAIR_MIN = 80` (≥95 good, 80–94 fair, <80 poor).
   `DEGRADED_THRESHOLD = 90` for `degradedCount`.
 - `summarizeHealth(rows)` — pure: returns `{ overall, worstScore,
-  degradedCount }` from the parsed rows (overall = fabric row's score, worst =
+degradedCount }` from the parsed rows (overall = fabric row's score, worst =
   min over node+tenant, degraded = count below threshold).
 - `fetchHealthScoresFromApic(host, user, pwd)` — login once, three GETs, return
   `parseHealthRows(...)`.

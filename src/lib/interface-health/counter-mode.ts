@@ -24,10 +24,7 @@ export interface VisibleCounters {
   txErrors: string | null
 }
 
-export function selectVisibleCounters(
-  row: CounterFields,
-  mode: CounterMode,
-): VisibleCounters {
+export function selectVisibleCounters(row: CounterFields, mode: CounterMode): VisibleCounters {
   if (mode === 'current') {
     return {
       rxBytes: row.rxBytes,

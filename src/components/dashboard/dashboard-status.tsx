@@ -1,13 +1,7 @@
 import { IconDatabase, IconRouter } from '@tabler/icons-react'
-import type {
-  DashboardEndpointData,
-  DashboardHost,
-} from '@/lib/dashboard/query'
+import type { DashboardEndpointData, DashboardHost } from '@/lib/dashboard/query'
 import { formatRelativeFreshness } from '@/lib/dashboard/summary'
-import {
-  formatDashboardNumber,
-  latestDashboardDate,
-} from './dashboard-presenters'
+import { formatDashboardNumber, latestDashboardDate } from './dashboard-presenters'
 import { DashboardRegionError } from './dashboard-region-error'
 
 export async function DashboardStatus({
@@ -26,8 +20,8 @@ export async function DashboardStatus({
   }
 
   const latest = latestDashboardDate([
-    ...hosts.flatMap(host => [host.lastInterfaceSyncAt, host.lastNodeSyncAt]),
-    ...endpoints.byHost.map(host => host.latestSeenAt),
+    ...hosts.flatMap((host) => [host.lastInterfaceSyncAt, host.lastNodeSyncAt]),
+    ...endpoints.byHost.map((host) => host.latestSeenAt),
   ])
 
   return (

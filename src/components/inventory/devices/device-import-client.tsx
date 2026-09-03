@@ -82,7 +82,9 @@ export function DeviceImportClient() {
         }
 
         if (parseResult.rows.length === 0 && parseResult.malformedRows.length === 0) {
-          setClientErrors([{ rowIndex: 0, field: 'file', message: 'CSV file contains no data rows' }])
+          setClientErrors([
+            { rowIndex: 0, field: 'file', message: 'CSV file contains no data rows' },
+          ])
           setIsParsing(false)
           return
         }
@@ -141,13 +143,14 @@ export function DeviceImportClient() {
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  const filteredRowStates = validationData?.rowStates.filter((rs) => {
-    if (filter === 'VALID') return rs.errors.length === 0
-    if (filter === 'CREATE') return rs.action === 'CREATE' && rs.errors.length === 0
-    if (filter === 'UPDATE') return rs.action === 'UPDATE' && rs.errors.length === 0
-    if (filter === 'ERRORS') return rs.errors.length > 0
-    return true
-  }) ?? []
+  const filteredRowStates =
+    validationData?.rowStates.filter((rs) => {
+      if (filter === 'VALID') return rs.errors.length === 0
+      if (filter === 'CREATE') return rs.action === 'CREATE' && rs.errors.length === 0
+      if (filter === 'UPDATE') return rs.action === 'UPDATE' && rs.errors.length === 0
+      if (filter === 'ERRORS') return rs.errors.length > 0
+      return true
+    }) ?? []
 
   return (
     <div className="space-y-6">
@@ -160,7 +163,7 @@ export function DeviceImportClient() {
 
       {/* STAGE 1: UPLOAD */}
       {stage === 'UPLOAD' && (
-        <div className="space-y-6 animate-fade-up">
+        <div className="animate-fade-up space-y-6">
           <div
             onDragOver={(e) => {
               e.preventDefault()
@@ -174,7 +177,7 @@ export function DeviceImportClient() {
               if (file) handleFile(file)
             }}
             onClick={() => fileInputRef.current?.click()}
-            className={`border border-dashed rounded-xl p-12 text-center cursor-pointer transition-all ${
+            className={`cursor-pointer rounded-xl border border-dashed p-12 text-center transition-all ${
               dragging
                 ? 'border-primary bg-muted/40'
                 : 'border-border bg-card hover:border-border/80 hover:bg-muted/30'
@@ -191,7 +194,7 @@ export function DeviceImportClient() {
               }}
             />
             <div className="flex flex-col items-center justify-center space-y-3">
-              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
                 {isParsing || isValidating ? (
                   <IconRefresh className="h-6 w-6 animate-spin" />
                 ) : (
@@ -215,12 +218,12 @@ export function DeviceImportClient() {
 
           {/* Client-side syntax/header errors */}
           {clientErrors.length > 0 && (
-            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-2">
-              <div className="flex items-center gap-2 text-destructive font-medium text-xs">
+            <div className="space-y-2 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+              <div className="flex items-center gap-2 text-xs font-medium text-destructive">
                 <IconAlertTriangle className="h-4 w-4 shrink-0" />
                 <span>Found {clientErrors.length} issue(s) in CSV format:</span>
               </div>
-              <ul className="space-y-1 text-xs text-destructive list-disc list-inside max-h-60 overflow-y-auto pl-1">
+              <ul className="max-h-60 list-inside list-disc space-y-1 overflow-y-auto pl-1 text-xs text-destructive">
                 {clientErrors.map((err, i) => (
                   <li key={i}>
                     {err.rowIndex > 0 ? `Row ${err.rowIndex}: ` : ''}
@@ -232,34 +235,37 @@ export function DeviceImportClient() {
           )}
 
           {/* Feature Highlights Card */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="rounded-xl border border-border bg-card p-4 space-y-1">
-              <div className="flex items-center gap-2 text-foreground font-medium text-xs">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="space-y-1 rounded-xl border border-border bg-card p-4">
+              <div className="flex items-center gap-2 text-xs font-medium text-foreground">
                 <IconBuilding className="h-4 w-4 text-muted-foreground" />
                 <span>Dynamic Site & Rack Provisioning</span>
               </div>
-              <p className="text-xs text-subtle leading-relaxed">
-                Missing sites and racks specified in the CSV will be automatically created on the fly during import.
+              <p className="text-xs leading-relaxed text-subtle">
+                Missing sites and racks specified in the CSV will be automatically created on the
+                fly during import.
               </p>
             </div>
 
-            <div className="rounded-xl border border-border bg-card p-4 space-y-1">
-              <div className="flex items-center gap-2 text-foreground font-medium text-xs">
+            <div className="space-y-1 rounded-xl border border-border bg-card p-4">
+              <div className="flex items-center gap-2 text-xs font-medium text-foreground">
                 <IconRefresh className="h-4 w-4 text-muted-foreground" />
                 <span>Serial Number Upsert</span>
               </div>
-              <p className="text-xs text-subtle leading-relaxed">
-                Rows with matching serial numbers in the database will update the existing device record rather than duplicate it.
+              <p className="text-xs leading-relaxed text-subtle">
+                Rows with matching serial numbers in the database will update the existing device
+                record rather than duplicate it.
               </p>
             </div>
 
-            <div className="rounded-xl border border-border bg-card p-4 space-y-1">
-              <div className="flex items-center gap-2 text-foreground font-medium text-xs">
+            <div className="space-y-1 rounded-xl border border-border bg-card p-4">
+              <div className="flex items-center gap-2 text-xs font-medium text-foreground">
                 <IconServer className="h-4 w-4 text-muted-foreground" />
                 <span>Collision & Height Checking</span>
               </div>
-              <p className="text-xs text-subtle leading-relaxed">
-                Intra-file and cross-database rack slot overlap checks prevent accidental dual-device assignments.
+              <p className="text-xs leading-relaxed text-subtle">
+                Intra-file and cross-database rack slot overlap checks prevent accidental
+                dual-device assignments.
               </p>
             </div>
           </div>
@@ -268,63 +274,67 @@ export function DeviceImportClient() {
 
       {/* STAGE 2: REVIEW & VALIDATION */}
       {stage === 'REVIEW' && validationData && (
-        <div className="space-y-5 animate-fade-up">
+        <div className="animate-fade-up space-y-5">
           {/* Summary Stat Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <div className="rounded-xl border border-border bg-card p-3 space-y-1">
-              <div className="text-[11px] font-medium text-subtle uppercase tracking-wider">Total Rows</div>
-              <div className="text-xl font-bold font-mono text-foreground">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <div className="space-y-1 rounded-xl border border-border bg-card p-3">
+              <div className="text-[11px] font-medium tracking-wider text-subtle uppercase">
+                Total Rows
+              </div>
+              <div className="font-mono text-xl font-bold text-foreground">
                 {validationData.summary.totalRows}
               </div>
             </div>
 
-            <div className="rounded-xl border border-border bg-card p-3 space-y-1">
-              <div className="text-[11px] font-medium text-subtle uppercase tracking-wider">
+            <div className="space-y-1 rounded-xl border border-border bg-card p-3">
+              <div className="text-[11px] font-medium tracking-wider text-subtle uppercase">
                 New Devices
               </div>
-              <div className="text-xl font-bold font-mono text-foreground">
+              <div className="font-mono text-xl font-bold text-foreground">
                 +{validationData.summary.createCount}
               </div>
             </div>
 
-            <div className="rounded-xl border border-border bg-card p-3 space-y-1">
-              <div className="text-[11px] font-medium text-subtle uppercase tracking-wider">
+            <div className="space-y-1 rounded-xl border border-border bg-card p-3">
+              <div className="text-[11px] font-medium tracking-wider text-subtle uppercase">
                 To Update
               </div>
-              <div className="text-xl font-bold font-mono text-foreground">
+              <div className="font-mono text-xl font-bold text-foreground">
                 ~{validationData.summary.updateCount}
               </div>
             </div>
 
-            <div className="rounded-xl border border-border bg-card p-3 space-y-1">
-              <div className="text-[11px] font-medium text-subtle uppercase tracking-wider">
+            <div className="space-y-1 rounded-xl border border-border bg-card p-3">
+              <div className="text-[11px] font-medium tracking-wider text-subtle uppercase">
                 New Sites
               </div>
-              <div className="text-xl font-bold font-mono text-foreground">
+              <div className="font-mono text-xl font-bold text-foreground">
                 {validationData.summary.sitesToCreate.length}
               </div>
             </div>
 
-            <div className="rounded-xl border border-border bg-card p-3 space-y-1">
-              <div className="text-[11px] font-medium text-subtle uppercase tracking-wider">
+            <div className="space-y-1 rounded-xl border border-border bg-card p-3">
+              <div className="text-[11px] font-medium tracking-wider text-subtle uppercase">
                 New Racks
               </div>
-              <div className="text-xl font-bold font-mono text-foreground">
+              <div className="font-mono text-xl font-bold text-foreground">
                 {validationData.summary.racksToCreate.length}
               </div>
             </div>
 
             <div
-              className={`rounded-xl border p-3 space-y-1 bg-card ${
-                validationData.summary.errorCount > 0
-                  ? 'border-destructive/40'
-                  : 'border-border'
+              className={`space-y-1 rounded-xl border bg-card p-3 ${
+                validationData.summary.errorCount > 0 ? 'border-destructive/40' : 'border-border'
               }`}
             >
-              <div className={`text-[11px] font-medium uppercase tracking-wider ${validationData.summary.errorCount > 0 ? 'text-destructive' : 'text-subtle'}`}>
+              <div
+                className={`text-[11px] font-medium tracking-wider uppercase ${validationData.summary.errorCount > 0 ? 'text-destructive' : 'text-subtle'}`}
+              >
                 Errors
               </div>
-              <div className={`text-xl font-bold font-mono ${validationData.summary.errorCount > 0 ? 'text-destructive' : 'text-foreground'}`}>
+              <div
+                className={`font-mono text-xl font-bold ${validationData.summary.errorCount > 0 ? 'text-destructive' : 'text-foreground'}`}
+              >
                 {validationData.summary.errorCount}
               </div>
             </div>
@@ -333,8 +343,8 @@ export function DeviceImportClient() {
           {/* Provisioning Notifications */}
           {(validationData.summary.sitesToCreate.length > 0 ||
             validationData.summary.racksToCreate.length > 0) && (
-            <div className="rounded-xl border border-border bg-card p-3.5 space-y-2 text-xs">
-              <div className="font-medium text-foreground flex items-center gap-1.5">
+            <div className="space-y-2 rounded-xl border border-border bg-card p-3.5 text-xs">
+              <div className="flex items-center gap-1.5 font-medium text-foreground">
                 <IconBuilding className="h-4 w-4 text-muted-foreground" />
                 <span>Entities to be Provisioned Automatically:</span>
               </div>
@@ -342,7 +352,7 @@ export function DeviceImportClient() {
                 {validationData.summary.sitesToCreate.map((site) => (
                   <span
                     key={site}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted border border-border font-mono text-[11px] text-foreground"
+                    className="inline-flex items-center gap-1 rounded border border-border bg-muted px-2 py-0.5 font-mono text-[11px] text-foreground"
                   >
                     + Site: {site}
                   </span>
@@ -350,7 +360,7 @@ export function DeviceImportClient() {
                 {validationData.summary.racksToCreate.map((r, i) => (
                   <span
                     key={i}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted border border-border font-mono text-[11px] text-foreground"
+                    className="inline-flex items-center gap-1 rounded border border-border bg-muted px-2 py-0.5 font-mono text-[11px] text-foreground"
                   >
                     + Rack: {r.siteName} / {r.rackName}
                   </span>
@@ -361,12 +371,12 @@ export function DeviceImportClient() {
 
           {/* Table Header Controls */}
           <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-            <div className="flex items-center gap-1 bg-muted p-1 rounded-lg border border-border text-xs">
+            <div className="flex items-center gap-1 rounded-lg border border-border bg-muted p-1 text-xs">
               <button
                 onClick={() => setFilter('ALL')}
-                className={`px-3 py-1 rounded font-medium transition-all ${
+                className={`rounded px-3 py-1 font-medium transition-all ${
                   filter === 'ALL'
-                    ? 'bg-card text-foreground shadow-xs font-semibold'
+                    ? 'bg-card font-semibold text-foreground shadow-xs'
                     : 'text-subtle hover:text-foreground'
                 }`}
               >
@@ -374,9 +384,9 @@ export function DeviceImportClient() {
               </button>
               <button
                 onClick={() => setFilter('VALID')}
-                className={`px-3 py-1 rounded font-medium transition-all ${
+                className={`rounded px-3 py-1 font-medium transition-all ${
                   filter === 'VALID'
-                    ? 'bg-card text-foreground shadow-xs font-semibold'
+                    ? 'bg-card font-semibold text-foreground shadow-xs'
                     : 'text-subtle hover:text-foreground'
                 }`}
               >
@@ -384,9 +394,9 @@ export function DeviceImportClient() {
               </button>
               <button
                 onClick={() => setFilter('CREATE')}
-                className={`px-3 py-1 rounded font-medium transition-all ${
+                className={`rounded px-3 py-1 font-medium transition-all ${
                   filter === 'CREATE'
-                    ? 'bg-card text-foreground shadow-xs font-semibold'
+                    ? 'bg-card font-semibold text-foreground shadow-xs'
                     : 'text-subtle hover:text-foreground'
                 }`}
               >
@@ -394,9 +404,9 @@ export function DeviceImportClient() {
               </button>
               <button
                 onClick={() => setFilter('UPDATE')}
-                className={`px-3 py-1 rounded font-medium transition-all ${
+                className={`rounded px-3 py-1 font-medium transition-all ${
                   filter === 'UPDATE'
-                    ? 'bg-card text-foreground shadow-xs font-semibold'
+                    ? 'bg-card font-semibold text-foreground shadow-xs'
                     : 'text-subtle hover:text-foreground'
                 }`}
               >
@@ -405,9 +415,9 @@ export function DeviceImportClient() {
               {validationData.summary.errorCount > 0 && (
                 <button
                   onClick={() => setFilter('ERRORS')}
-                  className={`px-3 py-1 rounded font-medium transition-all ${
+                  className={`rounded px-3 py-1 font-medium transition-all ${
                     filter === 'ERRORS'
-                      ? 'bg-card text-destructive shadow-xs font-semibold'
+                      ? 'bg-card font-semibold text-destructive shadow-xs'
                       : 'text-destructive hover:text-destructive'
                   }`}
                 >
@@ -423,8 +433,12 @@ export function DeviceImportClient() {
               <Button
                 size="sm"
                 onClick={handleExecute}
-                disabled={!validationData.canImport || isExecuting || validationData.summary.validCount === 0}
-                className="text-xs gap-1.5"
+                disabled={
+                  !validationData.canImport ||
+                  isExecuting ||
+                  validationData.summary.validCount === 0
+                }
+                className="gap-1.5 text-xs"
               >
                 {isExecuting ? (
                   <>
@@ -434,7 +448,8 @@ export function DeviceImportClient() {
                 ) : validationData.summary.errorCount > 0 ? (
                   <>
                     <IconCheck className="h-4 w-4" />
-                    Import {validationData.summary.validCount} Valid Devices (Skip {validationData.summary.errorCount} Errors)
+                    Import {validationData.summary.validCount} Valid Devices (Skip{' '}
+                    {validationData.summary.errorCount} Errors)
                   </>
                 ) : (
                   <>
@@ -447,13 +462,13 @@ export function DeviceImportClient() {
           </div>
 
           {/* Interactive Preview Table */}
-          <div className="rounded-xl border border-border bg-card overflow-hidden shadow-xs">
+          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
             <div className={TABLE_SCROLL_CLS}>
-              <table className="w-full text-xs text-left">
+              <table className="w-full text-left text-xs">
                 <thead className={DENSE_TABLE_HEAD_CLS}>
                   <tr>
-                    <th className="px-3 py-2.5 w-12 font-mono">#</th>
-                    <th className="px-3 py-2.5 w-24">Action</th>
+                    <th className="w-12 px-3 py-2.5 font-mono">#</th>
+                    <th className="w-24 px-3 py-2.5">Action</th>
                     <th className="px-3 py-2.5 font-semibold text-foreground">Hostname</th>
                     <th className="px-3 py-2.5">Serial Number</th>
                     <th className="px-3 py-2.5">Management IP</th>
@@ -482,53 +497,51 @@ export function DeviceImportClient() {
                         </td>
                         <td className="px-3 py-2">
                           {rs.action === 'CREATE' ? (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-500/15 text-green-700 dark:text-green-400">
+                            <span className="inline-flex items-center rounded bg-green-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-green-700 dark:text-green-400">
                               CREATE
                             </span>
                           ) : (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-700 dark:text-blue-400">
+                            <span className="inline-flex items-center rounded bg-blue-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 dark:text-blue-400">
                               UPDATE
                             </span>
                           )}
                         </td>
-                        <td className="px-3 py-2 font-medium text-foreground whitespace-nowrap">
+                        <td className="px-3 py-2 font-medium whitespace-nowrap text-foreground">
                           {rs.row.hostname}
                         </td>
-                        <td className="px-3 py-2 font-mono text-muted-foreground whitespace-nowrap">
+                        <td className="px-3 py-2 font-mono whitespace-nowrap text-muted-foreground">
                           {rs.row.serialNumber}
                         </td>
-                        <td className="px-3 py-2 font-mono text-foreground whitespace-nowrap">
+                        <td className="px-3 py-2 font-mono whitespace-nowrap text-foreground">
                           {rs.row.managementIp ?? '—'}
                         </td>
-                        <td className="px-3 py-2 font-mono text-subtle whitespace-nowrap">
+                        <td className="px-3 py-2 font-mono whitespace-nowrap text-subtle">
                           {rs.row.assetTag ?? '—'}
                         </td>
-                        <td className="px-3 py-2 text-subtle whitespace-nowrap">
+                        <td className="px-3 py-2 whitespace-nowrap text-subtle">
                           {rs.row.vendor} {rs.row.model} ({rs.row.heightU}U)
                         </td>
-                        <td className="px-3 py-2 text-subtle whitespace-nowrap">
+                        <td className="px-3 py-2 whitespace-nowrap text-subtle">
                           {rs.row.rack ? (
                             <span className="inline-flex items-center gap-1 font-mono text-[11px]">
                               {rs.row.site ? `${rs.row.site} · ` : ''}
                               {rs.row.rack}
                               {rs.rackStatus === 'WILL_CREATE' && (
-                                <span className="text-[10px] text-subtle font-sans">
-                                  (new)
-                                </span>
+                                <span className="font-sans text-[10px] text-subtle">(new)</span>
                               )}
                             </span>
                           ) : (
                             '—'
                           )}
                         </td>
-                        <td className="px-3 py-2 font-mono text-subtle whitespace-nowrap">
+                        <td className="px-3 py-2 font-mono whitespace-nowrap text-subtle">
                           {rs.row.rackPosition ? `U${rs.row.rackPosition}` : '—'}
                         </td>
-                        <td className="px-3 py-2 text-subtle whitespace-nowrap">
+                        <td className="px-3 py-2 whitespace-nowrap text-subtle">
                           {rs.row.stackName ? (
                             <span className="inline-flex items-center gap-1 font-mono text-[11px] text-foreground">
                               <span>{rs.row.stackName}</span>
-                              <span className="text-muted-foreground text-[10px]">
+                              <span className="text-[10px] text-muted-foreground">
                                 · {rs.row.stackRole === 'MASTER' ? 'Master' : 'Member'}
                                 {rs.row.switchId != null ? ` (SW #${rs.row.switchId})` : ''}
                               </span>
@@ -543,7 +556,7 @@ export function DeviceImportClient() {
                               {rs.errors.map((err, errI) => (
                                 <div
                                   key={errI}
-                                  className="text-[11px] font-medium text-destructive flex items-center gap-1"
+                                  className="flex items-center gap-1 text-[11px] font-medium text-destructive"
                                 >
                                   <IconAlertCircle className="h-3.5 w-3.5 shrink-0" />
                                   <span>{err}</span>
@@ -551,9 +564,7 @@ export function DeviceImportClient() {
                               ))}
                             </div>
                           ) : rs.warnings.length > 0 ? (
-                            <div className="text-[11px] text-subtle">
-                              {rs.warnings.join('; ')}
-                            </div>
+                            <div className="text-[11px] text-subtle">{rs.warnings.join('; ')}</div>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-[11px] font-medium text-green-700 dark:text-green-400">
                               <IconCheck className="h-3.5 w-3.5" /> Ready
@@ -572,8 +583,8 @@ export function DeviceImportClient() {
 
       {/* STAGE 3: COMPLETE */}
       {stage === 'COMPLETE' && executionResult && (
-        <div className="rounded-xl border border-border bg-card p-8 space-y-6 text-center max-w-xl mx-auto animate-fade-up shadow-sm">
-          <div className="h-12 w-12 rounded-full bg-muted text-foreground mx-auto flex items-center justify-center">
+        <div className="animate-fade-up mx-auto max-w-xl space-y-6 rounded-xl border border-border bg-card p-8 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted text-foreground">
             <IconCheck className="h-6 w-6" />
           </div>
 
@@ -585,45 +596,44 @@ export function DeviceImportClient() {
               Your device inventory, rack assignments, and switch stacks have been updated.
             </p>
             {executionResult.skippedErrorsCount > 0 && (
-              <p className="text-xs text-subtle pt-1">
-                <span className="font-mono text-foreground font-semibold">{executionResult.skippedErrorsCount}</span> device(s) with errors were skipped.
+              <p className="pt-1 text-xs text-subtle">
+                <span className="font-mono font-semibold text-foreground">
+                  {executionResult.skippedErrorsCount}
+                </span>{' '}
+                device(s) with errors were skipped.
               </p>
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3 max-w-md mx-auto text-left">
-            <div className="rounded-lg border border-border bg-card p-3 space-y-0.5">
-              <div className="text-[10px] uppercase font-semibold text-subtle">
-                Devices Created
-              </div>
-              <div className="text-lg font-bold font-mono text-foreground">
+          <div className="mx-auto grid max-w-md grid-cols-2 gap-3 text-left">
+            <div className="space-y-0.5 rounded-lg border border-border bg-card p-3">
+              <div className="text-[10px] font-semibold text-subtle uppercase">Devices Created</div>
+              <div className="font-mono text-lg font-bold text-foreground">
                 +{executionResult.createdCount}
               </div>
             </div>
 
-            <div className="rounded-lg border border-border bg-card p-3 space-y-0.5">
-              <div className="text-[10px] uppercase font-semibold text-subtle">
-                Devices Updated
-              </div>
-              <div className="text-lg font-bold font-mono text-foreground">
+            <div className="space-y-0.5 rounded-lg border border-border bg-card p-3">
+              <div className="text-[10px] font-semibold text-subtle uppercase">Devices Updated</div>
+              <div className="font-mono text-lg font-bold text-foreground">
                 ~{executionResult.updatedCount}
               </div>
             </div>
 
-            <div className="rounded-lg border border-border bg-card p-3 space-y-0.5">
-              <div className="text-[10px] uppercase font-semibold text-subtle">
+            <div className="space-y-0.5 rounded-lg border border-border bg-card p-3">
+              <div className="text-[10px] font-semibold text-subtle uppercase">
                 Sites Provisioned
               </div>
-              <div className="text-lg font-bold font-mono text-foreground">
+              <div className="font-mono text-lg font-bold text-foreground">
                 {executionResult.sitesCreated}
               </div>
             </div>
 
-            <div className="rounded-lg border border-border bg-card p-3 space-y-0.5">
-              <div className="text-[10px] uppercase font-semibold text-subtle">
+            <div className="space-y-0.5 rounded-lg border border-border bg-card p-3">
+              <div className="text-[10px] font-semibold text-subtle uppercase">
                 Racks Provisioned
               </div>
-              <div className="text-lg font-bold font-mono text-foreground">
+              <div className="font-mono text-lg font-bold text-foreground">
                 {executionResult.racksCreated}
               </div>
             </div>

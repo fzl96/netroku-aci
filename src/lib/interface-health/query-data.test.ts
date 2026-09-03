@@ -11,11 +11,11 @@ const requireSession = mock(async () => {
 
 let hosts = [{ id: 'h1', name: 'Fabric', host: 'apic.local' }]
 const apicHostFindMany = mock(async () => hosts)
-const apicHostFindFirst = mock(async (args: { select?: Record<string, boolean> }) => (
+const apicHostFindFirst = mock(async (args: { select?: Record<string, boolean> }) =>
   args.select?.lastInterfaceSyncAt
     ? { lastInterfaceSyncAt: new Date('2026-01-01T00:00:00Z') }
-    : { id: 'h1', name: 'Fabric' }
-))
+    : { id: 'h1', name: 'Fabric' },
+)
 
 const crcSamples = [
   {
@@ -62,10 +62,10 @@ const exportSample = {
     internalSecret: 'omit-interface',
   },
 }
-const interfaceSampleFindMany = mock(async (args: {
-  select?: Record<string, unknown>
-  include?: Record<string, unknown>
-}) => args.select?.adminSt ? [exportSample] : crcSamples)
+const interfaceSampleFindMany = mock(
+  async (args: { select?: Record<string, unknown>; include?: Record<string, unknown> }) =>
+    args.select?.adminSt ? [exportSample] : crcSamples,
+)
 
 function snapshot(id: string, node: string, ifName: string, crc: bigint) {
   return {
@@ -80,24 +80,36 @@ function snapshot(id: string, node: string, ifName: string, crc: bigint) {
     description: '',
     lastLinkStChg: new Date('2026-01-03T00:00:00Z'),
     secret: 'omit-snapshot',
-    samples: [{
-      sampledAt: new Date('2026-01-04T00:00:00Z'),
-      rxBytes: BigInt(10), rxErrors: BigInt(1),
-      rxCrcErrors: crc, rxAlignErrors: BigInt(0),
-      txBytes: BigInt(20), txErrors: BigInt(2),
-      dRxBytes: BigInt(3), dRxErrors: BigInt(4), dRxDiscards: BigInt(5),
-      dRxCrcErrors: crc, dRxAlignErrors: null,
-      dTxBytes: BigInt(6), dTxErrors: BigInt(7), dTxDiscards: null,
-    }],
+    samples: [
+      {
+        sampledAt: new Date('2026-01-04T00:00:00Z'),
+        rxBytes: BigInt(10),
+        rxErrors: BigInt(1),
+        rxCrcErrors: crc,
+        rxAlignErrors: BigInt(0),
+        txBytes: BigInt(20),
+        txErrors: BigInt(2),
+        dRxBytes: BigInt(3),
+        dRxErrors: BigInt(4),
+        dRxDiscards: BigInt(5),
+        dRxCrcErrors: crc,
+        dRxAlignErrors: null,
+        dTxBytes: BigInt(6),
+        dTxErrors: BigInt(7),
+        dTxDiscards: null,
+      },
+    ],
   }
 }
 
-const snapshots = [snapshot('i1', 'leaf-1', 'eth1/1', BigInt(2)), snapshot('i2', 'leaf-2', 'eth1/2', BigInt(5))]
-const interfaceSnapshotFindMany = mock(async (args: { distinct?: string[] }) => (
-  args.distinct
-    ? [{ node: 'leaf-2' }, { node: '' }, { node: 'leaf-1' }]
-    : snapshots
-) as never)
+const snapshots = [
+  snapshot('i1', 'leaf-1', 'eth1/1', BigInt(2)),
+  snapshot('i2', 'leaf-2', 'eth1/2', BigInt(5)),
+]
+const interfaceSnapshotFindMany = mock(
+  async (args: { distinct?: string[] }) =>
+    (args.distinct ? [{ node: 'leaf-2' }, { node: '' }, { node: 'leaf-1' }] : snapshots) as never,
+)
 const queryRaw = mock(async () => [{ interfaceId: 'i2' }])
 
 const cacheCalls: Array<{
@@ -112,12 +124,14 @@ mock.module('@/lib/auth', () => ({
   requireSession,
   requireAdmin: async () => ({ id: 'admin', userName: 'admin' }),
 }))
-mock.module('@/lib/prisma', () => ({ prisma: {
-  apicHost: { findMany: apicHostFindMany, findFirst: apicHostFindFirst },
-  interfaceSample: { findMany: interfaceSampleFindMany },
-  interfaceSnapshot: { findMany: interfaceSnapshotFindMany },
-  $queryRaw: queryRaw,
-} }))
+mock.module('@/lib/prisma', () => ({
+  prisma: {
+    apicHost: { findMany: apicHostFindMany, findFirst: apicHostFindFirst },
+    interfaceSample: { findMany: interfaceSampleFindMany },
+    interfaceSnapshot: { findMany: interfaceSnapshotFindMany },
+    $queryRaw: queryRaw,
+  },
+}))
 mock.module('next/cache', () => ({
   unstable_cache: (
     fn: (...args: unknown[]) => unknown,
@@ -138,8 +152,15 @@ mock.module('react', () => ({ ...React, cache: (fn: unknown) => fn }))
 const query = await import('./query')
 
 const base: InterfaceHealthPageParams = {
-  hostId: 'h1', query: '', nodes: [], page: 1, pageSize: 50,
-  view: 'all', window: '7d', counterMode: 'delta', sort: { kind: 'natural' },
+  hostId: 'h1',
+  query: '',
+  nodes: [],
+  page: 1,
+  pageSize: 50,
+  view: 'all',
+  window: '7d',
+  counterMode: 'delta',
+  sort: { kind: 'natural' },
 }
 
 beforeEach(() => {
@@ -239,11 +260,20 @@ describe('getInterfaceResults', () => {
       description: '',
       lastLinkStChg: '2026-01-03T00:00:00.000Z',
       lastSampledAt: '2026-01-04T00:00:00.000Z',
-      rxBytes: '10', rxErrors: '1', rxCrcErrors: '2', rxAlignErrors: '0',
-      txBytes: '20', txErrors: '2',
-      dRxBytes: '3', dRxErrors: '4', dRxDiscards: '5',
-      dRxCrcErrors: '2', dRxAlignErrors: null,
-      dTxBytes: '6', dTxErrors: '7', dTxDiscards: null,
+      rxBytes: '10',
+      rxErrors: '1',
+      rxCrcErrors: '2',
+      rxAlignErrors: '0',
+      txBytes: '20',
+      txErrors: '2',
+      dRxBytes: '3',
+      dRxErrors: '4',
+      dRxDiscards: '5',
+      dRxCrcErrors: '2',
+      dRxAlignErrors: null,
+      dTxBytes: '6',
+      dTxErrors: '7',
+      dTxDiscards: null,
       crcWindowTotal: null,
       hasRecentStateChange: expect.any(Boolean),
     })
@@ -255,21 +285,25 @@ describe('getInterfaceResults', () => {
     const results = await query.getInterfaceResults(base)
     expect(results.sortKey).toBeNull()
     expect(results.sortDirection).toBe('desc')
-    expect(results.rows.map(row => row.id)).toEqual(['i1', 'i2'])
+    expect(results.rows.map((row) => row.id)).toEqual(['i1', 'i2'])
   })
 
   it('ranks the CRC view by windowed total and exposes it per row', async () => {
     const results = await query.getInterfaceResults({
-      ...base, view: 'crc', sort: { kind: 'crc-window', direction: 'desc' },
+      ...base,
+      view: 'crc',
+      sort: { kind: 'crc-window', direction: 'desc' },
     })
     expect(results.sortKey).toBe('crcWindowTotal')
-    expect(results.rows.map(row => row.id)).toEqual(['i2', 'i1'])
-    expect(results.rows.map(row => row.crcWindowTotal)).toEqual(['5', '2'])
+    expect(results.rows.map((row) => row.id)).toEqual(['i2', 'i1'])
+    expect(results.rows.map((row) => row.crcWindowTotal)).toEqual(['5', '2'])
   })
 
   it('authorizes once when the CRC result cache needs window totals', async () => {
     await query.getInterfaceResults({
-      ...base, view: 'crc', sort: { kind: 'crc-window', direction: 'desc' },
+      ...base,
+      view: 'crc',
+      sort: { kind: 'crc-window', direction: 'desc' },
     })
 
     expect(requireSession).toHaveBeenCalledTimes(1)
@@ -281,19 +315,26 @@ describe('getInterfaceResults', () => {
       totals: [{ interfaceId: 'i1', total: '9' }],
     }
 
-    await query.getInterfaceResults({
-      ...base, view: 'crc', sort: { kind: 'crc-window', direction: 'desc' },
-    }, preloaded)
+    await query.getInterfaceResults(
+      {
+        ...base,
+        view: 'crc',
+        sort: { kind: 'crc-window', direction: 'desc' },
+      },
+      preloaded,
+    )
 
-    const resultsCache = cacheCalls.find(call => call.key[1] === 'results')
+    const resultsCache = cacheCalls.find((call) => call.key[1] === 'results')
     expect(resultsCache?.invocationArgs).toEqual([[preloaded.totals]])
   })
 
   it('honours an ascending CRC window sort', async () => {
     const results = await query.getInterfaceResults({
-      ...base, view: 'crc', sort: { kind: 'crc-window', direction: 'asc' },
+      ...base,
+      view: 'crc',
+      sort: { kind: 'crc-window', direction: 'asc' },
     })
-    expect(results.rows.map(row => row.id)).toEqual(['i1', 'i2'])
+    expect(results.rows.map((row) => row.id)).toEqual(['i1', 'i2'])
     expect(results.sortDirection).toBe('asc')
   })
 
@@ -303,14 +344,14 @@ describe('getInterfaceResults', () => {
       sort: { kind: 'counter', sort: { key: 'rxCrcErrors', direction: 'desc', mode: 'delta' } },
     })
     expect(results.sortKey).toBe('rxCrcErrors')
-    expect(results.rows.map(row => row.id)).toEqual(['i2', 'i1'])
+    expect(results.rows.map((row) => row.id)).toEqual(['i2', 'i1'])
   })
 
   it('pages the sorted rows and keeps the unpaged total', async () => {
     const results = await query.getInterfaceResults({ ...base, pageSize: 10, page: 2 })
     expect(results.total).toBe(2)
     expect(results.page).toBe(2)
-    expect(results.rows.map(row => row.id)).toEqual([])
+    expect(results.rows.map((row) => row.id)).toEqual([])
 
     const all = await query.getInterfaceResults({ ...base, pageSize: 'all' })
     expect(all.rows).toHaveLength(2)
@@ -318,11 +359,21 @@ describe('getInterfaceResults', () => {
 
   it('keys the result cache by every filter that changes the row set', async () => {
     await query.getInterfaceResults({
-      ...base, view: 'state-changed', window: '30d', query: 'eth', nodes: ['leaf-1', 'leaf-2'],
+      ...base,
+      view: 'state-changed',
+      window: '30d',
+      query: 'eth',
+      nodes: ['leaf-1', 'leaf-2'],
       counterMode: 'current',
     })
     expect(cacheCalls.at(-1)?.key).toEqual([
-      'interface-health', 'results', 'h1', 'state-changed', '30d', 'eth', '["leaf-1","leaf-2"]',
+      'interface-health',
+      'results',
+      'h1',
+      'state-changed',
+      '30d',
+      'eth',
+      '["leaf-1","leaf-2"]',
       'natural::desc:current',
     ])
     expect(cacheCalls.at(-1)?.options.tags).toEqual(['interfaces:all', 'interfaces:host:h1'])
@@ -332,19 +383,43 @@ describe('getInterfaceResults', () => {
 describe('getInterfaceExport', () => {
   it('returns an exact purpose DTO selected from Prisma', async () => {
     const result = await query.getInterfaceExport({
-      hostId: 'h1', from: null, to: null, nodes: [],
+      hostId: 'h1',
+      from: null,
+      to: null,
+      nodes: [],
     })
 
     expect(result?.samples).toHaveLength(1)
-    expect(Object.keys(result!.samples[0]).sort()).toEqual([
-      'adminSt', 'dRxAlignErrors', 'dRxBytes', 'dRxCrcErrors', 'dRxDiscards',
-      'dRxErrors', 'dTxBytes', 'dTxDiscards', 'dTxErrors', 'interface', 'operSpeed',
-      'operSt', 'rxAlignErrors', 'rxBytes', 'rxCrcErrors', 'rxDiscards', 'rxErrors',
-      'rxPkts', 'sampledAt', 'txBytes', 'txDiscards', 'txErrors', 'txPkts',
-    ].sort())
-    expect(Object.keys(result!.samples[0].interface).sort()).toEqual([
-      'description', 'dn', 'ifName', 'node', 'usage',
-    ].sort())
+    expect(Object.keys(result!.samples[0]).sort()).toEqual(
+      [
+        'adminSt',
+        'dRxAlignErrors',
+        'dRxBytes',
+        'dRxCrcErrors',
+        'dRxDiscards',
+        'dRxErrors',
+        'dTxBytes',
+        'dTxDiscards',
+        'dTxErrors',
+        'interface',
+        'operSpeed',
+        'operSt',
+        'rxAlignErrors',
+        'rxBytes',
+        'rxCrcErrors',
+        'rxDiscards',
+        'rxErrors',
+        'rxPkts',
+        'sampledAt',
+        'txBytes',
+        'txDiscards',
+        'txErrors',
+        'txPkts',
+      ].sort(),
+    )
+    expect(Object.keys(result!.samples[0].interface).sort()).toEqual(
+      ['description', 'dn', 'ifName', 'node', 'usage'].sort(),
+    )
 
     const call = interfaceSampleFindMany.mock.calls.at(-1)?.[0]
     expect(call).toHaveProperty('select')

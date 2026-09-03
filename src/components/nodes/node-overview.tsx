@@ -3,7 +3,10 @@ import { NodeReadError, type NodeHostResolution, type NodeOverviewData } from '@
 import { NoNodeHost, NodeOverviewClient } from './nodes-client'
 import { NodeRegionError } from './node-region-error'
 
-export async function NodeOverview({ hostPromise, overviewPromise }: {
+export async function NodeOverview({
+  hostPromise,
+  overviewPromise,
+}: {
   hostPromise: Promise<NodeHostResolution>
   overviewPromise: Promise<NodeOverviewData | null>
 }) {

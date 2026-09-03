@@ -16,11 +16,7 @@ export function ApicHostsProvider({
   hosts: SafeApicHost[]
   children: ReactNode
 }) {
-  return (
-    <ApicHostsContext.Provider value={hosts}>
-      {children}
-    </ApicHostsContext.Provider>
-  )
+  return <ApicHostsContext.Provider value={hosts}>{children}</ApicHostsContext.Provider>
 }
 
 /**

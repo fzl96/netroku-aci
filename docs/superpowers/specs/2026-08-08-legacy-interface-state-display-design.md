@@ -28,14 +28,14 @@ Add a pure `normalizeLegacyInterfaceState(value)` helper to the Legacy interface
 
 Examples:
 
-| Raw value | Table value |
-| --- | --- |
-| `up`, `UP`, ` up ` | `up` |
-| `down` | `down` |
-| `notconnect` | `down` |
-| `administratively down` | `down` |
-| `disabled` | `down` |
-| empty or unknown text | `down` |
+| Raw value               | Table value |
+| ----------------------- | ----------- |
+| `up`, `UP`, `up`        | `up`        |
+| `down`                  | `down`      |
+| `notconnect`            | `down`      |
+| `administratively down` | `down`      |
+| `disabled`              | `down`      |
+| empty or unknown text   | `down`      |
 
 This intentionally creates an operational summary for the table without altering the source data used elsewhere.
 

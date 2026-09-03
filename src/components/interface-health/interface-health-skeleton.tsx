@@ -17,11 +17,23 @@ export function InterfaceControlsSkeleton() {
 }
 
 export function InterfaceNodeFilterSkeleton() {
-  return <div aria-busy="true" aria-label="Loading node filter" className="size-9 animate-pulse rounded-lg bg-muted" />
+  return (
+    <div
+      aria-busy="true"
+      aria-label="Loading node filter"
+      className="size-9 animate-pulse rounded-lg bg-muted"
+    />
+  )
 }
 
 export function InterfaceSummarySkeleton() {
-  return <span aria-busy="true" aria-label="Loading interface count" className="inline-block h-4 w-24 animate-pulse rounded-sm bg-muted" />
+  return (
+    <span
+      aria-busy="true"
+      aria-label="Loading interface count"
+      className="inline-block h-4 w-24 animate-pulse rounded-sm bg-muted"
+    />
+  )
 }
 
 export function InterfaceCrcTrendSkeleton() {

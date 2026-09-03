@@ -22,10 +22,12 @@
 ### Task 1: Paged class loader and compact snapshot indexes
 
 **Files:**
+
 - Create: `src/lib/apic/static-port-snapshot.ts`
 - Create: `src/lib/apic/static-port-snapshot.test.ts`
 
 **Interfaces:**
+
 - Consumes: `apicFetch(host, path, init)` and `ApicFetcher`-compatible injected fetchers.
 - Produces: `SnapshotRead<T>`, `EpgBindingIndex`, `StaticPortSnapshot`, `StaticPortSnapshotRequirements`, `StaticPortSnapshotLoader`, `bindingLookupKey(tDn, encap)`, and `loadStaticPortSnapshot(host, token, requirements, fetcher?)`.
 
@@ -118,12 +120,14 @@ Commit: `perf(apic): add paged static port snapshots`
 ### Task 2: Snapshot-backed deploy and rollback validation
 
 **Files:**
+
 - Modify: `src/lib/apic/paths.ts`
 - Modify: `src/lib/apic/paths.test.ts`
 - Modify: `src/lib/apic/apic.ts`
 - Modify: `src/lib/apic/apic.test.ts`
 
 **Interfaces:**
+
 - Consumes: `StaticPortSnapshotLoader`, `StaticPortSnapshot`, and `bindingLookupKey` from Task 1.
 - Produces: `buildEpgDn(row)` and `buildMoDn(row)` path helpers.
 - Preserves: the three-argument route-handler contract; tests may inject an optional fourth `StaticPortSnapshotLoader`.
@@ -221,9 +225,11 @@ Commit: `perf(apic): validate static ports from bulk snapshots`
 ### Task 3: Regression and production verification
 
 **Files:**
+
 - Verify all files changed by Tasks 1 and 2.
 
 **Interfaces:**
+
 - Consumes: the complete snapshot-backed static-port validator.
 - Produces: evidence that the feature branch remains buildable and existing unrelated behavior has not regressed.
 

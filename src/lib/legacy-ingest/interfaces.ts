@@ -8,10 +8,7 @@ import {
   type LegacyIngestResult,
 } from './common'
 
-export function computeLegacyDelta(
-  current: bigint,
-  previous: bigint | null,
-): bigint | null {
+export function computeLegacyDelta(current: bigint, previous: bigint | null): bigint | null {
   if (previous === null || current < previous) return null
   return current - previous
 }
@@ -98,7 +95,7 @@ export async function applyLegacyInterfaces(
 
   const presentWhere: Record<string, unknown> = { deviceId, present: true }
   if (rows.length > 0) {
-    presentWhere.ifNameKey = { notIn: rows.map(item => item.ifNameKey) }
+    presentWhere.ifNameKey = { notIn: rows.map((item) => item.ifNameKey) }
   }
   const cleared = await tx.legacyInterfaceSnapshot.updateMany({
     where: presentWhere,
@@ -115,10 +112,7 @@ export function ingestLegacyInterfaces(
   payload: LegacyInterfacePayload,
   db = defaultLegacyDb,
 ): Promise<LegacyIngestResult> {
-  return ingestLegacyFeature(
-    db,
-    'interfaces',
-    payload,
-    context => applyLegacyInterfaces(context, payload),
+  return ingestLegacyFeature(db, 'interfaces', payload, (context) =>
+    applyLegacyInterfaces(context, payload),
   )
 }

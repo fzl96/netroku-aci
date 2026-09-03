@@ -6,7 +6,10 @@ export function UsersResultsSkeleton() {
       </div>
       <div className="grid grid-cols-3 gap-4">
         {Array.from({ length: 3 }).map((_, card) => (
-          <div key={card} className="h-24 animate-pulse rounded-xl border border-border bg-muted/40" />
+          <div
+            key={card}
+            className="h-24 animate-pulse rounded-xl border border-border bg-muted/40"
+          />
         ))}
       </div>
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">

@@ -17,14 +17,14 @@ session and obtains APIC credentials without an interactive prompt.
 
 ## Decisions (settled during brainstorming)
 
-| Decision | Choice |
-| --- | --- |
-| Base branch | Work directly on `dev`. |
+| Decision         | Choice                                                                       |
+| ---------------- | ---------------------------------------------------------------------------- |
+| Base branch      | Work directly on `dev`.                                                      |
 | APIC credentials | Scheduler passes them per-host in the request body. **No DB schema change.** |
-| Endpoint auth | Shared bearer token (`SCHEDULER_TOKEN` in `.env`). |
-| Scope per call | Both datasets (endpoints + interfaces), multiple hosts. |
-| Endpoint path | `POST /api/cron/resync`. |
-| Manual routes | Refactor them to share the extracted persistence logic. |
+| Endpoint auth    | Shared bearer token (`SCHEDULER_TOKEN` in `.env`).                           |
+| Scope per call   | Both datasets (endpoints + interfaces), multiple hosts.                      |
+| Endpoint path    | `POST /api/cron/resync`.                                                     |
+| Manual routes    | Refactor them to share the extracted persistence logic.                      |
 
 ## Overview
 
@@ -44,9 +44,7 @@ Resync buttons. One call refreshes **both** datasets across **multiple** hosts.
 
 ```json
 {
-  "hosts": [
-    { "apicHostId": "clx...", "username": "admin", "password": "..." }
-  ]
+  "hosts": [{ "apicHostId": "clx...", "username": "admin", "password": "..." }]
 }
 ```
 

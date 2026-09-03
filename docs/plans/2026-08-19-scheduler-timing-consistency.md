@@ -13,6 +13,7 @@
 ### Task 1: Define interval-edit deadline policy
 
 **Files:**
+
 - Modify: `src/lib/apic/schedule-timing.ts`
 - Test: `src/lib/apic/schedule-timing.test.ts`
 
@@ -24,6 +25,7 @@
 ### Task 2: Apply timing policy in schedule edits
 
 **Files:**
+
 - Modify: `src/actions/resync-schedules.ts`
 - Create: `src/actions/resync-schedules.test.ts`
 
@@ -35,6 +37,7 @@
 ### Task 3: Finalize with the latest persisted interval
 
 **Files:**
+
 - Modify: `src/lib/apic/schedule-claim.ts`
 - Modify: `src/app/api/cron/tick/route.ts`
 - Create: `src/lib/apic/schedule-claim.test.ts`
@@ -47,6 +50,7 @@
 ### Task 4: Return authoritative queued state
 
 **Files:**
+
 - Modify: `src/actions/resync-schedules.ts`
 - Test: `src/actions/resync-schedules.test.ts`
 
@@ -58,6 +62,7 @@
 ### Task 5: Synchronize the Scheduler client
 
 **Files:**
+
 - Create: `src/lib/apic/schedule-polling.ts`
 - Create: `src/lib/apic/schedule-polling.test.ts`
 - Modify: `src/app/(app)/scheduler/SchedulerClient.tsx`

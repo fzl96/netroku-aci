@@ -16,7 +16,7 @@ export const LEGACY_ENDPOINT_SORTS = [
   'cleared',
 ] as const
 
-export type LegacyEndpointSort = typeof LEGACY_ENDPOINT_SORTS[number]
+export type LegacyEndpointSort = (typeof LEGACY_ENDPOINT_SORTS)[number]
 export type LegacyEndpointStatusFilter = LegacyEndpointStatus | 'all'
 
 export type RawLegacyEndpointParam = string | string[] | undefined
@@ -70,9 +70,7 @@ export function parseLegacyEndpointPageParams(
 
 /** The `all` filter spans both lifecycle states, so it becomes an empty
  *  narrowing rather than a status predicate. */
-export function legacyEndpointStatuses(
-  status: LegacyEndpointStatusFilter,
-): LegacyEndpointStatus[] {
+export function legacyEndpointStatuses(status: LegacyEndpointStatusFilter): LegacyEndpointStatus[] {
   return status === 'all' ? ['active', 'historical'] : [status]
 }
 

@@ -22,10 +22,12 @@
 ### Task 1: Pure History payload CSV builder
 
 **Files:**
+
 - Create: `src/app/(app)/history/export-utils.ts`
 - Create: `src/app/(app)/history/export-utils.test.ts`
 
 **Interfaces:**
+
 - Consumes: audit `action`, `target`, `payload`, and `createdAt`.
 - Produces: `buildHistoryPayloadCsvExport(input): HistoryPayloadCsvExport | null`, where `HistoryPayloadCsvExport` contains `csv` and `filename`.
 
@@ -97,10 +99,12 @@ git commit -m "feat: build history payload csv exports"
 ### Task 2: History export control and browser download
 
 **Files:**
+
 - Modify: `src/app/(app)/history/HistoryClient.tsx`
 - Test: `src/app/(app)/history/export-utils.test.ts`
 
 **Interfaces:**
+
 - Consumes: `buildHistoryPayloadCsvExport` from Task 1.
 - Produces: An **Export CSV** button in supported expanded Deploy/Rollback payload panels.
 
@@ -171,9 +175,11 @@ git commit -m "feat: export history payloads as csv"
 ### Task 3: Final regression verification
 
 **Files:**
+
 - Verify only; no planned source changes.
 
 **Interfaces:**
+
 - Consumes: completed exporter and History UI integration.
 - Produces: fresh evidence that the repository remains healthy.
 
@@ -204,11 +210,13 @@ Expected: only intentional plan/spec or implementation state is present, and the
 ### Task 4: Workflow-aware payload summary
 
 **Files:**
+
 - Modify: `src/app/(app)/history/export-utils.ts`
 - Modify: `src/app/(app)/history/export-utils.test.ts`
 - Modify: `src/app/(app)/history/HistoryClient.tsx`
 
 **Interfaces:**
+
 - Consumes: the same action, target, and validated payload rows used by `buildHistoryPayloadCsvExport`.
 - Produces: `buildHistoryPayloadSummary(input): HistoryPayloadSummary | null`, where the summary contains a row count, unique-object count, and a display label.
 

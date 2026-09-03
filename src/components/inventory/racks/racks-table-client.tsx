@@ -40,7 +40,11 @@ import { createSite, deleteSite, updateSite } from '@/lib/inventory/sites/action
 import type { SafeSite } from '@/lib/inventory/sites/query'
 import { createRack, deleteRack, updateRack } from '@/lib/inventory/racks/actions'
 import type { SafeRackWithDevices } from '@/lib/inventory/racks/query'
-import { clearDevicePlacement, updateDeviceHeight, updateDevicePlacement } from '@/lib/inventory/devices/actions'
+import {
+  clearDevicePlacement,
+  updateDeviceHeight,
+  updateDevicePlacement,
+} from '@/lib/inventory/devices/actions'
 import type { DeviceCatalogEntry } from '@/lib/inventory/devices/query'
 import { siteSchema, type SiteFormValues } from '@/lib/schemas/site'
 import { rackSchema, type RackFormValues } from '@/lib/schemas/rack'
@@ -81,12 +85,24 @@ export function RacksTableClient({
   }
 
   const [rackList, setRackList] = React.useState<RackItem[]>(
-    racks.map((rack) => ({ id: rack.id, name: rack.name, heightU: rack.heightU, devices: rack.devices })),
+    racks.map((rack) => ({
+      id: rack.id,
+      name: rack.name,
+      heightU: rack.heightU,
+      devices: rack.devices,
+    })),
   )
   const [prevRacks, setPrevRacks] = React.useState(racks)
   if (racks !== prevRacks) {
     setPrevRacks(racks)
-    setRackList(racks.map((rack) => ({ id: rack.id, name: rack.name, heightU: rack.heightU, devices: rack.devices })))
+    setRackList(
+      racks.map((rack) => ({
+        id: rack.id,
+        name: rack.name,
+        heightU: rack.heightU,
+        devices: rack.devices,
+      })),
+    )
   }
 
   const [deviceCatalog, setDeviceCatalog] = React.useState<DeviceCatalogEntry[]>(allDevices)
@@ -143,7 +159,12 @@ export function RacksTableClient({
     const site = siteList.find((s) => s.id === selectedSiteId) ?? null
     if (!site) return
     setEditingSite(site)
-    siteForm.reset({ name: site.name, address: site.address, latitude: site.latitude, longitude: site.longitude })
+    siteForm.reset({
+      name: site.name,
+      address: site.address,
+      latitude: site.latitude,
+      longitude: site.longitude,
+    })
     setSiteDialogOpen(true)
   }
 
@@ -156,7 +177,11 @@ export function RacksTableClient({
       return
     }
     if (editingSite) {
-      setSiteList((prev) => prev.map((s) => (s.id === result.data.id ? result.data : s)).sort((a, b) => a.name.localeCompare(b.name)))
+      setSiteList((prev) =>
+        prev
+          .map((s) => (s.id === result.data.id ? result.data : s))
+          .sort((a, b) => a.name.localeCompare(b.name)),
+      )
       toast.success('Site updated')
     } else {
       setSiteList((prev) => [...prev, result.data].sort((a, b) => a.name.localeCompare(b.name)))
@@ -207,11 +232,18 @@ export function RacksTableClient({
     }
     if (editingRack) {
       setRackList((prev) =>
-        prev.map((r) => (r.id === result.data.id ? { ...r, name: result.data.name, heightU: result.data.heightU } : r)),
+        prev.map((r) =>
+          r.id === result.data.id
+            ? { ...r, name: result.data.name, heightU: result.data.heightU }
+            : r,
+        ),
       )
       toast.success('Rack updated')
     } else {
-      setRackList((prev) => [...prev, { id: result.data.id, name: result.data.name, heightU: result.data.heightU, devices: [] }])
+      setRackList((prev) => [
+        ...prev,
+        { id: result.data.id, name: result.data.name, heightU: result.data.heightU, devices: [] },
+      ])
       toast.success('Rack created')
     }
     setRackDialogOpen(false)
@@ -291,7 +323,9 @@ export function RacksTableClient({
       rackPosition: d.rackPosition,
       heightU: d.heightU,
     }))
-    if (!canPlaceDevice(siblings, payload.deviceId, rackPosition, payload.heightU, targetRack.heightU)) {
+    if (
+      !canPlaceDevice(siblings, payload.deviceId, rackPosition, payload.heightU, targetRack.heightU)
+    ) {
       toast.error('Cannot place device here due to rack collision.')
       return
     }
@@ -317,7 +351,11 @@ export function RacksTableClient({
     }
 
     setDeviceCatalog((prev) =>
-      prev.map((d) => (d.id === payload.deviceId ? { ...d, rackId, rackPosition, rack: { name: targetRack.name } } : d)),
+      prev.map((d) =>
+        d.id === payload.deviceId
+          ? { ...d, rackId, rackPosition, rack: { name: targetRack.name } }
+          : d,
+      ),
     )
     toast.success('Device position updated')
   }
@@ -336,8 +374,14 @@ export function RacksTableClient({
       return
     }
 
-    setRackList((prev) => prev.map((rack) => ({ ...rack, devices: rack.devices.filter((d) => d.id !== deviceId) })))
-    setDeviceCatalog((prev) => prev.map((d) => (d.id === deviceId ? { ...d, rackId: null, rackPosition: null, rack: null } : d)))
+    setRackList((prev) =>
+      prev.map((rack) => ({ ...rack, devices: rack.devices.filter((d) => d.id !== deviceId) })),
+    )
+    setDeviceCatalog((prev) =>
+      prev.map((d) =>
+        d.id === deviceId ? { ...d, rackId: null, rackPosition: null, rack: null } : d,
+      ),
+    )
     toast.success('Device removed from rack')
   }
 
@@ -357,7 +401,11 @@ export function RacksTableClient({
     if (
       located.device.rackPosition !== null &&
       !canPlaceDevice(
-        located.rack.devices.map((d) => ({ id: d.id, rackPosition: d.rackPosition, heightU: d.heightU })),
+        located.rack.devices.map((d) => ({
+          id: d.id,
+          rackPosition: d.rackPosition,
+          heightU: d.heightU,
+        })),
         deviceId,
         located.device.rackPosition,
         nextHeight,
@@ -387,7 +435,9 @@ export function RacksTableClient({
         devices: rack.devices.map((d) => (d.id === deviceId ? { ...d, heightU: nextHeight } : d)),
       })),
     )
-    setDeviceCatalog((prev) => prev.map((d) => (d.id === deviceId ? { ...d, heightU: nextHeight } : d)))
+    setDeviceCatalog((prev) =>
+      prev.map((d) => (d.id === deviceId ? { ...d, heightU: nextHeight } : d)),
+    )
     toast.success(`Device resized to ${nextHeight}U`)
   }
 
@@ -395,12 +445,12 @@ export function RacksTableClient({
 
   if (siteList.length === 0) {
     return (
-      <div className="px-8 pb-6 space-y-4">
-        <p className="text-muted-foreground text-sm">Create a site to start visualizing racks.</p>
+      <div className="space-y-4 px-8 pb-6">
+        <p className="text-sm text-muted-foreground">Create a site to start visualizing racks.</p>
         {isAdmin && (
           <div className="rounded-lg border border-border p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-muted-foreground text-sm">No sites found.</p>
+              <p className="text-sm text-muted-foreground">No sites found.</p>
               <Button size="sm" onClick={openCreateSite}>
                 <IconPlus size={14} stroke={1.75} />
                 Create Site
@@ -421,12 +471,14 @@ export function RacksTableClient({
   }
 
   return (
-    <div className="px-8 pb-6 space-y-4">
-      <p className="text-muted-foreground text-sm">Select a site to view its rack elevation.</p>
+    <div className="space-y-4 px-8 pb-6">
+      <p className="text-sm text-muted-foreground">Select a site to view its rack elevation.</p>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-72">
-          <label htmlFor="rack-site-select" className="text-xs font-medium text-foreground">Site</label>
+          <label htmlFor="rack-site-select" className="text-xs font-medium text-foreground">
+            Site
+          </label>
           <NativeSelect
             id="rack-site-select"
             value={selectedSiteId ?? ''}
@@ -434,7 +486,9 @@ export function RacksTableClient({
             className="w-full"
           >
             {siteList.map((site) => (
-              <NativeSelectOption key={site.id} value={site.id}>{site.name}</NativeSelectOption>
+              <NativeSelectOption key={site.id} value={site.id}>
+                {site.name}
+              </NativeSelectOption>
             ))}
           </NativeSelect>
         </div>
@@ -451,7 +505,12 @@ export function RacksTableClient({
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" disabled={!selectedSiteId} aria-label="Site actions">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  disabled={!selectedSiteId}
+                  aria-label="Site actions"
+                >
                   <IconDots size={16} stroke={1.75} />
                 </Button>
               </DropdownMenuTrigger>
@@ -480,14 +539,22 @@ export function RacksTableClient({
       <Card className="border-border bg-card shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="font-serif text-base font-semibold text-foreground">{selectedSite?.name ?? 'Selected Site'}</CardTitle>
-            <Badge variant="outline" className="text-xs font-mono font-normal text-muted-foreground border-border bg-muted/50">
+            <CardTitle className="font-serif text-base font-semibold text-foreground">
+              {selectedSite?.name ?? 'Selected Site'}
+            </CardTitle>
+            <Badge
+              variant="outline"
+              className="border-border bg-muted/50 font-mono text-xs font-normal text-muted-foreground"
+            >
               {rackList.length} rack{rackList.length === 1 ? '' : 's'}
             </Badge>
           </div>
         </CardHeader>
         <CardContent className="grid gap-2 text-sm sm:grid-cols-2">
-          <div><span className="text-muted-foreground">Address: </span>{selectedSite?.address || '—'}</div>
+          <div>
+            <span className="text-muted-foreground">Address: </span>
+            {selectedSite?.address || '—'}
+          </div>
           <div>
             <span className="text-muted-foreground">Coordinates: </span>
             {selectedSite?.latitude != null && selectedSite?.longitude != null
@@ -498,7 +565,7 @@ export function RacksTableClient({
       </Card>
 
       {rackList.length === 0 ? (
-        <div className="text-muted-foreground rounded-lg border border-border p-6 text-sm">
+        <div className="rounded-lg border border-border p-6 text-sm text-muted-foreground">
           No racks for this site.
         </div>
       ) : (
@@ -579,7 +646,11 @@ export function RacksTableClient({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isSitePending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={handleDeleteSite} disabled={isSitePending}>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={handleDeleteSite}
+              disabled={isSitePending}
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -587,8 +658,11 @@ export function RacksTableClient({
       </AlertDialog>
 
       <Sheet open={rackDialogOpen} onOpenChange={setRackDialogOpen}>
-        <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 border-l border-border bg-card shadow-2xl data-[side=right]:sm:max-w-md">
-          <SheetHeader className="px-6 py-5 border-b border-subtle shrink-0">
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col gap-0 border-l border-border bg-card p-0 shadow-2xl data-[side=right]:sm:max-w-md"
+        >
+          <SheetHeader className="shrink-0 border-b border-subtle px-6 py-5">
             <SheetTitle className="font-serif text-base font-semibold text-foreground">
               {editingRack ? 'Edit Rack' : 'Create Rack'}
             </SheetTitle>
@@ -597,11 +671,20 @@ export function RacksTableClient({
             </SheetDescription>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto px-6 py-5">
-            <RackForm form={rackForm} onSubmit={handleSubmitRack} formId="rack-form" sites={siteList} />
+            <RackForm
+              form={rackForm}
+              onSubmit={handleSubmitRack}
+              formId="rack-form"
+              sites={siteList}
+            />
           </div>
-          <SheetFooter className="flex flex-row items-center justify-end border-t border-subtle bg-muted px-6 py-3.5 gap-2 shrink-0">
+          <SheetFooter className="flex shrink-0 flex-row items-center justify-end gap-2 border-t border-subtle bg-muted px-6 py-3.5">
             <FooterCancel onClick={() => setRackDialogOpen(false)} disabled={isRackPending} />
-            <FooterSubmit form="rack-form" disabled={isRackPending} label={isRackPending ? 'Saving…' : editingRack ? 'Save Changes' : 'Create Rack'} />
+            <FooterSubmit
+              form="rack-form"
+              disabled={isRackPending}
+              label={isRackPending ? 'Saving…' : editingRack ? 'Save Changes' : 'Create Rack'}
+            />
           </SheetFooter>
         </SheetContent>
       </Sheet>
@@ -616,7 +699,11 @@ export function RacksTableClient({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isRackPending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={handleDeleteRack} disabled={isRackPending}>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={handleDeleteRack}
+              disabled={isRackPending}
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -643,8 +730,11 @@ function SiteDrawer({
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 border-l border-border bg-card shadow-2xl data-[side=right]:sm:max-w-md">
-        <SheetHeader className="px-6 py-5 border-b border-subtle shrink-0">
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col gap-0 border-l border-border bg-card p-0 shadow-2xl data-[side=right]:sm:max-w-md"
+      >
+        <SheetHeader className="shrink-0 border-b border-subtle px-6 py-5">
           <SheetTitle className="font-serif text-base font-semibold text-foreground">
             {editing ? 'Edit Site' : 'Create Site'}
           </SheetTitle>
@@ -655,9 +745,13 @@ function SiteDrawer({
         <div className="flex-1 overflow-y-auto px-6 py-5">
           <SiteForm form={form} onSubmit={onSubmit} formId="site-form" />
         </div>
-        <SheetFooter className="flex flex-row items-center justify-end border-t border-subtle bg-muted px-6 py-3.5 gap-2 shrink-0">
+        <SheetFooter className="flex shrink-0 flex-row items-center justify-end gap-2 border-t border-subtle bg-muted px-6 py-3.5">
           <FooterCancel onClick={() => onOpenChange(false)} disabled={isPending} />
-          <FooterSubmit form="site-form" disabled={isPending} label={isPending ? 'Saving…' : editing ? 'Save Changes' : 'Create Site'} />
+          <FooterSubmit
+            form="site-form"
+            disabled={isPending}
+            label={isPending ? 'Saving…' : editing ? 'Save Changes' : 'Create Site'}
+          />
         </SheetFooter>
       </SheetContent>
     </Sheet>

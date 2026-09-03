@@ -8,7 +8,5 @@ export const metadata: Metadata = {
 }
 
 export default function Page({ searchParams }: PageProps<'/history'>) {
-  return (
-    <HistoryView paramsPromise={searchParams.then(parseHistoryPageParams)} />
-  )
+  return <HistoryView paramsPromise={searchParams.then(parseHistoryPageParams)} />
 }

@@ -29,7 +29,7 @@ export async function applyLegacyHealth(
     },
   })
 
-  const logRows = payload.logs.map(log => ({
+  const logRows = payload.logs.map((log) => ({
     deviceId,
     receiptId,
     eventAt: log.timestamp ? new Date(log.timestamp) : null,
@@ -37,15 +37,14 @@ export async function applyLegacyHealth(
     message: log.message,
     raw: log.raw,
     eventHash: createHash('sha256')
-      .update(log.timestamp
-        ? `${deviceId}|${log.timestamp}|${log.raw}`
-        : `${deviceId}|${log.raw}`)
+      .update(log.timestamp ? `${deviceId}|${log.timestamp}|${log.raw}` : `${deviceId}|${log.raw}`)
       .digest('hex'),
     collectedAt,
   }))
-  const insertedLogs = logRows.length > 0
-    ? await tx.legacyLogEntry.createMany({ data: logRows, skipDuplicates: true })
-    : { count: 0 }
+  const insertedLogs =
+    logRows.length > 0
+      ? await tx.legacyLogEntry.createMany({ data: logRows, skipDuplicates: true })
+      : { count: 0 }
 
   await tx.legacyDevice.update({
     where: { id: deviceId },
@@ -63,10 +62,7 @@ export function ingestLegacyHealth(
   payload: LegacyHealthPayload,
   db = defaultLegacyDb,
 ): Promise<LegacyIngestResult> {
-  return ingestLegacyFeature(
-    db,
-    'health',
-    payload,
-    context => applyLegacyHealth(context, payload),
+  return ingestLegacyFeature(db, 'health', payload, (context) =>
+    applyLegacyHealth(context, payload),
   )
 }

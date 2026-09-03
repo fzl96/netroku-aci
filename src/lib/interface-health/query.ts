@@ -21,11 +21,7 @@ import {
   type InterfacePageSize,
   type InterfaceWindow,
 } from './params'
-import {
-  sortInterfaceRows,
-  type InterfaceSortDirection,
-  type TableSortKey,
-} from './sort'
+import { sortInterfaceRows, type InterfaceSortDirection, type TableSortKey } from './sort'
 import { queryStateChangedInterfaceIds } from './state-change-query'
 import {
   isRecentLinkStateChange,
@@ -37,12 +33,20 @@ const INTERFACE_CACHE_SECONDS = 28_800
 
 const SAMPLE_SELECT = {
   sampledAt: true,
-  rxBytes: true, rxErrors: true,
-  rxCrcErrors: true, rxAlignErrors: true,
-  txBytes: true, txErrors: true,
-  dRxBytes: true, dRxErrors: true, dRxDiscards: true,
-  dRxCrcErrors: true, dRxAlignErrors: true,
-  dTxBytes: true, dTxErrors: true, dTxDiscards: true,
+  rxBytes: true,
+  rxErrors: true,
+  rxCrcErrors: true,
+  rxAlignErrors: true,
+  txBytes: true,
+  txErrors: true,
+  dRxBytes: true,
+  dRxErrors: true,
+  dRxDiscards: true,
+  dRxCrcErrors: true,
+  dRxAlignErrors: true,
+  dTxBytes: true,
+  dTxErrors: true,
+  dTxDiscards: true,
 } satisfies Prisma.InterfaceSampleSelect
 
 export type InterfaceHostOption = { id: string; name: string; host: string }
@@ -103,12 +107,16 @@ export type InterfaceResultsData = {
 
 export class InterfaceReadError extends Error {
   readonly code = 'unauthorized'
-  constructor() { super('Unauthorized'); this.name = 'InterfaceReadError' }
+  constructor() {
+    super('Unauthorized')
+    this.name = 'InterfaceReadError'
+  }
 }
 
 async function authorize(): Promise<void> {
-  try { await requireSession() }
-  catch (error) {
+  try {
+    await requireSession()
+  } catch (error) {
     if (!(error instanceof AuthenticationRequiredError)) throw error
     throw new InterfaceReadError()
   }
@@ -124,10 +132,11 @@ function cacheOptions(hostId: string) {
 async function resolveForRequest(requestedHostId: string): Promise<InterfaceHostResolution> {
   await authorize()
   const hosts = await prisma.apicHost.findMany({
-    orderBy: { createdAt: 'desc' }, select: { id: true, name: true, host: true },
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, name: true, host: true },
   })
   if (!hosts.length) return { kind: 'empty', hosts: [] }
-  const host = hosts.find(candidate => candidate.id === requestedHostId)
+  const host = hosts.find((candidate) => candidate.id === requestedHostId)
   if (host) return { kind: 'selected', host, hosts }
   return {
     kind: 'redirect',
@@ -139,43 +148,58 @@ export const resolveInterfaceHost = cache(resolveForRequest)
 
 export async function getInterfaceOverview(hostId: string): Promise<InterfaceOverviewData> {
   await authorize()
-  return unstable_cache(async () => {
-    const [host, nodes] = await Promise.all([
-      prisma.apicHost.findFirst({
-        where: { id: hostId }, select: { lastInterfaceSyncAt: true },
-      }),
-      prisma.interfaceSnapshot.findMany({
-        where: { apicHostId: hostId }, select: { node: true }, distinct: ['node'],
-      }),
-    ])
-    return {
-      lastSyncedAt: host?.lastInterfaceSyncAt?.toISOString() ?? null,
-      availableNodes: nodes.map(row => row.node).filter(node => node !== '').sort(),
-    }
-  }, ['interface-health', 'overview', hostId], cacheOptions(hostId))()
+  return unstable_cache(
+    async () => {
+      const [host, nodes] = await Promise.all([
+        prisma.apicHost.findFirst({
+          where: { id: hostId },
+          select: { lastInterfaceSyncAt: true },
+        }),
+        prisma.interfaceSnapshot.findMany({
+          where: { apicHostId: hostId },
+          select: { node: true },
+          distinct: ['node'],
+        }),
+      ])
+      return {
+        lastSyncedAt: host?.lastInterfaceSyncAt?.toISOString() ?? null,
+        availableNodes: nodes
+          .map((row) => row.node)
+          .filter((node) => node !== '')
+          .sort(),
+      }
+    },
+    ['interface-health', 'overview', hostId],
+    cacheOptions(hostId),
+  )()
 }
 
 function readCachedInterfaceCrcWindow(
   hostId: string,
   window: InterfaceWindow,
 ): Promise<InterfaceCrcWindowData> {
-  return unstable_cache(async () => {
-    const samples = await prisma.interfaceSample.findMany({
-      where: {
-        apicHostId: hostId,
-        sampledAt: { gte: interfaceWindowStart(window, new Date()) },
-        dRxCrcErrors: { gt: BigInt(0) },
-      },
-      select: { interfaceId: true, sampledAt: true, dRxCrcErrors: true },
-      orderBy: { sampledAt: 'asc' },
-    })
-    return {
-      trend: aggregateCrcTrend(samples),
-      totals: [...sumCrcByInterface(samples)].map(([interfaceId, total]) => ({
-        interfaceId, total: total.toString(),
-      })),
-    }
-  }, ['interface-health', 'crc-window', hostId, window], cacheOptions(hostId))()
+  return unstable_cache(
+    async () => {
+      const samples = await prisma.interfaceSample.findMany({
+        where: {
+          apicHostId: hostId,
+          sampledAt: { gte: interfaceWindowStart(window, new Date()) },
+          dRxCrcErrors: { gt: BigInt(0) },
+        },
+        select: { interfaceId: true, sampledAt: true, dRxCrcErrors: true },
+        orderBy: { sampledAt: 'asc' },
+      })
+      return {
+        trend: aggregateCrcTrend(samples),
+        totals: [...sumCrcByInterface(samples)].map(([interfaceId, total]) => ({
+          interfaceId,
+          total: total.toString(),
+        })),
+      }
+    },
+    ['interface-health', 'crc-window', hostId, window],
+    cacheOptions(hostId),
+  )()
 }
 
 /** One window fetch feeds both the aggregate trend chart and the per-port
@@ -199,9 +223,10 @@ function sortToken(params: InterfaceHealthPageParams): string {
   return `natural::desc:${params.counterMode}`
 }
 
-function displaySort(
-  params: InterfaceHealthPageParams,
-): { sortKey: TableSortKey | null; sortDirection: InterfaceSortDirection } {
+function displaySort(params: InterfaceHealthPageParams): {
+  sortKey: TableSortKey | null
+  sortDirection: InterfaceSortDirection
+} {
   const { sort } = params
   if (sort.kind === 'counter') {
     return { sortKey: sort.sort.key, sortDirection: sort.sort.direction }
@@ -271,55 +296,68 @@ export async function getInterfaceResults(
 
   // Authentication remains outside every persistent cache producer. The view
   // can pass its already-started CRC read so the trend and table share it.
-  const crcWindow = params.view === 'crc'
-    ? preloadedCrcWindow ?? await readCachedInterfaceCrcWindow(params.hostId, params.window)
-    : null
-
-  const rows = await unstable_cache(async (
-    crcWindowTotals: InterfaceCrcWindowTotal[] | null,
-  ): Promise<InterfaceRow[]> => {
-    const windowStart = interfaceWindowStart(params.window, new Date())
-
-    const crcTotals = crcWindowTotals
-      ? new Map(
-          crcWindowTotals
-            .map(({ interfaceId, total }) => [interfaceId, BigInt(total)] as const),
-        )
+  const crcWindow =
+    params.view === 'crc'
+      ? (preloadedCrcWindow ?? (await readCachedInterfaceCrcWindow(params.hostId, params.window)))
       : null
 
-    const stateChangedInterfaceIds = params.view === 'state-changed'
-      ? await queryStateChangedInterfaceIds(
-          sql => prisma.$queryRaw<Array<{ interfaceId: string }>>(sql),
-          params.hostId,
-          windowStart,
-        )
-      : []
+  const rows = await unstable_cache(
+    async (crcWindowTotals: InterfaceCrcWindowTotal[] | null): Promise<InterfaceRow[]> => {
+      const windowStart = interfaceWindowStart(params.window, new Date())
 
-    const where = buildInterfaceSnapshotWhere({
-      apicHostId: params.hostId,
-      view: params.view,
-      windowStart,
-      stateChangedInterfaceIds,
-      crcInterfaceIds: crcTotals ? [...crcTotals.keys()] : [],
-      nodeFilter: params.nodes,
-      query: params.query,
-    })
+      const crcTotals = crcWindowTotals
+        ? new Map(
+            crcWindowTotals.map(({ interfaceId, total }) => [interfaceId, BigInt(total)] as const),
+          )
+        : null
 
-    const snapshots = await prisma.interfaceSnapshot.findMany({
-      where,
-      orderBy: [{ node: 'asc' }, { ifName: 'asc' }],
-      include: { samples: { orderBy: { sampledAt: 'desc' }, take: 1, select: SAMPLE_SELECT } },
-    }) as unknown as StoredSnapshot[]
+      const stateChangedInterfaceIds =
+        params.view === 'state-changed'
+          ? await queryStateChangedInterfaceIds(
+              (sql) => prisma.$queryRaw<Array<{ interfaceId: string }>>(sql),
+              params.hostId,
+              windowStart,
+            )
+          : []
 
-    const sorted = params.sort.kind === 'crc-window'
-      ? sortByCrcWindowTotal(snapshots, crcTotals ?? new Map(), params.sort.direction)
-      : sortInterfaceRows(snapshots, params.sort.kind === 'counter' ? params.sort.sort : undefined)
+      const where = buildInterfaceSnapshotWhere({
+        apicHostId: params.hostId,
+        view: params.view,
+        windowStart,
+        stateChangedInterfaceIds,
+        crcInterfaceIds: crcTotals ? [...crcTotals.keys()] : [],
+        nodeFilter: params.nodes,
+        query: params.query,
+      })
 
-    return sorted.map(row => serializeRow(row, crcTotals, windowStart))
-  }, [
-    'interface-health', 'results', params.hostId, params.view, params.window,
-    params.query, JSON.stringify(params.nodes), sortToken(params),
-  ], cacheOptions(params.hostId))(crcWindow?.totals ?? null)
+      const snapshots = (await prisma.interfaceSnapshot.findMany({
+        where,
+        orderBy: [{ node: 'asc' }, { ifName: 'asc' }],
+        include: { samples: { orderBy: { sampledAt: 'desc' }, take: 1, select: SAMPLE_SELECT } },
+      })) as unknown as StoredSnapshot[]
+
+      const sorted =
+        params.sort.kind === 'crc-window'
+          ? sortByCrcWindowTotal(snapshots, crcTotals ?? new Map(), params.sort.direction)
+          : sortInterfaceRows(
+              snapshots,
+              params.sort.kind === 'counter' ? params.sort.sort : undefined,
+            )
+
+      return sorted.map((row) => serializeRow(row, crcTotals, windowStart))
+    },
+    [
+      'interface-health',
+      'results',
+      params.hostId,
+      params.view,
+      params.window,
+      params.query,
+      JSON.stringify(params.nodes),
+      sortToken(params),
+    ],
+    cacheOptions(params.hostId),
+  )(crcWindow?.totals ?? null)
 
   const start = params.pageSize === 'all' ? 0 : (params.page - 1) * params.pageSize
   return {
@@ -332,7 +370,11 @@ export async function getInterfaceResults(
 }
 
 const STATUS_SAMPLE_SELECT = {
-  id: true, sampledAt: true, adminSt: true, operSt: true, operSpeed: true,
+  id: true,
+  sampledAt: true,
+  adminSt: true,
+  operSt: true,
+  operSpeed: true,
 } satisfies Prisma.InterfaceSampleSelect
 
 /** Drawer reads are on-demand detail lookups for one port, so they stay
@@ -348,9 +390,12 @@ export async function getInterfaceErrorSamples(
     orderBy: { sampledAt: 'asc' },
     select: {
       sampledAt: true,
-      dRxErrors: true, dTxErrors: true,
-      dRxCrcErrors: true, dRxAlignErrors: true,
-      dRxDiscards: true, dTxDiscards: true,
+      dRxErrors: true,
+      dTxErrors: true,
+      dRxCrcErrors: true,
+      dRxAlignErrors: true,
+      dRxDiscards: true,
+      dTxDiscards: true,
     },
   })
   return serializeErrorSamples(rows)
@@ -480,7 +525,8 @@ export async function getInterfaceExport(
 ): Promise<InterfaceExportData | null> {
   await authorize()
   const host = await prisma.apicHost.findFirst({
-    where: { id: request.hostId }, select: { id: true, name: true },
+    where: { id: request.hostId },
+    select: { id: true, name: true },
   })
   if (!host) return null
 

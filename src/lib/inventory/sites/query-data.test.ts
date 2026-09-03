@@ -39,21 +39,30 @@ const revalidateCalls: Array<{ tag: string; options: unknown }> = []
 mock.module('server-only', () => ({}))
 mock.module('@/lib/auth', () => ({ AuthenticationRequiredError, requireSession, requireAdmin }))
 mock.module('@/lib/audit', () => ({ recordAudit }))
-mock.module('@/lib/prisma', () => ({ prisma: {
-  site: {
-    findMany: siteFindMany,
-    create: siteCreate,
-    updateMany: siteUpdateMany,
-    findUniqueOrThrow: siteFindUniqueOrThrow,
-    findUnique: siteFindUnique,
-    deleteMany: siteDeleteMany,
+mock.module('@/lib/prisma', () => ({
+  prisma: {
+    site: {
+      findMany: siteFindMany,
+      create: siteCreate,
+      updateMany: siteUpdateMany,
+      findUniqueOrThrow: siteFindUniqueOrThrow,
+      findUnique: siteFindUnique,
+      deleteMany: siteDeleteMany,
+    },
   },
-} }))
+}))
 mock.module('next/cache', () => ({
-  unstable_cache: (fn: () => unknown, key: string[], options: { tags: string[]; revalidate: number }) => {
-    cacheCalls.push({ key, options }); return fn
+  unstable_cache: (
+    fn: () => unknown,
+    key: string[],
+    options: { tags: string[]; revalidate: number },
+  ) => {
+    cacheCalls.push({ key, options })
+    return fn
   },
-  revalidateTag: (tag: string, options: unknown) => { revalidateCalls.push({ tag, options }) },
+  revalidateTag: (tag: string, options: unknown) => {
+    revalidateCalls.push({ tag, options })
+  },
 }))
 
 const query = await import('./query')
@@ -98,12 +107,17 @@ describe('site mutations', () => {
     siteDeleteMany.mockImplementationOnce(async () => {
       throw Object.assign(new Error('FK'), { code: 'P2003' })
     })
-    await expect(mutation.deleteSiteRecord('s1')).rejects.toThrow('Cannot delete a site that still has racks')
+    await expect(mutation.deleteSiteRecord('s1')).rejects.toThrow(
+      'Cannot delete a site that still has racks',
+    )
   })
 
   it('requires the admin role, not just a session', async () => {
-    requireAdmin.mockImplementationOnce(async () => { throw new Error('Forbidden') })
-    await expect(mutation.createSiteRecord({ name: 'HQ', address: null, latitude: null, longitude: null }))
-      .rejects.toThrow('Forbidden')
+    requireAdmin.mockImplementationOnce(async () => {
+      throw new Error('Forbidden')
+    })
+    await expect(
+      mutation.createSiteRecord({ name: 'HQ', address: null, latitude: null, longitude: null }),
+    ).rejects.toThrow('Forbidden')
   })
 })

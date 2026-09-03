@@ -26,22 +26,26 @@ export async function DeviceDetailView({ idPromise }: { idPromise: Promise<strin
   if (!device) notFound()
 
   return (
-    <div className="px-8 py-6 space-y-6">
+    <div className="space-y-6 px-8 py-6">
       <div className="flex items-center gap-4 rounded-xl border border-border p-6">
-        <div className="bg-muted flex size-16 items-center justify-center rounded-lg">
+        <div className="flex size-16 items-center justify-center rounded-lg bg-muted">
           <IconServer size={28} stroke={1.5} className="text-muted-foreground" />
         </div>
         <div className="space-y-1">
           <h1 className="text-2xl font-bold text-foreground">{device.name}</h1>
-          <p className="text-muted-foreground text-sm">{device.vendor} {device.model}</p>
-          <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_BADGE_CLS[device.status] ?? ''}`}>
+          <p className="text-sm text-muted-foreground">
+            {device.vendor} {device.model}
+          </p>
+          <span
+            className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_BADGE_CLS[device.status] ?? ''}`}
+          >
             {device.status}
           </span>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-xl border border-border p-5 space-y-3">
+        <div className="space-y-3 rounded-xl border border-border p-5">
           <h3 className="text-sm font-semibold text-foreground">General Information</h3>
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between">
@@ -63,7 +67,7 @@ export async function DeviceDetailView({ idPromise }: { idPromise: Promise<strin
           </dl>
         </div>
 
-        <div className="rounded-xl border border-border p-5 space-y-3">
+        <div className="space-y-3 rounded-xl border border-border p-5">
           <h3 className="text-sm font-semibold text-foreground">Hardware</h3>
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between">
@@ -81,17 +85,22 @@ export async function DeviceDetailView({ idPromise }: { idPromise: Promise<strin
           </dl>
         </div>
 
-        <div className="rounded-xl border border-border p-5 space-y-3">
+        <div className="space-y-3 rounded-xl border border-border p-5">
           <h3 className="text-sm font-semibold text-foreground">Location</h3>
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between">
               <dt className="text-muted-foreground">Site</dt>
               <dd>
                 {device.rack ? (
-                  <Link href={`/inventory/racks?siteId=${device.rack.site.id}`} className="text-primary hover:underline">
+                  <Link
+                    href={`/inventory/racks?siteId=${device.rack.site.id}`}
+                    className="text-primary hover:underline"
+                  >
                     {device.rack.site.name}
                   </Link>
-                ) : '—'}
+                ) : (
+                  '—'
+                )}
               </dd>
             </div>
             <div className="flex justify-between">
@@ -105,39 +114,51 @@ export async function DeviceDetailView({ idPromise }: { idPromise: Promise<strin
           </dl>
         </div>
 
-        <div className="rounded-xl border border-border p-5 space-y-3">
+        <div className="space-y-3 rounded-xl border border-border p-5">
           <h3 className="text-sm font-semibold text-foreground">Stack Membership</h3>
           {device.deviceStack ? (
             <div className="space-y-3 text-sm">
               <dl className="space-y-2">
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Stack</dt>
-                  <dd className="font-medium text-foreground font-mono">{device.deviceStack.name}</dd>
+                  <dd className="font-mono font-medium text-foreground">
+                    {device.deviceStack.name}
+                  </dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Role</dt>
                   <dd>
-                    <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${device.stackRole === 'MASTER' ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                    <span
+                      className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${device.stackRole === 'MASTER' ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}
+                    >
                       {device.stackRole === 'MASTER' ? 'Master (Active)' : 'Member (Standby)'}
                     </span>
                   </dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Switch ID</dt>
-                  <dd className="font-mono">{device.stackMember != null ? `Switch #${device.stackMember}` : '—'}</dd>
+                  <dd className="font-mono">
+                    {device.stackMember != null ? `Switch #${device.stackMember}` : '—'}
+                  </dd>
                 </div>
               </dl>
               {device.deviceStack.devices && device.deviceStack.devices.length > 0 && (
-                <div className="pt-2 border-t border-border space-y-1.5">
-                  <div className="text-[11px] font-medium text-muted-foreground">Peer Switches:</div>
+                <div className="space-y-1.5 border-t border-border pt-2">
+                  <div className="text-[11px] font-medium text-muted-foreground">
+                    Peer Switches:
+                  </div>
                   <div className="space-y-1 text-xs">
                     {device.deviceStack.devices.map((peer) => (
                       <div key={peer.id} className="flex items-center justify-between">
-                        <Link href={`/inventory/devices/${peer.id}`} className="text-primary hover:underline truncate mr-2">
+                        <Link
+                          href={`/inventory/devices/${peer.id}`}
+                          className="mr-2 truncate text-primary hover:underline"
+                        >
                           {peer.name}
                         </Link>
-                        <span className="text-subtle font-mono text-[10px] shrink-0">
-                          Switch #{peer.stackMember ?? '?'} · {peer.stackRole === 'MASTER' ? 'Master' : 'Member'}
+                        <span className="shrink-0 font-mono text-[10px] text-subtle">
+                          Switch #{peer.stackMember ?? '?'} ·{' '}
+                          {peer.stackRole === 'MASTER' ? 'Master' : 'Member'}
                         </span>
                       </div>
                     ))}

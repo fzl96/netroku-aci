@@ -15,7 +15,7 @@ export async function DevicesResults({
   let page: Awaited<ReturnType<typeof getDevices>>
   let stacks: Awaited<ReturnType<typeof getDeviceStacks>>
   try {
-    [role, page, stacks] = await Promise.all([
+    ;[role, page, stacks] = await Promise.all([
       getInventoryViewerRole(),
       getDevices(params),
       getDeviceStacks(),

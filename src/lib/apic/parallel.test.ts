@@ -15,7 +15,7 @@ describe('runParallel', () => {
     await runParallel(items, 2, async () => {
       concurrent++
       maxConcurrent = Math.max(maxConcurrent, concurrent)
-      await new Promise(r => setTimeout(r, 10))
+      await new Promise((r) => setTimeout(r, 10))
       concurrent--
     })
     expect(maxConcurrent).toBeLessThanOrEqual(2)

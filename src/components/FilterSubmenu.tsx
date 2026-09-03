@@ -30,19 +30,20 @@ export function FilterSubmenu({
   const [searchValue, setSearchValue] = useState('')
 
   function toggle(opt: string) {
-    onChange(value.includes(opt) ? value.filter(v => v !== opt) : [...value, opt])
+    onChange(value.includes(opt) ? value.filter((v) => v !== opt) : [...value, opt])
   }
 
-  const visibleOptions = searchable && searchValue.trim()
-    ? options.filter(option => option.toLowerCase().includes(searchValue.trim().toLowerCase()))
-    : options
+  const visibleOptions =
+    searchable && searchValue.trim()
+      ? options.filter((option) => option.toLowerCase().includes(searchValue.trim().toLowerCase()))
+      : options
 
   return (
     <DropdownMenuSub>
       <DropdownMenuSubTrigger disabled={disabled}>
         <span>{label}</span>
         {value.length > 0 && (
-          <span className="ml-auto mr-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+          <span className="mr-1 ml-auto rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
             {value.length}
           </span>
         )}
@@ -54,8 +55,8 @@ export function FilterSubmenu({
           <div className="px-1 pb-1">
             <Input
               value={searchValue}
-              onChange={event => setSearchValue(event.target.value)}
-              onKeyDown={event => event.stopPropagation()}
+              onChange={(event) => setSearchValue(event.target.value)}
+              onKeyDown={(event) => event.stopPropagation()}
               placeholder={`Search ${label.toLowerCase()}…`}
               disabled={disabled || options.length === 0}
               className="h-7 text-xs"
@@ -68,13 +69,13 @@ export function FilterSubmenu({
           ) : visibleOptions.length === 0 ? (
             <DropdownMenuItem disabled>No matching values</DropdownMenuItem>
           ) : (
-            visibleOptions.map(opt => (
+            visibleOptions.map((opt) => (
               <DropdownMenuCheckboxItem
                 key={opt}
                 checked={value.includes(opt)}
                 disabled={disabled}
                 onCheckedChange={() => toggle(opt)}
-                onSelect={event => event.preventDefault()}
+                onSelect={(event) => event.preventDefault()}
               >
                 {opt}
               </DropdownMenuCheckboxItem>
@@ -84,10 +85,7 @@ export function FilterSubmenu({
         {value.length > 0 && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              disabled={disabled}
-              onSelect={() => onChange([])}
-            >
+            <DropdownMenuItem disabled={disabled} onSelect={() => onChange([])}>
               Clear {label}
             </DropdownMenuItem>
           </>

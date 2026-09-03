@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import {
-  resolveNavigationScope,
-  targetPathForScope,
-} from './navigation-scope'
+import { resolveNavigationScope, targetPathForScope } from './navigation-scope'
 
 describe('resolveNavigationScope', () => {
   it('uses exact legacy path segments instead of prefix lookalikes', () => {
@@ -41,7 +38,9 @@ describe('targetPathForScope', () => {
   })
 
   it('keeps the current path when selecting its existing scope', () => {
-    expect(targetPathForScope('/legacy/interfaces/details', 'legacy')).toBe('/legacy/interfaces/details')
+    expect(targetPathForScope('/legacy/interfaces/details', 'legacy')).toBe(
+      '/legacy/interfaces/details',
+    )
     expect(targetPathForScope('/nodes', 'aci')).toBe('/nodes')
   })
 })

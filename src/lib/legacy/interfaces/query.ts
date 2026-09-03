@@ -97,8 +97,9 @@ export class LegacyInterfaceReadError extends Error {
 }
 
 async function authorize(): Promise<void> {
-  try { await requireSession() }
-  catch (error) {
+  try {
+    await requireSession()
+  } catch (error) {
     if (!(error instanceof AuthenticationRequiredError)) throw error
     throw new LegacyInterfaceReadError()
   }
@@ -160,9 +161,7 @@ function windowStartFor(window: LegacyInterfaceListState['window']): Date {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000)
 }
 
-async function readInterfaceRows(
-  params: LegacyInterfaceListState,
-): Promise<LegacyInterfaceRow[]> {
+async function readInterfaceRows(params: LegacyInterfaceListState): Promise<LegacyInterfaceRow[]> {
   const windowStart = windowStartFor(params.window)
   let crcTotals = new Map<string, bigint>()
   let interfaceIds: string[] | undefined
@@ -176,7 +175,7 @@ async function readInterfaceRows(
     interfaceIds = [...crcTotals.keys()]
   } else if (params.view === 'state-changed') {
     interfaceIds = await queryLegacyStateChangedInterfaceIds(
-      sql => prisma.$queryRaw<Array<{ interfaceId: string }>>(sql),
+      (sql) => prisma.$queryRaw<Array<{ interfaceId: string }>>(sql),
       windowStart,
     )
   }
@@ -191,7 +190,7 @@ async function readInterfaceRows(
     select: SNAPSHOT_SELECT,
   })
 
-  return snapshots.map(snapshot => ({
+  return snapshots.map((snapshot) => ({
     id: snapshot.id,
     deviceId: snapshot.deviceId,
     hostname: snapshot.device.hostname,
@@ -215,27 +214,39 @@ async function readInterfaceRows(
 
 export async function getLegacyInterfaceSummary(): Promise<LegacyInterfaceSummary> {
   await authorize()
-  return readInterfaceData(() => unstable_cache(async () => {
-    const [total, down, absent, withHistory] = await Promise.all([
-      prisma.legacyInterfaceSnapshot.count(),
-      prisma.legacyInterfaceSnapshot.count({
-        where: { present: true, operSt: { equals: 'down', mode: 'insensitive' } },
-      }),
-      prisma.legacyInterfaceSnapshot.count({ where: { present: false } }),
-      prisma.legacyInterfaceSnapshot.count({ where: { samples: { some: {} } } }),
-    ])
-    return { total, down, absent, withHistory }
-  }, ['legacy-interfaces', 'summary'], cacheOptions)())
+  return readInterfaceData(() =>
+    unstable_cache(
+      async () => {
+        const [total, down, absent, withHistory] = await Promise.all([
+          prisma.legacyInterfaceSnapshot.count(),
+          prisma.legacyInterfaceSnapshot.count({
+            where: { present: true, operSt: { equals: 'down', mode: 'insensitive' } },
+          }),
+          prisma.legacyInterfaceSnapshot.count({ where: { present: false } }),
+          prisma.legacyInterfaceSnapshot.count({ where: { samples: { some: {} } } }),
+        ])
+        return { total, down, absent, withHistory }
+      },
+      ['legacy-interfaces', 'summary'],
+      cacheOptions,
+    )(),
+  )
 }
 
 export async function getLegacyInterfaceFilterOptions(): Promise<LegacyInterfaceFilterOptions> {
   await authorize()
-  return readInterfaceData(() => unstable_cache(async () => ({
-    devices: await prisma.legacyDevice.findMany({
-      select: { id: true, hostname: true, site: true },
-      orderBy: { hostname: 'asc' },
-    }),
-  }), ['legacy-interfaces', 'filter-options'], cacheOptions)())
+  return readInterfaceData(() =>
+    unstable_cache(
+      async () => ({
+        devices: await prisma.legacyDevice.findMany({
+          select: { id: true, hostname: true, site: true },
+          orderBy: { hostname: 'asc' },
+        }),
+      }),
+      ['legacy-interfaces', 'filter-options'],
+      cacheOptions,
+    )(),
+  )
 }
 
 export async function getLegacyInterfaceResults(
@@ -296,7 +307,9 @@ export async function getLegacyInterfaceHistory(
         select: DETAIL_SELECT,
       }),
       prisma.legacyInterfaceSample.findMany({
-        where, orderBy: { collectedAt: 'desc' }, take: CHART_POINT_LIMIT,
+        where,
+        orderBy: { collectedAt: 'desc' },
+        take: CHART_POINT_LIMIT,
       }),
       prisma.legacyInterfaceSample.findMany({
         where,

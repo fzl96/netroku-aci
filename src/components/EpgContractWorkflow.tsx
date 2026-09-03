@@ -4,11 +4,12 @@ import { WorkflowShell } from '@/components/WorkflowShell'
 import { DeploySection } from '@/components/DeploySection'
 import { PreviewSection, type PreviewColumn } from '@/components/PreviewSection'
 import { UploadSection } from '@/components/UploadSection'
+import { EPG_REQUIRED_COLUMNS_HELP, validateEpgCsv } from '@/lib/apic/epgs/csv'
 import {
-  EPG_REQUIRED_COLUMNS_HELP,
-  validateEpgCsv,
-} from '@/lib/apic/epgs/csv'
-import { effectiveBridgeDomainTenant, effectiveContractTenant, type ParsedEpgRow } from '@/lib/apic/epgs/types'
+  effectiveBridgeDomainTenant,
+  effectiveContractTenant,
+  type ParsedEpgRow,
+} from '@/lib/apic/epgs/types'
 import type { CsvValidationError } from '@/lib/apic/types'
 
 type Mode = 'deploy' | 'rollback'
@@ -18,17 +19,41 @@ type EpgValidator = (
 ) => { rows: ParsedEpgRow[]; errors: CsvValidationError[] }
 
 const EPG_COLUMNS: PreviewColumn<ParsedEpgRow>[] = [
-  { header: '#', cell: (_r, i) => i + 1, className: 'font-mono text-faint tabular-nums select-none' },
-  { header: 'Tenant', cell: r => r.tenant, className: 'text-foreground' },
-  { header: 'ANP', cell: r => r.anp, className: 'font-mono text-foreground' },
-  { header: 'EPG', cell: r => r.epg, className: 'font-mono text-foreground' },
-  { header: 'BD Tenant', cell: r => effectiveBridgeDomainTenant(r), className: 'font-mono text-foreground' },
-  { header: 'Bridge Domain', cell: r => r.bd, className: 'font-mono text-foreground' },
-  { header: 'Physical Domain', cell: r => r.phys_domain ?? '', className: 'font-mono text-foreground' },
-  { header: 'Contract Tenant', cell: r => effectiveContractTenant(r), className: 'font-mono text-foreground' },
-  { header: 'Consumed Contracts', cell: r => r.consContracts.join(', '), className: 'font-mono text-foreground' },
-  { header: 'Provided Contracts', cell: r => r.provContracts.join(', '), className: 'font-mono text-foreground' },
-  { header: 'Description', cell: r => r.epg_desc ?? '', className: 'text-subtle' },
+  {
+    header: '#',
+    cell: (_r, i) => i + 1,
+    className: 'font-mono text-faint tabular-nums select-none',
+  },
+  { header: 'Tenant', cell: (r) => r.tenant, className: 'text-foreground' },
+  { header: 'ANP', cell: (r) => r.anp, className: 'font-mono text-foreground' },
+  { header: 'EPG', cell: (r) => r.epg, className: 'font-mono text-foreground' },
+  {
+    header: 'BD Tenant',
+    cell: (r) => effectiveBridgeDomainTenant(r),
+    className: 'font-mono text-foreground',
+  },
+  { header: 'Bridge Domain', cell: (r) => r.bd, className: 'font-mono text-foreground' },
+  {
+    header: 'Physical Domain',
+    cell: (r) => r.phys_domain ?? '',
+    className: 'font-mono text-foreground',
+  },
+  {
+    header: 'Contract Tenant',
+    cell: (r) => effectiveContractTenant(r),
+    className: 'font-mono text-foreground',
+  },
+  {
+    header: 'Consumed Contracts',
+    cell: (r) => r.consContracts.join(', '),
+    className: 'font-mono text-foreground',
+  },
+  {
+    header: 'Provided Contracts',
+    cell: (r) => r.provContracts.join(', '),
+    className: 'font-mono text-foreground',
+  },
+  { header: 'Description', cell: (r) => r.epg_desc ?? '', className: 'text-subtle' },
 ]
 
 function rowLabel(row: ParsedEpgRow): string {

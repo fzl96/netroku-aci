@@ -6,7 +6,11 @@ import { requireAdmin } from '@/lib/auth'
 import { recordAudit } from '@/lib/audit'
 import { invalidateInventoryReads } from '@/lib/inventory/mutation'
 import type { ParsedImportRow, MalformedImportRow } from '@/lib/inventory/csv'
-import { buildNewRackPlan, rackIdentityKey, requiredRackHeight } from '@/lib/inventory/import-planning'
+import {
+  buildNewRackPlan,
+  rackIdentityKey,
+  requiredRackHeight,
+} from '@/lib/inventory/import-planning'
 import { ensureStackHasMaster } from '@/lib/inventory/stack-master'
 
 export type ImportRowState = {
@@ -94,18 +98,18 @@ export async function previewDeviceImport(
   ])
 
   // Lookup maps
-  const deviceBySerial = new Map(existingDevices.map(d => [d.serialNumber.toLowerCase(), d]))
+  const deviceBySerial = new Map(existingDevices.map((d) => [d.serialNumber.toLowerCase(), d]))
   const deviceByAssetTag = new Map(
-    existingDevices.filter(d => d.assetTag).map(d => [d.assetTag!.toLowerCase(), d]),
+    existingDevices.filter((d) => d.assetTag).map((d) => [d.assetTag!.toLowerCase(), d]),
   )
   const deviceByManagementIp = new Map(
-    existingDevices.filter(d => d.managementIp).map(d => [d.managementIp!.toLowerCase(), d]),
+    existingDevices.filter((d) => d.managementIp).map((d) => [d.managementIp!.toLowerCase(), d]),
   )
-  const siteByName = new Map(existingSites.map(s => [s.name.toLowerCase(), s]))
+  const siteByName = new Map(existingSites.map((s) => [s.name.toLowerCase(), s]))
   const rackBySiteAndName = new Map(
-    existingRacks.map(r => [rackIdentityKey(r.site.name, r.name), r]),
+    existingRacks.map((r) => [rackIdentityKey(r.site.name, r.name), r]),
   )
-  const stackByName = new Map(existingStacks.map(s => [s.name.toLowerCase(), s]))
+  const stackByName = new Map(existingStacks.map((s) => [s.name.toLowerCase(), s]))
 
   const rowStates: ImportRowState[] = []
   let errorCount = 0
@@ -113,9 +117,18 @@ export async function previewDeviceImport(
   // Intra-file tracking maps
   const seenSerials = new Map<string, number>()
   const seenTags = new Map<string, number>()
-  const seenIps = new Map<string, { rowIndex: number; hostname: string; stackName: string | null }>()
+  const seenIps = new Map<
+    string,
+    { rowIndex: number; hostname: string; stackName: string | null }
+  >()
   const stackSwitches = new Map<string, Map<number, number>>()
-  type PlacedUnit = { rowIndex: number; hostname: string; heightU: number; topU: number; bottomU: number }
+  type PlacedUnit = {
+    rowIndex: number
+    hostname: string
+    heightU: number
+    topU: number
+    bottomU: number
+  }
   const rackPlacements = new Map<string, PlacedUnit[]>()
 
   for (const row of rows) {
@@ -126,7 +139,9 @@ export async function previewDeviceImport(
     const serialKey = row.serialNumber.toLowerCase()
     const firstSerialRow = seenSerials.get(serialKey)
     if (firstSerialRow !== undefined) {
-      rowErrors.push(`Duplicate serial number "${row.serialNumber}" within file (already defined at row ${firstSerialRow})`)
+      rowErrors.push(
+        `Duplicate serial number "${row.serialNumber}" within file (already defined at row ${firstSerialRow})`,
+      )
     } else {
       seenSerials.set(serialKey, row.rowIndex)
     }
@@ -136,7 +151,9 @@ export async function previewDeviceImport(
       const tagKey = row.assetTag.toLowerCase()
       const firstTagRow = seenTags.get(tagKey)
       if (firstTagRow !== undefined) {
-        rowErrors.push(`Duplicate asset tag "${row.assetTag}" within file (already defined at row ${firstTagRow})`)
+        rowErrors.push(
+          `Duplicate asset tag "${row.assetTag}" within file (already defined at row ${firstTagRow})`,
+        )
       } else {
         seenTags.set(tagKey, row.rowIndex)
       }
@@ -148,9 +165,9 @@ export async function previewDeviceImport(
       const firstIp = seenIps.get(ipKey)
       if (firstIp !== undefined) {
         const isSameStack = Boolean(
-          row.stackName
-          && firstIp.stackName
-          && row.stackName.toLowerCase() === firstIp.stackName.toLowerCase(),
+          row.stackName &&
+          firstIp.stackName &&
+          row.stackName.toLowerCase() === firstIp.stackName.toLowerCase(),
         )
         if (!isSameStack) {
           rowErrors.push(
@@ -158,7 +175,11 @@ export async function previewDeviceImport(
           )
         }
       } else {
-        seenIps.set(ipKey, { rowIndex: row.rowIndex, hostname: row.hostname, stackName: row.stackName })
+        seenIps.set(ipKey, {
+          rowIndex: row.rowIndex,
+          hostname: row.hostname,
+          stackName: row.stackName,
+        })
       }
     }
 
@@ -173,7 +194,9 @@ export async function previewDeviceImport(
     if (row.assetTag) {
       const tagOwner = deviceByAssetTag.get(row.assetTag.toLowerCase())
       if (tagOwner && tagOwner.serialNumber.toLowerCase() !== row.serialNumber.toLowerCase()) {
-        rowErrors.push(`Asset tag "${row.assetTag}" is already used by "${tagOwner.name}" (${tagOwner.serialNumber})`)
+        rowErrors.push(
+          `Asset tag "${row.assetTag}" is already used by "${tagOwner.name}" (${tagOwner.serialNumber})`,
+        )
       }
     }
 
@@ -182,9 +205,9 @@ export async function previewDeviceImport(
       const ipOwner = deviceByManagementIp.get(row.managementIp.toLowerCase())
       if (ipOwner && ipOwner.serialNumber.toLowerCase() !== row.serialNumber.toLowerCase()) {
         const isSameDbStack = Boolean(
-          row.stackName
-          && ipOwner.deviceStackId
-          && stackByName.get(row.stackName.toLowerCase())?.id === ipOwner.deviceStackId,
+          row.stackName &&
+          ipOwner.deviceStackId &&
+          stackByName.get(row.stackName.toLowerCase())?.id === ipOwner.deviceStackId,
         )
         if (!isSameDbStack) {
           rowErrors.push(
@@ -207,7 +230,13 @@ export async function previewDeviceImport(
           )
         }
       }
-      list.push({ rowIndex: row.rowIndex, hostname: row.hostname, heightU: row.heightU, topU, bottomU })
+      list.push({
+        rowIndex: row.rowIndex,
+        hostname: row.hostname,
+        heightU: row.heightU,
+        topU,
+        bottomU,
+      })
       rackPlacements.set(rackKey, list)
     }
 
@@ -248,7 +277,9 @@ export async function previewDeviceImport(
           const topU = row.rackPosition + row.heightU - 1
 
           if (topU > rackMatch.heightU) {
-            rowErrors.push(`Position U${topU} exceeds rack "${rackMatch.name}" height (${rackMatch.heightU}U)`)
+            rowErrors.push(
+              `Position U${topU} exceeds rack "${rackMatch.name}" height (${rackMatch.heightU}U)`,
+            )
           }
 
           for (const d of rackMatch.devices) {
@@ -282,7 +313,9 @@ export async function previewDeviceImport(
       const stackMatch = stackByName.get(row.stackName.toLowerCase())
       if (stackMatch) {
         const conflict = stackMatch.devices.find(
-          d => d.stackMember === row.switchId && d.serialNumber.toLowerCase() !== row.serialNumber.toLowerCase(),
+          (d) =>
+            d.stackMember === row.switchId &&
+            d.serialNumber.toLowerCase() !== row.serialNumber.toLowerCase(),
         )
         if (conflict) {
           rowErrors.push(
@@ -335,15 +368,15 @@ export async function previewDeviceImport(
   rowStates.sort((a, b) => a.row.rowIndex - b.row.rowIndex)
 
   const totalRows = rows.length + malformedRows.length
-  const validRowStates = rowStates.filter(state => state.errors.length === 0)
+  const validRowStates = rowStates.filter((state) => state.errors.length === 0)
   const validCount = validRowStates.length
-  const createCount = validRowStates.filter(state => state.action === 'CREATE').length
-  const updateCount = validRowStates.filter(state => state.action === 'UPDATE').length
+  const createCount = validRowStates.filter((state) => state.action === 'CREATE').length
+  const updateCount = validRowStates.filter((state) => state.action === 'UPDATE').length
   const rackPlan = buildNewRackPlan(validRowStates)
   const sitesToCreateSet = new Set(
     validRowStates
-      .filter(state => state.siteStatus === 'WILL_CREATE' && state.row.site)
-      .map(state => state.row.site!),
+      .filter((state) => state.siteStatus === 'WILL_CREATE' && state.row.site)
+      .map((state) => state.row.site!),
   )
   for (const rack of rackPlan) sitesToCreateSet.add(rack.siteName)
 
@@ -353,7 +386,11 @@ export async function previewDeviceImport(
     createCount,
     updateCount,
     sitesToCreate: Array.from(sitesToCreateSet),
-    racksToCreate: rackPlan.map(r => ({ siteName: r.siteName, rackName: r.rackName, heightU: r.heightU })),
+    racksToCreate: rackPlan.map((r) => ({
+      siteName: r.siteName,
+      rackName: r.rackName,
+      heightU: r.heightU,
+    })),
     errorCount,
     canImport: validCount > 0,
   }
@@ -369,8 +406,8 @@ export async function commitDeviceImport(rows: ParsedImportRow[]): Promise<Impor
   if (!validation.canImport) throw new Error('No valid devices to import')
 
   // Filter to only valid rows
-  const validRowStates = validation.rowStates.filter(rs => rs.errors.length === 0)
-  const validRows = validRowStates.map(rs => rs.row)
+  const validRowStates = validation.rowStates.filter((rs) => rs.errors.length === 0)
+  const validRows = validRowStates.map((rs) => rs.row)
   const skippedErrorsCount = rows.length - validRows.length
 
   if (validRows.length === 0) throw new Error('No valid devices to import')
@@ -424,7 +461,9 @@ export async function commitDeviceImport(rows: ParsedImportRow[]): Promise<Impor
 
       const rackKey = rackIdentityKey(r.siteName, r.rackName)
       if (!rackMap.has(rackKey)) {
-        const newRack = await tx.rack.create({ data: { name: r.rackName, heightU: r.heightU, siteId } })
+        const newRack = await tx.rack.create({
+          data: { name: r.rackName, heightU: r.heightU, siteId },
+        })
         rackMap.set(rackKey, newRack.id)
         racksCreated++
       }
@@ -462,7 +501,11 @@ export async function commitDeviceImport(rows: ParsedImportRow[]): Promise<Impor
       // If assigning role MASTER, demote other masters in the stack
       if (deviceStackId && row.stackRole === StackRole.MASTER) {
         await tx.device.updateMany({
-          where: { deviceStackId, stackRole: StackRole.MASTER, serialNumber: { not: row.serialNumber } },
+          where: {
+            deviceStackId,
+            stackRole: StackRole.MASTER,
+            serialNumber: { not: row.serialNumber },
+          },
           data: { stackRole: StackRole.MEMBER },
         })
       }
@@ -497,10 +540,10 @@ export async function commitDeviceImport(rows: ParsedImportRow[]): Promise<Impor
         if (prevStackId) affectedStackIds.add(prevStackId)
         if (deviceStackId) affectedStackIds.add(deviceStackId)
         if (
-          prevStackId
-          && prevStackId === deviceStackId
-          && existing.stackRole === StackRole.MASTER
-          && row.stackRole !== StackRole.MASTER
+          prevStackId &&
+          prevStackId === deviceStackId &&
+          existing.stackRole === StackRole.MASTER &&
+          row.stackRole !== StackRole.MASTER
         ) {
           explicitlyDemotedByStack.set(prevStackId, existing.id)
         }

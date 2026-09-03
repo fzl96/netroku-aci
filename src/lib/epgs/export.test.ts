@@ -4,12 +4,8 @@ import type { EpgExportRow } from './export'
 
 mock.module('server-only', () => ({}))
 
-const {
-  buildEpgWorkbook,
-  expandNodeLeaves,
-  filterEpgsByNode,
-  sanitizeWorksheetName,
-} = await import('./export')
+const { buildEpgWorkbook, expandNodeLeaves, filterEpgsByNode, sanitizeWorksheetName } =
+  await import('./export')
 
 type Binding = EpgExportRow['bindings'][number]
 
@@ -59,7 +55,8 @@ function aoa(ws: XLSX.WorkSheet): unknown[][] {
 }
 
 function align(ws: XLSX.WorkSheet, address: string): { horizontal?: string; vertical?: string } {
-  const cell = ws[address] as { s?: { alignment?: { horizontal?: string; vertical?: string } } } | undefined
+  const cell = ws[address] as
+    { s?: { alignment?: { horizontal?: string; vertical?: string } } } | undefined
   return cell?.s?.alignment ?? {}
 }
 
@@ -75,7 +72,9 @@ describe('expandNodeLeaves', () => {
 
 describe('sanitizeWorksheetName', () => {
   it('removes invalid Excel characters and caps names at 31 characters', () => {
-    expect(sanitizeWorksheetName('node:/\\?*[]-abcdefghijklmnopqrstuvwxyz-extra')).toBe('node-abcdefghijklmnopqrstuvwxyz')
+    expect(sanitizeWorksheetName('node:/\\?*[]-abcdefghijklmnopqrstuvwxyz-extra')).toBe(
+      'node-abcdefghijklmnopqrstuvwxyz',
+    )
   })
 })
 
@@ -118,14 +117,17 @@ describe('buildEpgWorkbook — group by EPG', () => {
   })
 
   it('natural-sorts ports so Eth1/2 precedes Eth1/10', () => {
-    const workbook = buildEpgWorkbook([
-      epg({
-        bindings: [
-          binding({ id: 'b-1', node: '1103', port: 'Eth1/10' }),
-          binding({ id: 'b-2', node: '1103', port: 'Eth1/2' }),
-        ],
-      }),
-    ], 'epg')
+    const workbook = buildEpgWorkbook(
+      [
+        epg({
+          bindings: [
+            binding({ id: 'b-1', node: '1103', port: 'Eth1/10' }),
+            binding({ id: 'b-2', node: '1103', port: 'Eth1/2' }),
+          ],
+        }),
+      ],
+      'epg',
+    )
 
     const rows = aoa(workbook.Sheets['EPGs'])
     expect(rows[1][7]).toBe('Eth1/2')
@@ -133,9 +135,10 @@ describe('buildEpgWorkbook — group by EPG', () => {
   })
 
   it('leaves Consumed and Provided empty when the EPG has no contracts', () => {
-    const workbook = buildEpgWorkbook([
-      epg({ providedContracts: [], consumedContracts: [] }),
-    ], 'epg')
+    const workbook = buildEpgWorkbook(
+      [epg({ providedContracts: [], consumedContracts: [] })],
+      'epg',
+    )
 
     const rows = aoa(workbook.Sheets['EPGs'])
     expect(rows[1][4]).toBe('')
@@ -178,7 +181,10 @@ describe('buildEpgWorkbook — group by Port', () => {
     ])
 
     // Node cell merged down the sheet.
-    expect(workbook.Sheets['1103']['!merges']).toContainEqual({ s: { r: 1, c: 0 }, e: { r: 2, c: 0 } })
+    expect(workbook.Sheets['1103']['!merges']).toContainEqual({
+      s: { r: 1, c: 0 },
+      e: { r: 2, c: 0 },
+    })
   })
 })
 
@@ -193,7 +199,7 @@ describe('filterEpgsByNode', () => {
 
     const result = filterEpgsByNode([epg1, epg2], ['1104'])
 
-    expect(result.map(e => e.id)).toEqual(['epg-1'])
-    expect(result[0].bindings.map(b => b.id)).toEqual(['b-1', 'b-2'])
+    expect(result.map((e) => e.id)).toEqual(['epg-1'])
+    expect(result[0].bindings.map((b) => b.id)).toEqual(['b-1', 'b-2'])
   })
 })

@@ -34,10 +34,7 @@ export async function createRackRecord(data: RackFormValues): Promise<SafeRack> 
   return toSafeRack(rack)
 }
 
-export async function updateRackRecord(
-  id: string,
-  data: RackUpdateFormValues,
-): Promise<SafeRack> {
+export async function updateRackRecord(id: string, data: RackUpdateFormValues): Promise<SafeRack> {
   const actor = await requireAdmin()
   const parsed = rackUpdateSchema.safeParse(data)
   if (!parsed.success) throw new Error('Invalid data')

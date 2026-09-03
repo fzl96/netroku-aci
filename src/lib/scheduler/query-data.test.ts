@@ -74,11 +74,13 @@ describe('getResyncSchedules', () => {
   it('returns a fresh safe snapshot for every call', async () => {
     const schedules = await query.getResyncSchedules()
     expect(schedules).toHaveLength(1)
-    expect(schedules[0]).toEqual(expect.objectContaining({
-      apicHostId: host.id,
-      intervalMinutes: 60,
-      lastRunAt: LAST_RUN,
-      nextRunAt: NEXT_RUN,
-    }))
+    expect(schedules[0]).toEqual(
+      expect.objectContaining({
+        apicHostId: host.id,
+        intervalMinutes: 60,
+        lastRunAt: LAST_RUN,
+        nextRunAt: NEXT_RUN,
+      }),
+    )
   })
 })

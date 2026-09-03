@@ -4,9 +4,7 @@ import type { MalformedImportRow, ParsedImportRow } from '@/lib/inventory/csv'
 import { commitDeviceImport, previewDeviceImport } from './mutation'
 import type { ImportExecutionResult, ValidationResultData } from './mutation'
 
-type ActionResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: string }
+type ActionResult<T> = { success: true; data: T } | { success: false; error: string }
 
 export async function validateDeviceImport(
   rows: ParsedImportRow[],

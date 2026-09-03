@@ -1,14 +1,25 @@
 import type { ParsedRow, CsvValidationError, PortType, Mode, Immediacy } from './types'
 import { checkHeaders, deduplicateRows } from './csv-utils'
 
-const REQUIRED_HEADERS = ['tenant','ap','epg','vlan','node1','node2','port_type','interface_or_ipg','mode','immediacy'] as const
+const REQUIRED_HEADERS = [
+  'tenant',
+  'ap',
+  'epg',
+  'vlan',
+  'node1',
+  'node2',
+  'port_type',
+  'interface_or_ipg',
+  'mode',
+  'immediacy',
+] as const
 const PORT_TYPES: PortType[] = ['vpc', 'pc', 'port']
 const MODES: Mode[] = ['regular', 'native', 'untagged']
 const IMMEDIACIES: Immediacy[] = ['immediate', 'lazy']
 
 export function validateCsvRows(
   rawRows: Record<string, string>[],
-  headers: string[]
+  headers: string[],
 ): { rows: ParsedRow[]; errors: CsvValidationError[] } {
   const headerError = checkHeaders(REQUIRED_HEADERS, headers)
   if (headerError) return { rows: [], errors: [headerError] }
@@ -92,10 +103,13 @@ export function validateCsvRows(
     }
   })
 
-  const dedupedRows = deduplicateRows(rows, errors, [{
-    key: r => `${r.tenant}|${r.ap}|${r.epg}|${r.vlan}|${r.node1}|${r.node2 ?? ''}|${r.port_type}|${r.interface_or_ipg}`,
-    message: (_, first) => `Duplicate of row ${first}`,
-  }])
+  const dedupedRows = deduplicateRows(rows, errors, [
+    {
+      key: (r) =>
+        `${r.tenant}|${r.ap}|${r.epg}|${r.vlan}|${r.node1}|${r.node2 ?? ''}|${r.port_type}|${r.interface_or_ipg}`,
+      message: (_, first) => `Duplicate of row ${first}`,
+    },
+  ])
 
   return { rows: dedupedRows, errors }
 }

@@ -13,6 +13,7 @@
 ### Task 1: Add the binary toggle helper
 
 **Files:**
+
 - Create: `src/components/theme-toggle.ts`
 - Create: `src/components/theme-toggle.test.ts`
 
@@ -56,6 +57,7 @@ Expected: PASS.
 ### Task 2: Replace the custom provider with `next-themes`
 
 **Files:**
+
 - Modify: `src/components/ThemeProvider.tsx`
 - Modify: `src/components/AppSidebar.tsx`
 - Modify: `src/app/layout.tsx`
@@ -75,16 +77,19 @@ Add `suppressHydrationWarning` to `<html>` and remove the stale inline-script co
 ### Task 3: Verify and commit
 
 **Files:**
+
 - Verify all changed files
 
 **Step 1: Run verification**
 
 Run:
+
 ```bash
 bun test src/components/theme-toggle.test.ts
 bun run lint
 bun run build
 ```
+
 Expected: all commands exit 0.
 
 **Step 2: Commit**

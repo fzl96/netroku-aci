@@ -85,6 +85,4 @@ export type LegacyHealthPayload = z.infer<typeof legacyHealthPayloadSchema>
 export type LegacyInterfacePayload = z.infer<typeof legacyInterfacePayloadSchema>
 export type LegacyEndpointPayload = z.infer<typeof legacyEndpointPayloadSchema>
 export type LegacyIngestPayload =
-  | LegacyHealthPayload
-  | LegacyInterfacePayload
-  | LegacyEndpointPayload
+  LegacyHealthPayload | LegacyInterfacePayload | LegacyEndpointPayload

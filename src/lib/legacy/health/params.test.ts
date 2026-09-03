@@ -4,7 +4,12 @@ import { buildLegacyHealthPageUrl, parseLegacyHealthPageParams } from './params'
 describe('parseLegacyHealthPageParams', () => {
   it('applies defaults when nothing is supplied', () => {
     expect(parseLegacyHealthPageParams({})).toEqual({
-      query: '', site: '', sort: 'collected', direction: 'desc', page: 1, pageSize: 50,
+      query: '',
+      site: '',
+      sort: 'collected',
+      direction: 'desc',
+      page: 1,
+      pageSize: 50,
     })
   })
 
@@ -27,15 +32,24 @@ describe('buildLegacyHealthPageUrl', () => {
   it('omits defaults and preserves active filters', () => {
     const base = parseLegacyHealthPageParams({})
     expect(buildLegacyHealthPageUrl(base)).toBe('/legacy/health')
-    expect(buildLegacyHealthPageUrl({
-      ...base, query: 'edge', site: 'hq', sort: 'site', direction: 'asc', page: 2,
-    })).toBe('/legacy/health?query=edge&site=hq&sort=site&dir=asc&page=2')
+    expect(
+      buildLegacyHealthPageUrl({
+        ...base,
+        query: 'edge',
+        site: 'hq',
+        sort: 'site',
+        direction: 'asc',
+        page: 2,
+      }),
+    ).toBe('/legacy/health?query=edge&site=hq&sort=site&dir=asc&page=2')
   })
 
   it('round-trips through the parser', () => {
     const params = parseLegacyHealthPageParams({ query: 'core', sort: 'managementIp', page: '3' })
-    expect(parseLegacyHealthPageParams(Object.fromEntries(
-      new URL(buildLegacyHealthPageUrl(params), 'http://x').searchParams,
-    ))).toEqual(params)
+    expect(
+      parseLegacyHealthPageParams(
+        Object.fromEntries(new URL(buildLegacyHealthPageUrl(params), 'http://x').searchParams),
+      ),
+    ).toEqual(params)
   })
 })

@@ -33,7 +33,11 @@ async function ResolvedCrcTrendSkeleton({
   return (await paramsPromise).view === 'crc' ? <InterfaceCrcTrendSkeleton /> : null
 }
 
-function CrcTrendFallback({ paramsPromise }: { paramsPromise: Promise<InterfaceHealthPageParams> }) {
+function CrcTrendFallback({
+  paramsPromise,
+}: {
+  paramsPromise: Promise<InterfaceHealthPageParams>
+}) {
   return (
     <Suspense fallback={null}>
       <ResolvedCrcTrendSkeleton paramsPromise={paramsPromise} />
@@ -47,18 +51,21 @@ export function InterfaceHealthView({
   paramsPromise: Promise<InterfaceHealthPageParams>
 }) {
   // Host resolution is shared so redirect and selection happen once per request.
-  const hostPromise = paramsPromise.then(params => resolveInterfaceHost(params.hostId))
-  const overviewPromise = hostPromise.then(resolution =>
-    resolution.kind === 'selected' ? getInterfaceOverview(resolution.host.id) : null)
+  const hostPromise = paramsPromise.then((params) => resolveInterfaceHost(params.hostId))
+  const overviewPromise = hostPromise.then((resolution) =>
+    resolution.kind === 'selected' ? getInterfaceOverview(resolution.host.id) : null,
+  )
   const crcWindowPromise = Promise.all([paramsPromise, hostPromise]).then(([params, resolution]) =>
     resolution.kind === 'selected' && params.view === 'crc'
       ? getInterfaceCrcWindow(resolution.host.id, params.window)
-      : null)
-  const resultsPromise = Promise.all([paramsPromise, hostPromise, crcWindowPromise])
-    .then(([params, resolution, crcWindow]) =>
+      : null,
+  )
+  const resultsPromise = Promise.all([paramsPromise, hostPromise, crcWindowPromise]).then(
+    ([params, resolution, crcWindow]) =>
       resolution.kind === 'selected'
         ? getInterfaceResults({ ...params, hostId: resolution.host.id }, crcWindow)
-        : null)
+        : null,
+  )
 
   return (
     <InterfaceHealthFrame
@@ -79,7 +86,10 @@ export function InterfaceHealthView({
           hostPromise={hostPromise}
           nodeFilter={
             <Suspense fallback={<InterfaceNodeFilterSkeleton />}>
-              <InterfaceNodeFilter paramsPromise={paramsPromise} overviewPromise={overviewPromise} />
+              <InterfaceNodeFilter
+                paramsPromise={paramsPromise}
+                overviewPromise={overviewPromise}
+              />
             </Suspense>
           }
           summary={

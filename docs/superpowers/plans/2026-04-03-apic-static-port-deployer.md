@@ -42,6 +42,7 @@ src/
 ## Task 1: Types
 
 **Files:**
+
 - Create: `src/lib/apic/types.ts`
 
 - [ ] **Step 1: Create the types file**
@@ -104,6 +105,7 @@ git commit -m "feat: add shared APIC types"
 ## Task 2: APIC Path Construction (TDD)
 
 **Files:**
+
 - Create: `src/lib/apic/paths.ts`
 - Test: `src/lib/apic/paths.test.ts`
 
@@ -165,6 +167,7 @@ describe('buildMoPath', () => {
 ```bash
 bun test src/lib/apic/paths.test.ts
 ```
+
 Expected: error — `paths.ts` does not exist
 
 - [ ] **Step 3: Implement path builders**
@@ -191,6 +194,7 @@ export function buildMoPath(row: ParsedRow): string {
 ```bash
 bun test src/lib/apic/paths.test.ts
 ```
+
 Expected: all 5 tests pass
 
 - [ ] **Step 5: Commit**
@@ -205,6 +209,7 @@ git commit -m "feat: add APIC path construction utilities"
 ## Task 3: CSV Parsing and Validation (TDD)
 
 **Files:**
+
 - Create: `src/lib/apic/csv.ts`
 - Test: `src/lib/apic/csv.test.ts`
 
@@ -280,6 +285,7 @@ describe('validateCsvRows', () => {
 ```bash
 bun test src/lib/apic/csv.test.ts
 ```
+
 Expected: error — `csv.ts` does not exist
 
 - [ ] **Step 4: Implement CSV validation**
@@ -395,6 +401,7 @@ export function validateCsvRows(
 ```bash
 bun test src/lib/apic/csv.test.ts
 ```
+
 Expected: all 7 tests pass
 
 - [ ] **Step 6: Commit**
@@ -409,6 +416,7 @@ git commit -m "feat: add CSV parsing and validation"
 ## Task 4: Parallel Runner (TDD)
 
 **Files:**
+
 - Create: `src/lib/apic/parallel.ts`
 - Test: `src/lib/apic/parallel.test.ts`
 
@@ -451,6 +459,7 @@ describe('runParallel', () => {
 ```bash
 bun test src/lib/apic/parallel.test.ts
 ```
+
 Expected: error — `parallel.ts` does not exist
 
 - [ ] **Step 3: Implement parallel runner**
@@ -489,6 +498,7 @@ export async function runParallel<T, R>(
 ```bash
 bun test src/lib/apic/parallel.test.ts
 ```
+
 Expected: all 3 tests pass
 
 - [ ] **Step 5: Commit**
@@ -503,6 +513,7 @@ git commit -m "feat: add concurrency-limited parallel runner"
 ## Task 5: APIC Client Helper
 
 **Files:**
+
 - Create: `src/lib/apic/client.ts`
 
 This module wraps `fetch` for APIC calls — sets the `Cookie: APIC-cookie=<token>` header and bypasses TLS verification for self-signed APIC certificates using Node.js's `undici` agent (already available in Node.js 18+ which Next.js 16 requires).
@@ -558,6 +569,7 @@ git commit -m "feat: add APIC fetch client with TLS bypass"
 ## Task 6: Login Route Handler
 
 **Files:**
+
 - Create: `src/app/api/apic/login/route.ts`
 
 - [ ] **Step 1: Create the route**
@@ -618,12 +630,14 @@ bun run dev
 ```
 
 In another terminal:
+
 ```bash
 curl -X POST http://localhost:3000/api/apic/login \
   -H 'Content-Type: application/json' \
   -d '{"host":"YOUR_APIC_HOST","username":"admin","password":"wrong"}' \
   -k
 ```
+
 Expected: `{"error":"Invalid credentials"}` with status 401 (or 502 if unreachable)
 
 - [ ] **Step 3: Commit**
@@ -638,6 +652,7 @@ git commit -m "feat: add APIC login route handler"
 ## Task 7: Validate Route Handler
 
 **Files:**
+
 - Create: `src/app/api/apic/validate/route.ts`
 
 - [ ] **Step 1: Create the route**
@@ -707,6 +722,7 @@ git commit -m "feat: add APIC validate route handler"
 ## Task 8: Deploy Route Handler
 
 **Files:**
+
 - Create: `src/app/api/apic/deploy/route.ts`
 
 - [ ] **Step 1: Create the route**
@@ -781,6 +797,7 @@ git commit -m "feat: add APIC deploy route handler"
 ## Task 9: Global Styles + Layout
 
 **Files:**
+
 - Modify: `src/app/globals.css`
 - Modify: `src/app/layout.tsx`
 
@@ -790,7 +807,7 @@ Replace the entire file with:
 
 ```css
 /* src/app/globals.css */
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme inline {
   --color-background: #f5f3ef;
@@ -869,6 +886,7 @@ git commit -m "feat: apply warm light mode design tokens and Lora/Inter fonts"
 ## Task 10: ConnectSection Component
 
 **Files:**
+
 - Create: `src/components/ConnectSection.tsx`
 
 - [ ] **Step 1: Create the component**
@@ -988,6 +1006,7 @@ git commit -m "feat: add ConnectSection component"
 ## Task 11: UploadSection Component
 
 **Files:**
+
 - Create: `src/components/UploadSection.tsx`
 
 - [ ] **Step 1: Create the component**
@@ -1089,6 +1108,7 @@ git commit -m "feat: add UploadSection component with drag-drop CSV parsing"
 ## Task 12: PreviewSection Component
 
 **Files:**
+
 - Create: `src/components/PreviewSection.tsx`
 
 - [ ] **Step 1: Create the component**
@@ -1235,6 +1255,7 @@ git commit -m "feat: add PreviewSection with validation table and left-border st
 ## Task 13: DeploySection Component
 
 **Files:**
+
 - Create: `src/components/DeploySection.tsx`
 
 - [ ] **Step 1: Create the component**
@@ -1339,6 +1360,7 @@ git commit -m "feat: add DeploySection component with per-row progress"
 ## Task 14: Main Page Assembly
 
 **Files:**
+
 - Modify: `src/app/page.tsx`
 
 - [ ] **Step 1: Create the shared Section wrapper component**
@@ -1489,6 +1511,7 @@ export default function Page() {
 ```bash
 bun test
 ```
+
 Expected: all tests pass (paths, csv, parallel)
 
 - [ ] **Step 4: Start dev server and do a full visual check**
@@ -1498,6 +1521,7 @@ bun run dev
 ```
 
 Open http://localhost:3000 and verify:
+
 - Warm off-white background, Lora serif titles
 - Step 1 (Connect) is expanded, steps 2–4 are dimmed
 - After filling in step 1, step 2 opens and step 1 collapses to summary
@@ -1520,6 +1544,7 @@ git commit -m "feat: assemble main page with 4-step expanding section flow"
 ```bash
 bun run build
 ```
+
 Expected: exits with code 0, no TypeScript errors, no lint errors.
 
 If TypeScript errors appear, fix them before proceeding.
@@ -1536,6 +1561,7 @@ git commit -m "fix: resolve build errors"
 ## Self-Review Notes
 
 **Spec coverage check:**
+
 - ✅ Section 1 Auth (username/password → token) — Tasks 6 + 10
 - ✅ CSV schema with all 10 columns — Task 3
 - ✅ Port types vpc/pc/port with correct APIC paths — Task 2

@@ -1,8 +1,5 @@
 import type { InterfaceHealthPageParams } from '@/lib/interface-health/params'
-import {
-  InterfaceReadError,
-  type InterfaceOverviewData,
-} from '@/lib/interface-health/query'
+import { InterfaceReadError, type InterfaceOverviewData } from '@/lib/interface-health/query'
 import { InterfaceNodeFilterClient } from './interface-health-client'
 import { InterfaceRegionError } from './interface-region-error'
 

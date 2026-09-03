@@ -41,7 +41,10 @@ export function DashboardHeaderSkeleton() {
 
 export function DashboardPostureSkeleton() {
   return (
-    <BusyRegion label="Loading global posture" className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+    <BusyRegion
+      label="Loading global posture"
+      className="overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+    >
       <div className="grid lg:grid-cols-[1.1fr_1.9fr]">
         <div className="p-5 md:p-6">
           <Skeleton className="h-7 w-48 rounded-lg" />
@@ -49,7 +52,7 @@ export function DashboardPostureSkeleton() {
           <Skeleton className="mt-3 h-9 w-full max-w-md" />
           <Skeleton className="mt-4 h-4 w-full max-w-lg" />
         </div>
-        <div className="grid border-t border-border sm:grid-cols-2 lg:border-l lg:border-t-0">
+        <div className="grid border-t border-border sm:grid-cols-2 lg:border-t-0 lg:border-l">
           {Array.from({ length: 4 }, (_, index) => (
             <div className={index > 1 ? 'border-t border-border' : ''} key={index}>
               <SkeletonMetric />
@@ -66,7 +69,10 @@ export function DashboardMetricsSkeleton() {
     <BusyRegion label="Loading dashboard metrics" className="grid grid-cols-1 gap-4 md:grid-cols-3">
       {Array.from({ length: 3 }, (_, index) => (
         <div className="rounded-lg border border-border bg-card p-5 shadow-sm" key={index}>
-          <div className="flex items-center justify-between"><Skeleton className="h-8 w-32" /><Skeleton className="size-4" /></div>
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="size-4" />
+          </div>
           <Skeleton className="mt-5 h-9 w-20" />
           <Skeleton className="mt-2 h-3 w-28" />
           <Skeleton className="mt-4 h-4 w-36" />
@@ -79,14 +85,20 @@ export function DashboardMetricsSkeleton() {
 
 export function DashboardAttentionSkeleton() {
   return (
-    <BusyRegion label="Loading attention items" className="rounded-lg border border-border bg-card p-5 shadow-sm">
+    <BusyRegion
+      label="Loading attention items"
+      className="rounded-lg border border-border bg-card p-5 shadow-sm"
+    >
       <Skeleton className="h-5 w-40" />
       <Skeleton className="mt-2 h-3 w-36" />
       <div className="mt-4 space-y-3">
         {Array.from({ length: 4 }, (_, index) => (
           <div className="flex items-center gap-4" key={index}>
             <Skeleton className="size-10 rounded-lg" />
-            <div className="flex-1"><Skeleton className="h-4 w-36" /><Skeleton className="mt-2 h-3 w-full max-w-64" /></div>
+            <div className="flex-1">
+              <Skeleton className="h-4 w-36" />
+              <Skeleton className="mt-2 h-3 w-full max-w-64" />
+            </div>
           </div>
         ))}
       </div>
@@ -96,13 +108,41 @@ export function DashboardAttentionSkeleton() {
 
 export function DashboardInventorySkeleton() {
   return (
-    <BusyRegion label="Loading APIC host coverage" className="rounded-lg border border-border bg-card p-5 shadow-sm">
+    <BusyRegion
+      label="Loading APIC host coverage"
+      className="rounded-lg border border-border bg-card p-5 shadow-sm"
+    >
       <Skeleton className="h-5 w-36" />
       <Skeleton className="mt-2 h-3 w-56" />
       <div className={`mt-4 ${TABLE_SCROLL_CLS}`}>
         <table className="w-full min-w-[600px] text-left text-sm">
-          <thead><tr>{['Host', 'Endpoints', 'Nodes', 'Freshest data'].map(heading => <th className={`${DASHBOARD_TABLE_HEAD_CLS} py-2 pr-4`} key={heading}><Skeleton className="h-3 w-20" /></th>)}</tr></thead>
-          <tbody>{Array.from({ length: 4 }, (_, index) => <tr key={index}><td className="py-3 pr-4"><Skeleton className="h-4 w-32" /></td><td><Skeleton className="h-4 w-20" /></td><td><Skeleton className="h-4 w-20" /></td><td><Skeleton className="h-3 w-24" /></td></tr>)}</tbody>
+          <thead>
+            <tr>
+              {['Host', 'Endpoints', 'Nodes', 'Freshest data'].map((heading) => (
+                <th className={`${DASHBOARD_TABLE_HEAD_CLS} py-2 pr-4`} key={heading}>
+                  <Skeleton className="h-3 w-20" />
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: 4 }, (_, index) => (
+              <tr key={index}>
+                <td className="py-3 pr-4">
+                  <Skeleton className="h-4 w-32" />
+                </td>
+                <td>
+                  <Skeleton className="h-4 w-20" />
+                </td>
+                <td>
+                  <Skeleton className="h-4 w-20" />
+                </td>
+                <td>
+                  <Skeleton className="h-3 w-24" />
+                </td>
+              </tr>
+            ))}
+          </tbody>
         </table>
       </div>
     </BusyRegion>

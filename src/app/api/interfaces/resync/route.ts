@@ -17,7 +17,8 @@ export async function POST(request: Request) {
   try {
     const result = await resyncInterfaceInventory({ apicHostId, username, password })
     if (!result.ok) {
-      const status = result.code === 'unauthorized' ? 401 : result.code === 'host-not-found' ? 404 : 502
+      const status =
+        result.code === 'unauthorized' ? 401 : result.code === 'host-not-found' ? 404 : 502
       return Response.json({ error: result.error }, { status })
     }
     return Response.json({ synced: result.synced, total: result.total })

@@ -1,15 +1,12 @@
 import type { Prisma } from '@prisma/client'
-import {
-  HISTORY_ACTION_LABELS,
-  HISTORY_ACTIONS,
-  type HistoryPageParams,
-} from './params'
+import { HISTORY_ACTION_LABELS, HISTORY_ACTIONS, type HistoryPageParams } from './params'
 
 export function buildHistoryWhere(params: HistoryPageParams): Prisma.AuditLogWhereInput {
   const query = params.query.trim()
   const matchingActions = query
-    ? HISTORY_ACTIONS.filter(action =>
-        HISTORY_ACTION_LABELS[action].toLowerCase().includes(query.toLowerCase()))
+    ? HISTORY_ACTIONS.filter((action) =>
+        HISTORY_ACTION_LABELS[action].toLowerCase().includes(query.toLowerCase()),
+      )
     : []
 
   return {
@@ -20,9 +17,7 @@ export function buildHistoryWhere(params: HistoryPageParams): Prisma.AuditLogWhe
             { userName: { contains: query, mode: 'insensitive' } },
             { target: { contains: query, mode: 'insensitive' } },
             { detail: { contains: query, mode: 'insensitive' } },
-            ...(matchingActions.length > 0
-              ? [{ action: { in: matchingActions } }]
-              : []),
+            ...(matchingActions.length > 0 ? [{ action: { in: matchingActions } }] : []),
           ],
         }
       : {}),

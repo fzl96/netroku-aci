@@ -45,11 +45,13 @@ export function HistoryControlsClient({
   function navigate(nextQuery: string, nextAction: HistoryActionFilter) {
     setLastDispatchedQuery(nextQuery.trim())
     startTransition(() => {
-      router.replace(buildHistoryUrl({
-        query: nextQuery,
-        action: nextAction,
-        page: 1,
-      }))
+      router.replace(
+        buildHistoryUrl({
+          query: nextQuery,
+          action: nextAction,
+          page: 1,
+        }),
+      )
     })
   }
 
@@ -67,26 +69,23 @@ export function HistoryControlsClient({
   }
 
   return (
-    <div
-      className="flex items-center gap-3"
-      aria-busy={isPending}
-    >
+    <div className="flex items-center gap-3" aria-busy={isPending}>
       <div className="relative w-full max-w-xs">
         <IconSearch
           size={14}
           stroke={1.75}
-          className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-faint"
+          className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-faint"
         />
         <input
           value={searchValue}
-          onChange={event => handleSearchChange(event.target.value)}
+          onChange={(event) => handleSearchChange(event.target.value)}
           placeholder="Search user, target, detail…"
           className={SEARCH_INPUT_CLS}
         />
       </div>
       <select
         value={action}
-        onChange={event => handleActionChange(event.target.value as HistoryActionFilter)}
+        onChange={(event) => handleActionChange(event.target.value as HistoryActionFilter)}
         className={HISTORY_SELECT_CLS}
       >
         <option value="all">All actions</option>

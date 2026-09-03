@@ -4,7 +4,13 @@ import { EpgReadError, getEpgOverview, type EpgHostResolution } from '@/lib/epgs
 import { EpgHeaderActionsClient } from './epgs-client'
 import { EpgRegionError } from './epg-region-error'
 
-export async function EpgHeaderActions({ paramsPromise, hostPromise }: { paramsPromise: Promise<EpgPageParams>; hostPromise: Promise<EpgHostResolution> }) {
+export async function EpgHeaderActions({
+  paramsPromise,
+  hostPromise,
+}: {
+  paramsPromise: Promise<EpgPageParams>
+  hostPromise: Promise<EpgHostResolution>
+}) {
   let params: EpgPageParams
   let resolution: EpgHostResolution
   try {
@@ -17,11 +23,19 @@ export async function EpgHeaderActions({ paramsPromise, hostPromise }: { paramsP
   if (resolution.kind === 'redirect') redirect(resolution.location)
   if (resolution.kind === 'empty') return null
   let overview: Awaited<ReturnType<typeof getEpgOverview>>
-  try { overview = await getEpgOverview(resolution.host.id, params) }
-  catch (error) {
+  try {
+    overview = await getEpgOverview(resolution.host.id, params)
+  } catch (error) {
     if (!(error instanceof EpgReadError)) throw error
     console.error('[epgs] failed to authorize header action data', error)
     return <EpgRegionError region="overview" compact />
   }
-  return <EpgHeaderActionsClient params={params} hosts={resolution.hosts} hostTotal={overview.hostTotal} filteredTotal={overview.filteredTotal} />
+  return (
+    <EpgHeaderActionsClient
+      params={params}
+      hosts={resolution.hosts}
+      hostTotal={overview.hostTotal}
+      filteredTotal={overview.filteredTotal}
+    />
+  )
 }

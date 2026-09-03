@@ -34,6 +34,7 @@ error and see when it began.
 ## Architecture
 
 ### Trigger & shell
+
 - Each table row in `InterfaceHealthClient.tsx` becomes clickable (pointer cursor) and
   opens a right-side `Sheet` (`src/components/ui/sheet.tsx`). No row content is currently
   interactive, so there is no click conflict.
@@ -43,6 +44,7 @@ error and see when it began.
   `InterfaceHealthClient`.
 
 ### Data flow (lazy)
+
 - New server action, e.g. `src/actions/interface-samples.ts`:
   `getInterfaceErrorSamples(interfaceId: string, range: '24h' | '7d' | '30d' | 'all')`.
   - Authenticates via the existing session pattern.
@@ -56,6 +58,7 @@ error and see when it began.
   in flight.
 
 ### Chart
+
 - shadcn `chart.tsx` wrapper over Recharts `LineChart`.
 - X-axis: `sampledAt` as a time scale. Y-axis: error count (shared scale across all six
   series).
@@ -67,6 +70,7 @@ error and see when it began.
   resets do not draw a fake dip.
 
 ### Range selector
+
 - shadcn `toggle-group` (`src/components/ui/toggle-group.tsx`) in the drawer: 24h / 7d /
   30d / All, default 7d. Changing it re-runs the server action.
 

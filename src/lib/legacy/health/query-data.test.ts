@@ -27,7 +27,10 @@ const deviceFindMany = mock(async (args: { distinct?: string[] }) => {
   if (args.distinct?.includes('site')) return [{ site: 'dc1' }, { site: 'hq' }]
   return [
     {
-      id: 'd1', hostname: 'edge-1', site: 'hq', managementIp: '10.0.0.1',
+      id: 'd1',
+      hostname: 'edge-1',
+      site: 'hq',
+      managementIp: '10.0.0.1',
       healthSamples: [sample],
     },
     // A device with no sample must not become a health row.
@@ -35,36 +38,47 @@ const deviceFindMany = mock(async (args: { distinct?: string[] }) => {
   ]
 })
 const deviceCount = mock(async () => 2)
-const deviceFindUnique = mock(async () => (
-  deviceMissing ? null : { id: 'd1', hostname: 'edge-1', site: 'hq' }
-))
+const deviceFindUnique = mock(async () =>
+  deviceMissing ? null : { id: 'd1', hostname: 'edge-1', site: 'hq' },
+)
 const healthSampleFindMany = mock(async () => [sample])
 const healthSampleCount = mock(async () => 3)
 const healthSampleFindFirst = mock(async () => ({ collectedAt: new Date('2026-01-05T00:00:00Z') }))
-const logFindMany = mock(async () => [{
-  id: 'l1',
-  eventAt: new Date('2026-01-01T00:00:00Z'),
-  collectedAt: new Date('2026-01-02T00:00:00Z'),
-  severity: 'warning',
-  message: 'link flap',
-  raw: '%LINK-3-UPDOWN',
-}])
+const logFindMany = mock(async () => [
+  {
+    id: 'l1',
+    eventAt: new Date('2026-01-01T00:00:00Z'),
+    collectedAt: new Date('2026-01-02T00:00:00Z'),
+    severity: 'warning',
+    message: 'link flap',
+    raw: '%LINK-3-UPDOWN',
+  },
+])
 const logCount = mock(async () => 1)
 
 const cacheCalls: Array<{ key: string[]; options: { tags: string[]; revalidate: number } }> = []
 
 mock.module('server-only', () => ({}))
 mock.module('@/lib/auth', () => ({ AuthenticationRequiredError, requireSession }))
-mock.module('@/lib/prisma', () => ({ prisma: {
-  legacyDevice: { findMany: deviceFindMany, count: deviceCount, findUnique: deviceFindUnique },
-  legacyHealthSample: {
-    findMany: healthSampleFindMany, count: healthSampleCount, findFirst: healthSampleFindFirst,
+mock.module('@/lib/prisma', () => ({
+  prisma: {
+    legacyDevice: { findMany: deviceFindMany, count: deviceCount, findUnique: deviceFindUnique },
+    legacyHealthSample: {
+      findMany: healthSampleFindMany,
+      count: healthSampleCount,
+      findFirst: healthSampleFindFirst,
+    },
+    legacyLogEntry: { findMany: logFindMany, count: logCount },
   },
-  legacyLogEntry: { findMany: logFindMany, count: logCount },
-} }))
+}))
 mock.module('next/cache', () => ({
-  unstable_cache: (fn: () => unknown, key: string[], options: { tags: string[]; revalidate: number }) => {
-    cacheCalls.push({ key, options }); return fn
+  unstable_cache: (
+    fn: () => unknown,
+    key: string[],
+    options: { tags: string[]; revalidate: number },
+  ) => {
+    cacheCalls.push({ key, options })
+    return fn
   },
   revalidateTag: () => {},
 }))
@@ -72,7 +86,12 @@ mock.module('next/cache', () => ({
 const query = await import('./query')
 
 const base: LegacyHealthPageParams = {
-  query: '', site: '', sort: 'collected', direction: 'desc', page: 1, pageSize: 50,
+  query: '',
+  site: '',
+  sort: 'collected',
+  direction: 'desc',
+  page: 1,
+  pageSize: 50,
 }
 
 beforeEach(() => {
@@ -85,10 +104,12 @@ beforeEach(() => {
 describe('legacy health authorization', () => {
   it('maps an unauthenticated session to a purpose read error', async () => {
     authenticationError = new AuthenticationRequiredError('nope')
-    await expect(query.getLegacyHealthResults(base))
-      .rejects.toBeInstanceOf(query.LegacyHealthReadError)
-    await expect(query.getLegacyHealthHistory('d1', { range: '24h' }))
-      .rejects.toBeInstanceOf(query.LegacyHealthReadError)
+    await expect(query.getLegacyHealthResults(base)).rejects.toBeInstanceOf(
+      query.LegacyHealthReadError,
+    )
+    await expect(query.getLegacyHealthHistory('d1', { range: '24h' })).rejects.toBeInstanceOf(
+      query.LegacyHealthReadError,
+    )
   })
 
   it('propagates unexpected authorization failures unchanged', async () => {
@@ -120,13 +141,27 @@ describe('getLegacyHealthResults', () => {
 
   it('keys the cache by every filter that changes the row set', async () => {
     await query.getLegacyHealthResults({
-      ...base, query: 'edge', site: 'hq', sort: 'hostname', direction: 'asc', page: 2, pageSize: 100,
+      ...base,
+      query: 'edge',
+      site: 'hq',
+      sort: 'hostname',
+      direction: 'asc',
+      page: 2,
+      pageSize: 100,
     })
     expect(cacheCalls.at(-1)?.key).toEqual([
-      'legacy-health', 'results', 'edge', 'hq', 'hostname', 'asc', '2', '100',
+      'legacy-health',
+      'results',
+      'edge',
+      'hq',
+      'hostname',
+      'asc',
+      '2',
+      '100',
     ])
     expect(cacheCalls.at(-1)?.options).toEqual({
-      tags: ['legacy-health:all'], revalidate: 28_800,
+      tags: ['legacy-health:all'],
+      revalidate: 28_800,
     })
   })
 })
@@ -134,14 +169,21 @@ describe('getLegacyHealthResults', () => {
 describe('getLegacyHealthSummary', () => {
   it('counts monitored devices, samples, and logs', async () => {
     expect(await query.getLegacyHealthSummary()).toEqual({
-      devices: 2, samples: 3, logs: 1, latest: '2026-01-05T00:00:00.000Z',
+      devices: 2,
+      samples: 3,
+      logs: 1,
+      latest: '2026-01-05T00:00:00.000Z',
     })
   })
 })
 
 describe('getLegacyHealthHistory', () => {
   it('returns chart points oldest-first with paged samples and logs', async () => {
-    const history = await query.getLegacyHealthHistory('d1', { range: '7d', samplePage: 2, logPage: 3 })
+    const history = await query.getLegacyHealthHistory('d1', {
+      range: '7d',
+      samplePage: 2,
+      logPage: 3,
+    })
     expect(history?.device).toEqual({ id: 'd1', hostname: 'edge-1', site: 'hq' })
     expect(history?.range).toBe('7d')
     expect(history?.samplePage).toBe(2)
@@ -158,7 +200,11 @@ describe('getLegacyHealthHistory', () => {
   })
 
   it('clamps non-positive page numbers', async () => {
-    const history = await query.getLegacyHealthHistory('d1', { range: '24h', samplePage: 0, logPage: -2 })
+    const history = await query.getLegacyHealthHistory('d1', {
+      range: '24h',
+      samplePage: 0,
+      logPage: -2,
+    })
     expect(history?.samplePage).toBe(1)
     expect(history?.logPage).toBe(1)
   })

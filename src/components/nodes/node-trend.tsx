@@ -3,7 +3,10 @@ import { NodeReadError, type NodeHostResolution, type NodeTrendPoint } from '@/l
 import { NodeTrendClient } from './nodes-client'
 import { NodeRegionError } from './node-region-error'
 
-export async function NodeTrend({ hostPromise, trendPromise }: {
+export async function NodeTrend({
+  hostPromise,
+  trendPromise,
+}: {
   hostPromise: Promise<NodeHostResolution>
   trendPromise: Promise<NodeTrendPoint[] | null>
 }) {

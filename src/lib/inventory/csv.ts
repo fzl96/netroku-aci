@@ -120,7 +120,10 @@ const HEADER_ALIASES: Record<string, keyof ParsedImportRow> = {
 }
 
 export function normalizeHeaderName(rawHeader: string): string {
-  return rawHeader.trim().toLowerCase().replace(/[\s-]+/g, '_')
+  return rawHeader
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_')
 }
 
 export function checkRequiredHeaders(headers: string[]): CsvImportError | null {
@@ -227,10 +230,15 @@ export function parseCsvRows(rawRows: RawCsvRow[], headers: string[]): CsvParseR
     // Validate managementIp
     const managementIp = extracted.managementIp || null
     if (managementIp) {
-      const ipv4Regex = /^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/
-      const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::$|^::1$|^([0-9a-fA-F]{1,4}:){1,7}:$|^([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}$|^([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}$|^([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}$|^([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}$|^([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}$|^[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})$|^:((:[0-9a-fA-F]{1,4}){1,7}|:)$/
+      const ipv4Regex =
+        /^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/
+      const ipv6Regex =
+        /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::$|^::1$|^([0-9a-fA-F]{1,4}:){1,7}:$|^([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}$|^([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}$|^([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}$|^([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}$|^([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}$|^[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})$|^:((:[0-9a-fA-F]{1,4}){1,7}|:)$/
       if (!ipv4Regex.test(managementIp) && !ipv6Regex.test(managementIp)) {
-        addErr('managementIp', `Invalid IP address "${managementIp}". Must be a valid IPv4 or IPv6 address`)
+        addErr(
+          'managementIp',
+          `Invalid IP address "${managementIp}". Must be a valid IPv4 or IPv6 address`,
+        )
       }
     }
 
@@ -241,7 +249,10 @@ export function parseCsvRows(rawRows: RawCsvRow[], headers: string[]): CsvParseR
       if (rawStatus in DeviceStatus) {
         status = rawStatus as DeviceStatus
       } else {
-        addErr('status', `Invalid status "${extracted.status}". Allowed: ACTIVE, PLANNED, MAINTENANCE, RETIRED`)
+        addErr(
+          'status',
+          `Invalid status "${extracted.status}". Allowed: ACTIVE, PLANNED, MAINTENANCE, RETIRED`,
+        )
       }
     }
 
@@ -280,7 +291,10 @@ export function parseCsvRows(rawRows: RawCsvRow[], headers: string[]): CsvParseR
     if (extracted.rackPosition) {
       const parsedPos = parseInt(extracted.rackPosition, 10)
       if (isNaN(parsedPos) || parsedPos < 1) {
-        addErr('rackPosition', `Rack position must be a positive integer, got "${extracted.rackPosition}"`)
+        addErr(
+          'rackPosition',
+          `Rack position must be a positive integer, got "${extracted.rackPosition}"`,
+        )
       } else {
         rackPosition = parsedPos
       }
@@ -397,7 +411,10 @@ function validateIntraCsvConstraints(rows: ParsedImportRow[], errors: CsvImportE
 
   // 3. Check duplicate management IPs within the CSV (if present)
   // Devices in the same stack are allowed to share the stack's management IP
-  const seenIps = new Map<string, { rowIndex: number; hostname: string; stackName: string | null }>()
+  const seenIps = new Map<
+    string,
+    { rowIndex: number; hostname: string; stackName: string | null }
+  >()
   for (const row of rows) {
     if (!row.managementIp) continue
     const key = row.managementIp.toLowerCase()
@@ -405,8 +422,8 @@ function validateIntraCsvConstraints(rows: ParsedImportRow[], errors: CsvImportE
     if (firstRow !== undefined) {
       const isSameStack = Boolean(
         row.stackName &&
-          firstRow.stackName &&
-          row.stackName.toLowerCase() === firstRow.stackName.toLowerCase(),
+        firstRow.stackName &&
+        row.stackName.toLowerCase() === firstRow.stackName.toLowerCase(),
       )
       if (!isSameStack) {
         errors.push({
@@ -425,7 +442,13 @@ function validateIntraCsvConstraints(rows: ParsedImportRow[], errors: CsvImportE
   }
 
   // 4. Check intra-CSV rack placement collisions
-  type PlacedUnit = { rowIndex: number; hostname: string; heightU: number; topU: number; bottomU: number }
+  type PlacedUnit = {
+    rowIndex: number
+    hostname: string
+    heightU: number
+    topU: number
+    bottomU: number
+  }
   const rackPlacements = new Map<string, PlacedUnit[]>()
 
   for (const row of rows) {
@@ -445,7 +468,13 @@ function validateIntraCsvConstraints(rows: ParsedImportRow[], errors: CsvImportE
           })
         }
       }
-      list.push({ rowIndex: row.rowIndex, hostname: row.hostname, heightU: row.heightU, topU, bottomU })
+      list.push({
+        rowIndex: row.rowIndex,
+        hostname: row.hostname,
+        heightU: row.heightU,
+        topU,
+        bottomU,
+      })
       rackPlacements.set(rackKey, list)
     }
   }

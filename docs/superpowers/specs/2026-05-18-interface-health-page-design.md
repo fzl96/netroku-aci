@@ -13,6 +13,7 @@ The "every 8 hours, 3× per day" cadence is the target operating rhythm, but **t
 ## Scope
 
 **In scope:**
+
 - Add `InterfaceSnapshot` (latest state per interface) and `InterfaceSample` (append-only history) tables.
 - Add `POST /api/interfaces/resync` route, parallel to the existing endpoints resync.
 - Add APIC fetch function `fetchInterfacesFromApic(host, username, password)`.
@@ -20,6 +21,7 @@ The "every 8 hours, 3× per day" cadence is the target operating rhythm, but **t
 - Date-ranged CSV export, matching the endpoint export pattern.
 
 **Out of scope (future work):**
+
 - Automated scheduling (cron / systemd timer / API-key auth path).
 - Retention / pruning (we keep history forever for now — re-evaluate when DB size becomes a problem).
 - Sparkline / chart rendering on the page (the data shape supports it; the visual implementation can ship in a follow-up).
@@ -164,7 +166,7 @@ Parse a DN like `topology/pod-1/node-101/sys/phys-[eth1/1]` with a regex into `{
 7. Update `apicHost.lastInterfaceSyncAt = now`.
 8. Respond `{ synced, total }`.
 
-**Note we do *not* mark old snapshots inactive** the way endpoint resync does. An interface that vanishes from the fabric is a rare and meaningful event; treating it as a soft-delete via an `isActive` flag would conflate "removed" with "down". Instead, leave the snapshot row in place but stop appending samples to it. Cleanup of truly-gone interfaces can be a follow-up if it becomes a problem.
+**Note we do _not_ mark old snapshots inactive** the way endpoint resync does. An interface that vanishes from the fabric is a rare and meaningful event; treating it as a soft-delete via an `isActive` flag would conflate "removed" with "down". Instead, leave the snapshot row in place but stop appending samples to it. Cleanup of truly-gone interfaces can be a follow-up if it becomes a problem.
 
 ## Page & UI
 
@@ -189,16 +191,16 @@ New route: `src/app/(app)/interface-health/page.tsx` plus an `InterfaceHealthCli
 
 ## Files Touched
 
-| Path | Change |
-|---|---|
-| `prisma/schema.prisma` | Add `InterfaceSnapshot`, `InterfaceSample`. Add `lastInterfaceSyncAt` to `ApicHost`. |
-| `prisma/migrations/<new>/migration.sql` | Generated migration. |
-| `src/lib/apic/interfaces.ts` *(new)* | `fetchInterfacesFromApic` + types + DN parser. |
-| `src/app/api/interfaces/resync/route.ts` *(new)* | Resync route. |
-| `src/app/api/interfaces/export/route.ts` *(new)* | CSV export route. |
-| `src/app/(app)/interface-health/page.tsx` *(new)* | Page entry. |
-| `src/app/(app)/interface-health/InterfaceHealthClient.tsx` *(new)* | Client component. |
-| `src/components/AppSidebar.tsx` | Add nav entry. |
+| Path                                                               | Change                                                                               |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| `prisma/schema.prisma`                                             | Add `InterfaceSnapshot`, `InterfaceSample`. Add `lastInterfaceSyncAt` to `ApicHost`. |
+| `prisma/migrations/<new>/migration.sql`                            | Generated migration.                                                                 |
+| `src/lib/apic/interfaces.ts` _(new)_                               | `fetchInterfacesFromApic` + types + DN parser.                                       |
+| `src/app/api/interfaces/resync/route.ts` _(new)_                   | Resync route.                                                                        |
+| `src/app/api/interfaces/export/route.ts` _(new)_                   | CSV export route.                                                                    |
+| `src/app/(app)/interface-health/page.tsx` _(new)_                  | Page entry.                                                                          |
+| `src/app/(app)/interface-health/InterfaceHealthClient.tsx` _(new)_ | Client component.                                                                    |
+| `src/components/AppSidebar.tsx`                                    | Add nav entry.                                                                       |
 
 Reuse: `apicFetch` (`src/lib/apic/client.ts`), `decrypt` (`src/lib/crypto.ts`), `auth` session helper, CHUNK_SIZE pattern, CSV utilities (`src/lib/apic/csv.ts`).
 

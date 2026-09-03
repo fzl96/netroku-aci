@@ -1,0 +1,22 @@
+# Dependencies and package-manager output
+node_modules/
+bun.lock
+
+# Framework and build output
+.next/
+out/
+build/
+coverage/
+.source/
+.vercel/
+
+# Generated source
+prisma/generated/
+next-env.d.ts
+*.tsbuildinfo
+
+# Local tooling and isolated workspaces
+.claude/
+.superpowers/
+.worktrees/
+.code-review-graph/

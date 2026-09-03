@@ -29,8 +29,14 @@ export function toSafeSite(site: SafeSite): SafeSite {
 
 export async function getSites(): Promise<SafeSite[]> {
   await authorizeInventoryRead()
-  return readInventoryData(() => unstable_cache(async () => {
-    const sites = await prisma.site.findMany({ orderBy: { name: 'asc' } })
-    return sites.map(toSafeSite)
-  }, ['inventory', 'sites'], { tags: [INVENTORY_TAG], revalidate: INVENTORY_CACHE_SECONDS })())
+  return readInventoryData(() =>
+    unstable_cache(
+      async () => {
+        const sites = await prisma.site.findMany({ orderBy: { name: 'asc' } })
+        return sites.map(toSafeSite)
+      },
+      ['inventory', 'sites'],
+      { tags: [INVENTORY_TAG], revalidate: INVENTORY_CACHE_SECONDS },
+    )(),
+  )
 }

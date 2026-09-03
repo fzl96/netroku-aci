@@ -18,18 +18,20 @@ const storedRack = {
   siteId: 's1',
   createdAt: new Date('2026-01-01T00:00:00Z'),
   updatedAt: new Date('2026-01-02T00:00:00Z'),
-  devices: [{
-    id: 'd1',
-    name: 'sw-01',
-    serialNumber: 'SN1',
-    rackPosition: 1,
-    deviceStack: null,
-    stackMember: null,
-    stackRole: null,
-    vendor: 'Cisco',
-    model: 'C9300',
-    heightU: 1,
-  }],
+  devices: [
+    {
+      id: 'd1',
+      name: 'sw-01',
+      serialNumber: 'SN1',
+      rackPosition: 1,
+      deviceStack: null,
+      stackMember: null,
+      stackRole: null,
+      vendor: 'Cisco',
+      model: 'C9300',
+      heightU: 1,
+    },
+  ],
 }
 
 let findManyError: unknown = null
@@ -51,24 +53,33 @@ const revalidateCalls: Array<{ tag: string; options: unknown }> = []
 mock.module('server-only', () => ({}))
 mock.module('@/lib/auth', () => ({ AuthenticationRequiredError, requireSession, requireAdmin }))
 mock.module('@/lib/audit', () => ({ recordAudit }))
-mock.module('@/lib/prisma', () => ({ prisma: {
-  rack: {
-    findMany: (args: unknown) => {
-      const a = args as { select?: unknown; where?: { siteId?: string } }
-      return a.select ? rackDropdownFindMany() : rackFindMany(a)
+mock.module('@/lib/prisma', () => ({
+  prisma: {
+    rack: {
+      findMany: (args: unknown) => {
+        const a = args as { select?: unknown; where?: { siteId?: string } }
+        return a.select ? rackDropdownFindMany() : rackFindMany(a)
+      },
+      create: rackCreate,
+      updateMany: rackUpdateMany,
+      findUniqueOrThrow: rackFindUniqueOrThrow,
+      findUnique: rackFindUnique,
+      deleteMany: rackDeleteMany,
     },
-    create: rackCreate,
-    updateMany: rackUpdateMany,
-    findUniqueOrThrow: rackFindUniqueOrThrow,
-    findUnique: rackFindUnique,
-    deleteMany: rackDeleteMany,
   },
-} }))
+}))
 mock.module('next/cache', () => ({
-  unstable_cache: (fn: () => unknown, key: string[], options: { tags: string[]; revalidate: number }) => {
-    cacheCalls.push({ key, options }); return fn
+  unstable_cache: (
+    fn: () => unknown,
+    key: string[],
+    options: { tags: string[]; revalidate: number },
+  ) => {
+    cacheCalls.push({ key, options })
+    return fn
   },
-  revalidateTag: (tag: string, options: unknown) => { revalidateCalls.push({ tag, options }) },
+  revalidateTag: (tag: string, options: unknown) => {
+    revalidateCalls.push({ tag, options })
+  },
 }))
 
 const query = await import('./query')
@@ -111,7 +122,9 @@ describe('getRacksBySite', () => {
 
 describe('getAllRacksForDropdown', () => {
   it('returns the site-qualified dropdown options', async () => {
-    expect(await query.getAllRacksForDropdown()).toEqual([{ id: 'r1', name: 'Rack 1', site: { name: 'HQ' } }])
+    expect(await query.getAllRacksForDropdown()).toEqual([
+      { id: 'r1', name: 'Rack 1', site: { name: 'HQ' } },
+    ])
   })
 })
 
@@ -123,12 +136,15 @@ describe('rack mutations', () => {
 
   it('reports a missing rack on update rather than throwing a Prisma error', async () => {
     rackUpdateMany.mockImplementationOnce(async () => ({ count: 0 }))
-    await expect(mutation.updateRackRecord('missing', { name: 'Rack 1', heightU: 42, siteId: 's1' }))
-      .rejects.toThrow('Rack not found')
+    await expect(
+      mutation.updateRackRecord('missing', { name: 'Rack 1', heightU: 42, siteId: 's1' }),
+    ).rejects.toThrow('Rack not found')
   })
 
   it('requires the admin role, not just a session', async () => {
-    requireAdmin.mockImplementationOnce(async () => { throw new Error('Forbidden') })
+    requireAdmin.mockImplementationOnce(async () => {
+      throw new Error('Forbidden')
+    })
     await expect(mutation.deleteRackRecord('r1')).rejects.toThrow('Forbidden')
   })
 })

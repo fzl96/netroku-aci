@@ -153,10 +153,7 @@ describe('findGapSegments', () => {
   })
 
   it('returns no gaps when there are too few points to establish cadence', () => {
-    const points = [
-      pt('2026-07-10T00:00:00.000Z'),
-      pt('2026-07-12T00:00:00.000Z'),
-    ]
+    const points = [pt('2026-07-10T00:00:00.000Z'), pt('2026-07-12T00:00:00.000Z')]
     expect(findGapSegments(points)).toEqual([])
   })
 })

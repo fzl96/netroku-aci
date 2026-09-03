@@ -26,10 +26,13 @@ export async function POST(request: Request) {
 
     if (!res.ok) {
       const text = await res.text()
-      return Response.json({ error: `APIC authentication failed: ${text.slice(0, 200)}` }, { status: 401 })
+      return Response.json(
+        { error: `APIC authentication failed: ${text.slice(0, 200)}` },
+        { status: 401 },
+      )
     }
 
-    const data = await res.json() as {
+    const data = (await res.json()) as {
       imdata: Array<{ aaaLogin?: { attributes: { token: string } } }>
     }
     const token = data.imdata[0]?.aaaLogin?.attributes?.token
@@ -37,8 +40,11 @@ export async function POST(request: Request) {
 
     return Response.json({ token, host })
   } catch (err) {
-    return Response.json({
-      error: err instanceof Error ? err.message : 'Network error connecting to APIC',
-    }, { status: 502 })
+    return Response.json(
+      {
+        error: err instanceof Error ? err.message : 'Network error connecting to APIC',
+      },
+      { status: 502 },
+    )
   }
 }

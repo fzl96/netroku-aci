@@ -3,7 +3,7 @@ title: Scheduled Resync
 description: Configuring automatic data synchronization.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Callout } from 'fumadocs-ui/components/callout'
 
 Netroku ACI can keep monitoring data fresh automatically, either with an in-app schedule
 (recommended) or by having an external system call a resync endpoint on its own timer.
@@ -17,7 +17,7 @@ configure recurring resyncs without touching the host running the app.
   and whether the schedule is enabled. Datasets stay all-or-nothing per host — there is no
   per-dataset interval.
 - **Intervals are relative, not wall-clock.** An interval of "every 8h" means 8 hours
-  after the *previous run completes*, not "at a fixed time of day". There is no "run at
+  after the _previous run completes_, not "at a fixed time of day". There is no "run at
   02:00" option. The interval floor is 15 minutes and the ceiling is 10080 minutes (1
   week); the default for a new schedule is 480 minutes (8 hours).
 - **Credentials are stored encrypted.** Because a schedule must run unattended, its APIC
@@ -26,7 +26,7 @@ configure recurring resyncs without touching the host running the app.
   exactly what this protects against.
 - **"Run now" queues a run**, it does not execute inline. It sets the schedule's next-run
   time to now; the ticker (below) picks it up on its next pass, typically within about a
-  minute. The row shows *running…* once the run actually starts.
+  minute. The row shows _running…_ once the run actually starts.
 - **The overdue badge** appears on a row when it is more than twice its interval past due.
   This almost always means the ticker container is not running — the schedule itself is
   fine, nothing is calling `/api/cron/tick`.
@@ -116,7 +116,9 @@ Bearer token in the `Authorization` header. Calls without a valid token are reje
 `401`. If `SCHEDULER_TOKEN` is not set, the endpoint returns `503`.
 
 <Callout type="warn" title="Credentials in the request body">
-The APIC username and password are sent in the request body on every `/api/cron/resync` call. Use a read-only APIC account for externally-scheduled resyncs and ensure the request is made over HTTPS or a trusted internal network.
+  The APIC username and password are sent in the request body on every `/api/cron/resync` call. Use
+  a read-only APIC account for externally-scheduled resyncs and ensure the request is made over
+  HTTPS or a trusted internal network.
 </Callout>
 
 ### Finding your APIC host ID
@@ -152,12 +154,12 @@ If you were previously driving resyncs with a host systemd timer calling
 `/api/cron/resync`, moving to in-app scheduling is straightforward:
 
 <Callout type="warn" title="Do not run both schedulers at once">
-The in-app ticker and the systemd timer must never be enabled against the same host at the
-same time. Neither one checks whether the other is also driving a resync: `runningAt` on
-`resync_schedule` has no effect on `/api/cron/resync`, since that endpoint never touches the
-`resync_schedule` table at all. The EPG sync does a delete-and-recreate bulk replace per
-host, so two resyncs racing each other risk a database deadlock or a transient empty state
-in the UI. Disable the old timer *before* enabling the new schedules, not after.
+  The in-app ticker and the systemd timer must never be enabled against the same host at the same
+  time. Neither one checks whether the other is also driving a resync: `runningAt` on
+  `resync_schedule` has no effect on `/api/cron/resync`, since that endpoint never touches the
+  `resync_schedule` table at all. The EPG sync does a delete-and-recreate bulk replace per host, so
+  two resyncs racing each other risk a database deadlock or a transient empty state in the UI.
+  Disable the old timer *before* enabling the new schedules, not after.
 </Callout>
 
 1. In the **Scheduler** page, create a schedule for each host with the same credentials
@@ -169,7 +171,10 @@ in the UI. Disable the old timer *before* enabling the new schedules, not after.
    ```
 
    <Callout type="warn" title="Check for a second ExecStart">
-   If the corresponding `.service` unit has more than one `ExecStart` line — for example a legacy Python collector sync alongside the APIC resync — do not delete the unit. Strip out only the `ExecStart` that called `/api/cron/resync` and leave the rest (and its own timer) running; the legacy collector is not covered by in-app scheduling.
+     If the corresponding `.service` unit has more than one `ExecStart` line — for example a legacy
+     Python collector sync alongside the APIC resync — do not delete the unit. Strip out only the
+     `ExecStart` that called `/api/cron/resync` and leave the rest (and its own timer) running; the
+     legacy collector is not covered by in-app scheduling.
    </Callout>
 
 3. Enable the schedules and confirm on the **History** page that runs are landing

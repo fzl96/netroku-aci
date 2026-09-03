@@ -9,22 +9,22 @@ The dashboard is the landing page after sign-in. It aggregates data from all con
 
 The top-left banner summarises the overall fabric state:
 
-| Label | Meaning |
-|---|---|
-| **Stable** | No active risk signals |
-| **Degraded** | Interfaces with error counters |
+| Label               | Meaning                          |
+| ------------------- | -------------------------------- |
+| **Stable**          | No active risk signals           |
+| **Degraded**        | Interfaces with error counters   |
 | **Needs attention** | Failed hardware or offline nodes |
 
 ## Headline stats
 
 Four clickable stat tiles sit to the right of the posture banner. Each links to the relevant detail page:
 
-| Stat | Detail shown | Links to |
-|---|---|---|
-| Nodes online | Online/total ratio | Nodes |
-| Failed hardware | Failed PSU / fan breakdown | Nodes (components view) |
-| Active endpoints | Total learned count | Endpoints |
-| Interfaces with errors | Operationally down count | Interface Health |
+| Stat                   | Detail shown               | Links to                |
+| ---------------------- | -------------------------- | ----------------------- |
+| Nodes online           | Online/total ratio         | Nodes                   |
+| Failed hardware        | Failed PSU / fan breakdown | Nodes (components view) |
+| Active endpoints       | Total learned count        | Endpoints               |
+| Interfaces with errors | Operationally down count   | Interface Health        |
 
 Tiles are colour-coded: green for healthy, amber for warning, red for critical, grey for no data.
 
@@ -50,6 +50,7 @@ If nothing needs attention, a green "No active attention items" banner is shown 
 ## APIC host coverage
 
 A table on the right shows one row per configured APIC host with:
+
 - Active endpoint count
 - Nodes online ratio
 - Failed hardware count

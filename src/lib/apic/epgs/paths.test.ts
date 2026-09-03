@@ -25,7 +25,9 @@ const row: ParsedEpgContractRow = {
 describe('EPG paths', () => {
   it('builds EPG and contract paths', () => {
     expect(buildEpgPath(row)).toBe('/api/node/mo/uni/tn-TenantA/ap-APP-A/epg-WEB-EPG.json')
-    expect(buildContractPath('TenantA', 'WEB-CONTRACT')).toBe('/api/node/mo/uni/tn-TenantA/brc-WEB-CONTRACT.json')
+    expect(buildContractPath('TenantA', 'WEB-CONTRACT')).toBe(
+      '/api/node/mo/uni/tn-TenantA/brc-WEB-CONTRACT.json',
+    )
     expect(buildPhysicalDomainPath('MSI-PHYS-DOM')).toBe('/api/node/mo/uni/phys-MSI-PHYS-DOM.json')
   })
 })
@@ -72,7 +74,9 @@ describe('EPG payloads', () => {
   })
 
   it('keeps shared common contract payload name-based', () => {
-    const consumed = JSON.parse(contractAttachmentPayload({ ...row, contract_tenant: 'common' }, 'consumer', 'WEB-CONTRACT'))
+    const consumed = JSON.parse(
+      contractAttachmentPayload({ ...row, contract_tenant: 'common' }, 'consumer', 'WEB-CONTRACT'),
+    )
 
     expect(consumed.fvRsCons.attributes).toEqual({
       tnVzBrCPName: 'WEB-CONTRACT',
@@ -97,7 +101,9 @@ describe('EPG payloads', () => {
     const consumed = JSON.parse(contractRelationDeletePayload(row, 'consumer', 'WEB-CONTRACT'))
     const provided = JSON.parse(contractRelationDeletePayload(row, 'provider', 'WEB-CONTRACT'))
 
-    expect(buildContractRelationPath(row, 'consumer', 'WEB-CONTRACT')).toBe('/api/node/mo/uni/tn-TenantA/ap-APP-A/epg-WEB-EPG/rscons-WEB-CONTRACT.json')
+    expect(buildContractRelationPath(row, 'consumer', 'WEB-CONTRACT')).toBe(
+      '/api/node/mo/uni/tn-TenantA/ap-APP-A/epg-WEB-EPG/rscons-WEB-CONTRACT.json',
+    )
     expect(consumed.fvRsCons.attributes).toEqual({
       dn: 'uni/tn-TenantA/ap-APP-A/epg-WEB-EPG/rscons-WEB-CONTRACT',
       status: 'deleted',

@@ -29,19 +29,19 @@ which devices sync and how often, and the app owns execution.
 
 ## Decisions (settled during brainstorming)
 
-| Decision | Choice |
-| --- | --- |
-| APIC credentials | **Stored encrypted in the DB** via the existing `src/lib/crypto.ts` (AES-256-GCM). Supersedes the creds-in-request decision below. |
-| Trigger mechanism | Dumb ticker container POSTs `/api/cron/tick` every ~60s; all policy lives in Postgres. |
-| Granularity | One schedule per APIC host. Datasets stay all-or-nothing. |
-| Interval semantics | Relative — N minutes **after the previous run completes** (like `OnUnitActiveSec`). Not wall-clock cron. |
-| Legacy device sync | Out of scope. The Python collector keeps its own timer. |
-| `/api/cron/resync` | Kept contract-compatible so the existing systemd unit works during migration. |
+| Decision           | Choice                                                                                                                             |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| APIC credentials   | **Stored encrypted in the DB** via the existing `src/lib/crypto.ts` (AES-256-GCM). Supersedes the creds-in-request decision below. |
+| Trigger mechanism  | Dumb ticker container POSTs `/api/cron/tick` every ~60s; all policy lives in Postgres.                                             |
+| Granularity        | One schedule per APIC host. Datasets stay all-or-nothing.                                                                          |
+| Interval semantics | Relative — N minutes **after the previous run completes** (like `OnUnitActiveSec`). Not wall-clock cron.                           |
+| Legacy device sync | Out of scope. The Python collector keeps its own timer.                                                                            |
+| `/api/cron/resync` | Kept contract-compatible so the existing systemd unit works during migration.                                                      |
 
 ### Supersedes a prior decision
 
-`2026-06-12-scheduled-resync-endpoint-design.md` listed *"Storing APIC credentials in the
-DB"* as explicitly out of scope, choosing creds-in-request instead. That was correct for an
+`2026-06-12-scheduled-resync-endpoint-design.md` listed _"Storing APIC credentials in the
+DB"_ as explicitly out of scope, choosing creds-in-request instead. That was correct for an
 externally-driven scheduler, where the external system already held the secrets. An in-app
 scheduler has no such caller — the app itself must initiate runs with no human present, so
 the credentials have to live somewhere the app can read unattended. This design reverses
@@ -174,12 +174,12 @@ The ~150 lines of per-host orchestration currently inline in
 `src/actions/resync-schedules.ts`, following `apic-hosts.ts` conventions (zod validation,
 `requireAdmin()`, `recordAudit`, `ActionResult<T>`, `cache()`):
 
-| Action | Notes |
-| --- | --- |
-| `getResyncSchedules()` | `cache()`d. **Left-joins from `ApicHost`** so unscheduled hosts appear as "Not scheduled" — the UI lists devices, not schedule rows. |
-| `upsertResyncSchedule(apicHostId, values)` | `password` **optional on update**; omitted means keep existing. Enabling requires credentials to exist. |
-| `runResyncScheduleNow(apicHostId)` | Sets `nextRunAt = now()`. |
-| `deleteResyncSchedule(apicHostId)` | |
+| Action                                     | Notes                                                                                                                                |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `getResyncSchedules()`                     | `cache()`d. **Left-joins from `ApicHost`** so unscheduled hosts appear as "Not scheduled" — the UI lists devices, not schedule rows. |
+| `upsertResyncSchedule(apicHostId, values)` | `password` **optional on update**; omitted means keep existing. Enabling requires credentials to exist.                              |
+| `runResyncScheduleNow(apicHostId)`         | Sets `nextRunAt = now()`.                                                                                                            |
+| `deleteResyncSchedule(apicHostId)`         |                                                                                                                                      |
 
 ```ts
 type SafeResyncSchedule = {
@@ -200,7 +200,7 @@ never appears in the returned payload.
 **"Run now" writes `nextRunAt = now()` rather than executing inline.** This keeps one
 execution path, avoids duplicated orchestration, and avoids a multi-minute server action
 that a proxy may time out. Accepted cost: up to 60s of latency, so the toast reads
-"queued" and the row shows *running…* once `runningAt` is set. A streaming
+"queued" and the row shows _running…_ once `runningAt` is set. A streaming
 "execute and watch" route would be more satisfying; it is a deliberate v1 omission.
 
 ## UI
@@ -211,9 +211,9 @@ pattern, plus a sidebar entry under **Infrastructure** beside APIC Hosts
 
 One row per registered host:
 
-| Host | Enabled | Interval | Runs as | Last run | Next run | |
-| --- | --- | --- | --- | --- | --- | --- |
-| DC-APIC-01 | toggle | every 8h ▾ | ven.mbintang | ✓ 2h ago | in 5h 48m | ⋯ |
+| Host       | Enabled | Interval   | Runs as      | Last run | Next run  |     |
+| ---------- | ------- | ---------- | ------------ | -------- | --------- | --- |
+| DC-APIC-01 | toggle  | every 8h ▾ | ven.mbintang | ✓ 2h ago | in 5h 48m | ⋯   |
 
 - **Interval** presets (15m / 30m / 1h / 4h / 8h / 24h) plus custom minutes. The zod
   schema enforces a **15-minute floor** and a 1-week ceiling — nothing should permit
@@ -242,7 +242,7 @@ Consequences to carry through:
 
 - `ENCRYPTION_KEY` moves from **unused** (nothing imports `crypto.ts` today) to
   **load-bearing and required**.
-- The README claim *"Credentials are never stored"* (README:404) becomes false on ship and
+- The README claim _"Credentials are never stored"_ (README:404) becomes false on ship and
   must be rewritten, not left to rot.
 - Audit rows for schedule CRUD use the acting admin's name, not `scheduler`. Passwords
   never enter `detail` or `payload`.
@@ -269,12 +269,12 @@ all configuration removed — `RESYNC_BODY` ceases to exist:
 scheduler:
   image: curlimages/curl:8.11.0
   depends_on: [app]
-  env_file: [.env]            # only SCHEDULER_TOKEN now
+  env_file: [.env] # only SCHEDULER_TOKEN now
   environment:
     TICK_URL: http://app:3000/api/cron/tick
     TICK_INTERVAL_SECONDS: 60
-  volumes: ["./scheduler/tick.sh:/tick.sh:ro"]
-  entrypoint: ["/bin/sh", "/tick.sh"]
+  volumes: ['./scheduler/tick.sh:/tick.sh:ro']
+  entrypoint: ['/bin/sh', '/tick.sh']
   restart: unless-stopped
 ```
 
@@ -321,7 +321,7 @@ Docs to update: README env table (`ENCRYPTION_KEY` now required), the scheduler 
 
 ## Out of scope
 
-- **Legacy device sync scheduling.** The Python collector pushes *into* this app via
+- **Legacy device sync scheduling.** The Python collector pushes _into_ this app via
   `/api/ingest/legacy/*`; the app cannot invoke it without that CLI exposing an HTTP
   trigger.
 - **Cron expressions / wall-clock schedules.** Relative intervals only.

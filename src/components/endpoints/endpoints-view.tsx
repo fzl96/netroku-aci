@@ -11,20 +11,16 @@ import {
   EndpointResultsSkeleton,
 } from './endpoints-skeleton'
 
-export function EndpointsView({
-  paramsPromise,
-}: {
-  paramsPromise: Promise<EndpointPageParams>
-}) {
-  const hostPromise = paramsPromise.then(params => resolveEndpointHost(params.hostId))
+export function EndpointsView({ paramsPromise }: { paramsPromise: Promise<EndpointPageParams> }) {
+  const hostPromise = paramsPromise.then((params) => resolveEndpointHost(params.hostId))
 
   return (
     <EndpointsClient
-      actions={(
+      actions={
         <Suspense fallback={<EndpointHeaderActionsSkeleton />}>
           <EndpointHeaderActions paramsPromise={paramsPromise} hostPromise={hostPromise} />
         </Suspense>
-      )}
+      }
     >
       <Suspense fallback={<EndpointOverviewSkeleton />}>
         <EndpointOverview paramsPromise={paramsPromise} hostPromise={hostPromise} />

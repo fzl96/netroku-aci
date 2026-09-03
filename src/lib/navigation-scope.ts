@@ -12,14 +12,7 @@ const ACI_PREFIXES = [
   '/interface-selectors',
 ]
 
-const SHARED_PREFIXES = [
-  '/',
-  '/dashboard',
-  '/docs',
-  '/history',
-  '/settings',
-  '/users',
-]
+const SHARED_PREFIXES = ['/', '/dashboard', '/docs', '/history', '/settings', '/users']
 
 function matchesSegment(pathname: string, prefix: string): boolean {
   if (prefix === '/') return pathname === '/'
@@ -27,23 +20,17 @@ function matchesSegment(pathname: string, prefix: string): boolean {
 }
 
 function matchesAny(pathname: string, prefixes: string[]): boolean {
-  return prefixes.some(prefix => matchesSegment(pathname, prefix))
+  return prefixes.some((prefix) => matchesSegment(pathname, prefix))
 }
 
-export function resolveNavigationScope(
-  pathname: string,
-  cookieScope?: string,
-): NavigationScope {
+export function resolveNavigationScope(pathname: string, cookieScope?: string): NavigationScope {
   if (matchesSegment(pathname, '/legacy')) return 'legacy'
   if (matchesAny(pathname, ACI_PREFIXES)) return 'aci'
   if (matchesAny(pathname, SHARED_PREFIXES) && cookieScope === 'legacy') return 'legacy'
   return 'aci'
 }
 
-export function targetPathForScope(
-  pathname: string,
-  target: NavigationScope,
-): string {
+export function targetPathForScope(pathname: string, target: NavigationScope): string {
   if (resolveNavigationScope(pathname) === target) return pathname
   if (matchesAny(pathname, SHARED_PREFIXES)) return pathname
 

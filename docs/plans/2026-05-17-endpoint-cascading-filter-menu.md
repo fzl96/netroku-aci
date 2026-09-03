@@ -13,11 +13,13 @@
 ### Task 1: Replace the filter surface
 
 **Files:**
+
 - Modify: `src/app/(app)/endpoints/EndpointsClient.tsx`
 
 **Step 1: Establish expected behavior**
 
 Manual verification criteria:
+
 - Clicking the filter icon opens a compact menu containing only VLAN, Node, Interface, and Status.
 - Hovering each menu item opens a side submenu.
 - Each submenu shows that category's selectable values.
@@ -36,6 +38,7 @@ Expected: PASS.
 ### Task 2: Restore immediate filtering behavior
 
 **Files:**
+
 - Modify: `src/app/(app)/endpoints/EndpointsClient.tsx`
 
 **Step 1: Implement direct updates**
@@ -48,16 +51,19 @@ Expected: PASS.
 **Step 2: Verify behavior**
 
 Run:
+
 ```bash
 bun test
 npx eslint "src/app/(app)/endpoints/EndpointsClient.tsx" src/lib/endpoints/query.ts src/lib/endpoints/query.test.ts
 npm run build
 ```
+
 Expected: all PASS.
 
 **Step 3: Manual smoke test**
 
 Check in browser:
+
 - root menu only lists the four categories.
 - hover opens the right-side submenu.
 - selecting a value updates the table immediately.

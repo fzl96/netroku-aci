@@ -17,10 +17,15 @@ export async function POST(request: Request) {
   try {
     const result = await resyncNodeInventory({ apicHostId, username, password })
     if (!result.ok) {
-      const status = result.code === 'unauthorized' ? 401 : result.code === 'host-not-found' ? 404 : 502
+      const status =
+        result.code === 'unauthorized' ? 401 : result.code === 'host-not-found' ? 404 : 502
       return Response.json({ error: result.error }, { status })
     }
-    return Response.json({ syncedNodes: result.syncedNodes, syncedComponents: result.syncedComponents, nodesOnline: result.nodesOnline })
+    return Response.json({
+      syncedNodes: result.syncedNodes,
+      syncedComponents: result.syncedComponents,
+      nodesOnline: result.nodesOnline,
+    })
   } catch {
     return Response.json({ error: 'Failed to finalize node resync' }, { status: 500 })
   }

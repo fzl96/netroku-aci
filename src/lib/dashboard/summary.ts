@@ -115,13 +115,13 @@ export function buildAttentionItems(input: AttentionInput): AttentionItem[] {
       href: '/interface-health',
       rank: 40,
     },
-  ].filter(item => item.count > 0).sort((a, b) => a.rank - b.rank)
+  ]
+    .filter((item) => item.count > 0)
+    .sort((a, b) => a.rank - b.rank)
 }
 
 function sampleTime(sample: InterfaceSummarySample): number {
-  const date = sample.sampledAt instanceof Date
-    ? sample.sampledAt
-    : new Date(sample.sampledAt)
+  const date = sample.sampledAt instanceof Date ? sample.sampledAt : new Date(sample.sampledAt)
   return Number.isNaN(date.getTime()) ? 0 : date.getTime()
 }
 
@@ -134,7 +134,7 @@ function sampleHasNoise(sample: InterfaceSummarySample | undefined): boolean {
     sample.dTxDiscards,
     sample.dRxCrcErrors,
     sample.dRxAlignErrors,
-  ].some(value => value !== null && Number(value) > 0)
+  ].some((value) => value !== null && Number(value) > 0)
 }
 
 export function summarizeInterfaces(
@@ -154,22 +154,22 @@ export function summarizeInterfaces(
     if (sampleHasNoise(sample)) noisy += 1
   }
 
-  return stateRows.reduce<InterfaceSummary>((summary, row) => {
-    const adminUp = row.adminSt.toLowerCase() === 'up'
-    const operUp = row.operSt.toLowerCase() === 'up'
-    return {
-      total: summary.total + row.count,
-      adminDown: summary.adminDown + (adminUp ? 0 : row.count),
-      operDown: summary.operDown + (adminUp && !operUp ? row.count : 0),
-      noisy: summary.noisy,
-    }
-  }, { total: 0, adminDown: 0, operDown: 0, noisy })
+  return stateRows.reduce<InterfaceSummary>(
+    (summary, row) => {
+      const adminUp = row.adminSt.toLowerCase() === 'up'
+      const operUp = row.operSt.toLowerCase() === 'up'
+      return {
+        total: summary.total + row.count,
+        adminDown: summary.adminDown + (adminUp ? 0 : row.count),
+        operDown: summary.operDown + (adminUp && !operUp ? row.count : 0),
+        noisy: summary.noisy,
+      }
+    },
+    { total: 0, adminDown: 0, operDown: 0, noisy },
+  )
 }
 
-export function formatRelativeFreshness(
-  value: string | Date | null,
-  now = new Date(),
-): string {
+export function formatRelativeFreshness(value: string | Date | null, now = new Date()): string {
   if (!value) return 'Never synced'
   const date = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(date.getTime())) return 'Never synced'

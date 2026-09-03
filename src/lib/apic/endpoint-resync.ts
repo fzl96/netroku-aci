@@ -30,10 +30,12 @@ export function epgKeyFromDn(dn: string): string {
 }
 
 function isMove(current: ActiveEndpoint, next: ApicEndpointRow): boolean {
-  return current.node !== next.node
-    || current.interface !== next.interface
-    || current.vlan !== next.vlan
-    || epgKeyFromDn(current.dn) !== epgKeyFromDn(next.dn)
+  return (
+    current.node !== next.node ||
+    current.interface !== next.interface ||
+    current.vlan !== next.vlan ||
+    epgKeyFromDn(current.dn) !== epgKeyFromDn(next.dn)
+  )
 }
 
 function key(row: { mac: string; ip: string }): string {

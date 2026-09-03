@@ -30,7 +30,7 @@ export function aggregateCrcTrend(samples: RawCrcSample[]): CrcTrendPoint[] {
     (a, b) => new Date(a).getTime() - new Date(b).getTime(),
   )
 
-  return sortedTimes.map(sampledAt => ({
+  return sortedTimes.map((sampledAt) => ({
     sampledAt,
     crcErrorsDelta: byTime.get(sampledAt) ?? 0,
   }))

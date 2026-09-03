@@ -55,7 +55,11 @@ async function readBridgeDomain(
   reader: ApicReader,
   tenant: string,
   bd: string,
-): Promise<{ exists: false } | { exists: true; attrs: BridgeDomainAttrs; children: BridgeDomainChild[] } | { error: string }> {
+): Promise<
+  | { exists: false }
+  | { exists: true; attrs: BridgeDomainAttrs; children: BridgeDomainChild[] }
+  | { error: string }
+> {
   const bdResult = await reader.get<{ imdata: { fvBD?: { attributes: BridgeDomainAttrs } }[] }>(
     buildBridgeDomainPath(tenant, bd),
   )
@@ -72,7 +76,9 @@ async function readBridgeDomain(
   )
   if (!childrenResult.ok && childrenResult.status === 0) throw new Error(childrenResult.error)
   if (!childrenResult.ok) {
-    return { error: `Bridge domain children check failed (APIC ${childrenResult.status}): ${childrenResult.error}` }
+    return {
+      error: `Bridge domain children check failed (APIC ${childrenResult.status}): ${childrenResult.error}`,
+    }
   }
   return { exists: true, attrs, children: childrenResult.data.imdata }
 }
@@ -83,23 +89,56 @@ export async function validateBridgeDomainL2Rows(
   apicToken: string,
   reader: ApicReader = createApicReader(apicHost, apicToken),
 ): Promise<BridgeDomainValidationResult[]> {
-  return runParallel<ParsedBridgeDomainL2Row, BridgeDomainValidationResult>(rows, 10, async (row) => {
-    try {
-      const tenant = await moExists(reader, buildTenantPath(row.tenant))
-      if (tenant.error) return { rowIndex: row.rowIndex, status: 'error', message: `Tenant check failed: ${tenant.error}` }
-      if (!tenant.exists) return { rowIndex: row.rowIndex, status: 'error', message: `Tenant not found: ${row.tenant}` }
+  return runParallel<ParsedBridgeDomainL2Row, BridgeDomainValidationResult>(
+    rows,
+    10,
+    async (row) => {
+      try {
+        const tenant = await moExists(reader, buildTenantPath(row.tenant))
+        if (tenant.error)
+          return {
+            rowIndex: row.rowIndex,
+            status: 'error',
+            message: `Tenant check failed: ${tenant.error}`,
+          }
+        if (!tenant.exists)
+          return {
+            rowIndex: row.rowIndex,
+            status: 'error',
+            message: `Tenant not found: ${row.tenant}`,
+          }
 
-      const vrf = await moExists(reader, buildVrfPath(row.tenant, row.vrf))
-      if (vrf.error) return { rowIndex: row.rowIndex, status: 'error', message: `VRF check failed: ${vrf.error}` }
-      if (!vrf.exists) return { rowIndex: row.rowIndex, status: 'error', message: `VRF not found: ${row.tenant}/${row.vrf}` }
+        const vrf = await moExists(reader, buildVrfPath(row.tenant, row.vrf))
+        if (vrf.error)
+          return {
+            rowIndex: row.rowIndex,
+            status: 'error',
+            message: `VRF check failed: ${vrf.error}`,
+          }
+        if (!vrf.exists)
+          return {
+            rowIndex: row.rowIndex,
+            status: 'error',
+            message: `VRF not found: ${row.tenant}/${row.vrf}`,
+          }
 
-      const bd = await moExists(reader, buildBridgeDomainPath(row.tenant, row.bd))
-      if (bd.error) return { rowIndex: row.rowIndex, status: 'error', message: `Bridge domain check failed: ${bd.error}` }
-      return { rowIndex: row.rowIndex, status: bd.exists ? 'exists' : 'deploy' }
-    } catch (err) {
-      return { rowIndex: row.rowIndex, status: 'error', message: err instanceof Error ? err.message : 'Network error' }
-    }
-  })
+        const bd = await moExists(reader, buildBridgeDomainPath(row.tenant, row.bd))
+        if (bd.error)
+          return {
+            rowIndex: row.rowIndex,
+            status: 'error',
+            message: `Bridge domain check failed: ${bd.error}`,
+          }
+        return { rowIndex: row.rowIndex, status: bd.exists ? 'exists' : 'deploy' }
+      } catch (err) {
+        return {
+          rowIndex: row.rowIndex,
+          status: 'error',
+          message: err instanceof Error ? err.message : 'Network error',
+        }
+      }
+    },
+  )
 }
 
 export async function deployBridgeDomainL2Rows(
@@ -116,11 +155,19 @@ export async function deployBridgeDomainL2Rows(
       })
       if (!res.ok) {
         const text = await res.text()
-        return { rowIndex: row.rowIndex, success: false, message: `APIC ${res.status}: ${text.slice(0, 200)}` }
+        return {
+          rowIndex: row.rowIndex,
+          success: false,
+          message: `APIC ${res.status}: ${text.slice(0, 200)}`,
+        }
       }
       return { rowIndex: row.rowIndex, success: true }
     } catch (err) {
-      return { rowIndex: row.rowIndex, success: false, message: err instanceof Error ? err.message : 'Network error' }
+      return {
+        rowIndex: row.rowIndex,
+        success: false,
+        message: err instanceof Error ? err.message : 'Network error',
+      }
     }
   })
 }
@@ -130,22 +177,34 @@ export async function rollbackBridgeDomainRows(
   apicHost: string,
   apicToken: string,
 ): Promise<BridgeDomainDeployResult[]> {
-  return runParallel<ParsedBridgeDomainL2Row | ParsedBridgeDomainL3Row, BridgeDomainDeployResult>(rows, 5, async (row) => {
-    try {
-      const res = await apicFetch(apicHost, buildBridgeDomainPath(row.tenant, row.bd), {
-        method: 'POST',
-        body: bridgeDomainDeletePayload(row),
-        token: apicToken,
-      })
-      if (!res.ok) {
-        const text = await res.text()
-        return { rowIndex: row.rowIndex, success: false, message: `APIC ${res.status}: ${text.slice(0, 200)}` }
+  return runParallel<ParsedBridgeDomainL2Row | ParsedBridgeDomainL3Row, BridgeDomainDeployResult>(
+    rows,
+    5,
+    async (row) => {
+      try {
+        const res = await apicFetch(apicHost, buildBridgeDomainPath(row.tenant, row.bd), {
+          method: 'POST',
+          body: bridgeDomainDeletePayload(row),
+          token: apicToken,
+        })
+        if (!res.ok) {
+          const text = await res.text()
+          return {
+            rowIndex: row.rowIndex,
+            success: false,
+            message: `APIC ${res.status}: ${text.slice(0, 200)}`,
+          }
+        }
+        return { rowIndex: row.rowIndex, success: true }
+      } catch (err) {
+        return {
+          rowIndex: row.rowIndex,
+          success: false,
+          message: err instanceof Error ? err.message : 'Network error',
+        }
       }
-      return { rowIndex: row.rowIndex, success: true }
-    } catch (err) {
-      return { rowIndex: row.rowIndex, success: false, message: err instanceof Error ? err.message : 'Network error' }
-    }
-  })
+    },
+  )
 }
 
 export async function validateBridgeDomainL2RollbackRows(
@@ -154,18 +213,27 @@ export async function validateBridgeDomainL2RollbackRows(
   apicToken: string,
   reader: ApicReader = createApicReader(apicHost, apicToken),
 ): Promise<BridgeDomainValidationResult[]> {
-  return runParallel<ParsedBridgeDomainL2Row, BridgeDomainValidationResult>(rows, 10, async (row) => {
-    try {
-      const state = await readBridgeDomain(reader, row.tenant, row.bd)
-      if ('error' in state) return { rowIndex: row.rowIndex, status: 'error', message: state.error }
-      if (!state.exists) return { rowIndex: row.rowIndex, status: 'missing' }
-      const mismatch = validateL2RollbackState(row, state.attrs, state.children)
-      if (mismatch) return { rowIndex: row.rowIndex, status: 'error', message: mismatch }
-      return { rowIndex: row.rowIndex, status: 'rollback' }
-    } catch (err) {
-      return { rowIndex: row.rowIndex, status: 'error', message: err instanceof Error ? err.message : 'Network error' }
-    }
-  })
+  return runParallel<ParsedBridgeDomainL2Row, BridgeDomainValidationResult>(
+    rows,
+    10,
+    async (row) => {
+      try {
+        const state = await readBridgeDomain(reader, row.tenant, row.bd)
+        if ('error' in state)
+          return { rowIndex: row.rowIndex, status: 'error', message: state.error }
+        if (!state.exists) return { rowIndex: row.rowIndex, status: 'missing' }
+        const mismatch = validateL2RollbackState(row, state.attrs, state.children)
+        if (mismatch) return { rowIndex: row.rowIndex, status: 'error', message: mismatch }
+        return { rowIndex: row.rowIndex, status: 'rollback' }
+      } catch (err) {
+        return {
+          rowIndex: row.rowIndex,
+          status: 'error',
+          message: err instanceof Error ? err.message : 'Network error',
+        }
+      }
+    },
+  )
 }
 
 export async function validateBridgeDomainL3Rows(
@@ -179,51 +247,114 @@ export async function validateBridgeDomainL3Rows(
     | { fvRsBDToOut: { attributes: { tnL3extOutName?: string } } }
     | { fvRsCtx: { attributes: { tnFvCtxName?: string; tDn?: string } } }
 
-  return runParallel<ParsedBridgeDomainL3Row, BridgeDomainValidationResult>(rows, 10, async (row) => {
-    try {
-      const tenant = await moExists(reader, buildTenantPath(row.tenant))
-      if (tenant.error) return { rowIndex: row.rowIndex, status: 'error', message: `Tenant check failed: ${tenant.error}` }
-      if (!tenant.exists) return { rowIndex: row.rowIndex, status: 'error', message: `Tenant not found: ${row.tenant}` }
+  return runParallel<ParsedBridgeDomainL3Row, BridgeDomainValidationResult>(
+    rows,
+    10,
+    async (row) => {
+      try {
+        const tenant = await moExists(reader, buildTenantPath(row.tenant))
+        if (tenant.error)
+          return {
+            rowIndex: row.rowIndex,
+            status: 'error',
+            message: `Tenant check failed: ${tenant.error}`,
+          }
+        if (!tenant.exists)
+          return {
+            rowIndex: row.rowIndex,
+            status: 'error',
+            message: `Tenant not found: ${row.tenant}`,
+          }
 
-      const vrf = await moExists(reader, buildVrfPath(row.tenant, row.vrf))
-      if (vrf.error) return { rowIndex: row.rowIndex, status: 'error', message: `VRF check failed: ${vrf.error}` }
-      if (!vrf.exists) return { rowIndex: row.rowIndex, status: 'error', message: `VRF not found: ${row.tenant}/${row.vrf}` }
+        const vrf = await moExists(reader, buildVrfPath(row.tenant, row.vrf))
+        if (vrf.error)
+          return {
+            rowIndex: row.rowIndex,
+            status: 'error',
+            message: `VRF check failed: ${vrf.error}`,
+          }
+        if (!vrf.exists)
+          return {
+            rowIndex: row.rowIndex,
+            status: 'error',
+            message: `VRF not found: ${row.tenant}/${row.vrf}`,
+          }
 
-      const l3out = await moExists(reader, buildL3OutPath(row.tenant, row.l3out))
-      if (l3out.error) return { rowIndex: row.rowIndex, status: 'error', message: `L3Out check failed: ${l3out.error}` }
-      if (!l3out.exists) return { rowIndex: row.rowIndex, status: 'error', message: `L3Out not found: ${row.tenant}/${row.l3out}` }
+        const l3out = await moExists(reader, buildL3OutPath(row.tenant, row.l3out))
+        if (l3out.error)
+          return {
+            rowIndex: row.rowIndex,
+            status: 'error',
+            message: `L3Out check failed: ${l3out.error}`,
+          }
+        if (!l3out.exists)
+          return {
+            rowIndex: row.rowIndex,
+            status: 'error',
+            message: `L3Out not found: ${row.tenant}/${row.l3out}`,
+          }
 
-      const bd = await moExists(reader, buildBridgeDomainPath(row.tenant, row.bd))
-      if (bd.error) return { rowIndex: row.rowIndex, status: 'error', message: `Bridge domain check failed: ${bd.error}` }
-      if (!bd.exists) return { rowIndex: row.rowIndex, status: 'deploy' }
+        const bd = await moExists(reader, buildBridgeDomainPath(row.tenant, row.bd))
+        if (bd.error)
+          return {
+            rowIndex: row.rowIndex,
+            status: 'error',
+            message: `Bridge domain check failed: ${bd.error}`,
+          }
+        if (!bd.exists) return { rowIndex: row.rowIndex, status: 'deploy' }
 
-      const childrenResult = await reader.get<{ imdata: BdChild[] }>(
-        buildBridgeDomainChildrenPath(row.tenant, row.bd),
-      )
-      if (!childrenResult.ok && childrenResult.status === 0) throw new Error(childrenResult.error)
-      if (!childrenResult.ok) {
-        return { rowIndex: row.rowIndex, status: 'error', message: `Bridge domain children check failed (APIC ${childrenResult.status}): ${childrenResult.error}` }
+        const childrenResult = await reader.get<{ imdata: BdChild[] }>(
+          buildBridgeDomainChildrenPath(row.tenant, row.bd),
+        )
+        if (!childrenResult.ok && childrenResult.status === 0) throw new Error(childrenResult.error)
+        if (!childrenResult.ok) {
+          return {
+            rowIndex: row.rowIndex,
+            status: 'error',
+            message: `Bridge domain children check failed (APIC ${childrenResult.status}): ${childrenResult.error}`,
+          }
+        }
+        const children = childrenResult.data.imdata
+
+        const ctx = children.find(
+          (item): item is { fvRsCtx: { attributes: { tnFvCtxName?: string; tDn?: string } } } =>
+            'fvRsCtx' in item,
+        )
+        const existingVrf =
+          ctx?.fvRsCtx.attributes.tnFvCtxName ?? ctx?.fvRsCtx.attributes.tDn?.split('/ctx-')[1]
+        if (existingVrf && existingVrf !== row.vrf) {
+          return {
+            rowIndex: row.rowIndex,
+            status: 'error',
+            message: `Bridge domain ${row.tenant}/${row.bd} already exists with VRF ${existingVrf}`,
+          }
+        }
+
+        const subnetExists = children.some(
+          (item) => 'fvSubnet' in item && item.fvSubnet.attributes.ip === row.subnet,
+        )
+        const l3outAttached = children.some(
+          (item) =>
+            'fvRsBDToOut' in item && item.fvRsBDToOut.attributes.tnL3extOutName === row.l3out,
+        )
+
+        return {
+          rowIndex: row.rowIndex,
+          status: subnetExists && l3outAttached ? 'exists' : 'deploy',
+          message:
+            subnetExists && l3outAttached
+              ? undefined
+              : 'Bridge domain exists; missing subnet and/or L3Out attachment will be updated',
+        }
+      } catch (err) {
+        return {
+          rowIndex: row.rowIndex,
+          status: 'error',
+          message: err instanceof Error ? err.message : 'Network error',
+        }
       }
-      const children = childrenResult.data.imdata
-
-      const ctx = children.find((item): item is { fvRsCtx: { attributes: { tnFvCtxName?: string; tDn?: string } } } => 'fvRsCtx' in item)
-      const existingVrf = ctx?.fvRsCtx.attributes.tnFvCtxName ?? ctx?.fvRsCtx.attributes.tDn?.split('/ctx-')[1]
-      if (existingVrf && existingVrf !== row.vrf) {
-        return { rowIndex: row.rowIndex, status: 'error', message: `Bridge domain ${row.tenant}/${row.bd} already exists with VRF ${existingVrf}` }
-      }
-
-      const subnetExists = children.some((item) => 'fvSubnet' in item && item.fvSubnet.attributes.ip === row.subnet)
-      const l3outAttached = children.some((item) => 'fvRsBDToOut' in item && item.fvRsBDToOut.attributes.tnL3extOutName === row.l3out)
-
-      return {
-        rowIndex: row.rowIndex,
-        status: subnetExists && l3outAttached ? 'exists' : 'deploy',
-        message: subnetExists && l3outAttached ? undefined : 'Bridge domain exists; missing subnet and/or L3Out attachment will be updated',
-      }
-    } catch (err) {
-      return { rowIndex: row.rowIndex, status: 'error', message: err instanceof Error ? err.message : 'Network error' }
-    }
-  })
+    },
+  )
 }
 
 export async function deployBridgeDomainL3Rows(
@@ -234,18 +365,40 @@ export async function deployBridgeDomainL3Rows(
   return runParallel<ParsedBridgeDomainL3Row, BridgeDomainDeployResult>(rows, 5, async (row) => {
     try {
       const bdPath = buildBridgeDomainPath(row.tenant, row.bd)
-      const bdError = await postApic(apicHost, bdPath, bridgeDomainL3Payload(row), apicToken, 'Bridge domain deploy')
+      const bdError = await postApic(
+        apicHost,
+        bdPath,
+        bridgeDomainL3Payload(row),
+        apicToken,
+        'Bridge domain deploy',
+      )
       if (bdError) return { rowIndex: row.rowIndex, success: false, message: bdError }
 
-      const subnetError = await postApic(apicHost, buildSubnetPath(row.tenant, row.bd, row.subnet), subnetPayload(row), apicToken, 'Subnet deploy')
+      const subnetError = await postApic(
+        apicHost,
+        buildSubnetPath(row.tenant, row.bd, row.subnet),
+        subnetPayload(row),
+        apicToken,
+        'Subnet deploy',
+      )
       if (subnetError) return { rowIndex: row.rowIndex, success: false, message: subnetError }
 
-      const l3outError = await postApic(apicHost, bdPath, l3OutAttachmentPayload(row), apicToken, 'L3Out attachment')
+      const l3outError = await postApic(
+        apicHost,
+        bdPath,
+        l3OutAttachmentPayload(row),
+        apicToken,
+        'L3Out attachment',
+      )
       if (l3outError) return { rowIndex: row.rowIndex, success: false, message: l3outError }
 
       return { rowIndex: row.rowIndex, success: true }
     } catch (err) {
-      return { rowIndex: row.rowIndex, success: false, message: err instanceof Error ? err.message : 'Network error' }
+      return {
+        rowIndex: row.rowIndex,
+        success: false,
+        message: err instanceof Error ? err.message : 'Network error',
+      }
     }
   })
 }
@@ -256,16 +409,25 @@ export async function validateBridgeDomainL3RollbackRows(
   apicToken: string,
   reader: ApicReader = createApicReader(apicHost, apicToken),
 ): Promise<BridgeDomainValidationResult[]> {
-  return runParallel<ParsedBridgeDomainL3Row, BridgeDomainValidationResult>(rows, 10, async (row) => {
-    try {
-      const state = await readBridgeDomain(reader, row.tenant, row.bd)
-      if ('error' in state) return { rowIndex: row.rowIndex, status: 'error', message: state.error }
-      if (!state.exists) return { rowIndex: row.rowIndex, status: 'missing' }
-      const mismatch = validateL3RollbackState(row, state.attrs, state.children)
-      if (mismatch) return { rowIndex: row.rowIndex, status: 'error', message: mismatch }
-      return { rowIndex: row.rowIndex, status: 'rollback' }
-    } catch (err) {
-      return { rowIndex: row.rowIndex, status: 'error', message: err instanceof Error ? err.message : 'Network error' }
-    }
-  })
+  return runParallel<ParsedBridgeDomainL3Row, BridgeDomainValidationResult>(
+    rows,
+    10,
+    async (row) => {
+      try {
+        const state = await readBridgeDomain(reader, row.tenant, row.bd)
+        if ('error' in state)
+          return { rowIndex: row.rowIndex, status: 'error', message: state.error }
+        if (!state.exists) return { rowIndex: row.rowIndex, status: 'missing' }
+        const mismatch = validateL3RollbackState(row, state.attrs, state.children)
+        if (mismatch) return { rowIndex: row.rowIndex, status: 'error', message: mismatch }
+        return { rowIndex: row.rowIndex, status: 'rollback' }
+      } catch (err) {
+        return {
+          rowIndex: row.rowIndex,
+          status: 'error',
+          message: err instanceof Error ? err.message : 'Network error',
+        }
+      }
+    },
+  )
 }

@@ -4,7 +4,13 @@ import { EpgReadError, getEpgOverview, type EpgHostResolution } from '@/lib/epgs
 import { EpgOverviewClient, NoEpgHost } from './epgs-client'
 import { EpgRegionError } from './epg-region-error'
 
-export async function EpgOverview({ paramsPromise, hostPromise }: { paramsPromise: Promise<EpgPageParams>; hostPromise: Promise<EpgHostResolution> }) {
+export async function EpgOverview({
+  paramsPromise,
+  hostPromise,
+}: {
+  paramsPromise: Promise<EpgPageParams>
+  hostPromise: Promise<EpgHostResolution>
+}) {
   let params: EpgPageParams
   let resolution: EpgHostResolution
   try {
@@ -17,8 +23,9 @@ export async function EpgOverview({ paramsPromise, hostPromise }: { paramsPromis
   if (resolution.kind === 'redirect') redirect(resolution.location)
   if (resolution.kind === 'empty') return <NoEpgHost />
   let overview: Awaited<ReturnType<typeof getEpgOverview>>
-  try { overview = await getEpgOverview(resolution.host.id, params) }
-  catch (error) {
+  try {
+    overview = await getEpgOverview(resolution.host.id, params)
+  } catch (error) {
     if (!(error instanceof EpgReadError)) throw error
     console.error('[epgs] failed to load overview data', error)
     return <EpgRegionError region="overview" />

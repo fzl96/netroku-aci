@@ -25,11 +25,7 @@ describe('buildBindingWhere', () => {
     const where = buildBindingWhere('h1', { node: ['101'] })
     expect(where.AND).toEqual([
       {
-        OR: [
-          { node: '101' },
-          { node: { startsWith: '101-' } },
-          { node: { endsWith: '-101' } },
-        ],
+        OR: [{ node: '101' }, { node: { startsWith: '101-' } }, { node: { endsWith: '-101' } }],
       },
     ])
   })
@@ -49,8 +45,12 @@ describe('countActiveEpgFilterGroups', () => {
 
 describe('expandNodeOptions', () => {
   it('splits pairs, dedupes and natural-sorts', () => {
-    expect(expandNodeOptions(['101-102', '101', '99', '3113-3114'])).toEqual(
-      ['99', '101', '102', '3113', '3114'],
-    )
+    expect(expandNodeOptions(['101-102', '101', '99', '3113-3114'])).toEqual([
+      '99',
+      '101',
+      '102',
+      '3113',
+      '3114',
+    ])
   })
 })

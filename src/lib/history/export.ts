@@ -26,11 +26,12 @@ export type HistoryPayloadSummary = {
   objectLabel: 'EPG' | 'bridge domain' | 'interface selector'
 }
 
-const columns = (...headers: string[]): ExportColumn[] =>
-  headers.map(header => ({ header }))
+const columns = (...headers: string[]): ExportColumn[] => headers.map((header) => ({ header }))
 
-const identity = (...fields: string[]) => (row: PayloadRow): string =>
-  JSON.stringify(fields.map(field => row[field]))
+const identity =
+  (...fields: string[]) =>
+  (row: PayloadRow): string =>
+    JSON.stringify(fields.map((field) => row[field]))
 
 const WORKFLOWS: Record<string, WorkflowConfig> = {
   'static-ports': {
@@ -81,8 +82,8 @@ const WORKFLOWS: Record<string, WorkflowConfig> = {
     objectLabel: 'EPG',
     columns: [
       ...columns('tenant', 'anp', 'epg', 'bd_tenant', 'bd', 'phys_domain', 'contract_tenant'),
-      { header: 'cons_contract', value: row => joinList(row.consContracts) },
-      { header: 'prov_contract', value: row => joinList(row.provContracts) },
+      { header: 'cons_contract', value: (row) => joinList(row.consContracts) },
+      { header: 'prov_contract', value: (row) => joinList(row.provContracts) },
       ...columns('epg_desc'),
     ],
   },
@@ -149,7 +150,7 @@ function supportedPayload(input: {
     !workflow ||
     !Array.isArray(input.payload) ||
     input.payload.length === 0 ||
-    !input.payload.every(row => typeof row === 'object' && row !== null && !Array.isArray(row))
+    !input.payload.every((row) => typeof row === 'object' && row !== null && !Array.isArray(row))
   ) {
     return null
   }
@@ -174,9 +175,7 @@ export function buildHistoryPayloadSummary(input: {
 
 export function formatHistoryPayloadSummary(summary: HistoryPayloadSummary): string {
   const rowLabel = summary.rowCount === 1 ? 'row' : 'rows'
-  const objectLabel = summary.uniqueCount === 1
-    ? summary.objectLabel
-    : `${summary.objectLabel}s`
+  const objectLabel = summary.uniqueCount === 1 ? summary.objectLabel : `${summary.objectLabel}s`
   return `${summary.rowCount} ${rowLabel} · ${summary.uniqueCount} unique ${objectLabel} in payload`
 }
 
@@ -190,10 +189,12 @@ export function buildHistoryPayloadCsvExport(input: {
   if (!supported) return null
 
   const { workflow, rows } = supported
-  const fields = workflow.columns.map(column => column.header)
-  const data = rows.map(row => workflow.columns.map(column =>
-    csvCell(column.value ? column.value(row) : row[column.header]),
-  ))
+  const fields = workflow.columns.map((column) => column.header)
+  const data = rows.map((row) =>
+    workflow.columns.map((column) =>
+      csvCell(column.value ? column.value(row) : row[column.header]),
+    ),
+  )
   const date = new Date(input.createdAt).toISOString().slice(0, 10)
 
   return {

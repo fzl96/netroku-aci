@@ -41,7 +41,9 @@ describe('interface health streaming architecture', () => {
   it('shares the CRC window promise between the trend and table results', () => {
     const view = read('src/components/interface-health/interface-health-view.tsx')
     expect(view).toContain('Promise.all([paramsPromise, hostPromise, crcWindowPromise])')
-    expect(view).toContain('getInterfaceResults({ ...params, hostId: resolution.host.id }, crcWindow)')
+    expect(view).toContain(
+      'getInterfaceResults({ ...params, hostId: resolution.host.id }, crcWindow)',
+    )
   })
 
   it('provides accessible shape-matched fallbacks', () => {

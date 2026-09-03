@@ -1,12 +1,7 @@
 'use client'
 
 import { Fragment, useState, useTransition } from 'react'
-import {
-  IconChevronLeft,
-  IconChevronRight,
-  IconDownload,
-  IconHistory,
-} from '@tabler/icons-react'
+import { IconChevronLeft, IconChevronRight, IconDownload, IconHistory } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import type { AuditAction, AuditStatus } from '@/lib/audit'
 import {
@@ -16,10 +11,7 @@ import {
   type HistoryActionFilter,
 } from '@/lib/history/params'
 import type { HistoryLogEntry } from '@/lib/history/query'
-import {
-  DENSE_TABLE_HEAD_CLS,
-  TABLE_SCROLL_CLS,
-} from '@/lib/ui-classes'
+import { DENSE_TABLE_HEAD_CLS, TABLE_SCROLL_CLS } from '@/lib/ui-classes'
 import {
   buildHistoryPayloadCsvExport,
   buildHistoryPayloadSummary,
@@ -53,7 +45,7 @@ function StatusBadge({ status }: { status: AuditStatus }) {
   return (
     <span
       className={[
-        'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]',
+        'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-[0.08em] uppercase',
         STATUS_STYLES[status],
       ].join(' ')}
     >
@@ -81,7 +73,7 @@ export function HistoryResultsClient({
   const totalPages = Math.max(1, Math.ceil(total / HISTORY_PAGE_SIZE))
 
   function toggle(id: string) {
-    setExpanded(previous => {
+    setExpanded((previous) => {
       const next = new Set(previous)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -91,11 +83,13 @@ export function HistoryResultsClient({
 
   function navigate(nextPage: number) {
     startTransition(() => {
-      router.replace(buildHistoryUrl({
-        query,
-        action,
-        page: nextPage,
-      }))
+      router.replace(
+        buildHistoryUrl({
+          query,
+          action,
+          page: nextPage,
+        }),
+      )
     })
   }
 
@@ -107,12 +101,12 @@ export function HistoryResultsClient({
         </span>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm animate-fade-up">
+      <div className="animate-fade-up overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         <div className={TABLE_SCROLL_CLS}>
           <table className="w-full text-xs">
             <thead>
               <tr>
-                {['When', 'User', 'Action', 'Target', 'Status', 'Detail'].map(header => (
+                {['When', 'User', 'Action', 'Target', 'Status', 'Detail'].map((header) => (
                   <th key={header} className={DENSE_TABLE_HEAD_CLS}>
                     {header}
                   </th>
@@ -137,25 +131,29 @@ export function HistoryResultsClient({
                   const hasPayload = log.payload != null
                   const isOpen = expanded.has(log.id)
                   const when = new Date(log.createdAt)
-                  const csvExport = isOpen ? buildHistoryPayloadCsvExport({
-                    action: log.action,
-                    target: log.target,
-                    payload: log.payload,
-                    createdAt: when,
-                  }) : null
-                  const payloadSummary = isOpen ? buildHistoryPayloadSummary({
-                    action: log.action,
-                    target: log.target,
-                    payload: log.payload,
-                  }) : null
+                  const csvExport = isOpen
+                    ? buildHistoryPayloadCsvExport({
+                        action: log.action,
+                        target: log.target,
+                        payload: log.payload,
+                        createdAt: when,
+                      })
+                    : null
+                  const payloadSummary = isOpen
+                    ? buildHistoryPayloadSummary({
+                        action: log.action,
+                        target: log.target,
+                        payload: log.payload,
+                      })
+                    : null
 
                   return (
                     <Fragment key={log.id}>
                       <tr
-                        className="group border-b border-border-faint transition-colors duration-100 animate-fade-up hover:bg-muted"
+                        className="group animate-fade-up border-b border-border-faint transition-colors duration-100 hover:bg-muted"
                         style={{ animationDelay: `${Math.min(index * 25, 180)}ms` }}
                       >
-                        <td className="whitespace-nowrap border-l-2 border-l-transparent px-4 py-2.5 transition-colors duration-100 group-hover:border-l-primary">
+                        <td className="border-l-2 border-l-transparent px-4 py-2.5 whitespace-nowrap transition-colors duration-100 group-hover:border-l-primary">
                           <div className="text-foreground">{formatRelative(when)}</div>
                           <div className="text-[10px] text-faint tabular-nums">
                             {when.toLocaleString()}
@@ -163,13 +161,13 @@ export function HistoryResultsClient({
                         </td>
                         <td className="px-4 py-2.5">
                           <div className="flex items-center gap-2">
-                            <div className="flex h-6 w-6 items-center justify-center rounded-lg border border-border bg-muted text-[10px] font-semibold uppercase text-muted-foreground">
+                            <div className="flex h-6 w-6 items-center justify-center rounded-lg border border-border bg-muted text-[10px] font-semibold text-muted-foreground uppercase">
                               {log.userName.slice(0, 1)}
                             </div>
                             <span className="font-medium text-foreground">{log.userName}</span>
                           </div>
                         </td>
-                        <td className="whitespace-nowrap px-4 py-2.5">
+                        <td className="px-4 py-2.5 whitespace-nowrap">
                           <span className="inline-flex items-center rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
                             {actionLabel(log.action)}
                           </span>

@@ -67,9 +67,12 @@ const MODE_LABEL: Record<string, string> = {
  * shapes (e.g. FEX extpaths) come back as pathType "unknown" with the raw tDn
  * preserved in `port` so nothing is silently dropped.
  */
-export function parsePathTDn(
-  tDn: string,
-): { pod: string; node: string; port: string; pathType: string } {
+export function parsePathTDn(tDn: string): {
+  pod: string
+  node: string
+  port: string
+  pathType: string
+} {
   const vpc = PROT_TDN_RE.exec(tDn)
   if (vpc) {
     const [lo, hi] = [Number(vpc[2]), Number(vpc[3])].sort((a, b) => a - b)
@@ -155,7 +158,7 @@ export function parseEpgRows(imdata: unknown[]): EpgRow[] {
           port,
           pathType,
           encap: path.encap ?? '',
-          mode: MODE_LABEL[path.mode ?? ''] ?? (path.mode ?? ''),
+          mode: MODE_LABEL[path.mode ?? ''] ?? path.mode ?? '',
         })
       }
     }
@@ -169,7 +172,7 @@ export function parseEpgRows(imdata: unknown[]): EpgRow[] {
 async function apicGet(host: string, token: string, path: string): Promise<unknown[]> {
   const res = await apicFetch(host, path, { token })
   if (!res.ok) throw new Error(`APIC GET ${path} failed: ${res.status}`)
-  const data = await res.json() as { imdata?: unknown[] }
+  const data = (await res.json()) as { imdata?: unknown[] }
   return data.imdata ?? []
 }
 

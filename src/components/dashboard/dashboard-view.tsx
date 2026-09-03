@@ -72,14 +72,26 @@ export function DashboardView() {
           </Suspense>
         </div>
 
-        <nav aria-label="Dashboard detail pages" className="mt-4 grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-3">
-          <Link href="/endpoints" className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:border-foreground/20 hover:text-foreground">
+        <nav
+          aria-label="Dashboard detail pages"
+          className="mt-4 grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-3"
+        >
+          <Link
+            href="/endpoints"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:border-foreground/20 hover:text-foreground"
+          >
             <IconDeviceDesktopSearch size={14} stroke={1.75} /> Endpoint inventory
           </Link>
-          <Link href="/interface-health" className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:border-foreground/20 hover:text-foreground">
+          <Link
+            href="/interface-health"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:border-foreground/20 hover:text-foreground"
+          >
             <IconPlugConnected size={14} stroke={1.75} /> Interface counters
           </Link>
-          <Link href="/nodes" className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:border-foreground/20 hover:text-foreground">
+          <Link
+            href="/nodes"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:border-foreground/20 hover:text-foreground"
+          >
             <IconServer2 size={14} stroke={1.75} /> Nodes and hardware
           </Link>
         </nav>

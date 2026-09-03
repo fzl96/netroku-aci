@@ -4,7 +4,7 @@ export function FooterCancel({ onClick, disabled }: { onClick: () => void; disab
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="text-sm text-muted-foreground hover:text-foreground transition-colors px-4 py-2 disabled:opacity-50"
+      className="px-4 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
     >
       Cancel
     </button>
@@ -28,7 +28,7 @@ export function FooterSubmit({
       form={form}
       onClick={onClick}
       disabled={disabled}
-      className="bg-primary text-primary-foreground text-sm font-semibold px-5 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+      className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
     >
       {label}
     </button>

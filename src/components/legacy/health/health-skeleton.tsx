@@ -1,6 +1,10 @@
 export function LegacyHealthSummarySkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading legacy health summary" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div
+      aria-busy="true"
+      aria-label="Loading legacy health summary"
+      className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+    >
       {Array.from({ length: 4 }).map((_, card) => (
         <div key={card} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="h-3 w-28 animate-pulse rounded-sm bg-muted" />
@@ -13,7 +17,11 @@ export function LegacyHealthSummarySkeleton() {
 
 export function LegacyHealthFiltersSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading legacy health filters" className="flex flex-col gap-2 sm:flex-row">
+    <div
+      aria-busy="true"
+      aria-label="Loading legacy health filters"
+      className="flex flex-col gap-2 sm:flex-row"
+    >
       <div className="h-8 flex-1 animate-pulse rounded-lg bg-muted sm:max-w-xs" />
       {Array.from({ length: 3 }).map((_, control) => (
         <div key={control} className="h-8 w-32 animate-pulse rounded-lg bg-muted" />
@@ -24,7 +32,11 @@ export function LegacyHealthFiltersSkeleton() {
 
 export function LegacyHealthResultsSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading legacy health results" className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+    <div
+      aria-busy="true"
+      aria-label="Loading legacy health results"
+      className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
+    >
       <div className="space-y-3 p-4">
         {Array.from({ length: 8 }).map((_, row) => (
           <div key={row} className="flex gap-4">

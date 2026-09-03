@@ -8,14 +8,16 @@ const requireSession = mock(async () => {
   return { id: 'user-1', role: 'member', userName: 'operator' }
 })
 
-const hostFindMany = mock(async () => [{
-  id: 'host-1',
-  name: 'Fabric One',
-  host: 'apic.example.test',
-  lastInterfaceSyncAt: new Date('2026-06-15T10:00:00.000Z'),
-  lastNodeSyncAt: new Date('2026-06-15T11:00:00.000Z'),
-  encryptedSecret: 'must-not-escape',
-}])
+const hostFindMany = mock(async () => [
+  {
+    id: 'host-1',
+    name: 'Fabric One',
+    host: 'apic.example.test',
+    lastInterfaceSyncAt: new Date('2026-06-15T10:00:00.000Z'),
+    lastNodeSyncAt: new Date('2026-06-15T11:00:00.000Z'),
+    encryptedSecret: 'must-not-escape',
+  },
+])
 const endpointGroupBy = mock(async (args: { by: string[] }) => {
   if (args.by.includes('isActive')) {
     return [
@@ -23,10 +25,12 @@ const endpointGroupBy = mock(async (args: { by: string[] }) => {
       { apicHostId: 'host-1', isActive: false, _count: { _all: 2 } },
     ]
   }
-  return [{
-    apicHostId: 'host-1',
-    _max: { lastSeenAt: new Date('2026-06-15T09:00:00.000Z') },
-  }]
+  return [
+    {
+      apicHostId: 'host-1',
+      _max: { lastSeenAt: new Date('2026-06-15T09:00:00.000Z') },
+    },
+  ]
 })
 const endpointFindMany = mock(async (args: { select: Record<string, boolean> }) => {
   if (args.select.vlan) return [{ vlan: 'vlan-10' }, { vlan: '' }]
@@ -38,16 +42,18 @@ const interfaceGroupBy = mock(async () => [
   { adminSt: 'up', operSt: 'down', _count: { _all: 1 } },
   { adminSt: 'down', operSt: 'down', _count: { _all: 2 } },
 ])
-const interfaceSampleFindMany = mock(async () => [{
-  interfaceId: 'interface-1',
-  sampledAt: new Date('2026-06-15T12:00:00.000Z'),
-  dRxErrors: BigInt(1),
-  dTxErrors: BigInt(0),
-  dRxDiscards: BigInt(0),
-  dTxDiscards: BigInt(0),
-  dRxCrcErrors: BigInt(0),
-  dRxAlignErrors: BigInt(0),
-}])
+const interfaceSampleFindMany = mock(async () => [
+  {
+    interfaceId: 'interface-1',
+    sampledAt: new Date('2026-06-15T12:00:00.000Z'),
+    dRxErrors: BigInt(1),
+    dTxErrors: BigInt(0),
+    dRxDiscards: BigInt(0),
+    dTxDiscards: BigInt(0),
+    dRxCrcErrors: BigInt(0),
+    dRxAlignErrors: BigInt(0),
+  },
+])
 const nodeFindMany = mock(async () => [
   { apicHostId: 'host-1', role: 'leaf', fabricSt: 'active', state: null, hidden: 'omit' },
   { apicHostId: 'host-1', role: 'spine', fabricSt: 'inactive', state: null, hidden: 'omit' },
@@ -72,14 +78,12 @@ type CacheCall = {
   options: { tags: string[]; revalidate: number }
 }
 const cacheCalls: CacheCall[] = []
-const unstableCache = mock((
-  operation: () => Promise<unknown>,
-  key: string[],
-  options: CacheCall['options'],
-) => {
-  cacheCalls.push({ key, options })
-  return operation
-})
+const unstableCache = mock(
+  (operation: () => Promise<unknown>, key: string[], options: CacheCall['options']) => {
+    cacheCalls.push({ key, options })
+    return operation
+  },
+)
 
 mock.module('server-only', () => ({}))
 mock.module('@/lib/auth', () => ({
@@ -105,7 +109,8 @@ beforeEach(() => {
     nodeFindMany,
     hardwareFindMany,
     unstableCache,
-  ]) fn.mockClear()
+  ])
+    fn.mockClear()
 })
 
 describe('dashboard query interface', () => {
@@ -123,24 +128,28 @@ describe('dashboard query interface', () => {
     const hosts = await query.getDashboardHosts()
     const endpoints = await query.getDashboardEndpoints()
 
-    expect(hosts).toEqual([{
-      id: 'host-1',
-      name: 'Fabric One',
-      host: 'apic.example.test',
-      lastInterfaceSyncAt: '2026-06-15T10:00:00.000Z',
-      lastNodeSyncAt: '2026-06-15T11:00:00.000Z',
-    }])
+    expect(hosts).toEqual([
+      {
+        id: 'host-1',
+        name: 'Fabric One',
+        host: 'apic.example.test',
+        lastInterfaceSyncAt: '2026-06-15T10:00:00.000Z',
+        lastNodeSyncAt: '2026-06-15T11:00:00.000Z',
+      },
+    ])
     expect(endpoints).toEqual({
       active: 7,
       historical: 2,
       vlanCount: 1,
       nodeCount: 1,
       interfaceCount: 1,
-      byHost: [{
-        hostId: 'host-1',
-        active: 7,
-        latestSeenAt: '2026-06-15T09:00:00.000Z',
-      }],
+      byHost: [
+        {
+          hostId: 'host-1',
+          active: 7,
+          latestSeenAt: '2026-06-15T09:00:00.000Z',
+        },
+      ],
     })
     expect(JSON.stringify({ hosts, endpoints })).not.toContain('must-not-escape')
   })
@@ -169,12 +178,14 @@ describe('dashboard query interface', () => {
       failedHardware: 1,
       failedPsu: 1,
       failedFan: 0,
-      byHost: [{
-        hostId: 'host-1',
-        nodesTotal: 3,
-        nodesOnline: 2,
-        failedHardware: 1,
-      }],
+      byHost: [
+        {
+          hostId: 'host-1',
+          nodesTotal: 3,
+          nodesOnline: 2,
+          failedHardware: 1,
+        },
+      ],
     })
     expect(JSON.stringify(result)).not.toContain('omit')
   })
@@ -191,13 +202,7 @@ describe('dashboard query interface', () => {
       {
         key: ['dashboard', 'hosts'],
         options: {
-          tags: [
-            'dashboard:all',
-            'apic-hosts:all',
-            'endpoints:all',
-            'interfaces:all',
-            'nodes:all',
-          ],
+          tags: ['dashboard:all', 'apic-hosts:all', 'endpoints:all', 'interfaces:all', 'nodes:all'],
           revalidate: 28_800,
         },
       },

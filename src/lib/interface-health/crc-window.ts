@@ -8,9 +8,7 @@ export interface RawCrcInterfaceSample {
  * samples. Null / non-positive deltas (e.g. counter resets) contribute 0, so
  * an interface only appears in the map if it gained at least one CRC error.
  */
-export function sumCrcByInterface(
-  samples: RawCrcInterfaceSample[],
-): Map<string, bigint> {
+export function sumCrcByInterface(samples: RawCrcInterfaceSample[]): Map<string, bigint> {
   const totals = new Map<string, bigint>()
   for (const s of samples) {
     if (s.dRxCrcErrors === null || s.dRxCrcErrors <= BigInt(0)) continue

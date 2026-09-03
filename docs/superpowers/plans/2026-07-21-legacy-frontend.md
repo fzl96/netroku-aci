@@ -24,6 +24,7 @@
 ### Task 1: Route-aware scope state and brand dropdown
 
 **Files:**
+
 - Create: `src/lib/navigation-scope.ts`
 - Create: `src/lib/navigation-scope.test.ts`
 - Modify: `src/app/(app)/layout.tsx`
@@ -31,6 +32,7 @@
 - Modify: `src/components/MobileTopBar.tsx`
 
 **Interfaces:**
+
 - Produces: `type NavigationScope = 'aci' | 'legacy'`.
 - Produces: `resolveNavigationScope(pathname: string, cookieScope?: string): NavigationScope`.
 - Produces: `targetPathForScope(pathname: string, target: NavigationScope): string`.
@@ -96,6 +98,7 @@ git commit -m "feat: add ACI and legacy navigation scope"
 ### Task 2: Shared Legacy list and history query primitives
 
 **Files:**
+
 - Create: `src/lib/legacy-ui/query.ts`
 - Create: `src/lib/legacy-ui/query.test.ts`
 - Create: `src/lib/legacy-ui/serialize.ts`
@@ -105,6 +108,7 @@ git commit -m "feat: add ACI and legacy navigation scope"
 - Create: `src/components/legacy/LegacyEmptyState.tsx`
 
 **Interfaces:**
+
 - Produces: `parseLegacyPage`, `parseLegacyPageSize`, `parseLegacyRange`, `legacyRangeCutoff`, `parseLegacySort`.
 - Produces: `serializeLegacyCounter(value: bigint | null): string | null` and `serializeLegacyDate(value: Date | null): string | null`.
 - Produces shared page chrome, empty-state, and URL pagination components.
@@ -148,6 +152,7 @@ git commit -m "feat: add legacy inventory UI primitives"
 ### Task 3: Legacy Devices page
 
 **Files:**
+
 - Create: `src/lib/legacy-ui/devices.ts`
 - Create: `src/lib/legacy-ui/devices.test.ts`
 - Create: `src/app/(app)/legacy/devices/page.tsx`
@@ -155,6 +160,7 @@ git commit -m "feat: add legacy inventory UI primitives"
 - Create: `src/app/(app)/legacy/devices/LegacyDeviceDrawer.tsx`
 
 **Interfaces:**
+
 - Produces `buildLegacyDeviceWhere({ query, sites, deviceTypes })`.
 - Page emits serializable `LegacyDeviceRow` objects and summary counts.
 - Client renders URL-driven search/filters/sort/page controls and row selection.
@@ -185,6 +191,7 @@ git commit -m "feat: add legacy device inventory page"
 ### Task 4: Legacy Health page, history, and logs
 
 **Files:**
+
 - Create: `src/lib/legacy-ui/health.ts`
 - Create: `src/lib/legacy-ui/health.test.ts`
 - Create: `src/actions/legacy-health.ts`
@@ -194,6 +201,7 @@ git commit -m "feat: add legacy device inventory page"
 - Create: `src/app/(app)/legacy/health/LegacyHealthTrendChart.tsx`
 
 **Interfaces:**
+
 - Produces `buildLegacyHealthDeviceWhere` and latest-sample row serialization.
 - Produces authenticated `getLegacyHealthHistory(deviceId, options)` returning bounded chart points plus paginated samples/logs.
 
@@ -223,6 +231,7 @@ git commit -m "feat: add legacy health history page"
 ### Task 5: Legacy Interfaces page and sample history
 
 **Files:**
+
 - Create: `src/lib/legacy-ui/interfaces.ts`
 - Create: `src/lib/legacy-ui/interfaces.test.ts`
 - Create: `src/actions/legacy-interfaces.ts`
@@ -232,6 +241,7 @@ git commit -m "feat: add legacy health history page"
 - Create: `src/app/(app)/legacy/interfaces/LegacyInterfaceTrendChart.tsx`
 
 **Interfaces:**
+
 - Produces `buildLegacyInterfaceWhere`, status/presence parsing, and safe latest-sample serialization.
 - Produces authenticated `getLegacyInterfaceHistory(interfaceId, options)`.
 
@@ -261,12 +271,14 @@ git commit -m "feat: add legacy interface history page"
 ### Task 6: Legacy Endpoints lifecycle page
 
 **Files:**
+
 - Create: `src/lib/legacy-ui/endpoints.ts`
 - Create: `src/lib/legacy-ui/endpoints.test.ts`
 - Create: `src/app/(app)/legacy/endpoints/page.tsx`
 - Create: `src/app/(app)/legacy/endpoints/LegacyEndpointsClient.tsx`
 
 **Interfaces:**
+
 - Produces `buildLegacyEndpointWhere({ query, deviceIds, sites, vlans, interfaces, statuses })`.
 - Page emits paginated active/historical lifecycle rows and summary counts.
 
@@ -296,10 +308,12 @@ git commit -m "feat: add legacy endpoint lifecycle page"
 ### Task 7: Integration, responsive polish, and verification
 
 **Files:**
+
 - Modify only files from Tasks 1-6 when verification reveals scoped issues.
 - Inspect: `.gitignore` to confirm the existing `/.superpowers` exclusion remains present.
 
 **Interfaces:**
+
 - Verifies all acceptance criteria without adding new feature scope.
 
 - [ ] **Step 1: Run the complete automated verification matrix**

@@ -112,9 +112,7 @@ export function DeviceForm({
                   className={INPUT_OVERRIDE_CLS}
                   {...field}
                   value={field.value ?? ''}
-                  onChange={(e) =>
-                    field.onChange(e.target.value === '' ? null : e.target.value)
-                  }
+                  onChange={(e) => field.onChange(e.target.value === '' ? null : e.target.value)}
                 />
               </FormControl>
               <FormMessage className="text-xs" />
@@ -133,9 +131,7 @@ export function DeviceForm({
                   className={`${INPUT_OVERRIDE_CLS} font-mono`}
                   {...field}
                   value={field.value ?? ''}
-                  onChange={(e) =>
-                    field.onChange(e.target.value === '' ? null : e.target.value)
-                  }
+                  onChange={(e) => field.onChange(e.target.value === '' ? null : e.target.value)}
                 />
               </FormControl>
               <FormMessage className="text-xs" />
@@ -211,7 +207,7 @@ export function DeviceForm({
           )}
         />
 
-        <div className="pt-3 border-t border-border space-y-3">
+        <div className="space-y-3 border-t border-border pt-3">
           <div className="space-y-0.5">
             <div className="text-xs font-semibold text-foreground">Stack Membership</div>
             <p className="text-[11px] text-muted-foreground">
@@ -229,18 +225,19 @@ export function DeviceForm({
                 <SelectItem value="__none__">None (Standalone device)</SelectItem>
                 {existingStacks.length > 0 && (
                   <SelectGroup>
-                    <SelectLabel className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">
+                    <SelectLabel className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                       Existing Stacks
                     </SelectLabel>
                     {existingStacks.map((s) => (
                       <SelectItem key={s.id} value={s.name}>
-                        {s.name} ({s.memberCount ?? s.members?.length ?? 0} {s.memberCount === 1 ? 'member' : 'members'})
+                        {s.name} ({s.memberCount ?? s.members?.length ?? 0}{' '}
+                        {s.memberCount === 1 ? 'member' : 'members'})
                       </SelectItem>
                     ))}
                   </SelectGroup>
                 )}
                 <SelectSeparator />
-                <SelectItem value="__new__" className="text-primary font-medium">
+                <SelectItem value="__new__" className="font-medium text-primary">
                   + Create new stack...
                 </SelectItem>
               </SelectContent>
@@ -253,7 +250,9 @@ export function DeviceForm({
               name="deviceStackName"
               render={({ field }) => (
                 <FormItem className="animate-fade-up">
-                  <FormLabel className="text-xs font-medium text-foreground">New Stack Name</FormLabel>
+                  <FormLabel className="text-xs font-medium text-foreground">
+                    New Stack Name
+                  </FormLabel>
                   <FormControl>
                     <Input
                       autoFocus
@@ -271,9 +270,11 @@ export function DeviceForm({
           )}
 
           {stackSelectValue !== '__none__' && selectedStack && (
-            <div className="rounded-lg border border-border bg-muted/40 p-2.5 space-y-1.5 text-xs animate-fade-up">
-              <div className="font-medium text-foreground flex items-center justify-between text-[11px]">
-                <span>Switches in <span className="font-mono">{selectedStack.name}</span>:</span>
+            <div className="animate-fade-up space-y-1.5 rounded-lg border border-border bg-muted/40 p-2.5 text-xs">
+              <div className="flex items-center justify-between text-[11px] font-medium text-foreground">
+                <span>
+                  Switches in <span className="font-mono">{selectedStack.name}</span>:
+                </span>
                 <span className="font-mono text-[10px] text-muted-foreground">
                   {selectedStack.members?.length ?? 0} total
                 </span>
@@ -283,34 +284,39 @@ export function DeviceForm({
                   {selectedStack.members.map((m) => (
                     <span
                       key={m.id}
-                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-background border border-border text-[10px] font-mono"
+                      className="inline-flex items-center gap-1 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px]"
                     >
-                      <span className="font-semibold text-foreground">Switch #{m.stackMember ?? '?'}</span>
-                      <span className="text-muted-foreground truncate max-w-[100px]">{m.name}</span>
-                      <span className={`text-[9px] ${m.stackRole === 'MASTER' ? 'text-primary font-medium' : 'text-subtle'}`}>
+                      <span className="font-semibold text-foreground">
+                        Switch #{m.stackMember ?? '?'}
+                      </span>
+                      <span className="max-w-[100px] truncate text-muted-foreground">{m.name}</span>
+                      <span
+                        className={`text-[9px] ${m.stackRole === 'MASTER' ? 'font-medium text-primary' : 'text-subtle'}`}
+                      >
                         ({m.stackRole === 'MASTER' ? 'Master' : 'Member'})
                       </span>
                     </span>
                   ))}
                 </div>
               ) : (
-                <p className="text-[11px] text-subtle">No other switches currently in this stack.</p>
+                <p className="text-[11px] text-subtle">
+                  No other switches currently in this stack.
+                </p>
               )}
             </div>
           )}
 
           {stackSelectValue !== '__none__' && (
-            <div className="grid grid-cols-2 gap-3 pt-1 animate-fade-up">
+            <div className="animate-fade-up grid grid-cols-2 gap-3 pt-1">
               <FormField
                 control={form.control}
                 name="stackRole"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-foreground">Stack Role</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value ?? undefined}
-                    >
+                    <FormLabel className="text-xs font-medium text-foreground">
+                      Stack Role
+                    </FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value ?? undefined}>
                       <FormControl>
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select role" />
@@ -331,7 +337,9 @@ export function DeviceForm({
                 name="stackMember"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-medium text-foreground">Switch # (Position)</FormLabel>
+                    <FormLabel className="text-xs font-medium text-foreground">
+                      Switch # (Position)
+                    </FormLabel>
                     <FormControl>
                       <Input
                         type="number"

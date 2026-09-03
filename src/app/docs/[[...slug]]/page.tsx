@@ -1,25 +1,15 @@
-import {
-  DocsPage,
-  DocsBody,
-  DocsTitle,
-  DocsDescription,
-} from "fumadocs-ui/layouts/docs/page";
-import { source } from "@/lib/source";
-import { notFound } from "next/navigation";
-import defaultMdxComponents from "fumadocs-ui/mdx";
-import {
-  CrcTableExample,
-  TrendChartExample,
-} from "@/components/docs/InterfaceHealthExample";
+import { DocsPage, DocsBody, DocsTitle, DocsDescription } from 'fumadocs-ui/layouts/docs/page'
+import { source } from '@/lib/source'
+import { notFound } from 'next/navigation'
+import defaultMdxComponents from 'fumadocs-ui/mdx'
+import { CrcTableExample, TrendChartExample } from '@/components/docs/InterfaceHealthExample'
 
-export default async function Page(props: {
-  params: Promise<{ slug?: string[] }>;
-}) {
-  const params = await props.params;
-  const page = source.getPage(params.slug);
-  if (!page) notFound();
+export default async function Page(props: { params: Promise<{ slug?: string[] }> }) {
+  const params = await props.params
+  const page = source.getPage(params.slug)
+  if (!page) notFound()
 
-  const MDX = page.data.body;
+  const MDX = page.data.body
 
   return (
     <DocsPage toc={page.data.toc}>
@@ -35,24 +25,22 @@ export default async function Page(props: {
         />
       </DocsBody>
     </DocsPage>
-  );
+  )
 }
 
 export function generateStaticParams() {
   return source.getPages().map((page) => ({
     slug: page.slugs,
-  }));
+  }))
 }
 
-export async function generateMetadata(props: {
-  params: Promise<{ slug?: string[] }>;
-}) {
-  const params = await props.params;
-  const page = source.getPage(params.slug);
-  if (!page) notFound();
+export async function generateMetadata(props: { params: Promise<{ slug?: string[] }> }) {
+  const params = await props.params
+  const page = source.getPage(params.slug)
+  if (!page) notFound()
 
   return {
     title: page.data.title,
     description: page.data.description,
-  };
+  }
 }

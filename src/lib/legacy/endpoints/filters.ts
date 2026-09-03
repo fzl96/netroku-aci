@@ -23,16 +23,18 @@ export function buildLegacyEndpointWhere(
 
   const query = filters.query?.trim()
   if (query) {
-    and.push({ OR: [
-      { mac: { contains: query, mode: 'insensitive' } },
-      { ip: { contains: query, mode: 'insensitive' } },
-      { vlan: { contains: query, mode: 'insensitive' } },
-      { vlanName: { contains: query, mode: 'insensitive' } },
-      { interface: { contains: query, mode: 'insensitive' } },
-      { learningType: { contains: query, mode: 'insensitive' } },
-      { device: { hostname: { contains: query, mode: 'insensitive' } } },
-      { device: { managementIp: { contains: query, mode: 'insensitive' } } },
-    ] })
+    and.push({
+      OR: [
+        { mac: { contains: query, mode: 'insensitive' } },
+        { ip: { contains: query, mode: 'insensitive' } },
+        { vlan: { contains: query, mode: 'insensitive' } },
+        { vlanName: { contains: query, mode: 'insensitive' } },
+        { interface: { contains: query, mode: 'insensitive' } },
+        { learningType: { contains: query, mode: 'insensitive' } },
+        { device: { hostname: { contains: query, mode: 'insensitive' } } },
+        { device: { managementIp: { contains: query, mode: 'insensitive' } } },
+      ],
+    })
   }
 
   return and.length ? { AND: and } : {}
@@ -52,7 +54,5 @@ export function legacyEndpointOrderBy(
   direction: 'asc' | 'desc',
 ): Prisma.LegacyEndpointOrderByWithRelationInput[] {
   const field = SORT_FIELDS[sort as keyof typeof SORT_FIELDS]
-  return field
-    ? [{ [field]: direction }, { id: 'asc' }]
-    : [{ lastSeenAt: 'desc' }, { id: 'asc' }]
+  return field ? [{ [field]: direction }, { id: 'asc' }] : [{ lastSeenAt: 'desc' }, { id: 'asc' }]
 }

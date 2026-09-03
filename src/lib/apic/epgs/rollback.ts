@@ -20,8 +20,9 @@ function relationTargetTenant(value: string | undefined): string | undefined {
 }
 
 function epgBridgeDomainTarget(children: EpgChild[]): { name?: string; tenant?: string } {
-  const bd = children.find((item): item is { fvRsBd: { attributes: { tDn?: string; tnFvBDName?: string } } } =>
-    'fvRsBd' in item
+  const bd = children.find(
+    (item): item is { fvRsBd: { attributes: { tDn?: string; tnFvBDName?: string } } } =>
+      'fvRsBd' in item,
   )
   const tDn = bd?.fvRsBd.attributes.tDn
   return {
@@ -46,13 +47,29 @@ function relationMatches(
   return name === expectedName && (!tenant || !expectedTenant || tenant === expectedTenant)
 }
 
-export function hasAnyContract(children: EpgChild[], contract: string, contractTenant?: string): boolean {
+export function hasAnyContract(
+  children: EpgChild[],
+  contract: string,
+  contractTenant?: string,
+): boolean {
   return children.some((item) => {
     if ('fvRsCons' in item) {
-      return relationMatches(item.fvRsCons.attributes.tDn, item.fvRsCons.attributes.tnVzBrCPName, '/brc-', contract, contractTenant)
+      return relationMatches(
+        item.fvRsCons.attributes.tDn,
+        item.fvRsCons.attributes.tnVzBrCPName,
+        '/brc-',
+        contract,
+        contractTenant,
+      )
     }
     if ('fvRsProv' in item) {
-      return relationMatches(item.fvRsProv.attributes.tDn, item.fvRsProv.attributes.tnVzBrCPName, '/brc-', contract, contractTenant)
+      return relationMatches(
+        item.fvRsProv.attributes.tDn,
+        item.fvRsProv.attributes.tnVzBrCPName,
+        '/brc-',
+        contract,
+        contractTenant,
+      )
     }
     return false
   })
@@ -66,10 +83,22 @@ export function hasRoleContract(
 ): boolean {
   return children.some((item) => {
     if (role === 'consumer' && 'fvRsCons' in item) {
-      return relationMatches(item.fvRsCons.attributes.tDn, item.fvRsCons.attributes.tnVzBrCPName, '/brc-', contract, contractTenant)
+      return relationMatches(
+        item.fvRsCons.attributes.tDn,
+        item.fvRsCons.attributes.tnVzBrCPName,
+        '/brc-',
+        contract,
+        contractTenant,
+      )
     }
     if (role === 'provider' && 'fvRsProv' in item) {
-      return relationMatches(item.fvRsProv.attributes.tDn, item.fvRsProv.attributes.tnVzBrCPName, '/brc-', contract, contractTenant)
+      return relationMatches(
+        item.fvRsProv.attributes.tDn,
+        item.fvRsProv.attributes.tnVzBrCPName,
+        '/brc-',
+        contract,
+        contractTenant,
+      )
     }
     return false
   })
@@ -101,7 +130,10 @@ export function validateEpgState(row: ParsedAnyEpgRow, children: EpgChild[]): st
   return null
 }
 
-export function validateEpgRollbackState(row: ParsedEpgContractRow, children: EpgChild[]): string | null {
+export function validateEpgRollbackState(
+  row: ParsedEpgContractRow,
+  children: EpgChild[],
+): string | null {
   const stateError = validateEpgState(row, children)
   if (stateError) return stateError
 

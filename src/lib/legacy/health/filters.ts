@@ -24,11 +24,13 @@ export function buildLegacyHealthDeviceWhere(
   if (filters.sites?.length) and.push({ site: { in: filters.sites } })
   const query = filters.query?.trim()
   if (query) {
-    and.push({ OR: [
-      { hostname: { contains: query, mode: 'insensitive' } },
-      { site: { contains: query, mode: 'insensitive' } },
-      { managementIp: { contains: query, mode: 'insensitive' } },
-    ] })
+    and.push({
+      OR: [
+        { hostname: { contains: query, mode: 'insensitive' } },
+        { site: { contains: query, mode: 'insensitive' } },
+        { managementIp: { contains: query, mode: 'insensitive' } },
+      ],
+    })
   }
   return { AND: and }
 }

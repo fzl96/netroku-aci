@@ -1,15 +1,11 @@
 import type { CounterMode } from './counter-mode'
 import type { InterfaceView } from './interface-query'
-import {
-  parseInterfaceSortParams,
-  type InterfaceSort,
-  type InterfaceSortDirection,
-} from './sort'
+import { parseInterfaceSortParams, type InterfaceSort, type InterfaceSortDirection } from './sort'
 
 export const INTERFACE_PAGE_SIZES = [10, 50, 100, 1000] as const
 export const CRC_WINDOW_SORT_KEY = 'crcWindowTotal'
 
-export type InterfacePageSize = typeof INTERFACE_PAGE_SIZES[number] | 'all'
+export type InterfacePageSize = (typeof INTERFACE_PAGE_SIZES)[number] | 'all'
 export type InterfaceWindow = '7d' | '30d'
 
 /** How the result rows are ordered. The CRC view ranks by windowed CRC total
@@ -59,7 +55,7 @@ function pageSize(value: string): InterfacePageSize {
   if (value === 'all') return 'all'
   const parsed = Number(value)
   return (INTERFACE_PAGE_SIZES as readonly number[]).includes(parsed)
-    ? parsed as InterfacePageSize
+    ? (parsed as InterfacePageSize)
     : 50
 }
 
@@ -91,16 +87,22 @@ export function parseInterfaceHealthPageParams(
   const direction: InterfaceSortDirection = rawDir === 'asc' ? 'asc' : 'desc'
 
   // In the CRC view, no explicit counter column means rank by windowed CRC total.
-  const sort: InterfaceTableSort = resolvedView === 'crc' && counterSort === null
-    ? { kind: 'crc-window', direction }
-    : counterSort
-      ? { kind: 'counter', sort: counterSort }
-      : { kind: 'natural' }
+  const sort: InterfaceTableSort =
+    resolvedView === 'crc' && counterSort === null
+      ? { kind: 'crc-window', direction }
+      : counterSort
+        ? { kind: 'counter', sort: counterSort }
+        : { kind: 'natural' }
 
   return {
     hostId: first(input.apic),
     query: first(input.query),
-    nodes: rawNodes ? rawNodes.split(',').map(node => node.trim()).filter(Boolean) : [],
+    nodes: rawNodes
+      ? rawNodes
+          .split(',')
+          .map((node) => node.trim())
+          .filter(Boolean)
+      : [],
     page: positivePage(first(input.page)),
     pageSize: pageSize(first(input.pageSize)),
     view: resolvedView,

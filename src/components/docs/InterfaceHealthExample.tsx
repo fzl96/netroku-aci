@@ -45,14 +45,14 @@ export function CrcTableExample() {
         <tbody>
           {ROWS.map((r) => (
             <tr key={r.ifName} className="border-b border-border-faint last:border-0">
-              <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{r.node}</td>
+              <td className="px-4 py-2.5 text-muted-foreground tabular-nums">{r.node}</td>
               <td className="px-4 py-2.5 font-mono text-foreground">{r.ifName}</td>
               <td className="px-4 py-2.5">
                 <OperUp />
               </td>
-              <td className="px-4 py-2.5 tabular-nums text-muted-foreground">10G</td>
+              <td className="px-4 py-2.5 text-muted-foreground tabular-nums">10G</td>
               <td className="px-4 py-2.5 tabular-nums">
-                <div className={r.active ? 'font-semibold text-danger' : 'text-faint'}>
+                <div className={r.active ? 'text-danger font-semibold' : 'text-faint'}>
                   {r.crcTotal}
                 </div>
                 <div className="mt-0.5 text-[10px] font-normal text-faint">{r.lastPoll}</div>

@@ -40,29 +40,33 @@ const apicHost = {
 }
 
 const resyncSchedule = {
-  upsert: mock(async ({ create, update }: {
-    create: Omit<ScheduleRow, 'id' | 'createdAt' | 'updatedAt'>
-    update: Partial<ScheduleRow>
-  }) => {
-    schedule = schedule
-      ? { ...schedule, ...update }
-      : {
-          id: 'schedule-1',
-          ...create,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }
-    return schedule
-  }),
+  upsert: mock(
+    async ({
+      create,
+      update,
+    }: {
+      create: Omit<ScheduleRow, 'id' | 'createdAt' | 'updatedAt'>
+      update: Partial<ScheduleRow>
+    }) => {
+      schedule = schedule
+        ? { ...schedule, ...update }
+        : {
+            id: 'schedule-1',
+            ...create,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }
+      return schedule
+    },
+  ),
   findUnique: mock(async () => ({ ...schedule, apicHost: host })),
   deleteMany: mock(async () => ({ count: 1 })),
-  update: mock(async ({ data, include }: {
-    data: Partial<ScheduleRow>
-    include?: { apicHost?: boolean }
-  }) => {
-    schedule = { ...schedule, ...data }
-    return include?.apicHost ? { ...schedule, apicHost: host } : schedule
-  }),
+  update: mock(
+    async ({ data, include }: { data: Partial<ScheduleRow>; include?: { apicHost?: boolean } }) => {
+      schedule = { ...schedule, ...data }
+      return include?.apicHost ? { ...schedule, apicHost: host } : schedule
+    },
+  ),
 }
 
 const tx = {
@@ -73,15 +77,17 @@ const tx = {
     if (query.includes('FROM apic_host')) return [host]
     if (query.includes('FROM resync_schedule')) {
       return schedule
-        ? [{
-            id: schedule.id,
-            enabled: schedule.enabled,
-            intervalMinutes: schedule.intervalMinutes,
-            encPassword: schedule.encPassword,
-            nextRunAt: schedule.nextRunAt,
-            lastRunAt: schedule.lastRunAt,
-            runningAt: schedule.runningAt,
-          }]
+        ? [
+            {
+              id: schedule.id,
+              enabled: schedule.enabled,
+              intervalMinutes: schedule.intervalMinutes,
+              encPassword: schedule.encPassword,
+              nextRunAt: schedule.nextRunAt,
+              lastRunAt: schedule.lastRunAt,
+              runningAt: schedule.runningAt,
+            },
+          ]
         : []
     }
     throw new Error('Unexpected query in schedule mutation test')
@@ -111,11 +117,8 @@ mock.module('@/lib/crypto', () => ({
   decrypt: (value: string) => value.replace(/^encrypted:/, ''),
 }))
 
-const {
-  deleteResyncScheduleRecord,
-  runResyncScheduleNowRecord,
-  upsertResyncScheduleRecord,
-} = await import('./mutation')
+const { deleteResyncScheduleRecord, runResyncScheduleNowRecord, upsertResyncScheduleRecord } =
+  await import('./mutation')
 
 beforeEach(() => {
   authError = null
@@ -143,10 +146,14 @@ afterAll(() => mock.restore())
 describe('scheduler mutation authorization', () => {
   it('requires the admin role, not just a session', async () => {
     authError = new Error('Forbidden')
-    await expect(upsertResyncScheduleRecord(host.id, {
-      enabled: true, intervalMinutes: 60, username: 'svc-apic',
-      password: undefined,
-    })).rejects.toThrow('Forbidden')
+    await expect(
+      upsertResyncScheduleRecord(host.id, {
+        enabled: true,
+        intervalMinutes: 60,
+        username: 'svc-apic',
+        password: undefined,
+      }),
+    ).rejects.toThrow('Forbidden')
   })
 })
 
@@ -238,7 +245,9 @@ describe('runResyncScheduleNowRecord', () => {
     transactionCalls = 0
     schedule.enabled = true
     schedule.runningAt = new Date('2099-08-17T12:30:00.000Z')
-    await expect(runResyncScheduleNowRecord(host.id)).rejects.toThrow('A run is already in progress')
+    await expect(runResyncScheduleNowRecord(host.id)).rejects.toThrow(
+      'A run is already in progress',
+    )
     expect(schedule.nextRunAt).toEqual(OLD_NEXT_RUN)
     expect(transactionCalls).toBe(1)
   })

@@ -10,7 +10,13 @@ import {
   IconSearch,
 } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
-import { DataCard, DataCardBody, DataCardHeader, DataCardRow, DataCardTitle } from '@/components/ui/data-card'
+import {
+  DataCard,
+  DataCardBody,
+  DataCardHeader,
+  DataCardRow,
+  DataCardTitle,
+} from '@/components/ui/data-card'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -80,15 +86,29 @@ function operState(value: string) {
   const state = normalizeLegacyInterfaceState(value)
 
   if (state === 'down') {
-    return <span className="inline-flex items-center gap-1.5 rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400"><span className="size-1.5 shrink-0 rounded-full bg-red-500" />down</span>
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400">
+        <span className="size-1.5 shrink-0 rounded-full bg-red-500" />
+        down
+      </span>
+    )
   }
 
-  return <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-success"><span className="size-1.5 shrink-0 rounded-full bg-success-dot" />up</span>
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-success">
+      <span className="size-1.5 shrink-0 rounded-full bg-success-dot" />
+      up
+    </span>
+  )
 }
 
 function exactCounter(value: string | null): string {
   if (value === null) return '—'
-  try { return BigInt(value).toLocaleString() } catch { return value }
+  try {
+    return BigInt(value).toLocaleString()
+  } catch {
+    return value
+  }
 }
 
 interface VisibleCounters {
@@ -97,26 +117,32 @@ interface VisibleCounters {
   crc: string | null
 }
 
-function visibleCounters(row: LegacyInterfaceRow, state: LegacyInterfaceListState): VisibleCounters {
+function visibleCounters(
+  row: LegacyInterfaceRow,
+  state: LegacyInterfaceListState,
+): VisibleCounters {
   return {
-    input: state.mode === 'delta'
-      ? row.sample?.dInputErrors ?? null
-      : row.sample?.inputErrors ?? null,
-    output: state.mode === 'delta'
-      ? row.sample?.dOutputErrors ?? null
-      : row.sample?.outputErrors ?? null,
-    crc: state.view === 'crc'
-      ? row.crcWindowTotal
-      : state.mode === 'delta'
-        ? row.sample?.dCrcErrors ?? null
-        : row.sample?.crcErrors ?? null,
+    input:
+      state.mode === 'delta'
+        ? (row.sample?.dInputErrors ?? null)
+        : (row.sample?.inputErrors ?? null),
+    output:
+      state.mode === 'delta'
+        ? (row.sample?.dOutputErrors ?? null)
+        : (row.sample?.outputErrors ?? null),
+    crc:
+      state.view === 'crc'
+        ? row.crcWindowTotal
+        : state.mode === 'delta'
+          ? (row.sample?.dCrcErrors ?? null)
+          : (row.sample?.crcErrors ?? null),
   }
 }
 
 function segmentClass(active: boolean): string {
-  return `${SEGMENT_CLS} ${active
-    ? 'bg-card text-foreground shadow-sm'
-    : 'text-muted-foreground hover:text-foreground'}`
+  return `${SEGMENT_CLS} ${
+    active ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+  }`
 }
 
 // ─── Filters ──────────────────────────────────────────────────────────────────
@@ -158,7 +184,7 @@ export function LegacyInterfaceFiltersClient({
   function handleDeviceToggle(deviceId: string) {
     const { deviceIds: currentDeviceIds } = currentStateRef.current
     const deviceIds = currentDeviceIds.includes(deviceId)
-      ? currentDeviceIds.filter(id => id !== deviceId)
+      ? currentDeviceIds.filter((id) => id !== deviceId)
       : [...currentDeviceIds, deviceId]
     apply({ deviceIds })
   }
@@ -168,10 +194,13 @@ export function LegacyInterfaceFiltersClient({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div className="relative min-w-56 flex-1 md:w-72 md:flex-none">
-        <IconSearch size={13} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint" />
+        <IconSearch
+          size={13}
+          className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-faint"
+        />
         <input
           value={search}
-          onChange={event => handleSearch(event.target.value)}
+          onChange={(event) => handleSearch(event.target.value)}
           placeholder="Search interface or device…"
           className={SEARCH_INPUT_CLS}
         />
@@ -193,58 +222,82 @@ export function LegacyInterfaceFiltersClient({
             ].join(' ')}
           >
             <IconFilter2 size={15} stroke={1.75} />
-            {activeFilterCount > 0 && <span className="absolute -right-1.5 -top-1.5 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground shadow-sm">{activeFilterCount}</span>}
+            {activeFilterCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] leading-4 font-semibold text-primary-foreground shadow-sm">
+                {activeFilterCount}
+              </span>
+            )}
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="start">
           <DropdownMenuLabel>Device</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {devices.length === 0
-            ? <DropdownMenuItem disabled>No values available</DropdownMenuItem>
-            : devices.map(device => <DropdownMenuCheckboxItem
+          {devices.length === 0 ? (
+            <DropdownMenuItem disabled>No values available</DropdownMenuItem>
+          ) : (
+            devices.map((device) => (
+              <DropdownMenuCheckboxItem
                 key={device.id}
                 checked={state.deviceIds.includes(device.id)}
                 onCheckedChange={() => handleDeviceToggle(device.id)}
-                onSelect={event => event.preventDefault()}
+                onSelect={(event) => event.preventDefault()}
               >
                 {device.hostname} · {device.site}
-              </DropdownMenuCheckboxItem>)}
+              </DropdownMenuCheckboxItem>
+            ))
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
       <div className="inline-flex shrink-0 rounded-lg border border-border bg-muted p-0.5">
-        {([
-          { label: 'All', value: 'all' },
-          { label: 'Counting CRC', value: 'crc' },
-          { label: 'State Changes', value: 'state-changed' },
-        ] as const).map(view => <button
-          key={view.value}
-          type="button"
-          aria-pressed={state.view === view.value}
-          onClick={() => apply({ view: view.value })}
-          className={segmentClass(state.view === view.value)}
-        >{view.label}</button>)}
+        {(
+          [
+            { label: 'All', value: 'all' },
+            { label: 'Counting CRC', value: 'crc' },
+            { label: 'State Changes', value: 'state-changed' },
+          ] as const
+        ).map((view) => (
+          <button
+            key={view.value}
+            type="button"
+            aria-pressed={state.view === view.value}
+            onClick={() => apply({ view: view.value })}
+            className={segmentClass(state.view === view.value)}
+          >
+            {view.label}
+          </button>
+        ))}
       </div>
 
       <div className="inline-flex shrink-0 rounded-lg border border-border bg-muted p-0.5">
-        {(['delta', 'current'] as const).map(mode => <button
-          key={mode}
-          type="button"
-          aria-pressed={state.mode === mode}
-          onClick={() => apply({ mode })}
-          className={segmentClass(state.mode === mode)}
-        >{mode === 'delta' ? 'Delta' : 'Current'}</button>)}
+        {(['delta', 'current'] as const).map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            aria-pressed={state.mode === mode}
+            onClick={() => apply({ mode })}
+            className={segmentClass(state.mode === mode)}
+          >
+            {mode === 'delta' ? 'Delta' : 'Current'}
+          </button>
+        ))}
       </div>
 
-      {state.view !== 'all' && <div className="inline-flex shrink-0 rounded-lg border border-border bg-muted p-0.5">
-        {(['7d', '30d'] as const).map(window => <button
-          key={window}
-          type="button"
-          aria-pressed={state.window === window}
-          onClick={() => apply({ window })}
-          className={segmentClass(state.window === window)}
-        >{window}</button>)}
-      </div>}
+      {state.view !== 'all' && (
+        <div className="inline-flex shrink-0 rounded-lg border border-border bg-muted p-0.5">
+          {(['7d', '30d'] as const).map((window) => (
+            <button
+              key={window}
+              type="button"
+              aria-pressed={state.window === window}
+              onClick={() => apply({ window })}
+              className={segmentClass(state.window === window)}
+            >
+              {window}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -290,10 +343,14 @@ export function LegacyInterfaceResultsClient({
 
   function handleSort(key: LegacyInterfaceSortKey) {
     const next = nextLegacyInterfaceSort(state.sortKey, state.sortDirection, key)
-    navigate(buildLegacyInterfaceUrl(mergeLegacyInterfaceListState(state, {
-      sortKey: next.key,
-      sortDirection: next.direction,
-    })))
+    navigate(
+      buildLegacyInterfaceUrl(
+        mergeLegacyInterfaceListState(state, {
+          sortKey: next.key,
+          sortDirection: next.direction,
+        }),
+      ),
+    )
   }
 
   const counterPrefix = state.mode === 'delta' ? 'Δ ' : ''
@@ -315,63 +372,136 @@ export function LegacyInterfaceResultsClient({
 
   if (rows.length === 0 && !isPending) {
     const copy = emptyCopy(state)
-    return <LegacyEmptyState icon={<IconPlugConnected size={24} />} title={copy.title} description={copy.description} />
+    return (
+      <LegacyEmptyState
+        icon={<IconPlugConnected size={24} />}
+        title={copy.title}
+        description={copy.description}
+      />
+    )
   }
 
   return (
     <>
-      <div className={[
-        'overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-opacity duration-150',
-        isPending ? 'pointer-events-none opacity-60' : 'opacity-100',
-      ].join(' ')}>
+      <div
+        className={[
+          'overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-opacity duration-150',
+          isPending ? 'pointer-events-none opacity-60' : 'opacity-100',
+        ].join(' ')}
+      >
         <div className="hidden max-h-[calc(100vh-17rem)] overflow-auto md:block">
           <table className="w-full text-xs">
-            <thead><tr>{tableHeaders.map(header => <th
-              key={header.key}
-              aria-sort={state.sortKey === header.key
-                ? state.sortDirection === 'asc' ? 'ascending' : 'descending'
-                : undefined}
-              className={DENSE_TABLE_HEAD_CLS}
-            ><button
-              type="button"
-              onClick={() => handleSort(header.key)}
-              className="inline-flex items-center gap-1 text-inherit transition-colors hover:text-foreground"
-            ><span>{header.label}</span>{state.sortKey === header.key
-              ? state.sortDirection === 'asc'
-                ? <IconChevronUp size={11} stroke={2} />
-                : <IconChevronDown size={11} stroke={2} />
-              : <span className="w-[11px]" aria-hidden="true" />}</button></th>)}</tr></thead>
-            <tbody>{rows.map(row => {
-              const counters = visibleCounters(row, state)
-              return <tr key={row.id} onClick={() => setSelected(row)} className="cursor-pointer border-b border-border/70 hover:bg-muted/60">
-                <td className="px-4 py-3 font-semibold text-foreground">{row.hostname}<div className="text-[10px] font-normal text-faint">{row.site}</div></td>
-                <td className="whitespace-nowrap px-4 py-3 font-mono text-foreground">{row.ifName}</td>
-                <td className="max-w-52 truncate px-4 py-3 text-subtle">{row.description || '—'}</td>
-                <td className="whitespace-nowrap px-4 py-3 font-mono text-subtle">{row.ipAddress ? `${row.ipAddress}${row.prefixLength === null ? '' : `/${row.prefixLength}`}` : '—'}</td>
-                <td className="px-4 py-3 text-muted-foreground">{normalizeLegacyInterfaceState(row.adminSt)}</td>
-                <td className="px-4 py-3">{operState(row.operSt)}</td>
-                <td className="px-4 py-3 text-right font-mono text-subtle">{exactCounter(counters.input)}</td>
-                <td className="px-4 py-3 text-right font-mono text-subtle">{exactCounter(counters.output)}</td>
-                <td className="px-4 py-3 text-right font-mono text-subtle">{exactCounter(counters.crc)}</td>
-                <td className="whitespace-nowrap px-4 py-3 text-subtle">{row.sample ? new Date(row.sample.collectedAt).toLocaleString() : 'No samples'}</td>
+            <thead>
+              <tr>
+                {tableHeaders.map((header) => (
+                  <th
+                    key={header.key}
+                    aria-sort={
+                      state.sortKey === header.key
+                        ? state.sortDirection === 'asc'
+                          ? 'ascending'
+                          : 'descending'
+                        : undefined
+                    }
+                    className={DENSE_TABLE_HEAD_CLS}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleSort(header.key)}
+                      className="inline-flex items-center gap-1 text-inherit transition-colors hover:text-foreground"
+                    >
+                      <span>{header.label}</span>
+                      {state.sortKey === header.key ? (
+                        state.sortDirection === 'asc' ? (
+                          <IconChevronUp size={11} stroke={2} />
+                        ) : (
+                          <IconChevronDown size={11} stroke={2} />
+                        )
+                      ) : (
+                        <span className="w-[11px]" aria-hidden="true" />
+                      )}
+                    </button>
+                  </th>
+                ))}
               </tr>
-            })}</tbody>
+            </thead>
+            <tbody>
+              {rows.map((row) => {
+                const counters = visibleCounters(row, state)
+                return (
+                  <tr
+                    key={row.id}
+                    onClick={() => setSelected(row)}
+                    className="cursor-pointer border-b border-border/70 hover:bg-muted/60"
+                  >
+                    <td className="px-4 py-3 font-semibold text-foreground">
+                      {row.hostname}
+                      <div className="text-[10px] font-normal text-faint">{row.site}</div>
+                    </td>
+                    <td className="px-4 py-3 font-mono whitespace-nowrap text-foreground">
+                      {row.ifName}
+                    </td>
+                    <td className="max-w-52 truncate px-4 py-3 text-subtle">
+                      {row.description || '—'}
+                    </td>
+                    <td className="px-4 py-3 font-mono whitespace-nowrap text-subtle">
+                      {row.ipAddress
+                        ? `${row.ipAddress}${row.prefixLength === null ? '' : `/${row.prefixLength}`}`
+                        : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {normalizeLegacyInterfaceState(row.adminSt)}
+                    </td>
+                    <td className="px-4 py-3">{operState(row.operSt)}</td>
+                    <td className="px-4 py-3 text-right font-mono text-subtle">
+                      {exactCounter(counters.input)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-subtle">
+                      {exactCounter(counters.output)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-subtle">
+                      {exactCounter(counters.crc)}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-subtle">
+                      {row.sample
+                        ? new Date(row.sample.collectedAt).toLocaleString()
+                        : 'No samples'}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
           </table>
         </div>
-        <div className="space-y-2 p-3 md:hidden">{rows.map(row => {
-          const counters = visibleCounters(row, state)
-          return <DataCard key={row.id} onClick={() => setSelected(row)}>
-            <DataCardHeader trailing={operState(row.operSt)}><DataCardTitle>{row.hostname} · {row.ifName}</DataCardTitle></DataCardHeader>
-            <DataCardBody>
-              <DataCardRow label="Site" value={row.site} />
-              <DataCardRow label="Description" value={row.description || 'Not reported'} />
-              <DataCardRow label={`${state.mode === 'delta' ? 'Error deltas' : 'Errors'} (in / out / CRC)`} value={`${exactCounter(counters.input)} / ${exactCounter(counters.output)} / ${exactCounter(counters.crc)}`} />
-            </DataCardBody>
-          </DataCard>
-        })}</div>
+        <div className="space-y-2 p-3 md:hidden">
+          {rows.map((row) => {
+            const counters = visibleCounters(row, state)
+            return (
+              <DataCard key={row.id} onClick={() => setSelected(row)}>
+                <DataCardHeader trailing={operState(row.operSt)}>
+                  <DataCardTitle>
+                    {row.hostname} · {row.ifName}
+                  </DataCardTitle>
+                </DataCardHeader>
+                <DataCardBody>
+                  <DataCardRow label="Site" value={row.site} />
+                  <DataCardRow label="Description" value={row.description || 'Not reported'} />
+                  <DataCardRow
+                    label={`${state.mode === 'delta' ? 'Error deltas' : 'Errors'} (in / out / CRC)`}
+                    value={`${exactCounter(counters.input)} / ${exactCounter(counters.output)} / ${exactCounter(counters.crc)}`}
+                  />
+                </DataCardBody>
+              </DataCard>
+            )
+          })}
+        </div>
         <LegacyPagination page={page} pageSize={pageSize} total={total} />
       </div>
-      <LegacyInterfaceDrawer key={selected?.id ?? 'closed'} selected={selected} onClose={() => setSelected(null)} />
+      <LegacyInterfaceDrawer
+        key={selected?.id ?? 'closed'}
+        selected={selected}
+        onClose={() => setSelected(null)}
+      />
     </>
   )
 }

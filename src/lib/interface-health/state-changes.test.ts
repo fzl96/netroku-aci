@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  isRecentLinkStateChange,
-  isOperDown,
-} from './state-changes'
+import { isRecentLinkStateChange, isOperDown } from './state-changes'
 
 describe('state-changes helpers', () => {
   describe('isRecentLinkStateChange', () => {

@@ -14,9 +14,7 @@ import {
 } from './paths'
 import type { ParsedBridgeDomainL2Row, ParsedBridgeDomainL3Row } from './types'
 
-function readerWith(
-  imdataForPath: (path: string) => unknown[],
-) {
+function readerWith(imdataForPath: (path: string) => unknown[]) {
   const calls = new Map<string, number>()
   const reader = createApicReader('apic.local', 'token', async (_host, path) => {
     calls.set(path, (calls.get(path) ?? 0) + 1)
@@ -37,9 +35,7 @@ const l3Rows: ParsedBridgeDomainL3Row[] = [
 
 describe('bridge-domain APIC validation grouping', () => {
   it('reads shared L2 tenant and VRF managed objects once', async () => {
-    const { calls, reader } = readerWith(path =>
-      path.includes('/BD-') ? [] : [{}]
-    )
+    const { calls, reader } = readerWith((path) => (path.includes('/BD-') ? [] : [{}]))
 
     const results = await validateBridgeDomainL2Rows(l2Rows, 'apic.local', 'token', reader)
 
@@ -54,9 +50,7 @@ describe('bridge-domain APIC validation grouping', () => {
   })
 
   it('reads shared L3 tenant, VRF, and L3Out managed objects once', async () => {
-    const { calls, reader } = readerWith(path =>
-      path.includes('/BD-') ? [] : [{}]
-    )
+    const { calls, reader } = readerWith((path) => (path.includes('/BD-') ? [] : [{}]))
 
     const results = await validateBridgeDomainL3Rows(l3Rows, 'apic.local', 'token', reader)
 
@@ -73,9 +67,13 @@ describe('bridge-domain APIC validation grouping', () => {
     const duplicateRows = [l2Rows[0], { ...l2Rows[0], rowIndex: 2 }]
     const bdPath = buildBridgeDomainPath('TenantA', 'BD-100')
     const childrenPath = buildBridgeDomainChildrenPath('TenantA', 'BD-100')
-    const { calls, reader } = readerWith(path => {
+    const { calls, reader } = readerWith((path) => {
       if (path === bdPath) {
-        return [{ fvBD: { attributes: { unicastRoute: 'no', unkMacUcastAct: 'flood', arpFlood: 'true' } } }]
+        return [
+          {
+            fvBD: { attributes: { unicastRoute: 'no', unkMacUcastAct: 'flood', arpFlood: 'true' } },
+          },
+        ]
       }
       if (path === childrenPath) {
         return [{ fvRsCtx: { attributes: { tnFvCtxName: 'VRF-A' } } }]

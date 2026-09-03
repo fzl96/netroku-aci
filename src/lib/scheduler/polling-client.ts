@@ -16,7 +16,7 @@ export async function refreshResyncSchedules(
 ): Promise<ScheduleRefreshResult<SafeResyncSchedule[]>> {
   try {
     const response = await fetcher('/api/scheduler', { cache: 'no-store' })
-    const payload = await response.json() as PollingPayload
+    const payload = (await response.json()) as PollingPayload
     if (!response.ok) {
       return {
         success: false,

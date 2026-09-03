@@ -7,16 +7,27 @@ const payload = {
   collected_at: '2026-07-21T14:30:00+07:00',
   complete: true as const,
   device: {
-    site: 'jakarta', hostname: 'SW-JKT-01',
-    management_ip: '10.10.0.11', device_type: 'cisco_ios',
+    site: 'jakarta',
+    hostname: 'SW-JKT-01',
+    management_ip: '10.10.0.11',
+    device_type: 'cisco_ios',
   },
   health: {
-    uptime: '1 day', cpu_percent: 10, memory_percent: 20,
-    storage_percent: null, temperature_celsius: 35,
-    fan_statuses: ['OK'], psu_statuses: ['OK'],
+    uptime: '1 day',
+    cpu_percent: 10,
+    memory_percent: 20,
+    storage_percent: null,
+    temperature_celsius: 35,
+    fan_statuses: ['OK'],
+    psu_statuses: ['OK'],
   },
   logs: [
-    { timestamp: '2026-07-21T14:20:00+07:00', severity: 'ERROR', message: 'down', raw: 'timestamped' },
+    {
+      timestamp: '2026-07-21T14:20:00+07:00',
+      severity: 'ERROR',
+      message: 'down',
+      raw: 'timestamped',
+    },
     { timestamp: null, severity: null, message: 'raw event', raw: 'raw event' },
   ],
 }
@@ -35,18 +46,21 @@ describe('applyLegacyHealth', () => {
       legacyDevice: { update: async (args: unknown) => calls.push({ device: args }) },
     }
 
-    const counts = await applyLegacyHealth({
-      tx,
-      deviceId: 'device-1',
-      receiptId: 'receipt-1',
-      collectedAt: new Date(payload.collected_at),
-    }, payload)
+    const counts = await applyLegacyHealth(
+      {
+        tx,
+        deviceId: 'device-1',
+        receiptId: 'receipt-1',
+        collectedAt: new Date(payload.collected_at),
+      },
+      payload,
+    )
 
     expect(counts).toEqual({ inserted: 2, updated: 0, cleared: 0, samples: 1 })
     expect(calls).toHaveLength(3)
     const logs = (calls[1].logs as { data: Array<{ eventHash: string }> }).data
     expect(logs[0].eventHash).not.toBe(logs[1].eventHash)
-    expect(logs.every(log => log.eventHash.length === 64)).toBe(true)
+    expect(logs.every((log) => log.eventHash.length === 64)).toBe(true)
   })
 
   it('keeps timestamp-less log identity stable across receipts', async () => {
@@ -63,12 +77,15 @@ describe('applyLegacyHealth', () => {
     }
 
     for (const receiptId of ['receipt-1', 'receipt-2']) {
-      await applyLegacyHealth({
-        tx,
-        deviceId: 'device-1',
-        receiptId,
-        collectedAt: new Date(payload.collected_at),
-      }, payload)
+      await applyLegacyHealth(
+        {
+          tx,
+          deviceId: 'device-1',
+          receiptId,
+          collectedAt: new Date(payload.collected_at),
+        },
+        payload,
+      )
     }
 
     expect(batches[0][1].eventHash).toBe(batches[1][1].eventHash)

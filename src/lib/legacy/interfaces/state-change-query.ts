@@ -4,9 +4,7 @@ export type LegacyStateChangeQueryExecutor = (
   query: Prisma.Sql,
 ) => Promise<Array<{ interfaceId: string }>>
 
-export function buildLegacyStateChangedInterfaceIdsQuery(
-  windowStart: Date,
-): Prisma.Sql {
+export function buildLegacyStateChangedInterfaceIdsQuery(windowStart: Date): Prisma.Sql {
   return Prisma.sql`
     WITH present_interfaces AS (
       SELECT id
@@ -72,5 +70,5 @@ export async function queryLegacyStateChangedInterfaceIds(
   windowStart: Date,
 ): Promise<string[]> {
   const rows = await execute(buildLegacyStateChangedInterfaceIdsQuery(windowStart))
-  return rows.map(row => row.interfaceId)
+  return rows.map((row) => row.interfaceId)
 }

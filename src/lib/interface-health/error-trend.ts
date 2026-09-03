@@ -103,9 +103,7 @@ export interface GapSegment {
 export function findResetTimestamps(points: ErrorTrendPoint[]): string[] {
   const out: string[] = []
   for (let i = 1; i < points.length; i++) {
-    const isReset = DELTA_KEYS.some(
-      (k) => points[i][k] === null && points[i - 1][k] !== null,
-    )
+    const isReset = DELTA_KEYS.some((k) => points[i][k] === null && points[i - 1][k] !== null)
     if (isReset) out.push(points[i].sampledAt)
   }
   return out
@@ -151,10 +149,7 @@ export function findGapSegments(
  * series sorted by time, so a `connectNulls={false}` line breaks across a
  * monitoring outage instead of bridging it. Original points are untouched.
  */
-export function insertGapBreaks(
-  points: ErrorTrendPoint[],
-  gaps: GapSegment[],
-): ErrorTrendPoint[] {
+export function insertGapBreaks(points: ErrorTrendPoint[], gaps: GapSegment[]): ErrorTrendPoint[] {
   if (gaps.length === 0) return points
   const fillers: ErrorTrendPoint[] = gaps.map((g) => ({
     sampledAt: g.mid,

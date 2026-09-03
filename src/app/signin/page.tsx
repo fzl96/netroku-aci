@@ -1,29 +1,29 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import { authClient } from "@/lib/auth-client";
-import { INPUT_CLS } from "@/lib/ui-classes";
-import { useRouter } from "next/navigation";
+import { useState } from 'react'
+import { authClient } from '@/lib/auth-client'
+import { INPUT_CLS } from '@/lib/ui-classes'
+import { useRouter } from 'next/navigation'
 
 export default function SignInPage() {
-  const router = useRouter();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const router = useRouter()
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
   async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-    const { error } = await authClient.signIn.username({ username, password });
-    setLoading(false);
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+    const { error } = await authClient.signIn.username({ username, password })
+    setLoading(false)
     if (error) {
-      setError(error.message ?? "Sign in failed");
-      return;
+      setError(error.message ?? 'Sign in failed')
+      return
     }
-    router.refresh();
-    router.push("/dashboard");
+    router.refresh()
+    router.push('/dashboard')
   }
 
   return (
@@ -55,11 +55,11 @@ export default function SignInPage() {
         <button
           type="submit"
           disabled={loading}
-          className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {loading ? "Signing in…" : "Sign in"}
+          {loading ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
     </main>
-  );
+  )
 }

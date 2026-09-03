@@ -24,11 +24,13 @@
 ### Task 1: History Query and URL Helpers
 
 **Files:**
+
 - Create: `src/lib/history/query.ts`
 - Create: `src/lib/history/query.test.ts`
 - Modify: `src/app/(app)/history/HistoryClient.tsx`
 
 **Interfaces:**
+
 - Produces: `HISTORY_PAGE_SIZE`, `HISTORY_ACTION_LABELS`, `HistoryActionFilter`, `HistoryPageParams`, `parseHistoryPageParams(input)`, `buildHistoryWhere(params)`, `clampHistoryPage(page, total)`, and `buildHistoryUrl(params)`.
 - Consumes: `AuditAction` from `src/lib/audit.ts` and Prisma's `AuditLogWhereInput` type.
 
@@ -240,10 +242,12 @@ git commit -m "feat: add history URL query helpers"
 ### Task 2: Complete-Table Server Pagination
 
 **Files:**
+
 - Modify: `src/actions/audit.ts`
 - Modify: `src/lib/history/query.test.ts`
 
 **Interfaces:**
+
 - Consumes: `HistoryPageParams`, `buildHistoryWhere`, `clampHistoryPage`, and `HISTORY_PAGE_SIZE`.
 - Produces: `AuditLogPage` and `getAuditLogPage(params): Promise<AuditLogPage>`.
 
@@ -345,6 +349,7 @@ git commit -m "feat: paginate complete audit history"
 ### Task 3: URL Controls, Suspense Results, and Skeleton
 
 **Files:**
+
 - Modify: `src/app/(app)/history/page.tsx`
 - Create: `src/app/(app)/history/HistoryControls.tsx`
 - Create: `src/app/(app)/history/HistoryResults.tsx`
@@ -353,6 +358,7 @@ git commit -m "feat: paginate complete audit history"
 - Delete: `src/app/(app)/history/HistoryClient.tsx`
 
 **Interfaces:**
+
 - `HistoryControls({ query, action })` owns immediate input state and URL navigation.
 - `HistoryResults({ params })` is the async server component that calls `getAuditLogPage`.
 - `HistoryResultsClient({ logs, total, page, query, action })` owns row expansion, CSV export, and URL pagination.
@@ -485,9 +491,11 @@ git commit -m "feat: stream server-filtered history results"
 ### Task 4: Production and Browser Verification
 
 **Files:**
+
 - Modify only if verification exposes an implementation defect.
 
 **Interfaces:**
+
 - Verifies the complete `/history` URL contract and loading behavior.
 
 - [ ] **Step 1: Run the complete test suite**

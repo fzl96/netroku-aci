@@ -7,9 +7,7 @@ const NODE_PATH = '/api/node/class/fabricNode.json'
 const BUNDLE_PATH = '/api/node/class/infraAccBndlGrp.json'
 const PHYSICAL_PATH = '/api/node/class/fabricPathEp.json'
 
-export type SnapshotRead<T> =
-  | { ok: true; value: T }
-  | { ok: false; status: number; error: string }
+export type SnapshotRead<T> = { ok: true; value: T } | { ok: false; status: number; error: string }
 
 export interface EpgBindingIndex {
   epgDns: Set<string>
@@ -98,7 +96,7 @@ async function readPage<T>(
         error: (await response.text()).slice(0, 200),
       }
     }
-    return { ok: true, value: await response.json() as PageEnvelope<T> }
+    return { ok: true, value: (await response.json()) as PageEnvelope<T> }
   } catch (error) {
     return {
       ok: false,
@@ -122,9 +120,8 @@ async function loadPagedIndex<TMo, TIndex>(
 
   addPage(index, first.value.imdata ?? [])
   const totalCount = parseTotalCount(first.value.totalCount)
-  const pageCount = totalCount === null
-    ? 1
-    : Math.max(1, Math.ceil(totalCount / SNAPSHOT_PAGE_SIZE))
+  const pageCount =
+    totalCount === null ? 1 : Math.max(1, Math.ceil(totalCount / SNAPSHOT_PAGE_SIZE))
 
   for (let page = 1; page < pageCount; page += 1) {
     const result = await readPage<TMo>(host, token, pagePath(basePath, page), fetcher)
@@ -212,7 +209,14 @@ export async function loadStaticPortSnapshot(
       ? loadPagedIndex(host, token, BUNDLE_PATH, () => new Set<string>(), addBundlePage, fetcher)
       : Promise.resolve(skippedSet<string>()),
     requirements.physicalPaths
-      ? loadPagedIndex(host, token, PHYSICAL_PATH, () => new Set<string>(), addPhysicalPathPage, fetcher)
+      ? loadPagedIndex(
+          host,
+          token,
+          PHYSICAL_PATH,
+          () => new Set<string>(),
+          addPhysicalPathPage,
+          fetcher,
+        )
       : Promise.resolve(skippedSet<string>()),
   ])
 

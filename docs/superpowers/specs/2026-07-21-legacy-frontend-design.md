@@ -106,12 +106,12 @@ System
 
 Switching scope on a shared route keeps the user on that route and only changes the scope-specific sidebar groups. On a mode-specific route, the switcher navigates using these mappings:
 
-| ACI route | Legacy route |
-| --- | --- |
-| `/endpoints` | `/legacy/endpoints` |
+| ACI route           | Legacy route         |
+| ------------------- | -------------------- |
+| `/endpoints`        | `/legacy/endpoints`  |
 | `/interface-health` | `/legacy/interfaces` |
-| `/nodes` | `/legacy/devices` |
-| `/apic-hosts` | `/legacy/devices` |
+| `/nodes`            | `/legacy/devices`    |
+| `/apic-hosts`       | `/legacy/devices`    |
 
 Other ACI infrastructure/workflow routes fall back to `/legacy/devices`. Legacy Health has no direct ACI equivalent and falls back to `/apic-hosts` when switching to ACI. Legacy sub-routes map through their owning list route before applying the table above.
 

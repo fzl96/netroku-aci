@@ -1,10 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { resyncHost } from '@/lib/apic/resync-host'
-import {
-  isAuthorized,
-  summarizeResults,
-  type HostResult,
-} from '@/lib/apic/cron-resync'
+import { isAuthorized, summarizeResults, type HostResult } from '@/lib/apic/cron-resync'
 
 interface HostEntry {
   apicHostId?: string

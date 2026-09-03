@@ -29,25 +29,29 @@ describe('parseEndpointPageParams', () => {
       pageSize: 'all',
     })
     for (const pageSize of [10, 50, 100, 1000] as const) {
-      expect(parseEndpointPageParams({
-        view: 'endpoint',
-        pageSize: String(pageSize),
-      }).pageSize).toBe(pageSize)
+      expect(
+        parseEndpointPageParams({
+          view: 'endpoint',
+          pageSize: String(pageSize),
+        }).pageSize,
+      ).toBe(pageSize)
     }
   })
 
   it('uses the first repeated scalar and flattens repeated comma-list values', () => {
-    expect(parseEndpointPageParams({
-      apic: [' host-1 ', 'host-2'],
-      view: ['port', 'endpoint'],
-      query: [' needle ', 'ignored'],
-      page: ['3', '7'],
-      pageSize: ['100', '10'],
-      vlan: [' vlan-20, vlan-2 ', 'vlan-10,vlan-2'],
-      node: ['102,101', '102'],
-      iface: ['eth1/10, eth1/2', 'eth1/2'],
-      status: ['invalid,active', 'active'],
-    })).toEqual({
+    expect(
+      parseEndpointPageParams({
+        apic: [' host-1 ', 'host-2'],
+        view: ['port', 'endpoint'],
+        query: [' needle ', 'ignored'],
+        page: ['3', '7'],
+        pageSize: ['100', '10'],
+        vlan: [' vlan-20, vlan-2 ', 'vlan-10,vlan-2'],
+        node: ['102,101', '102'],
+        iface: ['eth1/10, eth1/2', 'eth1/2'],
+        status: ['invalid,active', 'active'],
+      }),
+    ).toEqual({
       hostId: 'host-1',
       view: 'port',
       query: 'needle',
@@ -70,11 +74,13 @@ describe('parseEndpointPageParams', () => {
   })
 
   it('normalizes invalid values and treats both statuses as no status filter', () => {
-    expect(parseEndpointPageParams({
-      view: 'PORT',
-      vlan: ' , vlan-2, vlan-2, ',
-      status: 'historical,invalid,active,historical',
-    })).toMatchObject({
+    expect(
+      parseEndpointPageParams({
+        view: 'PORT',
+        vlan: ' , vlan-2, vlan-2, ',
+        status: 'historical,invalid,active,historical',
+      }),
+    ).toMatchObject({
       view: 'endpoint',
       vlans: ['vlan-2'],
       statuses: [],
@@ -117,8 +123,7 @@ describe('buildEndpointPageUrl', () => {
     })
     const url = new URL(buildEndpointPageUrl(parsed), 'http://localhost')
 
-    expect(parseEndpointPageParams(Object.fromEntries(url.searchParams.entries())))
-      .toEqual(parsed)
+    expect(parseEndpointPageParams(Object.fromEntries(url.searchParams.entries()))).toEqual(parsed)
   })
 })
 

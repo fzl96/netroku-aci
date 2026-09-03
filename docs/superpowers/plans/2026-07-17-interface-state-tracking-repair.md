@@ -22,11 +22,13 @@
 ### Task 1: Compose state and text filters safely
 
 **Files:**
+
 - Create: `src/app/(app)/interface-health/interface-query.ts`
 - Create: `src/app/(app)/interface-health/interface-query.test.ts`
 - Modify: `src/app/(app)/interface-health/page.tsx:131-153`
 
 **Interfaces:**
+
 - Produces: `buildInterfaceSnapshotWhere(input: InterfaceSnapshotFilterInput): Prisma.InterfaceSnapshotWhereInput`
 - Consumes: APIC host ID, view, window start, changed IDs, node filters, and optional query text.
 
@@ -140,11 +142,13 @@ git commit -m "fix(interface-health): compose state and search filters"
 ### Task 2: Detect the first in-window transition in drawer history
 
 **Files:**
+
 - Modify: `src/app/(app)/interface-health/state-changes.ts:8-58`
 - Modify: `src/app/(app)/interface-health/status-samples.test.ts`
 - Modify: `src/actions/interface-samples.ts:48-92`
 
 **Interfaces:**
+
 - Changes: `serializeStatusSamples(samples, baseline?)` accepts one optional `RawStatusHistorySample` baseline and returns visible `StatusHistorySample[]` only.
 
 - [ ] **Step 1: Add a failing boundary regression test**
@@ -225,11 +229,13 @@ git commit -m "fix(interface-health): compare status window baseline"
 ### Task 3: Scope drawer failures to request keys
 
 **Files:**
+
 - Create: `src/app/(app)/interface-health/drawer-request-state.ts`
 - Create: `src/app/(app)/interface-health/drawer-request-state.test.ts`
 - Modify: `src/app/(app)/interface-health/InterfaceErrorTrendDrawer.tsx:84-180`
 
 **Interfaces:**
+
 - Produces: `makeDrawerRequestKey(mode, interfaceId, range): string`
 - Produces: `resolveDrawerRequest<T>(activeKey, result): DrawerRequestView<T>`
 
@@ -309,6 +315,7 @@ git commit -m "fix(interface-health): scope drawer request failures"
 ### Task 4: Move page transition detection into PostgreSQL
 
 **Files:**
+
 - Create: `src/app/(app)/interface-health/state-change-query.ts`
 - Create: `src/app/(app)/interface-health/state-change-query.test.ts`
 - Modify: `src/app/(app)/interface-health/page.tsx:119-129`
@@ -316,6 +323,7 @@ git commit -m "fix(interface-health): scope drawer request failures"
 - Modify: `src/app/(app)/interface-health/state-changes.test.ts`
 
 **Interfaces:**
+
 - Produces: `buildStateChangedInterfaceIdsQuery(apicHostId, windowStart): Prisma.Sql`
 - Produces: `queryStateChangedInterfaceIds(execute, apicHostId, windowStart): Promise<string[]>`
 
@@ -456,9 +464,11 @@ git commit -m "perf(interface-health): detect state transitions in postgres"
 ### Task 5: Final cleanup and verification
 
 **Files:**
+
 - Modify: any PR file still reported by changed-file ESLint or `git diff --check`
 
 **Interfaces:**
+
 - Consumes: all prior task outputs.
 - Produces: merge-ready PR branch verification evidence.
 

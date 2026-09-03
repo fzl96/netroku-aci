@@ -63,7 +63,7 @@ const PORT_COLUMNS = ['Node', 'Port', 'EPG'] as const
 export function expandNodeLeaves(node: string): string[] {
   return node
     .split('-')
-    .map(leaf => leaf.trim())
+    .map((leaf) => leaf.trim())
     .filter(Boolean)
 }
 
@@ -97,17 +97,14 @@ function uniqueWorksheetName(rawName: string, usedNames: Set<string>): string {
  * EPGs left with no matching bindings. Used for the "current filters" scope
  * when a node filter is active.
  */
-export function filterEpgsByNode(
-  epgs: EpgExportRow[],
-  nodes: string[],
-): EpgExportRow[] {
+export function filterEpgsByNode(epgs: EpgExportRow[], nodes: string[]): EpgExportRow[] {
   if (nodes.length === 0) return epgs
   const selected = new Set(nodes)
 
   const result: EpgExportRow[] = []
   for (const epg of epgs) {
-    const bindings = epg.bindings.filter(b =>
-      expandNodeLeaves(b.node).some(leaf => selected.has(leaf)),
+    const bindings = epg.bindings.filter((b) =>
+      expandNodeLeaves(b.node).some((leaf) => selected.has(leaf)),
     )
     if (bindings.length > 0) result.push({ ...epg, bindings })
   }
@@ -117,8 +114,7 @@ export function filterEpgsByNode(
 function sortedEpgs(epgs: EpgExportRow[]): EpgExportRow[] {
   return [...epgs].sort(
     (a, b) =>
-      NATURAL_COLLATOR.compare(a.tenant, b.tenant) ||
-      NATURAL_COLLATOR.compare(a.name, b.name),
+      NATURAL_COLLATOR.compare(a.tenant, b.tenant) || NATURAL_COLLATOR.compare(a.name, b.name),
   )
 }
 
@@ -169,7 +165,7 @@ function finalizeSheet(
 ): XLSX.WorkSheet {
   const worksheet = XLSX.utils.aoa_to_sheet(rows)
   if (merges.length > 0) worksheet['!merges'] = merges
-  worksheet['!cols'] = colWidths.map(wch => ({ wch }))
+  worksheet['!cols'] = colWidths.map((wch) => ({ wch }))
   return worksheet
 }
 
@@ -203,7 +199,10 @@ function buildEpgSheet(epgs: EpgExportRow[]): XLSX.WorkSheet {
           ])
         })
         if (ports.length > 1) {
-          merges.push({ s: { r: nodeStartRow, c: 6 }, e: { r: nodeStartRow + ports.length - 1, c: 6 } })
+          merges.push({
+            s: { r: nodeStartRow, c: 6 },
+            e: { r: nodeStartRow + ports.length - 1, c: 6 },
+          })
         }
         first = false
       }
@@ -252,22 +251,16 @@ function buildPortSheet(node: string, ports: Map<string, Set<string>>): XLSX.Wor
     rows.push([i === 0 ? node : '', port, epgNames.join(', ')])
   })
 
-  const merges: MergeRange[] = orderedPorts.length > 1
-    ? [{ s: { r: 1, c: 0 }, e: { r: orderedPorts.length, c: 0 } }]
-    : []
+  const merges: MergeRange[] =
+    orderedPorts.length > 1 ? [{ s: { r: 1, c: 0 }, e: { r: orderedPorts.length, c: 0 } }] : []
 
   const worksheet = finalizeSheet(rows, merges, [12, 16, 40])
   // Header and Node centered; Port and EPG only vertically centered.
-  applyCellStyles(worksheet, (r, c) =>
-    r === 0 || c === 0 ? CENTER_BOTH : VERTICAL_CENTER,
-  )
+  applyCellStyles(worksheet, (r, c) => (r === 0 || c === 0 ? CENTER_BOTH : VERTICAL_CENTER))
   return worksheet
 }
 
-export function buildEpgWorkbook(
-  epgs: EpgExportRow[],
-  groupBy: EpgExportGrouping,
-): XLSX.WorkBook {
+export function buildEpgWorkbook(epgs: EpgExportRow[], groupBy: EpgExportGrouping): XLSX.WorkBook {
   const workbook = XLSX.utils.book_new()
 
   if (groupBy === 'epg') {
@@ -291,13 +284,33 @@ export function serializeEpgWorkbook(workbook: XLSX.WorkBook): Uint8Array {
 }
 
 function safeFilenameSegment(value: string): string {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'host'
+  return (
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'host'
+  )
 }
 
 export function buildEpgExportFilename({
-  hostName, scope, groupBy, now = new Date(),
+  hostName,
+  scope,
+  groupBy,
+  now = new Date(),
 }: {
-  hostName: string; scope: 'all' | 'filtered'; groupBy: EpgExportGrouping; now?: Date
+  hostName: string
+  scope: 'all' | 'filtered'
+  groupBy: EpgExportGrouping
+  now?: Date
 }): string {
-  return ['epgs', safeFilenameSegment(hostName), scope, `by-${groupBy}`, now.toISOString().replace(/[:.]/g, '-')].join('-') + '.xlsx'
+  return (
+    [
+      'epgs',
+      safeFilenameSegment(hostName),
+      scope,
+      `by-${groupBy}`,
+      now.toISOString().replace(/[:.]/g, '-'),
+    ].join('-') + '.xlsx'
+  )
 }

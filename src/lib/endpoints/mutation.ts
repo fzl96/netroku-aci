@@ -3,10 +3,7 @@ import 'server-only'
 import { revalidateTag } from 'next/cache'
 import { AuthenticationRequiredError, requireSession } from '@/lib/auth'
 import { recordAudit } from '@/lib/audit'
-import {
-  EndpointResyncInProgressError,
-  resyncEndpoints,
-} from '@/lib/apic/endpoints'
+import { EndpointResyncInProgressError, resyncEndpoints } from '@/lib/apic/endpoints'
 import { prisma } from '@/lib/prisma'
 
 export type EndpointResyncResult =
@@ -53,9 +50,7 @@ export type EndpointMutationDependencies = {
 }
 
 type ResolvedInput = ScheduledEndpointResyncInput & {
-  actor:
-    | { kind: 'user'; id: string; userName: string }
-    | { kind: 'scheduler' }
+  actor: { kind: 'user'; id: string; userName: string } | { kind: 'scheduler' }
 }
 
 class EndpointInventorySyncFailure extends Error {
@@ -177,13 +172,13 @@ export function createEndpointMutation(dependencies: EndpointMutationDependencie
 
 const endpointMutation = createEndpointMutation({
   requireSession,
-  findHost: id => prisma.apicHost.findFirst({ where: { id } }),
+  findHost: (id) => prisma.apicHost.findFirst({ where: { id } }),
   resyncEndpoints,
   recordAudit,
   revalidateTag,
-  isInProgressError: error => error instanceof EndpointResyncInProgressError,
-  isAuthenticationRequiredError: error => error instanceof AuthenticationRequiredError,
-  reportAuditError: error => console.error('[endpoints] failed to record resync audit', error),
+  isInProgressError: (error) => error instanceof EndpointResyncInProgressError,
+  isAuthenticationRequiredError: (error) => error instanceof AuthenticationRequiredError,
+  reportAuditError: (error) => console.error('[endpoints] failed to record resync audit', error),
 })
 
 export const {

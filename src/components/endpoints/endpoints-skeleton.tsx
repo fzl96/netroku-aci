@@ -1,6 +1,16 @@
 import type { EndpointView } from '@/lib/endpoints/params'
 
-const ENDPOINT_COLUMNS = ['MAC', 'IP', 'VLAN', 'Node', 'Interface', 'EPG', 'First seen', 'Last seen', 'Status']
+const ENDPOINT_COLUMNS = [
+  'MAC',
+  'IP',
+  'VLAN',
+  'Node',
+  'Interface',
+  'EPG',
+  'First seen',
+  'Last seen',
+  'Status',
+]
 const PORT_COLUMNS = ['Node', 'Interface', 'Endpoints', 'VLANs', 'EPG', 'Last seen']
 const WIDTHS = [52, 68, 30, 42, 58, 75, 62, 62, 40]
 
@@ -30,7 +40,11 @@ export function EndpointOverviewSkeleton() {
 
 export function EndpointHeaderActionsSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading endpoint page actions" className="flex w-full items-center gap-2 md:w-auto">
+    <div
+      aria-busy="true"
+      aria-label="Loading endpoint page actions"
+      className="flex w-full items-center gap-2 md:w-auto"
+    >
       <Pulse className="h-9 min-w-0 flex-1 md:w-48 md:flex-none" />
       <Pulse className="h-9 w-20" />
       <Pulse className="h-9 w-20" />
@@ -38,11 +52,7 @@ export function EndpointHeaderActionsSkeleton() {
   )
 }
 
-export function EndpointResultsSkeleton({
-  view = 'endpoint',
-}: {
-  view?: EndpointView
-}) {
+export function EndpointResultsSkeleton({ view = 'endpoint' }: { view?: EndpointView }) {
   const columns = view === 'endpoint' ? ENDPOINT_COLUMNS : PORT_COLUMNS
 
   return (
@@ -55,8 +65,12 @@ export function EndpointResultsSkeleton({
         <table className="w-full text-xs">
           <thead>
             <tr>
-              {columns.map(column => (
-                <th key={column} data-skeleton-column className="px-4 py-2.5 text-left text-[10px] uppercase text-faint">
+              {columns.map((column) => (
+                <th
+                  key={column}
+                  data-skeleton-column
+                  className="px-4 py-2.5 text-left text-[10px] text-faint uppercase"
+                >
                   {column}
                 </th>
               ))}

@@ -4,19 +4,28 @@ import { parseEpgRows, parsePathTDn, domainLabelFromTDn } from './epg-inventory'
 describe('parsePathTDn', () => {
   it('parses a physical port path', () => {
     expect(parsePathTDn('topology/pod-1/paths-101/pathep-[eth1/10]')).toEqual({
-      pod: '1', node: '101', port: 'eth1/10', pathType: 'port',
+      pod: '1',
+      node: '101',
+      port: 'eth1/10',
+      pathType: 'port',
     })
   })
 
   it('parses a vPC protection path as an ascending node pair', () => {
     expect(parsePathTDn('topology/pod-2/protpaths-3114-3113/pathep-[SRV01_VPC_IPG]')).toEqual({
-      pod: '2', node: '3113-3114', port: 'SRV01_VPC_IPG', pathType: 'vpc',
+      pod: '2',
+      node: '3113-3114',
+      port: 'SRV01_VPC_IPG',
+      pathType: 'vpc',
     })
   })
 
   it('classifies a non-eth single path as a direct port-channel', () => {
     expect(parsePathTDn('topology/pod-1/paths-101/pathep-[SRV02_PC_IPG]')).toEqual({
-      pod: '1', node: '101', port: 'SRV02_PC_IPG', pathType: 'dpc',
+      pod: '1',
+      node: '101',
+      port: 'SRV02_PC_IPG',
+      pathType: 'dpc',
     })
   })
 

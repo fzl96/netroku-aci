@@ -7,18 +7,14 @@ import { getSites } from '@/lib/inventory/sites/query'
 import { RacksRegionError } from './racks-region-error'
 import { RacksTableClient } from './racks-table-client'
 
-export async function RacksResults({
-  paramsPromise,
-}: {
-  paramsPromise: Promise<RacksParams>
-}) {
+export async function RacksResults({ paramsPromise }: { paramsPromise: Promise<RacksParams> }) {
   const { siteId: siteIdParam } = await paramsPromise
 
   let role: 'admin' | 'member'
   let sites: Awaited<ReturnType<typeof getSites>>
   let allDevices: Awaited<ReturnType<typeof getAllDevices>>
   try {
-    [role, sites, allDevices] = await Promise.all([
+    ;[role, sites, allDevices] = await Promise.all([
       getInventoryViewerRole(),
       getSites(),
       getAllDevices(),
@@ -29,9 +25,10 @@ export async function RacksResults({
     return <RacksRegionError />
   }
 
-  const selectedSiteId = siteIdParam && sites.some(site => site.id === siteIdParam)
-    ? siteIdParam
-    : (sites[0]?.id ?? null)
+  const selectedSiteId =
+    siteIdParam && sites.some((site) => site.id === siteIdParam)
+      ? siteIdParam
+      : (sites[0]?.id ?? null)
 
   let racks: Awaited<ReturnType<typeof getRacksBySite>> = []
   if (selectedSiteId) {

@@ -25,6 +25,7 @@ The page server component (`page.tsx`) is **not** touched — it already passes 
 ## Task 1: Pure helpers — range math, serialization, series config
 
 **Files:**
+
 - Create: `src/app/(app)/interface-health/error-trend.ts`
 - Test: `src/app/(app)/interface-health/error-trend.test.ts`
 
@@ -203,6 +204,7 @@ git commit -m "feat: add error-trend helpers for interface drawer"
 ## Task 2: Server action — fetch one interface's error samples
 
 **Files:**
+
 - Create: `src/actions/interface-samples.ts`
 
 This action does I/O (auth + Prisma) so it is verified by typecheck + the manual UI check in Task 4, mirroring the existing convention (`apic-hosts.ts` actions are not unit-tested; only pure helpers like those in `cron-resync.ts` are).
@@ -273,6 +275,7 @@ git commit -m "feat: add getInterfaceErrorSamples server action"
 ## Task 3: Drawer component — Sheet + range toggle + chart + clickable legend
 
 **Files:**
+
 - Create: `src/app/(app)/interface-health/InterfaceErrorTrendDrawer.tsx`
 
 - [ ] **Step 1: Write the drawer component**
@@ -485,6 +488,7 @@ git commit -m "feat: add interface error-trend drawer component"
 ## Task 4: Wire the drawer into the table
 
 **Files:**
+
 - Modify: `src/app/(app)/interface-health/InterfaceHealthClient.tsx`
 
 - [ ] **Step 1: Add imports**
@@ -556,6 +560,7 @@ Expected: no errors.
 
 Run the dev server: `bun run dev`
 Then in the browser:
+
 1. Open the Interfaces page and select an APIC host that has synced data.
 2. Click any interface row → the right-side drawer opens with the node/ifName title.
 3. Confirm the chart renders the error/discard deltas over time, with the 7d range selected by default.
@@ -578,4 +583,7 @@ git commit -m "feat: open error-trend drawer on interface row click"
 - **Spec coverage:** errors-only ✓ (Task 1 series, no throughput); all six deltas ✓ (`ERROR_TREND_SERIES`); raw delta vs real time ✓ (`XAxis dataKey="sampledAt"`, no normalization); lazy fetch via server action ✓ (Task 2, fired in Task 3 `useEffect`); range selector default 7d ✓ (`DEFAULT_ERROR_TREND_RANGE`); right-side Sheet ✓; null = line break ✓ (`connectNulls={false}`); clickable legend toggle ✓ (Task 3 custom legend + `hide`); loading + empty states ✓.
 - **Naming consistency:** `getInterfaceErrorSamples`, `ErrorTrendPoint`, `ErrorTrendRange`, `ERROR_TREND_SERIES`, `serializeErrorSamples`, `rangeToCutoff`, `SelectedInterface`, `InterfaceErrorTrendDrawer` used identically across all tasks.
 - **No placeholders:** every step contains full code or an exact command.
+
+```
+
 ```

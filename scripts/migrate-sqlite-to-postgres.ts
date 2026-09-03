@@ -36,79 +36,86 @@ async function main() {
   await copyTable(
     'user',
     () => sqlite.user.findMany(),
-    rows => pg.user.createMany({ data: rows as Prisma.UserCreateManyInput[] }),
+    (rows) => pg.user.createMany({ data: rows as Prisma.UserCreateManyInput[] }),
     () => pg.user.count(),
   )
   await copyTable(
     'verification',
     () => sqlite.verification.findMany(),
-    rows => pg.verification.createMany({ data: rows as Prisma.VerificationCreateManyInput[] }),
+    (rows) => pg.verification.createMany({ data: rows as Prisma.VerificationCreateManyInput[] }),
     () => pg.verification.count(),
   )
   await copyTable(
     'apicHost',
     () => sqlite.apicHost.findMany(),
-    rows => pg.apicHost.createMany({
-      data: rows.map(({ resyncStartedAt: _resyncStartedAt, ...row }) => row) as Prisma.ApicHostCreateManyInput[],
-    }),
+    (rows) =>
+      pg.apicHost.createMany({
+        data: rows.map(
+          ({ resyncStartedAt: _resyncStartedAt, ...row }) => row,
+        ) as Prisma.ApicHostCreateManyInput[],
+      }),
     () => pg.apicHost.count(),
   )
 
   await copyTable(
     'session',
     () => sqlite.session.findMany(),
-    rows => pg.session.createMany({ data: rows as Prisma.SessionCreateManyInput[] }),
+    (rows) => pg.session.createMany({ data: rows as Prisma.SessionCreateManyInput[] }),
     () => pg.session.count(),
   )
   await copyTable(
     'account',
     () => sqlite.account.findMany(),
-    rows => pg.account.createMany({ data: rows as Prisma.AccountCreateManyInput[] }),
+    (rows) => pg.account.createMany({ data: rows as Prisma.AccountCreateManyInput[] }),
     () => pg.account.count(),
   )
 
   await copyTable(
     'endpoint',
     () => sqlite.endpoint.findMany(),
-    rows => pg.endpoint.createMany({ data: rows as Prisma.EndpointCreateManyInput[] }),
+    (rows) => pg.endpoint.createMany({ data: rows as Prisma.EndpointCreateManyInput[] }),
     () => pg.endpoint.count(),
   )
   await copyTable(
     'interfaceSnapshot',
     () => sqlite.interfaceSnapshot.findMany(),
-    rows => pg.interfaceSnapshot.createMany({ data: rows as Prisma.InterfaceSnapshotCreateManyInput[] }),
+    (rows) =>
+      pg.interfaceSnapshot.createMany({ data: rows as Prisma.InterfaceSnapshotCreateManyInput[] }),
     () => pg.interfaceSnapshot.count(),
   )
   await copyTable(
     'nodeSnapshot',
     () => sqlite.nodeSnapshot.findMany(),
-    rows => pg.nodeSnapshot.createMany({ data: rows as Prisma.NodeSnapshotCreateManyInput[] }),
+    (rows) => pg.nodeSnapshot.createMany({ data: rows as Prisma.NodeSnapshotCreateManyInput[] }),
     () => pg.nodeSnapshot.count(),
   )
   await copyTable(
     'hardwareComponent',
     () => sqlite.hardwareComponent.findMany(),
-    rows => pg.hardwareComponent.createMany({ data: rows as Prisma.HardwareComponentCreateManyInput[] }),
+    (rows) =>
+      pg.hardwareComponent.createMany({ data: rows as Prisma.HardwareComponentCreateManyInput[] }),
     () => pg.hardwareComponent.count(),
   )
   await copyTable(
     'nodeStatusSample',
     () => sqlite.nodeStatusSample.findMany(),
-    rows => pg.nodeStatusSample.createMany({ data: rows as Prisma.NodeStatusSampleCreateManyInput[] }),
+    (rows) =>
+      pg.nodeStatusSample.createMany({ data: rows as Prisma.NodeStatusSampleCreateManyInput[] }),
     () => pg.nodeStatusSample.count(),
   )
 
   await copyTable(
     'interfaceSample',
     () => sqlite.interfaceSample.findMany(),
-    rows => pg.interfaceSample.createMany({ data: rows as Prisma.InterfaceSampleCreateManyInput[] }),
+    (rows) =>
+      pg.interfaceSample.createMany({ data: rows as Prisma.InterfaceSampleCreateManyInput[] }),
     () => pg.interfaceSample.count(),
   )
 
   await copyTable(
     'auditLog',
     () => sqlite.auditLog.findMany(),
-    rows => pg.auditLog.createMany({ data: rows as Prisma.AuditLogCreateManyInput[] }),
+    (rows) => pg.auditLog.createMany({ data: rows as Prisma.AuditLogCreateManyInput[] }),
     () => pg.auditLog.count(),
   )
 
@@ -116,7 +123,7 @@ async function main() {
 }
 
 main()
-  .catch(err => {
+  .catch((err) => {
     console.error(err)
     process.exit(1)
   })

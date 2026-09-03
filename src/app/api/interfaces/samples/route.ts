@@ -5,7 +5,7 @@ import {
   InterfaceReadError,
 } from '@/lib/interface-health/query'
 
-const RANGES = new Set<string>(ERROR_TREND_RANGES.map(range => range.value))
+const RANGES = new Set<string>(ERROR_TREND_RANGES.map((range) => range.value))
 
 /** Read transport for the interface drawer. Detail reads stay a plain
  *  authenticated GET so they are cacheable and cancellable; mutations remain

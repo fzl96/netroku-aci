@@ -104,10 +104,9 @@ describe('static-port snapshot validation', () => {
       tDn: buildPathSegment(vpcRow),
       encap: 'vlan-100',
     })
-    index.bindingDnsByPathAndEncap.set(
-      bindingLookupKey(buildPathSegment(vpcRow), 'vlan-100'),
-      [conflictDn],
-    )
+    index.bindingDnsByPathAndEncap.set(bindingLookupKey(buildPathSegment(vpcRow), 'vlan-100'), [
+      conflictDn,
+    ])
 
     const [result] = await validateDeployRowsFromSnapshot(
       [vpcRow],
@@ -199,7 +198,7 @@ describe('static-port snapshot validation', () => {
     )
 
     expect(results).toHaveLength(3_680)
-    expect(results.every(result => result.status === 'deploy')).toBe(true)
+    expect(results.every((result) => result.status === 'deploy')).toBe(true)
     expect(requirementsCalls).toHaveLength(1)
   })
 
@@ -245,11 +244,11 @@ describe('public static-port validation dispatch', () => {
       value: {
         exact: async (rows: ParsedRow[]): Promise<ValidationResult[]> => {
           calls.exact += 1
-          return rows.map(row => ({ rowIndex: row.rowIndex, status: 'deploy' }))
+          return rows.map((row) => ({ rowIndex: row.rowIndex, status: 'deploy' }))
         },
         snapshot: async (rows: ParsedRow[]): Promise<ValidationResult[]> => {
           calls.snapshot += 1
-          return rows.map(row => ({ rowIndex: row.rowIndex, status: 'deploy' }))
+          return rows.map((row) => ({ rowIndex: row.rowIndex, status: 'deploy' }))
         },
       },
     }

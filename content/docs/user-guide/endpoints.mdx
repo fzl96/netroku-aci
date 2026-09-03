@@ -11,28 +11,28 @@ The page has two views, selectable from the toolbar:
 
 **Endpoint view** — one row per learned endpoint.
 
-| Column | Description |
-|---|---|
-| MAC | MAC address of the endpoint |
-| IP | IP address (may be empty for MAC-only endpoints) |
-| VLAN | Encapsulation VLAN |
-| Node | Leaf node where the endpoint was last seen |
-| Interface | Physical interface on that node |
-| EPG Description | EPG the endpoint belongs to |
-| First Seen | When the endpoint was first recorded in the database |
-| Last Seen | Most recent time APIC reported this endpoint as active |
-| Status | **Active** (present in latest sync) or **Historical** (not in latest sync) |
+| Column          | Description                                                                |
+| --------------- | -------------------------------------------------------------------------- |
+| MAC             | MAC address of the endpoint                                                |
+| IP              | IP address (may be empty for MAC-only endpoints)                           |
+| VLAN            | Encapsulation VLAN                                                         |
+| Node            | Leaf node where the endpoint was last seen                                 |
+| Interface       | Physical interface on that node                                            |
+| EPG Description | EPG the endpoint belongs to                                                |
+| First Seen      | When the endpoint was first recorded in the database                       |
+| Last Seen       | Most recent time APIC reported this endpoint as active                     |
+| Status          | **Active** (present in latest sync) or **Historical** (not in latest sync) |
 
 **Port view** — one row per port, aggregating all endpoints seen on that interface.
 
-| Column | Description |
-|---|---|
-| Node | Leaf node |
-| Interface | Physical interface |
-| Endpoints | Number of endpoints seen on this port |
-| VLANs | Number of distinct VLANs |
-| EPG Description | EPG associated with the port |
-| Last Seen | Most recent endpoint activity on this port |
+| Column          | Description                                |
+| --------------- | ------------------------------------------ |
+| Node            | Leaf node                                  |
+| Interface       | Physical interface                         |
+| Endpoints       | Number of endpoints seen on this port      |
+| VLANs           | Number of distinct VLANs                   |
+| EPG Description | EPG associated with the port               |
+| Last Seen       | Most recent endpoint activity on this port |
 
 ## Search and filters
 

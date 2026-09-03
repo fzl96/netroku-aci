@@ -69,15 +69,15 @@ export function parsePathDn(pathDn: string): { node: string; iface: string } {
  */
 function pathDnForEndpoint(attrs: FvCEpAttrs, children: FvCEpChild[]): string {
   const tDns = children
-    .map(child => child.fvRsCEpToPathEp?.attributes.tDn)
+    .map((child) => child.fvRsCEpToPathEp?.attributes.tDn)
     .filter((tDn): tDn is string => Boolean(tDn))
-  return tDns.find(tDn => tDn.includes('/protpaths-')) ?? tDns[0] ?? attrs.fabricPathDn
+  return tDns.find((tDn) => tDn.includes('/protpaths-')) ?? tDns[0] ?? attrs.fabricPathDn
 }
 
 async function apicGet(host: string, token: string, path: string): Promise<unknown[]> {
   const res = await apicFetch(host, path, { token })
   if (!res.ok) throw new Error(`APIC GET ${path} failed: ${res.status}`)
-  const data = await res.json() as { imdata: unknown[] }
+  const data = (await res.json()) as { imdata: unknown[] }
   return data.imdata ?? []
 }
 
@@ -167,7 +167,10 @@ export class EndpointResyncInProgressError extends Error {
 }
 
 type EndpointPlanDelegate = Pick<typeof prisma.endpoint, 'updateMany' | 'update' | 'create'>
-type EndpointResyncDelegate = Pick<typeof prisma.endpoint, 'findMany' | 'count' | 'updateMany' | 'update' | 'create'>
+type EndpointResyncDelegate = Pick<
+  typeof prisma.endpoint,
+  'findMany' | 'count' | 'updateMany' | 'update' | 'create'
+>
 
 interface EndpointMutationClient {
   endpoint: EndpointPlanDelegate
@@ -237,26 +240,35 @@ export async function reconcileFetchedEndpoints(
   uniqueRows: ApicEndpointRow[],
   now: Date,
 ): Promise<{ total: number }> {
-  return db.$transaction(async tx => {
-    const acquired = await tryAcquireEndpointResyncAdvisoryLock(tx, apicHostId)
-    if (!acquired) {
-      throw new EndpointResyncInProgressError(apicHostId)
-    }
+  return db.$transaction(
+    async (tx) => {
+      const acquired = await tryAcquireEndpointResyncAdvisoryLock(tx, apicHostId)
+      if (!acquired) {
+        throw new EndpointResyncInProgressError(apicHostId)
+      }
 
-    const activeRows = (await tx.endpoint.findMany({
-      where: { apicHostId, isActive: true },
-      select: {
-        id: true, mac: true, ip: true, vlan: true,
-        dn: true, node: true, interface: true, epgDescr: true,
-      },
-    })) satisfies ActiveEndpoint[]
+      const activeRows = (await tx.endpoint.findMany({
+        where: { apicHostId, isActive: true },
+        select: {
+          id: true,
+          mac: true,
+          ip: true,
+          vlan: true,
+          dn: true,
+          node: true,
+          interface: true,
+          epgDescr: true,
+        },
+      })) satisfies ActiveEndpoint[]
 
-    const plan = planEndpointResync(activeRows, uniqueRows)
-    await executeEndpointResyncPlanInTransaction(tx, apicHostId, plan, now)
+      const plan = planEndpointResync(activeRows, uniqueRows)
+      await executeEndpointResyncPlanInTransaction(tx, apicHostId, plan, now)
 
-    const total = await tx.endpoint.count({ where: { apicHostId } })
-    return { total }
-  }, { timeout: ENDPOINT_RECONCILE_TRANSACTION_TIMEOUT_MS })
+      const total = await tx.endpoint.count({ where: { apicHostId } })
+      return { total }
+    },
+    { timeout: ENDPOINT_RECONCILE_TRANSACTION_TIMEOUT_MS },
+  )
 }
 
 export async function executeEndpointResyncPlan(
@@ -265,9 +277,12 @@ export async function executeEndpointResyncPlan(
   plan: EndpointResyncPlan,
   now: Date,
 ): Promise<void> {
-  await db.$transaction(async tx => {
-    await executeEndpointResyncPlanInTransaction(tx, apicHostId, plan, now)
-  }, { timeout: ENDPOINT_RECONCILE_TRANSACTION_TIMEOUT_MS })
+  await db.$transaction(
+    async (tx) => {
+      await executeEndpointResyncPlanInTransaction(tx, apicHostId, plan, now)
+    },
+    { timeout: ENDPOINT_RECONCILE_TRANSACTION_TIMEOUT_MS },
+  )
 }
 
 async function tryAcquireEndpointResyncAdvisoryLock(
@@ -308,7 +323,7 @@ async function executeEndpointResyncPlanInTransaction(
   for (let i = 0; i < plan.relabels.length; i += ENDPOINTS_CHUNK_SIZE) {
     const chunk = plan.relabels.slice(i, i + ENDPOINTS_CHUNK_SIZE)
     await Promise.all(
-      chunk.map(row =>
+      chunk.map((row) =>
         tx.endpoint.update({
           where: { id: row.id },
           data: { epgDescr: row.epgDescr, lastSeenAt: now },
@@ -321,7 +336,7 @@ async function executeEndpointResyncPlanInTransaction(
   for (let i = 0; i < plan.inserts.length; i += ENDPOINTS_CHUNK_SIZE) {
     const chunk = plan.inserts.slice(i, i + ENDPOINTS_CHUNK_SIZE)
     await Promise.all(
-      chunk.map(row =>
+      chunk.map((row) =>
         tx.endpoint.create({
           data: {
             apicHostId,

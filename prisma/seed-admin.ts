@@ -1,16 +1,16 @@
-import { auth } from "../src/lib/auth"
-import { prisma } from "../src/lib/prisma"
+import { auth } from '../src/lib/auth'
+import { prisma } from '../src/lib/prisma'
 
 async function main() {
   const username = process.env.ADMIN_USERNAME?.trim()
   const password = process.env.ADMIN_PASSWORD
 
   if (!username || !password) {
-    throw new Error("ADMIN_USERNAME and ADMIN_PASSWORD are required")
+    throw new Error('ADMIN_USERNAME and ADMIN_PASSWORD are required')
   }
 
   if (password.length < 8) {
-    throw new Error("ADMIN_PASSWORD must be at least 8 characters")
+    throw new Error('ADMIN_PASSWORD must be at least 8 characters')
   }
 
   const email = `${username}@local.test`
@@ -29,7 +29,7 @@ async function main() {
       email,
       name: username,
       password,
-      role: "admin",
+      role: 'admin',
       data: {
         username,
         displayUsername: username,

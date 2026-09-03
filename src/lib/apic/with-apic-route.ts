@@ -28,7 +28,7 @@ async function logDeployRollback(
     const featureSegs = segments.slice(apicIndex + 1, segments.length - 1)
     const feature = deriveFeature(featureSegs)
 
-    const successCount = (results as { success?: boolean }[]).filter(r => r.success).length
+    const successCount = (results as { success?: boolean }[]).filter((r) => r.success).length
     const failCount = results.length - successCount
     const status: AuditStatus =
       failCount === 0 ? 'success' : successCount === 0 ? 'failure' : 'partial'

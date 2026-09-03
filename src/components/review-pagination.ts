@@ -8,10 +8,7 @@ export interface ReviewPage<T> {
   rangeEnd: number
 }
 
-export function paginateReviewItems<T>(
-  items: T[],
-  requestedPage: number,
-): ReviewPage<T> {
+export function paginateReviewItems<T>(items: T[], requestedPage: number): ReviewPage<T> {
   const totalPages = Math.max(1, Math.ceil(items.length / REVIEW_PAGE_SIZE))
   const page = Math.min(Math.max(1, requestedPage), totalPages)
   const startIndex = (page - 1) * REVIEW_PAGE_SIZE

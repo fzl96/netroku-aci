@@ -26,16 +26,13 @@ describe('sortInterfaceRows', () => {
       { node: '2', ifName: 'eth1/4', samples: [] },
     ]
 
-    expect(sortInterfaceRows(rows, {
-      key: 'rxErrors',
-      direction: 'desc',
-      mode: 'delta',
-    }).map(row => row.ifName)).toEqual([
-      'eth1/2',
-      'eth1/3',
-      'eth1/1',
-      'eth1/4',
-    ])
+    expect(
+      sortInterfaceRows(rows, {
+        key: 'rxErrors',
+        direction: 'desc',
+        mode: 'delta',
+      }).map((row) => row.ifName),
+    ).toEqual(['eth1/2', 'eth1/3', 'eth1/1', 'eth1/4'])
   })
 
   it('sorts current counters when current mode is selected', () => {
@@ -44,21 +41,25 @@ describe('sortInterfaceRows', () => {
       { node: '2', ifName: 'eth1/2', samples: [{ rxErrors: BigInt(20), dRxErrors: BigInt(1) }] },
     ]
 
-    expect(sortInterfaceRows(rows, {
-      key: 'rxErrors',
-      direction: 'desc',
-      mode: 'current',
-    }).map(row => row.ifName)).toEqual(['eth1/2', 'eth1/1'])
+    expect(
+      sortInterfaceRows(rows, {
+        key: 'rxErrors',
+        direction: 'desc',
+        mode: 'current',
+      }).map((row) => row.ifName),
+    ).toEqual(['eth1/2', 'eth1/1'])
   })
 })
 
 describe('parseInterfaceSortParams', () => {
   it('accepts supported counter sort params', () => {
-    expect(parseInterfaceSortParams({
-      sort: 'rxErrors',
-      dir: 'asc',
-      mode: 'current',
-    })).toEqual({
+    expect(
+      parseInterfaceSortParams({
+        sort: 'rxErrors',
+        dir: 'asc',
+        mode: 'current',
+      }),
+    ).toEqual({
       key: 'rxErrors',
       direction: 'asc',
       mode: 'current',
@@ -66,9 +67,11 @@ describe('parseInterfaceSortParams', () => {
   })
 
   it('defaults sort direction and counter mode', () => {
-    expect(parseInterfaceSortParams({
-      sort: 'txBytes',
-    })).toEqual({
+    expect(
+      parseInterfaceSortParams({
+        sort: 'txBytes',
+      }),
+    ).toEqual({
       key: 'txBytes',
       direction: 'desc',
       mode: 'delta',
@@ -76,10 +79,12 @@ describe('parseInterfaceSortParams', () => {
   })
 
   it('ignores unsupported sort keys', () => {
-    expect(parseInterfaceSortParams({
-      sort: 'node',
-      dir: 'asc',
-      mode: 'current',
-    })).toBeNull()
+    expect(
+      parseInterfaceSortParams({
+        sort: 'node',
+        dir: 'asc',
+        mode: 'current',
+      }),
+    ).toBeNull()
   })
 })

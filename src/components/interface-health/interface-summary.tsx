@@ -18,11 +18,12 @@ export async function InterfaceSummary({
   const [params, results] = data
   if (!results) return null
 
-  const scope = params.view === 'crc'
-    ? ` (CRC increase in last ${params.window})`
-    : params.view === 'state-changed'
-      ? ` (state changed in last ${params.window})`
-      : ''
+  const scope =
+    params.view === 'crc'
+      ? ` (CRC increase in last ${params.window})`
+      : params.view === 'state-changed'
+        ? ` (state changed in last ${params.window})`
+        : ''
 
   return (
     <span>

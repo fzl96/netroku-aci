@@ -12,5 +12,5 @@ export async function fetchLegacyHealthHistory(
   if (!response.ok) {
     throw new Error(`Legacy health history request failed with ${response.status}`)
   }
-  return await response.json() as LegacyHealthHistory
+  return (await response.json()) as LegacyHealthHistory
 }

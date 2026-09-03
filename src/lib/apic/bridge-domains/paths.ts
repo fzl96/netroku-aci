@@ -1,7 +1,4 @@
-import type {
-  ParsedBridgeDomainL2Row,
-  ParsedBridgeDomainL3Row,
-} from './types'
+import type { ParsedBridgeDomainL2Row, ParsedBridgeDomainL3Row } from './types'
 
 export { buildTenantPath } from '@/lib/apic/common-paths'
 

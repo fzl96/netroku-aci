@@ -1,7 +1,7 @@
 export const ENDPOINT_PAGE_SIZES = [10, 50, 100, 1000] as const
 
 export type EndpointView = 'endpoint' | 'port'
-export type EndpointPageSize = typeof ENDPOINT_PAGE_SIZES[number] | 'all'
+export type EndpointPageSize = (typeof ENDPOINT_PAGE_SIZES)[number] | 'all'
 export type EndpointStatusFilter = 'active' | 'historical'
 export type RawEndpointPageParam = string | string[] | undefined
 
@@ -48,8 +48,9 @@ function firstValue(value: RawEndpointPageParam): string {
 
 function listValues(value: RawEndpointPageParam): string[] {
   const values = Array.isArray(value) ? value : value === undefined ? [] : [value]
-  const normalized = values.flatMap(item => item.split(','))
-    .map(item => item.trim())
+  const normalized = values
+    .flatMap((item) => item.split(','))
+    .map((item) => item.trim())
     .filter(Boolean)
   return Array.from(new Set(normalized)).sort(NATURAL_COLLATOR.compare)
 }
@@ -65,7 +66,7 @@ function parsePageSize(value: string): EndpointPageSize {
   if (!/^\d+$/.test(value)) return 50
   const parsed = Number(value)
   return (ENDPOINT_PAGE_SIZES as readonly number[]).includes(parsed)
-    ? parsed as EndpointPageSize
+    ? (parsed as EndpointPageSize)
     : 50
 }
 
@@ -77,9 +78,7 @@ function parseStatuses(value: RawEndpointPageParam): EndpointStatusFilter[] {
   return statuses.length === 2 ? [] : statuses
 }
 
-export function parseEndpointPageParams(
-  input: RawEndpointPageParams,
-): EndpointPageParams {
+export function parseEndpointPageParams(input: RawEndpointPageParams): EndpointPageParams {
   const view = firstValue(input.view) === 'port' ? 'port' : 'endpoint'
 
   return {
@@ -117,11 +116,11 @@ export function buildEndpointPageUrl(params: EndpointPageParams): string {
 
 export function hasActiveEndpointFilters(filters: EndpointFilters): boolean {
   return Boolean(
-    filters.query?.trim()
-    || filters.vlan?.length
-    || filters.node?.length
-    || filters.iface?.length
-    || filters.status?.length,
+    filters.query?.trim() ||
+    filters.vlan?.length ||
+    filters.node?.length ||
+    filters.iface?.length ||
+    filters.status?.length,
   )
 }
 
@@ -129,9 +128,10 @@ export function countActiveEndpointFilterGroups(
   filters: EndpointFilters,
   view: EndpointView = 'endpoint',
 ): number {
-  const groups = view === 'endpoint'
-    ? [filters.vlan, filters.node, filters.iface, filters.status]
-    : [filters.vlan, filters.node, filters.status]
+  const groups =
+    view === 'endpoint'
+      ? [filters.vlan, filters.node, filters.iface, filters.status]
+      : [filters.vlan, filters.node, filters.status]
 
-  return groups.filter(values => values && values.length > 0).length
+  return groups.filter((values) => values && values.length > 0).length
 }

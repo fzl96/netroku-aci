@@ -43,27 +43,33 @@ describe('buildLegacyDevicePageUrl', () => {
   it('omits defaults and preserves active filters', () => {
     const base = parseLegacyDevicePageParams({})
     expect(buildLegacyDevicePageUrl(base)).toBe('/legacy/devices')
-    expect(buildLegacyDevicePageUrl({
-      ...base,
-      query: 'edge',
-      site: 'hq',
-      deviceType: 'switch',
-      sort: 'hostname',
-      direction: 'asc',
-      page: 2,
-      pageSize: 100,
-    })).toBe(
+    expect(
+      buildLegacyDevicePageUrl({
+        ...base,
+        query: 'edge',
+        site: 'hq',
+        deviceType: 'switch',
+        sort: 'hostname',
+        direction: 'asc',
+        page: 2,
+        pageSize: 100,
+      }),
+    ).toBe(
       '/legacy/devices?query=edge&site=hq&deviceType=switch&sort=hostname&dir=asc&page=2&pageSize=100',
     )
   })
 
   it('round-trips through the parser', () => {
     const params = parseLegacyDevicePageParams({
-      query: 'core', site: 'dc1', sort: 'model', dir: 'asc', page: '3',
+      query: 'core',
+      site: 'dc1',
+      sort: 'model',
+      dir: 'asc',
+      page: '3',
     })
-    const parsed = parseLegacyDevicePageParams(Object.fromEntries(
-      new URL(buildLegacyDevicePageUrl(params), 'http://x').searchParams,
-    ))
+    const parsed = parseLegacyDevicePageParams(
+      Object.fromEntries(new URL(buildLegacyDevicePageUrl(params), 'http://x').searchParams),
+    )
     expect(parsed).toEqual(params)
   })
 })

@@ -22,11 +22,11 @@ async function DeviceImportContent() {
 
 export function DeviceImportView() {
   return (
-    <div className="flex-1 space-y-6 p-8 max-w-7xl mx-auto">
+    <div className="mx-auto max-w-7xl flex-1 space-y-6 p-8">
       <div className="space-y-1">
         <Link
           href="/inventory/devices"
-          className="text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1 text-xs"
+          className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
           <IconArrowLeft className="h-3.5 w-3.5" />
           <span>Back to Devices</span>
@@ -35,7 +35,8 @@ export function DeviceImportView() {
           Import Devices from CSV
         </h1>
         <p className="text-xs text-subtle">
-          Bulk register new hardware, update existing devices via serial number, and assign rack and stack placements.
+          Bulk register new hardware, update existing devices via serial number, and assign rack and
+          stack placements.
         </p>
       </div>
       <Suspense fallback={<DeviceImportContentSkeleton />}>

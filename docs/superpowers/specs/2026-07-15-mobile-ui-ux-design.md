@@ -10,7 +10,7 @@ Next.js + shadcn/ui. It is effectively unusable on a phone:
 
 - **Navigation is unreachable.** The layout renders `<AppSidebar>` (a shadcn
   `Sidebar` that already ships a mobile `Sheet` opening at `<768px`), but
-  `SidebarTrigger` is rendered *nowhere* in the app. On a phone there is no
+  `SidebarTrigger` is rendered _nowhere_ in the app. On a phone there is no
   hamburger and no way to open the nav.
 - **Page chrome is desktop-fixed.** Every list page has a sticky header with
   hardcoded `px-8 h-16` containing a title block, an APIC host `<select>`, and a
@@ -41,6 +41,7 @@ sidebar's own mobile threshold. "Mobile" = `<md`; "desktop" = `md+`.
 ## Scope
 
 **In scope**
+
 - Mobile top bar + nav trigger (global, in the app layout).
 - Responsive page headers (padding + stacking of title/host-select/Resync).
 - Reusable `DataCard` shell primitive.
@@ -50,6 +51,7 @@ sidebar's own mobile threshold. "Mobile" = `<md`; "desktop" = `md+`.
 - Verify charts and existing `vaul` drawers render well on mobile.
 
 **Out of scope (own specs later)**
+
 - Deploy/rollback workflows (Bridge Domains, Static Ports, Interface Selectors).
 - EPG / bridge-domain detail panels.
 - Admin (Users, Settings), Docs.
@@ -74,6 +76,7 @@ Add one global mobile top bar in `src/app/(app)/layout.tsx`, rendered
   shows its own `<h1>` immediately below.
 
 Each page's existing sticky header becomes responsive:
+
 - `px-8` → `px-4 md:px-8`.
 - Title block + host `<select>` + Resync stack/wrap on mobile: host `<select>`
   goes full-width, Resync collapses to icon + short label. Use `flex-col`
@@ -86,16 +89,18 @@ Add a small shared primitive at `src/components/ui/data-card.tsx`:
 - `DataCard` — a tappable card shell: a title/lead row (supports a badge slot),
   a set of label/value pairs, and optional trailing meta (e.g. relative time).
   Styled to match the existing card system (`bg-card border border-border
-  rounded-2xl shadow-sm`, text scales from `ui-classes`).
+rounded-2xl shadow-sm`, text scales from `ui-classes`).
 - Composed of subparts (e.g. `DataCard`, `DataCardRow`) so each page maps its
   own fields; no generic auto-table introspection.
 
 Each converted page renders **both** layouts from the same `rows` data:
+
 - `hidden md:block` → the existing `<table>` (unchanged).
 - `md:hidden` → a `<div className="space-y-2">` mapping rows to `DataCard`s,
   showing that page's 3–4 key fields.
 
 Per-page key fields (initial proposal, refine during implementation):
+
 - **Faults:** severity badge + code (lead), description, node/affected, relative
   created time, ack indicator.
 - **Interface Health:** interface + node (lead), status badge, error/CRC
@@ -118,7 +123,7 @@ Per-page key fields (initial proposal, refine during implementation):
 ### 4. Dashboard & charts
 
 - Dashboard summary cards → single column on mobile: `grid-cols-1
-  md:grid-cols-…`.
+md:grid-cols-…`.
 - Recharts trend charts (`FaultsTrendChart`, `InterfaceCrcTrendChart`,
   `NodesTrendChart`, `HealthTrendChart`) are already `ResponsiveContainer`-based;
   set a mobile-appropriate height and reduce X-axis tick density so labels don't
@@ -129,6 +134,7 @@ Per-page key fields (initial proposal, refine during implementation):
 ### 5. Rollout & verification
 
 Order:
+
 1. Foundation: mobile top bar + trigger, responsive page-header pattern,
    `DataCard` primitive, responsive toolbar/pagination pattern.
 2. Convert pages: **Faults → Interface Health → Endpoints → Nodes → Health

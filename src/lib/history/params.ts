@@ -66,9 +66,7 @@ export function parseHistoryPageParams(input: RawHistoryPageParams): HistoryPage
   const action = first(input.action)
   return {
     query: first(input.query),
-    action: HISTORY_ACTIONS.includes(action as AuditAction)
-      ? action as AuditAction
-      : 'all',
+    action: HISTORY_ACTIONS.includes(action as AuditAction) ? (action as AuditAction) : 'all',
     page: positivePage(first(input.page)),
   }
 }

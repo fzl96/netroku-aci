@@ -44,9 +44,7 @@ export interface LegacyApplyContext {
   collectedAt: Date
 }
 
-type ApplyLegacyFeature = (
-  context: LegacyApplyContext,
-) => Promise<LegacyIngestCounts>
+type ApplyLegacyFeature = (context: LegacyApplyContext) => Promise<LegacyIngestCounts>
 
 interface LegacyDb {
   $transaction<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T>
@@ -84,10 +82,7 @@ export function canonicalPayloadHash(payload: unknown): string {
 }
 
 function receiptResult(
-  receipt: Pick<
-    LegacyIngestReceipt,
-    'id' | 'inserted' | 'updated' | 'cleared' | 'samples'
-  >,
+  receipt: Pick<LegacyIngestReceipt, 'id' | 'inserted' | 'updated' | 'cleared' | 'samples'>,
   deviceId: string,
   duplicate: boolean,
 ): LegacyIngestResult {
@@ -165,7 +160,7 @@ export async function ingestLegacyFeature(
   const metadata = metadataFor(payload)
 
   try {
-    return await db.$transaction(async tx => {
+    return await db.$transaction(async (tx) => {
       const device = await tx.legacyDevice.upsert({
         where: { siteKey_hostnameKey: { siteKey, hostnameKey } },
         update: {

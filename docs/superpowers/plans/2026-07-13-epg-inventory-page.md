@@ -19,16 +19,18 @@
 - DB commands need the Postgres from `docker-compose.yml` running; migrations run with `bun run prisma:migrate -- --name <name>`.
 - vPC bindings are stored as ONE row with `node = "<lo>-<hi>"` (ascending pair) and `port` = the vPC interface policy group name — same convention as `src/lib/apic/endpoints.ts`.
 - The existing `src/app/(app)/epgs/page.tsx` is an unlinked mock prototype; it gets fully replaced (no data or consumers depend on it).
-- Do not touch `src/lib/apic/epgs/` (EPG *deployment* workflow code) — the new collector lives in separate `epg-inventory.ts` / `epg-resync.ts` files.
+- Do not touch `src/lib/apic/epgs/` (EPG _deployment_ workflow code) — the new collector lives in separate `epg-inventory.ts` / `epg-resync.ts` files.
 
 ---
 
 ### Task 1: Prisma schema — EpgSnapshot, EpgPathBinding, ApicHost.lastEpgSyncAt
 
 **Files:**
+
 - Modify: `prisma/schema.prisma` (ApicHost model at ~line 99; append new models after `HardwareComponent`)
 
 **Interfaces:**
+
 - Consumes: existing `ApicHost` model.
 - Produces: Prisma client delegates `prisma.epgSnapshot`, `prisma.epgPathBinding`; `ApicHost.lastEpgSyncAt: DateTime?`. Unique keys `@@unique([apicHostId, dn])` on both models (compound-input names `apicHostId_dn`). All later tasks depend on these exact field names.
 
@@ -125,10 +127,12 @@ git commit -m "feat(db): add EpgSnapshot and EpgPathBinding models"
 ### Task 2: APIC collector — `epg-inventory.ts` (pure parsing + fetch)
 
 **Files:**
+
 - Create: `src/lib/apic/epg-inventory.ts`
 - Test: `src/lib/apic/epg-inventory.test.ts`
 
 **Interfaces:**
+
 - Consumes: `apicFetch`, `apicLogin` from `./client` (same signatures used by `src/lib/apic/nodes.ts:187-209`).
 - Produces:
   - `interface EpgBindingRow { dn: string; pathTDn: string; pod: string; node: string; port: string; pathType: string; encap: string; mode: string }`
@@ -139,6 +143,7 @@ git commit -m "feat(db): add EpgSnapshot and EpgPathBinding models"
   - `fetchEpgInventoryFromApic(host: string, username: string, plaintextPassword: string): Promise<EpgRow[]>`
 
 Domain-knowledge notes for the implementer:
+
 - An EPG dn looks like `uni/tn-<tenant>/ap-<appProfile>/epg-<name>`.
 - `fvRsPathAtt` child attributes carry `tDn`, `encap`, `mode` but not reliably a `dn` in subtree responses — so we build the binding dn deterministically as `` `${epgDn}/rspathAtt-[${tDn}]` `` (that is the actual rn format APIC uses).
 - `mode` values from APIC are `regular` (trunk), `untagged` (access), `native` (802.1p); we store the friendly names.
@@ -508,10 +513,12 @@ git commit -m "feat(apic): add EPG inventory collector parsing fvAEPg subtree"
 ### Task 3: Resync writes — `epg-resync.ts`
 
 **Files:**
+
 - Create: `src/lib/apic/epg-resync.ts`
 - Test: `src/lib/apic/epg-resync.test.ts`
 
 **Interfaces:**
+
 - Consumes: `fetchEpgInventoryFromApic`, `EpgRow`, `EpgBindingRow` from `./epg-inventory` (Task 2); `prisma` from `@/lib/prisma`.
 - Produces:
   - `class EpgResyncInProgressError extends Error` (has `name = 'EpgResyncInProgressError'`)
@@ -862,9 +869,11 @@ git commit -m "feat(apic): add EPG resync with snapshot upserts and advisory loc
 ### Task 4: Resync API route — `POST /api/epgs/resync`
 
 **Files:**
+
 - Create: `src/app/api/epgs/resync/route.ts`
 
 **Interfaces:**
+
 - Consumes: `resyncEpgs`, `EpgResyncInProgressError`, `ResyncEpgsResult` (Task 3); `auth`, `prisma`, `recordAudit` exactly as used by `src/app/api/endpoints/resync/route.ts`.
 - Produces: `POST /api/epgs/resync` accepting `{apicHostId, username, password}`; responds 200 `{syncedEpgs, syncedBindings}`, or `{error}` with 400/401/404/409/502. The client (Task 8) calls this.
 
@@ -952,11 +961,13 @@ git commit -m "feat(api): add EPG resync route"
 ### Task 5: Cron integration — `epgs` dataset
 
 **Files:**
+
 - Modify: `src/lib/apic/cron-resync.ts` (HostResult at line 5-15; summarizeResults at line 38-55)
 - Modify: `src/app/api/cron/resync/route.ts` (add a dataset block after Nodes, before `results.push(result)` at line 191)
 - Test: `src/lib/apic/cron-resync.test.ts` (append a case)
 
 **Interfaces:**
+
 - Consumes: `resyncEpgs` (Task 3); existing `DatasetResult`, `HostResult`, `summarizeResults`.
 - Produces: `HostResult.epgs?: DatasetResult`; the cron POST body/behavior is unchanged, it just runs one more dataset per host.
 
@@ -1058,12 +1069,14 @@ git commit -m "feat(cron): include EPG inventory in scheduled resync"
 ### Task 6: Query helpers and natural sort
 
 **Files:**
+
 - Create: `src/lib/epgs/query.ts`
 - Test: `src/lib/epgs/query.test.ts`
 - Create: `src/app/(app)/epgs/sort.ts`
 - Test: `src/app/(app)/epgs/sort.test.ts`
 
 **Interfaces:**
+
 - Consumes: `Prisma` types from `@prisma/client` (Task 1).
 - Produces (Task 7/8 depend on these exact names):
   - `type EpgPresenceFilter = 'present' | 'absent'`
@@ -1343,10 +1356,12 @@ git commit -m "feat(epgs): add query helpers and natural binding sort"
 ### Task 7: Extract shared FilterSubmenu component
 
 **Files:**
+
 - Create: `src/components/FilterSubmenu.tsx`
 - Modify: `src/app/(app)/endpoints/EndpointsClient.tsx` (delete the inline `FilterSubmenu` at lines 80-163 and its now-unused imports; import the shared one)
 
 **Interfaces:**
+
 - Consumes: `DropdownMenu*` primitives, `Input` from `@/components/ui/`.
 - Produces: `FilterSubmenu({ label, value, options, onChange, disabled?, searchable? })` — exact same props as the current inline component. Task 8's client uses it.
 
@@ -1460,6 +1475,7 @@ export function FilterSubmenu({
 - [ ] **Step 2: Use it in EndpointsClient**
 
 In `src/app/(app)/endpoints/EndpointsClient.tsx`:
+
 1. Delete the inline `FilterSubmenu` function (lines 80-163, including the `// ─── Filter submenu ───` comment banner).
 2. Add `import { FilterSubmenu } from '@/components/FilterSubmenu'`.
 3. From the `@/components/ui/dropdown-menu` import block, remove the now-unused names: `DropdownMenuCheckboxItem`, `DropdownMenuSub`, `DropdownMenuSubContent`, `DropdownMenuSubTrigger`. Keep `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuLabel`, `DropdownMenuSeparator`, `DropdownMenuTrigger` (still used by the filter menu shell). Remove the `Input` import if nothing else in the file uses it (search first — as of writing, the only `Input` usage is inside FilterSubmenu).
@@ -1481,12 +1497,14 @@ git commit -m "refactor(endpoints): extract FilterSubmenu into shared component"
 ### Task 8: The EPG page — RSC, client, detail panel
 
 **Files:**
+
 - Modify (full rewrite): `src/app/(app)/epgs/page.tsx`
 - Modify: `src/app/(app)/epgs/layout.tsx` (metadata copy only)
 - Create: `src/app/(app)/epgs/EpgsClient.tsx`
 - Create: `src/app/(app)/epgs/EpgDetailPanel.tsx`
 
 **Interfaces:**
+
 - Consumes: query helpers + types from `@/lib/epgs/query` (Task 6), `sortBindingRows` from `./sort` (Task 6), `FilterSubmenu` (Task 7), `POST /api/epgs/resync` (Task 4), `getApicHosts`/`SafeApicHost` from `@/actions/apic-hosts`, `ApicCredentialDialog` from `@/components/ApicCredentialDialog`, ui classes from `@/lib/ui-classes`.
 - Produces: the `/epgs` route. URL params: `apic`, `view` (`epg`|`port`, default `epg`), `query`, `page`, `pageSize` (10/50/100/1000/all, default 50), `tenant`, `ap`, `node`, `presence` (comma-separated multi-values).
 
@@ -2300,9 +2318,11 @@ git commit -m "feat(epgs): add EPG inventory page with by-EPG and by-port views"
 ### Task 9: Sidebar entry
 
 **Files:**
+
 - Modify: `src/components/AppSidebar.tsx` (icon imports at lines 45-64; Infrastructure group at lines 94-129)
 
 **Interfaces:**
+
 - Consumes: existing `NAV` structure.
 - Produces: an "EPG" item in the Infrastructure group linking `/epgs`.
 

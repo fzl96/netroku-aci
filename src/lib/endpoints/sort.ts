@@ -47,12 +47,7 @@ export type EndpointSortKey =
   | 'status'
 
 export type PortSortKey =
-  | 'node'
-  | 'interface'
-  | 'endpointCount'
-  | 'vlans'
-  | 'epgDescrs'
-  | 'lastSeenAt'
+  'node' | 'interface' | 'endpointCount' | 'vlans' | 'epgDescrs' | 'lastSeenAt'
 
 type SortValue = string | number | Date | null
 
@@ -79,10 +74,14 @@ function stableSort<T>(rows: T[], direction: SortDirection, compare: (a: T, b: T
 
 function endpointValue(endpoint: SortableEndpoint, key: EndpointSortKey): SortValue {
   switch (key) {
-    case 'status': return endpoint.isActive ? 0 : 1
-    case 'firstSeenAt': return endpoint.firstSeenAt
-    case 'lastSeenAt': return endpoint.lastSeenAt
-    default: return endpoint[key]
+    case 'status':
+      return endpoint.isActive ? 0 : 1
+    case 'firstSeenAt':
+      return endpoint.firstSeenAt
+    case 'lastSeenAt':
+      return endpoint.lastSeenAt
+    default:
+      return endpoint[key]
   }
 }
 
@@ -91,9 +90,12 @@ function portValue<TEndpoint extends GroupableEndpoint>(
   key: PortSortKey,
 ): SortValue {
   switch (key) {
-    case 'vlans': return port.vlans.join(', ')
-    case 'epgDescrs': return port.epgDescrs.join(', ')
-    default: return port[key]
+    case 'vlans':
+      return port.vlans.join(', ')
+    case 'epgDescrs':
+      return port.epgDescrs.join(', ')
+    default:
+      return port[key]
   }
 }
 
@@ -102,7 +104,9 @@ export function sortEndpointRows<TEndpoint extends SortableEndpoint>(
   key: EndpointSortKey,
   direction: SortDirection,
 ): TEndpoint[] {
-  return stableSort(rows, direction, (a, b) => compareValues(endpointValue(a, key), endpointValue(b, key)))
+  return stableSort(rows, direction, (a, b) =>
+    compareValues(endpointValue(a, key), endpointValue(b, key)),
+  )
 }
 
 export function sortPortRows<TEndpoint extends GroupableEndpoint>(
@@ -177,8 +181,8 @@ export function groupEndpointsByPort<TEndpoint extends GroupableEndpoint>(
 
   return Array.from(map.values()).sort(
     (a, b) =>
-      NATURAL_COLLATOR.compare(a.node, b.node)
-      || NATURAL_COLLATOR.compare(a.interface, b.interface)
-      || (new Date(b.lastSeenAt).getTime() - new Date(a.lastSeenAt).getTime()),
+      NATURAL_COLLATOR.compare(a.node, b.node) ||
+      NATURAL_COLLATOR.compare(a.interface, b.interface) ||
+      new Date(b.lastSeenAt).getTime() - new Date(a.lastSeenAt).getTime(),
   )
 }

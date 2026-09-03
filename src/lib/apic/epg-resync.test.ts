@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import {
-  executeEpgResyncWrites,
-  EpgResyncInProgressError,
-  type EpgWriteClient,
-} from './epg-resync'
+import { executeEpgResyncWrites, EpgResyncInProgressError, type EpgWriteClient } from './epg-resync'
 import type { EpgRow } from './epg-inventory'
 
 function makeEpg(overrides: Partial<EpgRow> = {}): EpgRow {
@@ -46,35 +42,49 @@ interface Calls {
 
 function mockClient(lockAcquired = true): { client: EpgWriteClient; calls: Calls } {
   const calls: Calls = {
-    epgDeletes: [], epgCreateManys: [], bindingDeletes: [], bindingCreateManys: [], hostUpdates: [],
+    epgDeletes: [],
+    epgCreateManys: [],
+    bindingDeletes: [],
+    bindingCreateManys: [],
+    hostUpdates: [],
   }
   const tx = {
     epgSnapshot: {
-      deleteMany: async (args: unknown) => { calls.epgDeletes.push(args); return { count: 0 } },
+      deleteMany: async (args: unknown) => {
+        calls.epgDeletes.push(args)
+        return { count: 0 }
+      },
       createMany: async (args: { data: Array<{ dn: string }> }) => {
         calls.epgCreateManys.push(args)
         return { count: args.data.length }
       },
       findMany: async (args: { where: { apicHostId: string } }) => {
-        const createCall = calls.epgCreateManys[calls.epgCreateManys.length - 1] as { data: Array<{ dn: string }> } | undefined
+        const createCall = calls.epgCreateManys[calls.epgCreateManys.length - 1] as
+          { data: Array<{ dn: string }> } | undefined
         const data = createCall?.data ?? []
-        return data.map(d => ({ id: `epg-${d.dn}`, dn: d.dn }))
+        return data.map((d) => ({ id: `epg-${d.dn}`, dn: d.dn }))
       },
     },
     epgPathBinding: {
-      deleteMany: async (args: unknown) => { calls.bindingDeletes.push(args); return { count: 0 } },
+      deleteMany: async (args: unknown) => {
+        calls.bindingDeletes.push(args)
+        return { count: 0 }
+      },
       createMany: async (args: { data: Array<{ epgId: string; dn: string }> }) => {
         calls.bindingCreateManys.push(args)
         return { count: args.data.length }
       },
     },
     apicHost: {
-      update: async (args: unknown) => { calls.hostUpdates.push(args); return {} },
+      update: async (args: unknown) => {
+        calls.hostUpdates.push(args)
+        return {}
+      },
     },
     $queryRaw: async () => [{ acquired: lockAcquired }],
   }
   const client = {
-    $transaction: async <T,>(fn: (t: typeof tx) => Promise<T>) => fn(tx),
+    $transaction: async <T>(fn: (t: typeof tx) => Promise<T>) => fn(tx),
   } as unknown as EpgWriteClient
   return { client, calls }
 }
@@ -111,8 +121,9 @@ describe('executeEpgResyncWrites', () => {
 
   it('throws EpgResyncInProgressError when the advisory lock is taken', async () => {
     const { client } = mockClient(false)
-    await expect(executeEpgResyncWrites(client, 'host-1', [makeEpg()], now))
-      .rejects.toBeInstanceOf(EpgResyncInProgressError)
+    await expect(executeEpgResyncWrites(client, 'host-1', [makeEpg()], now)).rejects.toBeInstanceOf(
+      EpgResyncInProgressError,
+    )
   })
 
   it('counts bindings across all EPGs', async () => {
@@ -127,4 +138,3 @@ describe('executeEpgResyncWrites', () => {
     expect(result).toEqual({ syncedEpgs: 2, syncedBindings: 1 })
   })
 })
-

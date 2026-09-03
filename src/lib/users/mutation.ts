@@ -11,7 +11,11 @@ import { toSafeUser, type SafeUser } from './query'
 const roleSchema = z.enum(['admin', 'member'])
 
 const createUserSchema = z.object({
-  username: z.string().trim().min(3, 'Username must be at least 3 characters').max(30, 'Username must be 30 characters or fewer'),
+  username: z
+    .string()
+    .trim()
+    .min(3, 'Username must be at least 3 characters')
+    .max(30, 'Username must be 30 characters or fewer'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   role: roleSchema,
 })
@@ -39,7 +43,14 @@ export async function createUserRecord(data: CreateUserValues): Promise<SafeUser
   })
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: created.user.id },
-    select: { id: true, username: true, displayUsername: true, name: true, role: true, createdAt: true },
+    select: {
+      id: true,
+      username: true,
+      displayUsername: true,
+      name: true,
+      role: true,
+      createdAt: true,
+    },
   })
 
   invalidateUserReads()

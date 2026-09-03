@@ -3,11 +3,7 @@ import type { RacksParams } from '@/lib/inventory/racks/params'
 import { RacksResults } from './racks-results'
 import { RacksResultsSkeleton } from './racks-skeleton'
 
-export function RacksView({
-  paramsPromise,
-}: {
-  paramsPromise: Promise<RacksParams>
-}) {
+export function RacksView({ paramsPromise }: { paramsPromise: Promise<RacksParams> }) {
   return (
     <>
       <div className="px-8 pt-6">

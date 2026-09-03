@@ -25,10 +25,12 @@
 ### Task 1: Canonical Legacy interface list state
 
 **Files:**
+
 - Create: `src/app/(app)/legacy/interfaces/list-state.ts`
 - Create: `src/app/(app)/legacy/interfaces/list-state.test.ts`
 
 **Interfaces:**
+
 - Produces: `LegacyInterfaceView`, `LegacyInterfaceCounterMode`, `LegacyInterfaceWindow`, `LegacyInterfaceSortKey`, `LegacyInterfaceSortDirection`, `LegacyInterfaceListState`.
 - Produces: `parseLegacyInterfaceListState(params)`, `buildLegacyInterfaceUrl(state)`, `nextLegacyInterfaceSort(currentKey, currentDirection, nextKey)`.
 
@@ -87,10 +89,12 @@ git commit -m "feat: add legacy interface list state"
 ### Task 2: Natural sorting and CRC aggregation
 
 **Files:**
+
 - Create: `src/app/(app)/legacy/interfaces/list-data.ts`
 - Create: `src/app/(app)/legacy/interfaces/list-data.test.ts`
 
 **Interfaces:**
+
 - Consumes: Task 1 view/mode/sort types.
 - Produces: `sumLegacyCrcByInterface(samples)` and `sortLegacyInterfaceRows(rows, sort)`.
 
@@ -150,10 +154,12 @@ git commit -m "feat: add legacy interface natural sorting"
 ### Task 3: State-change window query
 
 **Files:**
+
 - Create: `src/app/(app)/legacy/interfaces/state-change-query.ts`
 - Create: `src/app/(app)/legacy/interfaces/state-change-query.test.ts`
 
 **Interfaces:**
+
 - Produces: `buildLegacyStateChangedInterfaceIdsQuery(windowStart: Date): Prisma.Sql`.
 - Produces: `queryLegacyStateChangedInterfaceIds(execute, windowStart): Promise<string[]>`.
 
@@ -201,12 +207,14 @@ git commit -m "feat: query legacy interface state changes"
 ### Task 4: Server-side data views and pagination
 
 **Files:**
+
 - Modify: `src/lib/legacy-ui/interfaces.ts`
 - Modify: `src/lib/legacy-ui/interfaces.test.ts`
 - Modify: `src/app/(app)/legacy/interfaces/page.tsx`
 - Modify: `src/app/(app)/legacy/interfaces/LegacyInterfacesClient.tsx` (prop types only)
 
 **Interfaces:**
+
 - Consumes: Tasks 1–3.
 - Produces: rows with `crcWindowTotal: string | null`, canonical list state, and device options.
 
@@ -274,9 +282,11 @@ git commit -m "feat: add legacy interface data views"
 ### Task 5: Immediate toolbar and sortable headers
 
 **Files:**
+
 - Modify: `src/app/(app)/legacy/interfaces/LegacyInterfacesClient.tsx`
 
 **Interfaces:**
+
 - Consumes: list state/URL/sort helpers, CRC totals, and device options.
 - Produces: ACI-style controls with no form submission and accessible sortable headers.
 

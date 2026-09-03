@@ -2,10 +2,7 @@ import type { z } from 'zod'
 import { recordAudit, type AuditAction } from '@/lib/audit'
 import { invalidateLegacyDeviceReads } from '@/lib/legacy/devices/mutation'
 import { isLegacyIngestAuthorized } from './auth'
-import {
-  IdempotencyConflictError,
-  type LegacyIngestResult,
-} from './common'
+import { IdempotencyConflictError, type LegacyIngestResult } from './common'
 
 interface RoutePayload {
   run_id: string
@@ -21,9 +18,10 @@ interface RouteDependencies {
 }
 
 function collectionTooLarge(error: z.ZodError): boolean {
-  return error.issues.some(issue =>
-    issue.code === 'too_big'
-    && ['logs', 'interfaces', 'endpoints'].includes(String(issue.path[0])),
+  return error.issues.some(
+    (issue) =>
+      issue.code === 'too_big' &&
+      ['logs', 'interfaces', 'endpoints'].includes(String(issue.path[0])),
   )
 }
 

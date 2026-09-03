@@ -25,7 +25,13 @@ type ArchitectureFile = {
 
 type ArchitectureViolation = {
   path: string
-  rule: 'direct-prisma' | 'page-action' | 'page-session' | 'page-data-layer' | 'route-loading' | 'route-implementation'
+  rule:
+    | 'direct-prisma'
+    | 'page-action'
+    | 'page-session'
+    | 'page-data-layer'
+    | 'route-loading'
+    | 'route-implementation'
 }
 
 type MigratedPurpose = {
@@ -43,112 +49,138 @@ type MigratedPurpose = {
 const MIGRATED_PURPOSES: MigratedPurpose[] = [
   {
     name: 'endpoints',
-    routes: [{
-      root: 'src/app/(app)/endpoints',
-      allowedFiles: ['page.tsx'],
-    }],
+    routes: [
+      {
+        root: 'src/app/(app)/endpoints',
+        allowedFiles: ['page.tsx'],
+      },
+    ],
     entryRoots: ['src/app/api/endpoints', 'src/components/endpoints'],
   },
   {
     name: 'epgs',
-    routes: [{
-      root: 'src/app/(app)/epgs',
-      allowedFiles: ['page.tsx'],
-    }],
+    routes: [
+      {
+        root: 'src/app/(app)/epgs',
+        allowedFiles: ['page.tsx'],
+      },
+    ],
     entryRoots: ['src/app/api/epgs', 'src/components/epgs'],
   },
   {
     name: 'nodes',
-    routes: [{
-      root: 'src/app/(app)/nodes',
-      allowedFiles: ['page.tsx'],
-    }],
+    routes: [
+      {
+        root: 'src/app/(app)/nodes',
+        allowedFiles: ['page.tsx'],
+      },
+    ],
     entryRoots: ['src/app/api/nodes', 'src/components/nodes'],
     obsoletePaths: ['src/actions/nodes.ts'],
   },
   {
     name: 'dashboard',
-    routes: [{
-      root: 'src/app/(app)/dashboard',
-      allowedFiles: ['page.tsx'],
-    }],
+    routes: [
+      {
+        root: 'src/app/(app)/dashboard',
+        allowedFiles: ['page.tsx'],
+      },
+    ],
     entryRoots: ['src/components/dashboard'],
   },
   {
     name: 'history',
-    routes: [{
-      root: 'src/app/(app)/history',
-      allowedFiles: ['page.tsx'],
-    }],
+    routes: [
+      {
+        root: 'src/app/(app)/history',
+        allowedFiles: ['page.tsx'],
+      },
+    ],
     entryRoots: ['src/components/history'],
   },
   {
     name: 'legacy-devices',
-    routes: [{
-      root: 'src/app/(app)/legacy/devices',
-      allowedFiles: ['page.tsx'],
-    }],
+    routes: [
+      {
+        root: 'src/app/(app)/legacy/devices',
+        allowedFiles: ['page.tsx'],
+      },
+    ],
     entryRoots: ['src/components/legacy/devices'],
   },
   {
     name: 'legacy-endpoints',
-    routes: [{
-      root: 'src/app/(app)/legacy/endpoints',
-      allowedFiles: ['page.tsx'],
-    }],
+    routes: [
+      {
+        root: 'src/app/(app)/legacy/endpoints',
+        allowedFiles: ['page.tsx'],
+      },
+    ],
     entryRoots: ['src/components/legacy/endpoints'],
   },
   {
     name: 'legacy-health',
-    routes: [{
-      root: 'src/app/(app)/legacy/health',
-      allowedFiles: ['page.tsx'],
-    }],
+    routes: [
+      {
+        root: 'src/app/(app)/legacy/health',
+        allowedFiles: ['page.tsx'],
+      },
+    ],
     entryRoots: ['src/app/api/legacy/health', 'src/components/legacy/health'],
     obsoletePaths: ['src/actions/legacy-health.ts'],
   },
   {
     name: 'legacy-interfaces',
-    routes: [{
-      root: 'src/app/(app)/legacy/interfaces',
-      allowedFiles: ['page.tsx'],
-    }],
+    routes: [
+      {
+        root: 'src/app/(app)/legacy/interfaces',
+        allowedFiles: ['page.tsx'],
+      },
+    ],
     entryRoots: ['src/app/api/legacy/interfaces', 'src/components/legacy/interfaces'],
     obsoletePaths: ['src/actions/legacy-interfaces.ts'],
   },
   {
     name: 'apic-hosts',
-    routes: [{
-      root: 'src/app/(app)/apic-hosts',
-      allowedFiles: ['page.tsx'],
-    }],
+    routes: [
+      {
+        root: 'src/app/(app)/apic-hosts',
+        allowedFiles: ['page.tsx'],
+      },
+    ],
     entryRoots: ['src/components/apic-hosts'],
     obsoletePaths: ['src/actions/apic-hosts.ts'],
   },
   {
     name: 'scheduler',
-    routes: [{
-      root: 'src/app/(app)/scheduler',
-      allowedFiles: ['page.tsx'],
-    }],
+    routes: [
+      {
+        root: 'src/app/(app)/scheduler',
+        allowedFiles: ['page.tsx'],
+      },
+    ],
     entryRoots: ['src/app/api/scheduler', 'src/components/scheduler'],
     obsoletePaths: ['src/actions/resync-schedules.ts'],
   },
   {
     name: 'users',
-    routes: [{
-      root: 'src/app/(app)/users',
-      allowedFiles: ['page.tsx'],
-    }],
+    routes: [
+      {
+        root: 'src/app/(app)/users',
+        allowedFiles: ['page.tsx'],
+      },
+    ],
     entryRoots: ['src/components/users'],
     obsoletePaths: ['src/actions/users.ts'],
   },
   {
     name: 'settings',
-    routes: [{
-      root: 'src/app/(app)/settings',
-      allowedFiles: ['page.tsx'],
-    }],
+    routes: [
+      {
+        root: 'src/app/(app)/settings',
+        allowedFiles: ['page.tsx'],
+      },
+    ],
     entryRoots: ['src/components/settings'],
   },
   {
@@ -173,10 +205,12 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
   },
   {
     name: 'interface-health',
-    routes: [{
-      root: 'src/app/(app)/interface-health',
-      allowedFiles: ['page.tsx'],
-    }],
+    routes: [
+      {
+        root: 'src/app/(app)/interface-health',
+        allowedFiles: ['page.tsx'],
+      },
+    ],
     entryRoots: ['src/app/api/interfaces', 'src/components/interface-health'],
   },
 ]
@@ -204,8 +238,10 @@ function inspectArchitectureFiles(
       violations.push({ path: file.path, rule: 'page-session' })
     }
     if (
-      basename === 'page.tsx'
-      && /from\s+['"]@\/lib\/(?:auth['"]|[^'"]+\/(?:query|mutation|actions|polling(?:-client)?)['"])/.test(file.source)
+      basename === 'page.tsx' &&
+      /from\s+['"]@\/lib\/(?:auth['"]|[^'"]+\/(?:query|mutation|actions|polling(?:-client)?)['"])/.test(
+        file.source,
+      )
     ) {
       violations.push({ path: file.path, rule: 'page-data-layer' })
     }
@@ -213,9 +249,9 @@ function inspectArchitectureFiles(
       violations.push({ path: file.path, rule: 'route-loading' })
     }
     if (
-      file.routeImplementation
-      && basename !== 'loading.tsx'
-      && !allowedRouteFiles.has(file.routeRelativePath ?? basename)
+      file.routeImplementation &&
+      basename !== 'loading.tsx' &&
+      !allowedRouteFiles.has(file.routeRelativePath ?? basename)
     ) {
       violations.push({ path: file.path, rule: 'route-implementation' })
     }
@@ -246,9 +282,7 @@ function collectTypeScriptFiles(
       path: relativePath,
       source: readFileSync(path.join(process.cwd(), relativePath), 'utf8'),
       routeImplementation,
-      routeRelativePath: routeImplementation
-        ? path.relative(routeRoot, relativePath)
-        : undefined,
+      routeRelativePath: routeImplementation ? path.relative(routeRoot, relativePath) : undefined,
     })
   }
   return files
@@ -257,17 +291,21 @@ function collectTypeScriptFiles(
 describe('page data architecture guard', () => {
   it('keeps migrated shared component filenames in kebab-case', () => {
     const migratedSharedRoots = ['src/components/inventory', 'src/components/legacy']
-    const files = migratedSharedRoots.flatMap(root => collectTypeScriptFiles(root, false))
+    const files = migratedSharedRoots.flatMap((root) => collectTypeScriptFiles(root, false))
 
-    expect(files.filter(file => !/^[a-z0-9]+(?:-[a-z0-9]+)*(?:\.test)?\.tsx?$/.test(path.basename(file.path))))
-      .toEqual([])
+    expect(
+      files.filter(
+        (file) => !/^[a-z0-9]+(?:-[a-z0-9]+)*(?:\.test)?\.tsx?$/.test(path.basename(file.path)),
+      ),
+    ).toEqual([])
   })
 
   it('detects forbidden entry-point dependencies and route implementation files', () => {
     const files: ArchitectureFile[] = [
       {
         path: 'src/app/(app)/example/page.tsx',
-        source: "import { prisma } from '@/lib/prisma'\nimport { read } from '@/actions/example'\nimport { getExample } from '@/lib/example/query'\ngetSession()",
+        source:
+          "import { prisma } from '@/lib/prisma'\nimport { read } from '@/actions/example'\nimport { getExample } from '@/lib/example/query'\ngetSession()",
         routeImplementation: true,
         routeRelativePath: 'page.tsx',
       },
@@ -296,49 +334,60 @@ describe('page data architecture guard', () => {
   })
 
   it('allows framework-only route files and purpose modules without Prisma entry imports', () => {
-    expect(inspectArchitectureFiles([
-      {
-        path: 'src/app/(app)/example/page.tsx',
-        source: "import { ExampleView } from '@/components/example/example-view'",
-        routeImplementation: true,
-        routeRelativePath: 'page.tsx',
-      },
-      {
-        path: 'src/app/(app)/example/error.tsx',
-        source: 'export default function ErrorPage() { return null }',
-        routeImplementation: true,
-        routeRelativePath: 'error.tsx',
-      },
-      {
-        path: 'src/components/example/example-view.tsx',
-        source: "import { getExample } from '@/lib/example/query'",
-      },
-    ], new Set(['page.tsx', 'error.tsx']))).toEqual([])
+    expect(
+      inspectArchitectureFiles(
+        [
+          {
+            path: 'src/app/(app)/example/page.tsx',
+            source: "import { ExampleView } from '@/components/example/example-view'",
+            routeImplementation: true,
+            routeRelativePath: 'page.tsx',
+          },
+          {
+            path: 'src/app/(app)/example/error.tsx',
+            source: 'export default function ErrorPage() { return null }',
+            routeImplementation: true,
+            routeRelativePath: 'error.tsx',
+          },
+          {
+            path: 'src/components/example/example-view.tsx',
+            source: "import { getExample } from '@/lib/example/query'",
+          },
+        ],
+        new Set(['page.tsx', 'error.tsx']),
+      ),
+    ).toEqual([])
   })
 
   it('exempts colocated tests from entry-dependency rules but not from route placement', () => {
     // Architecture tests legitimately quote the forbidden specifiers they assert against.
     // The rules describe route, render, action, and route-handler modules -- not tests.
-    expect(inspectArchitectureFiles([
-      {
-        path: 'src/components/example/example-streaming.test.tsx',
-        source: "expect(page).not.toContain('@/lib/prisma')\n"
-          + "expect(page).not.toContain('@/actions/')\n"
-          + "expect(page).not.toContain('getSession')",
-      },
-    ])).toEqual([])
+    expect(
+      inspectArchitectureFiles([
+        {
+          path: 'src/components/example/example-streaming.test.tsx',
+          source:
+            "expect(page).not.toContain('@/lib/prisma')\n" +
+            "expect(page).not.toContain('@/actions/')\n" +
+            "expect(page).not.toContain('getSession')",
+        },
+      ]),
+    ).toEqual([])
 
     // A test colocated in a route directory is still misplaced.
-    expect(inspectArchitectureFiles([
-      {
-        path: 'src/app/(app)/example/sort.test.ts',
-        source: 'it("sorts", () => {})',
-        routeImplementation: true,
-        routeRelativePath: 'sort.test.ts',
-      },
-    ], new Set(['page.tsx']))).toEqual([
-      { path: 'src/app/(app)/example/sort.test.ts', rule: 'route-implementation' },
-    ])
+    expect(
+      inspectArchitectureFiles(
+        [
+          {
+            path: 'src/app/(app)/example/sort.test.ts',
+            source: 'it("sorts", () => {})',
+            routeImplementation: true,
+            routeRelativePath: 'sort.test.ts',
+          },
+        ],
+        new Set(['page.tsx']),
+      ),
+    ).toEqual([{ path: 'src/app/(app)/example/sort.test.ts', rule: 'route-implementation' }])
   })
 
   for (const purpose of MIGRATED_PURPOSES) {
@@ -349,12 +398,9 @@ describe('page data architecture guard', () => {
             throw new Error(`Non-framework route file in ${purpose.name} allowlist: ${allowedFile}`)
           }
         }
-        return inspectArchitectureFiles(
-          collectTypeScriptFiles(root, true),
-          new Set(allowedFiles),
-        )
+        return inspectArchitectureFiles(collectTypeScriptFiles(root, true), new Set(allowedFiles))
       })
-      const entryFiles = purpose.entryRoots.flatMap(root => collectTypeScriptFiles(root, false))
+      const entryFiles = purpose.entryRoots.flatMap((root) => collectTypeScriptFiles(root, false))
 
       expect([...routeViolations, ...inspectArchitectureFiles(entryFiles)]).toEqual([])
       expect((purpose.obsoletePaths ?? []).filter(existsSync)).toEqual([])

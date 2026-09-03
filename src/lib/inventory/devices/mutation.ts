@@ -22,8 +22,8 @@ export async function createDeviceRecord(data: DeviceFormValues): Promise<SafeDe
   if (!parsed.success) throw new Error('Invalid data')
 
   const stackName = parsed.data.deviceStackName?.trim() || null
-  const stackRole = stackName ? parsed.data.stackRole ?? null : null
-  const stackMember = stackName ? parsed.data.stackMember ?? null : null
+  const stackRole = stackName ? (parsed.data.stackRole ?? null) : null
+  const stackMember = stackName ? (parsed.data.stackMember ?? null) : null
 
   const device = await prisma.$transaction(async (tx) => {
     let deviceStackId: string | null = null
@@ -40,7 +40,9 @@ export async function createDeviceRecord(data: DeviceFormValues): Promise<SafeDe
           select: { name: true },
         })
         if (conflict) {
-          throw new Error(`Switch #${stackMember} is already used by "${conflict.name}" in stack "${stackName}".`)
+          throw new Error(
+            `Switch #${stackMember} is already used by "${conflict.name}" in stack "${stackName}".`,
+          )
         }
       }
 
@@ -125,8 +127,8 @@ export async function updateDeviceRecord(
   if (!parsed.success) throw new Error('Invalid data')
 
   const stackName = parsed.data.deviceStackName?.trim() || null
-  const stackRole = stackName ? parsed.data.stackRole ?? null : null
-  const stackMember = stackName ? parsed.data.stackMember ?? null : null
+  const stackRole = stackName ? (parsed.data.stackRole ?? null) : null
+  const stackMember = stackName ? (parsed.data.stackMember ?? null) : null
 
   const device = await prisma.$transaction(async (tx) => {
     const existing = await tx.device.findUnique({
@@ -151,7 +153,9 @@ export async function updateDeviceRecord(
           select: { name: true },
         })
         if (conflict) {
-          throw new Error(`Switch #${stackMember} is already used by "${conflict.name}" in stack "${stackName}".`)
+          throw new Error(
+            `Switch #${stackMember} is already used by "${conflict.name}" in stack "${stackName}".`,
+          )
         }
       }
 
@@ -198,9 +202,9 @@ export async function updateDeviceRecord(
 
     if (nextStackId) {
       const explicitlyDemotedId =
-        prevStackId === nextStackId
-        && existing.stackRole === StackRole.MASTER
-        && stackRole !== StackRole.MASTER
+        prevStackId === nextStackId &&
+        existing.stackRole === StackRole.MASTER &&
+        stackRole !== StackRole.MASTER
           ? id
           : undefined
       await ensureStackHasMaster(tx, nextStackId, explicitlyDemotedId)
@@ -351,7 +355,15 @@ export async function updateDeviceHeightRecord(
         }),
       ])
       if (!rack) throw new Error('Rack not found')
-      if (!canPlaceDevice(siblings, deviceId, movingDevice.rackPosition, parsedHeight.data, rack.heightU)) {
+      if (
+        !canPlaceDevice(
+          siblings,
+          deviceId,
+          movingDevice.rackPosition,
+          parsedHeight.data,
+          rack.heightU,
+        )
+      ) {
         throw new Error('Cannot resize: not enough free U space')
       }
     }

@@ -9,6 +9,7 @@
 **Tech Stack:** Next.js (App Router, server components), Prisma + SQLite, better-auth, recharts + shadcn chart primitives, bun test.
 
 **Reference template (read these — the new code mirrors them):**
+
 - `src/lib/apic/faults.ts`, `src/app/api/faults/resync/route.ts`
 - `src/app/(app)/faults/page.tsx`, `src/app/(app)/faults/FaultsClient.tsx`, `src/app/(app)/faults/sort.ts`
 - `src/actions/faults.ts`, `src/app/(app)/dashboard/FaultsTile.tsx`
@@ -19,6 +20,7 @@
 ## File Structure
 
 **Create:**
+
 - `src/lib/apic/health-scores.ts` — types, three parse helpers, `parseHealthRows`, `healthBand`, `summarizeHealth`, `fetchHealthScoresFromApic`, `resyncHealthScores`
 - `src/lib/apic/health-scores.test.ts` — parse / band / summarize unit tests
 - `src/app/api/health-scores/resync/route.ts` — manual resync endpoint
@@ -30,6 +32,7 @@
 - `src/app/(app)/dashboard/HealthTile.tsx` — dashboard summary tile
 
 **Modify:**
+
 - `prisma/schema.prisma` — add `HealthScoreSnapshot`, `HealthScoreSample`, `ApicHost.lastHealthSyncAt` + relations
 - `src/lib/audit.ts` — add `'resync.health'` action
 - `src/app/(app)/history/HistoryClient.tsx` — add `'resync.health'` to `ACTION_LABELS`
@@ -44,6 +47,7 @@
 ## Task 1: Prisma schema — health-score models
 
 **Files:**
+
 - Modify: `prisma/schema.prisma`
 
 - [ ] **Step 1: Add `lastHealthSyncAt` and relations to `ApicHost`**
@@ -124,6 +128,7 @@ git commit -m "feat: add HealthScoreSnapshot and HealthScoreSample models"
 ## Task 2: Health-score parsing — three parse helpers
 
 **Files:**
+
 - Create: `src/lib/apic/health-scores.ts`
 - Test: `src/lib/apic/health-scores.test.ts`
 
@@ -415,6 +420,7 @@ git commit -m "feat: add health-score parse helpers"
 ## Task 3: `healthBand` + `summarizeHealth` helpers
 
 **Files:**
+
 - Modify: `src/lib/apic/health-scores.ts`
 - Test: `src/lib/apic/health-scores.test.ts`
 
@@ -518,6 +524,7 @@ git commit -m "feat: add healthBand and summarizeHealth helpers"
 Integration layer — no new unit test (matches `faults.ts` / `interfaces.ts`).
 
 **Files:**
+
 - Modify: `src/lib/apic/health-scores.ts`
 
 - [ ] **Step 1: Add the fetch function**
@@ -667,6 +674,7 @@ git commit -m "feat: add fetchHealthScoresFromApic and resyncHealthScores"
 ## Task 5: Audit action (union + history label)
 
 **Files:**
+
 - Modify: `src/lib/audit.ts`
 - Modify: `src/app/(app)/history/HistoryClient.tsx`
 
@@ -703,6 +711,7 @@ git commit -m "feat: add resync.health audit action and history label"
 ## Task 6: `POST /api/health-scores/resync` route
 
 **Files:**
+
 - Create: `src/app/api/health-scores/resync/route.ts`
 
 - [ ] **Step 1: Write the route** (mirrors `src/app/api/faults/resync/route.ts`):
@@ -775,6 +784,7 @@ git commit -m "feat: add POST /api/health-scores/resync route"
 ## Task 7: Cron-resync summary support
 
 **Files:**
+
 - Modify: `src/lib/apic/cron-resync.ts`
 - Test: `src/lib/apic/cron-resync.test.ts`
 
@@ -836,6 +846,7 @@ git commit -m "feat: track health dataset in cron resync summary"
 ## Task 8: Cron route wiring
 
 **Files:**
+
 - Modify: `src/app/api/cron/resync/route.ts`
 
 - [ ] **Step 1: Import `resyncHealthScores`**
@@ -890,6 +901,7 @@ git commit -m "feat: resync health scores in scheduled cron job"
 ## Task 9: Worst-first sort helper
 
 **Files:**
+
 - Create: `src/app/(app)/health-scores/sort.ts`
 - Test: `src/app/(app)/health-scores/sort.test.ts`
 
@@ -968,6 +980,7 @@ git commit -m "feat: add worst-first health sort helper"
 Mirrors the Faults page. **Read `src/app/(app)/faults/page.tsx` and `FaultsClient.tsx` as the template** — copy the host-selector, page-size parsing, search/pagination, resync-credential-dialog, and trend-chart scaffolding, then adapt for health scores. Reproducing the full client here would be noise; the health-specific pieces are below.
 
 **Files:**
+
 - Create: `src/app/(app)/health-scores/page.tsx`
 - Create: `src/app/(app)/health-scores/HealthScoresClient.tsx`
 
@@ -1174,6 +1187,7 @@ git commit -m "feat: add health scores page with headline, trend, and breakdown"
 ## Task 11: Sidebar navigation entry
 
 **Files:**
+
 - Modify: `src/components/AppSidebar.tsx`
 
 - [ ] **Step 1: Import the icon**
@@ -1204,6 +1218,7 @@ git commit -m "feat: add Health Scores sidebar navigation entry"
 ## Task 12: Dashboard health tile
 
 **Files:**
+
 - Create: `src/actions/health-scores.ts`
 - Create: `src/app/(app)/dashboard/HealthTile.tsx`
 - Modify: `src/app/(app)/dashboard/page.tsx`

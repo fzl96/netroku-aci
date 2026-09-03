@@ -67,10 +67,7 @@ function parseCounter(value: string | null | undefined): bigint | null {
   }
 }
 
-function compareIdentity(
-  a: SortableLegacyInterfaceRow,
-  b: SortableLegacyInterfaceRow,
-): number {
+function compareIdentity(a: SortableLegacyInterfaceRow, b: SortableLegacyInterfaceRow): number {
   const hostnameOrder = NATURAL_COLLATOR.compare(a.hostname, b.hostname)
   if (hostnameOrder !== 0) return hostnameOrder
   const interfaceOrder = NATURAL_COLLATOR.compare(a.ifName, b.ifName)
@@ -121,7 +118,7 @@ function comparePrimary(
     return compareNullable(
       selectedCounter(a, sort),
       selectedCounter(b, sort),
-      (left, right) => left === right ? 0 : left < right ? -1 : 1,
+      (left, right) => (left === right ? 0 : left < right ? -1 : 1),
       sort.direction,
     )
   }
@@ -136,32 +133,34 @@ function comparePrimary(
     )
   }
 
-  const aText = sort.key === 'hostname'
-    ? a.hostname
-    : sort.key === 'ifName'
-      ? a.ifName
-      : sort.key === 'description'
-        ? a.description
-        : sort.key === 'ipAddress'
-          ? a.ipAddress
-          : sort.key === 'speed'
-            ? a.speed
-            : sort.key === 'adminSt'
-              ? normalizeLegacyInterfaceState(a.adminSt)
-              : normalizeLegacyInterfaceState(a.operSt)
-  const bText = sort.key === 'hostname'
-    ? b.hostname
-    : sort.key === 'ifName'
-      ? b.ifName
-      : sort.key === 'description'
-        ? b.description
-        : sort.key === 'ipAddress'
-          ? b.ipAddress
-          : sort.key === 'speed'
-            ? b.speed
-            : sort.key === 'adminSt'
-              ? normalizeLegacyInterfaceState(b.adminSt)
-              : normalizeLegacyInterfaceState(b.operSt)
+  const aText =
+    sort.key === 'hostname'
+      ? a.hostname
+      : sort.key === 'ifName'
+        ? a.ifName
+        : sort.key === 'description'
+          ? a.description
+          : sort.key === 'ipAddress'
+            ? a.ipAddress
+            : sort.key === 'speed'
+              ? a.speed
+              : sort.key === 'adminSt'
+                ? normalizeLegacyInterfaceState(a.adminSt)
+                : normalizeLegacyInterfaceState(a.operSt)
+  const bText =
+    sort.key === 'hostname'
+      ? b.hostname
+      : sort.key === 'ifName'
+        ? b.ifName
+        : sort.key === 'description'
+          ? b.description
+          : sort.key === 'ipAddress'
+            ? b.ipAddress
+            : sort.key === 'speed'
+              ? b.speed
+              : sort.key === 'adminSt'
+                ? normalizeLegacyInterfaceState(b.adminSt)
+                : normalizeLegacyInterfaceState(b.operSt)
 
   return compareNullable(aText, bText, NATURAL_COLLATOR.compare, sort.direction)
 }

@@ -107,7 +107,7 @@ export function mergeNodes(
   fabricNodes: NodeRow[],
   topSystemByNode: Map<string, TopSystemFields>,
 ): NodeRow[] {
-  return fabricNodes.map(node => {
+  return fabricNodes.map((node) => {
     const top = topSystemByNode.get(node.nodeId)
     if (!top) return node
     return {
@@ -161,10 +161,7 @@ export function parseFanRows(imdata: EqptFanMo[]): ComponentRow[] {
 
 const HEALTHY_OPER_ST = new Set(['on', 'ok'])
 
-export function isComponentHealthy(
-  _type: ComponentRow['type'],
-  operSt: string,
-): boolean {
+export function isComponentHealthy(_type: ComponentRow['type'], operSt: string): boolean {
   return HEALTHY_OPER_ST.has(operSt.toLowerCase())
 }
 
@@ -180,7 +177,7 @@ export function summarizeNodes(nodes: NodeRow[], components: ComponentRow[]): No
     nodesTotal: nodes.length,
     nodesOnline: nodes.filter(isNodeOnline).length,
     componentsTotal: components.length,
-    componentsFailed: components.filter(c => !isComponentHealthy(c.type, c.operSt)).length,
+    componentsFailed: components.filter((c) => !isComponentHealthy(c.type, c.operSt)).length,
   }
 }
 
@@ -285,73 +282,114 @@ export async function executeNodeResyncWrites(
   uniqueComponents: ComponentRow[],
   now: Date,
 ): Promise<NodeSummary> {
-  return db.$transaction(async tx => {
-    for (let i = 0; i < uniqueNodes.length; i += NODES_CHUNK_SIZE) {
-      const chunk = uniqueNodes.slice(i, i + NODES_CHUNK_SIZE)
-      await Promise.all(
-        chunk.map(n =>
-          tx.nodeSnapshot.upsert({
-            where: { apicHostId_dn: { apicHostId, dn: n.dn } },
-            update: {
-              nodeId: n.nodeId, name: n.name, role: n.role, model: n.model,
-              serial: n.serial, version: n.version, fabricSt: n.fabricSt,
-              state: n.state, podId: n.podId, uptime: n.uptime,
-              oobMgmtAddr: n.oobMgmtAddr, present: true, lastSeenAt: now,
-            },
-            create: {
-              apicHostId, dn: n.dn, nodeId: n.nodeId, name: n.name, role: n.role,
-              model: n.model, serial: n.serial, version: n.version, fabricSt: n.fabricSt,
-              state: n.state, podId: n.podId, uptime: n.uptime, oobMgmtAddr: n.oobMgmtAddr,
-              present: true, firstSeenAt: now, lastSeenAt: now,
-            },
-          }),
-        ),
-      )
-    }
-    await tx.nodeSnapshot.updateMany({
-      where: { apicHostId, present: true, dn: { notIn: uniqueNodes.map(n => n.dn) } },
-      data: { present: false },
-    })
+  return db.$transaction(
+    async (tx) => {
+      for (let i = 0; i < uniqueNodes.length; i += NODES_CHUNK_SIZE) {
+        const chunk = uniqueNodes.slice(i, i + NODES_CHUNK_SIZE)
+        await Promise.all(
+          chunk.map((n) =>
+            tx.nodeSnapshot.upsert({
+              where: { apicHostId_dn: { apicHostId, dn: n.dn } },
+              update: {
+                nodeId: n.nodeId,
+                name: n.name,
+                role: n.role,
+                model: n.model,
+                serial: n.serial,
+                version: n.version,
+                fabricSt: n.fabricSt,
+                state: n.state,
+                podId: n.podId,
+                uptime: n.uptime,
+                oobMgmtAddr: n.oobMgmtAddr,
+                present: true,
+                lastSeenAt: now,
+              },
+              create: {
+                apicHostId,
+                dn: n.dn,
+                nodeId: n.nodeId,
+                name: n.name,
+                role: n.role,
+                model: n.model,
+                serial: n.serial,
+                version: n.version,
+                fabricSt: n.fabricSt,
+                state: n.state,
+                podId: n.podId,
+                uptime: n.uptime,
+                oobMgmtAddr: n.oobMgmtAddr,
+                present: true,
+                firstSeenAt: now,
+                lastSeenAt: now,
+              },
+            }),
+          ),
+        )
+      }
+      await tx.nodeSnapshot.updateMany({
+        where: { apicHostId, present: true, dn: { notIn: uniqueNodes.map((n) => n.dn) } },
+        data: { present: false },
+      })
 
-    for (let i = 0; i < uniqueComponents.length; i += NODES_CHUNK_SIZE) {
-      const chunk = uniqueComponents.slice(i, i + NODES_CHUNK_SIZE)
-      await Promise.all(
-        chunk.map(c =>
-          tx.hardwareComponent.upsert({
-            where: { apicHostId_dn: { apicHostId, dn: c.dn } },
-            update: {
-              nodeId: c.nodeId, type: c.type, name: c.name, operSt: c.operSt,
-              healthy: isComponentHealthy(c.type, c.operSt), model: c.model,
-              serial: c.serial, present: true, lastSeenAt: now,
-            },
-            create: {
-              apicHostId, dn: c.dn, nodeId: c.nodeId, type: c.type, name: c.name,
-              operSt: c.operSt, healthy: isComponentHealthy(c.type, c.operSt),
-              model: c.model, serial: c.serial, present: true,
-              firstSeenAt: now, lastSeenAt: now,
-            },
-          }),
-        ),
-      )
-    }
-    await tx.hardwareComponent.updateMany({
-      where: { apicHostId, present: true, dn: { notIn: uniqueComponents.map(c => c.dn) } },
-      data: { present: false },
-    })
+      for (let i = 0; i < uniqueComponents.length; i += NODES_CHUNK_SIZE) {
+        const chunk = uniqueComponents.slice(i, i + NODES_CHUNK_SIZE)
+        await Promise.all(
+          chunk.map((c) =>
+            tx.hardwareComponent.upsert({
+              where: { apicHostId_dn: { apicHostId, dn: c.dn } },
+              update: {
+                nodeId: c.nodeId,
+                type: c.type,
+                name: c.name,
+                operSt: c.operSt,
+                healthy: isComponentHealthy(c.type, c.operSt),
+                model: c.model,
+                serial: c.serial,
+                present: true,
+                lastSeenAt: now,
+              },
+              create: {
+                apicHostId,
+                dn: c.dn,
+                nodeId: c.nodeId,
+                type: c.type,
+                name: c.name,
+                operSt: c.operSt,
+                healthy: isComponentHealthy(c.type, c.operSt),
+                model: c.model,
+                serial: c.serial,
+                present: true,
+                firstSeenAt: now,
+                lastSeenAt: now,
+              },
+            }),
+          ),
+        )
+      }
+      await tx.hardwareComponent.updateMany({
+        where: { apicHostId, present: true, dn: { notIn: uniqueComponents.map((c) => c.dn) } },
+        data: { present: false },
+      })
 
-    const summary = summarizeNodes(uniqueNodes, uniqueComponents)
-    await tx.nodeStatusSample.create({
-      data: {
-        apicHostId, sampledAt: now,
-        nodesTotal: summary.nodesTotal, nodesOnline: summary.nodesOnline,
-        componentsTotal: summary.componentsTotal, componentsFailed: summary.componentsFailed,
-      },
-    })
-    await tx.apicHost.update({
-      where: { id: apicHostId },
-      data: { lastNodeSyncAt: now },
-    })
+      const summary = summarizeNodes(uniqueNodes, uniqueComponents)
+      await tx.nodeStatusSample.create({
+        data: {
+          apicHostId,
+          sampledAt: now,
+          nodesTotal: summary.nodesTotal,
+          nodesOnline: summary.nodesOnline,
+          componentsTotal: summary.componentsTotal,
+          componentsFailed: summary.componentsFailed,
+        },
+      })
+      await tx.apicHost.update({
+        where: { id: apicHostId },
+        data: { lastNodeSyncAt: now },
+      })
 
-    return summary
-  }, { timeout: NODES_TRANSACTION_TIMEOUT_MS })
+      return summary
+    },
+    { timeout: NODES_TRANSACTION_TIMEOUT_MS },
+  )
 }

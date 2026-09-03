@@ -13,10 +13,12 @@
 ### Task 1: Switch filter semantics from usage to node
 
 **Files:**
+
 - Modify: `src/app/(app)/interface-health/page.tsx`
 - Modify: `src/app/(app)/interface-health/InterfaceHealthClient.tsx`
 
 **Steps:**
+
 1. Rename the parsed search param and props from usage to node.
 2. Filter `InterfaceSnapshot` rows by `node` instead of `usage`.
 3. Load distinct available nodes instead of distinct usages.
@@ -26,9 +28,11 @@
 ### Task 2: Replace the visible table column
 
 **Files:**
+
 - Modify: `src/app/(app)/interface-health/InterfaceHealthClient.tsx`
 
 **Steps:**
+
 1. Remove the `UsageLabel` presentation helper if it becomes unused.
 2. Replace the `Usage` header with `Description`.
 3. Render `description || '—'` in the corresponding cell.
@@ -36,9 +40,11 @@
 ### Task 3: Verify the page still behaves cleanly
 
 **Files:**
+
 - Verify touched files only.
 
 **Steps:**
+
 1. Run targeted lint on the modified interface-health files.
 2. Run `bun test`.
 3. Run `bun run build`.

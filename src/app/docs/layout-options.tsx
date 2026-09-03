@@ -1,7 +1,7 @@
-import Image from "next/image";
-import { IconLayoutDashboard } from "@tabler/icons-react";
-import type { DocsLayoutProps } from "fumadocs-ui/layouts/docs";
-import { DocsThemeToggle } from "@/components/docs/DocsThemeToggle";
+import Image from 'next/image'
+import { IconLayoutDashboard } from '@tabler/icons-react'
+import type { DocsLayoutProps } from 'fumadocs-ui/layouts/docs'
+import { DocsThemeToggle } from '@/components/docs/DocsThemeToggle'
 
 function DocsBrand() {
   return (
@@ -19,19 +19,19 @@ function DocsBrand() {
         Netroku<span className="text-fd-muted-foreground">/aci</span>
       </span>
     </span>
-  );
+  )
 }
 
 export const docsLayoutOptions = {
   nav: {
     title: <DocsBrand />,
-    url: "/",
+    url: '/',
   },
   links: [
     {
-      type: "main",
-      text: "Dashboard",
-      url: "/dashboard",
+      type: 'main',
+      text: 'Dashboard',
+      url: '/dashboard',
       icon: <IconLayoutDashboard aria-hidden />,
     },
   ],
@@ -42,4 +42,4 @@ export const docsLayoutOptions = {
   themeSwitch: {
     enabled: false,
   },
-} satisfies Omit<DocsLayoutProps, "tree" | "children">;
+} satisfies Omit<DocsLayoutProps, 'tree' | 'children'>

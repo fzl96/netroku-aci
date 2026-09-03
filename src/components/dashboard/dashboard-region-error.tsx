@@ -20,13 +20,9 @@ export function DashboardRegionError({
       className={`flex items-center justify-between gap-4 border border-border bg-card ${compact ? 'rounded-lg px-3 py-2' : 'rounded-lg px-4 py-5 shadow-sm'}`}
     >
       <div>
-        <p className="text-sm font-medium text-foreground">
-          Could not load dashboard {region}
-        </p>
+        <p className="text-sm font-medium text-foreground">Could not load dashboard {region}</p>
         {!compact && (
-          <p className="mt-1 text-xs text-subtle">
-            The rest of the dashboard is still available.
-          </p>
+          <p className="mt-1 text-xs text-subtle">The rest of the dashboard is still available.</p>
         )}
       </div>
       <button

@@ -42,40 +42,50 @@ describe('validateL2RollbackState', () => {
   })
 
   it('rejects L2 rollback when BD has L3 children', () => {
-    expect(validateL2RollbackState(l2Row, l2Attrs, [
-      ctxChild,
-      { fvSubnet: { attributes: { ip: '10.0.0.1/24' } } },
-    ])).toContain('has subnet or L3Out children')
+    expect(
+      validateL2RollbackState(l2Row, l2Attrs, [
+        ctxChild,
+        { fvSubnet: { attributes: { ip: '10.0.0.1/24' } } },
+      ]),
+    ).toContain('has subnet or L3Out children')
   })
 
   it('rejects VRF mismatch', () => {
-    expect(validateL2RollbackState(l2Row, l2Attrs, [
-      { fvRsCtx: { attributes: { tnFvCtxName: 'OTHER-VRF' } } },
-    ])).toContain('exists with VRF OTHER-VRF')
+    expect(
+      validateL2RollbackState(l2Row, l2Attrs, [
+        { fvRsCtx: { attributes: { tnFvCtxName: 'OTHER-VRF' } } },
+      ]),
+    ).toContain('exists with VRF OTHER-VRF')
   })
 })
 
 describe('validateL3RollbackState', () => {
   it('accepts matching L3 bridge domain state', () => {
-    expect(validateL3RollbackState(l3Row, l3Attrs, [
-      ctxChild,
-      { fvSubnet: { attributes: { ip: '10.0.0.1/24' } } },
-      { fvRsBDToOut: { attributes: { tnL3extOutName: 'WAN-L3OUT' } } },
-    ])).toBeNull()
+    expect(
+      validateL3RollbackState(l3Row, l3Attrs, [
+        ctxChild,
+        { fvSubnet: { attributes: { ip: '10.0.0.1/24' } } },
+        { fvRsBDToOut: { attributes: { tnL3extOutName: 'WAN-L3OUT' } } },
+      ]),
+    ).toBeNull()
   })
 
   it('rejects missing subnet', () => {
-    expect(validateL3RollbackState(l3Row, l3Attrs, [
-      ctxChild,
-      { fvRsBDToOut: { attributes: { tnL3extOutName: 'WAN-L3OUT' } } },
-    ])).toContain('missing subnet')
+    expect(
+      validateL3RollbackState(l3Row, l3Attrs, [
+        ctxChild,
+        { fvRsBDToOut: { attributes: { tnL3extOutName: 'WAN-L3OUT' } } },
+      ]),
+    ).toContain('missing subnet')
   })
 
   it('rejects non-L3 bridge domain attributes', () => {
-    expect(validateL3RollbackState(l3Row, l2Attrs, [
-      ctxChild,
-      { fvSubnet: { attributes: { ip: '10.0.0.1/24' } } },
-      { fvRsBDToOut: { attributes: { tnL3extOutName: 'WAN-L3OUT' } } },
-    ])).toContain('is not L3')
+    expect(
+      validateL3RollbackState(l3Row, l2Attrs, [
+        ctxChild,
+        { fvSubnet: { attributes: { ip: '10.0.0.1/24' } } },
+        { fvRsBDToOut: { attributes: { tnL3extOutName: 'WAN-L3OUT' } } },
+      ]),
+    ).toContain('is not L3')
   })
 })

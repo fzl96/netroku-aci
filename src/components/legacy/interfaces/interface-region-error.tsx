@@ -13,9 +13,14 @@ export function LegacyInterfaceRegionError({
   const [retrying, startTransition] = useTransition()
 
   return (
-    <div role="alert" className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-card px-4 py-5">
+    <div
+      role="alert"
+      className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-card px-4 py-5"
+    >
       <div>
-        <p className="text-sm font-medium text-foreground">Could not load legacy interface {region}</p>
+        <p className="text-sm font-medium text-foreground">
+          Could not load legacy interface {region}
+        </p>
         <p className="mt-1 text-xs text-subtle">The rest of the page is still available.</p>
       </div>
       <button

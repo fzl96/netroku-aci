@@ -3,7 +3,7 @@ services:
     build:
       context: .
       target: migration
-    restart: "no"
+    restart: 'no'
     env_file:
       - .env
     environment:
@@ -20,7 +20,7 @@ services:
       context: .
       target: runner
     ports:
-      - "3000:3000"
+      - '3000:3000'
     env_file:
       - .env
     environment:
@@ -33,9 +33,9 @@ services:
     healthcheck:
       test:
         [
-          "CMD",
-          "bun",
-          "-e",
+          'CMD',
+          'bun',
+          '-e',
           "fetch('http://127.0.0.1:3000/').then(()=>process.exit(0),()=>process.exit(1))",
         ]
       interval: 5s
@@ -56,12 +56,12 @@ services:
       TICK_INTERVAL_SECONDS: 60
     volumes:
       - ./scheduler/tick.sh:/tick.sh:ro
-    entrypoint: ["/bin/sh", "/tick.sh"]
+    entrypoint: ['/bin/sh', '/tick.sh']
 
   db:
     image: postgres:17
     ports:
-      - "5432:5432"
+      - '5432:5432'
     container_name: netroku-postgres
     restart: unless-stopped
     environment:
@@ -71,7 +71,7 @@ services:
     volumes:
       - netroku-pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U netroku -d netroku"]
+      test: ['CMD-SHELL', 'pg_isready -U netroku -d netroku']
       interval: 5s
       timeout: 5s
       retries: 10

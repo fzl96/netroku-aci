@@ -29,22 +29,25 @@ function endpoint(overrides: Partial<EndpointExportRow> = {}): EndpointExportRow
 
 describe('groupEndpointsForExport', () => {
   it('groups rows into node buckets and routes blanks to Unassigned', () => {
-    const grouped = groupEndpointsForExport([
-      endpoint({ id: 'ep-1', node: '101' }),
-      endpoint({ id: 'ep-2', node: '' }),
-      endpoint({ id: 'ep-3', node: '102' }),
-    ], 'node')
+    const grouped = groupEndpointsForExport(
+      [
+        endpoint({ id: 'ep-1', node: '101' }),
+        endpoint({ id: 'ep-2', node: '' }),
+        endpoint({ id: 'ep-3', node: '102' }),
+      ],
+      'node',
+    )
 
     expect(Array.from(grouped.keys())).toEqual(['101', 'Unassigned', '102'])
-    expect(grouped.get('101')?.map(ep => ep.id)).toEqual(['ep-1'])
-    expect(grouped.get('Unassigned')?.map(ep => ep.id)).toEqual(['ep-2'])
+    expect(grouped.get('101')?.map((ep) => ep.id)).toEqual(['ep-1'])
+    expect(grouped.get('Unassigned')?.map((ep) => ep.id)).toEqual(['ep-2'])
   })
 
   it('groups rows into VLAN buckets', () => {
-    const grouped = groupEndpointsForExport([
-      endpoint({ id: 'ep-1', vlan: 'vlan-100' }),
-      endpoint({ id: 'ep-2', vlan: 'vlan-200' }),
-    ], 'vlan')
+    const grouped = groupEndpointsForExport(
+      [endpoint({ id: 'ep-1', vlan: 'vlan-100' }), endpoint({ id: 'ep-2', vlan: 'vlan-200' })],
+      'vlan',
+    )
 
     expect(Array.from(grouped.keys())).toEqual(['vlan-100', 'vlan-200'])
   })
@@ -52,31 +55,36 @@ describe('groupEndpointsForExport', () => {
 
 describe('sanitizeWorksheetName', () => {
   it('removes invalid Excel characters and caps names at 31 characters', () => {
-    expect(sanitizeWorksheetName('node:/\\?*[]-abcdefghijklmnopqrstuvwxyz-extra')).toBe('node-abcdefghijklmnopqrstuvwxyz')
+    expect(sanitizeWorksheetName('node:/\\?*[]-abcdefghijklmnopqrstuvwxyz-extra')).toBe(
+      'node-abcdefghijklmnopqrstuvwxyz',
+    )
   })
 })
 
 describe('buildEndpointWorkbook', () => {
   it('creates separate worksheets with visible table columns and last-seen ordering', () => {
-    const workbook = buildEndpointWorkbook([
-      endpoint({
-        id: 'older',
-        node: 'node:/bad',
-        lastSeenAt: '2026-05-16T08:00:00.000Z',
-        isActive: false,
-      }),
-      endpoint({
-        id: 'newer',
-        node: 'node:/bad',
-        mac: '11:22:33:44:55:66',
-        ip: '',
-        lastSeenAt: '2026-05-16T10:00:00.000Z',
-      }),
-      endpoint({
-        id: 'other',
-        node: '',
-      }),
-    ], 'node')
+    const workbook = buildEndpointWorkbook(
+      [
+        endpoint({
+          id: 'older',
+          node: 'node:/bad',
+          lastSeenAt: '2026-05-16T08:00:00.000Z',
+          isActive: false,
+        }),
+        endpoint({
+          id: 'newer',
+          node: 'node:/bad',
+          mac: '11:22:33:44:55:66',
+          ip: '',
+          lastSeenAt: '2026-05-16T10:00:00.000Z',
+        }),
+        endpoint({
+          id: 'other',
+          node: '',
+        }),
+      ],
+      'node',
+    )
 
     const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
     const parsed = XLSX.read(buffer, { type: 'buffer', cellDates: true })
@@ -95,41 +103,48 @@ describe('buildEndpointWorkbook', () => {
       'Last Seen',
       'Status',
     ])
-    expect(rows.map(row => row.MAC)).toEqual(['11:22:33:44:55:66', 'aa:bb:cc:dd:ee:ff'])
-    expect(rows.map(row => row.Status)).toEqual(['Active', 'Historical'])
+    expect(rows.map((row) => row.MAC)).toEqual(['11:22:33:44:55:66', 'aa:bb:cc:dd:ee:ff'])
+    expect(rows.map((row) => row.Status)).toEqual(['Active', 'Historical'])
   })
 
   it('deduplicates worksheet names after sanitizing collisions', () => {
-    const workbook = buildEndpointWorkbook([
-      endpoint({ id: 'ep-1', vlan: 'bad/name' }),
-      endpoint({ id: 'ep-2', vlan: 'bad:name' }),
-    ], 'vlan')
+    const workbook = buildEndpointWorkbook(
+      [endpoint({ id: 'ep-1', vlan: 'bad/name' }), endpoint({ id: 'ep-2', vlan: 'bad:name' })],
+      'vlan',
+    )
 
     expect(workbook.SheetNames).toEqual(['bad-name', 'bad-name-2'])
   })
 
   it('converts valid ISO timestamps to Excel dates and leaves invalid values blank', () => {
-    const workbook = buildEndpointWorkbook([
-      endpoint({ id: 'valid' }),
-      endpoint({ id: 'invalid', mac: 'invalid-date', firstSeenAt: '', lastSeenAt: 'not-a-date' }),
-    ], 'node')
+    const workbook = buildEndpointWorkbook(
+      [
+        endpoint({ id: 'valid' }),
+        endpoint({ id: 'invalid', mac: 'invalid-date', firstSeenAt: '', lastSeenAt: 'not-a-date' }),
+      ],
+      'node',
+    )
     const bytes = serializeEndpointWorkbook(workbook)
     const parsed = XLSX.read(bytes, { type: 'array', cellDates: true })
-    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(parsed.Sheets['101'], { defval: '' })
+    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(parsed.Sheets['101'], {
+      defval: '',
+    })
 
-    expect(rows.find(row => row.MAC === 'aa:bb:cc:dd:ee:ff')?.['First Seen']).toBeInstanceOf(Date)
-    expect(rows.find(row => row.MAC === 'invalid-date')?.['First Seen']).toBe('')
-    expect(rows.find(row => row.MAC === 'invalid-date')?.['Last Seen']).toBe('')
+    expect(rows.find((row) => row.MAC === 'aa:bb:cc:dd:ee:ff')?.['First Seen']).toBeInstanceOf(Date)
+    expect(rows.find((row) => row.MAC === 'invalid-date')?.['First Seen']).toBe('')
+    expect(rows.find((row) => row.MAC === 'invalid-date')?.['Last Seen']).toBe('')
   })
 })
 
 describe('buildEndpointExportFilename', () => {
   it('sanitizes host names and uses the supplied timestamp', () => {
-    expect(buildEndpointExportFilename({
-      hostName: ' APIC / Jakarta ',
-      scope: 'filtered',
-      groupBy: 'vlan',
-      now: new Date('2026-09-02T03:04:05.678Z'),
-    })).toBe('endpoints-apic-jakarta-filtered-by-vlan-2026-09-02T03-04-05-678Z.xlsx')
+    expect(
+      buildEndpointExportFilename({
+        hostName: ' APIC / Jakarta ',
+        scope: 'filtered',
+        groupBy: 'vlan',
+        now: new Date('2026-09-02T03:04:05.678Z'),
+      }),
+    ).toBe('endpoints-apic-jakarta-filtered-by-vlan-2026-09-02T03-04-05-678Z.xlsx')
   })
 })

@@ -34,9 +34,7 @@ export function computeEditedNextRunAt(input: {
   if (!input.wasEnabled) return input.now
   if (!input.existingNextRunAt) return input.now
 
-  if (
-    input.intervalMinutes === input.previousIntervalMinutes
-  ) {
+  if (input.intervalMinutes === input.previousIntervalMinutes) {
     return input.existingNextRunAt
   }
 

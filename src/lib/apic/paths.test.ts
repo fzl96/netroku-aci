@@ -34,14 +34,14 @@ describe('buildMoPath', () => {
   it('builds full MO path for vpc', () => {
     const row: ParsedRow = { ...base, port_type: 'vpc', node2: 102, interface_or_ipg: 'myVPC_IPG' }
     expect(buildMoPath(row)).toBe(
-      '/api/node/mo/uni/tn-TenantA/ap-App1/epg-Web-EPG/rspathAtt-[topology/pod-1/protpaths-101-102/pathep-[myVPC_IPG]].json'
+      '/api/node/mo/uni/tn-TenantA/ap-App1/epg-Web-EPG/rspathAtt-[topology/pod-1/protpaths-101-102/pathep-[myVPC_IPG]].json',
     )
   })
 
   it('builds full MO path for port', () => {
     const row: ParsedRow = { ...base, port_type: 'port', node2: null, interface_or_ipg: 'eth1/1' }
     expect(buildMoPath(row)).toBe(
-      '/api/node/mo/uni/tn-TenantA/ap-App1/epg-Web-EPG/rspathAtt-[topology/pod-1/paths-101/pathep-[eth1/1]].json'
+      '/api/node/mo/uni/tn-TenantA/ap-App1/epg-Web-EPG/rspathAtt-[topology/pod-1/paths-101/pathep-[eth1/1]].json',
     )
   })
 })

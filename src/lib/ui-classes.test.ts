@@ -23,11 +23,7 @@ test('table wrappers bound their scroll area from md up only', () => {
 })
 
 test('table header styles stay above scrolled rows from md up', () => {
-  for (const className of [
-    DENSE_TABLE_HEAD_CLS,
-    MUTED_TABLE_HEAD_CLS,
-    DASHBOARD_TABLE_HEAD_CLS,
-  ]) {
+  for (const className of [DENSE_TABLE_HEAD_CLS, MUTED_TABLE_HEAD_CLS, DASHBOARD_TABLE_HEAD_CLS]) {
     // md-only: without a capped box on phones there is no scrollport to pin
     // against, so an unconditional sticky head would pin to the page instead.
     assert.ok(className.includes('md:sticky'))
