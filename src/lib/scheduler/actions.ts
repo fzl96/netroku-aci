@@ -7,20 +7,10 @@ import {
   runResyncScheduleNowRecord,
   upsertResyncScheduleRecord,
 } from './mutation'
-import { getResyncSchedules } from './query'
 
 type ActionResult<T> =
   | { success: true; data: T }
   | { success: false; error: string }
-
-/** Uncached snapshot for the mounted Scheduler page's background refresh loop. */
-export async function refreshResyncSchedules(): Promise<ActionResult<SafeResyncSchedule[]>> {
-  try {
-    return { success: true, data: await getResyncSchedules() }
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
-  }
-}
 
 export async function upsertResyncSchedule(
   apicHostId: string,

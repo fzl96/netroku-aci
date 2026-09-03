@@ -1,12 +1,41 @@
 import 'server-only'
 
 import { cache } from 'react'
-import type { DeviceStatus, StackRole } from '@prisma/client'
+import type { DeviceStatus, Prisma, StackRole } from '@prisma/client'
 import { unstable_cache } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { authorizeInventoryRead, readInventoryData } from '@/lib/inventory/authorize'
 import { INVENTORY_CACHE_SECONDS, INVENTORY_TAG } from '@/lib/inventory/cache'
 import { buildDeviceWhere, deviceListWindow, type DeviceListParams } from './params'
+
+// Device's rack/deviceStack relations carry fields (address, coordinates,
+// heightU, timestamps…) this purpose never shows. `include` would fetch —
+// and forward to the client — all of them; `select` keeps the query and the
+// declared Safe* types in lockstep.
+const DEVICE_SCALAR_SELECT = {
+  id: true,
+  name: true,
+  serialNumber: true,
+  assetTag: true,
+  managementIp: true,
+  status: true,
+  rackId: true,
+  rackPosition: true,
+  deviceStackId: true,
+  stackMember: true,
+  stackRole: true,
+  vendor: true,
+  model: true,
+  heightU: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.DeviceSelect
+
+const RACK_WITH_SITE_SELECT = {
+  id: true,
+  name: true,
+  site: { select: { id: true, name: true } },
+} satisfies Prisma.RackSelect
 
 export type SafeDeviceStack = {
   id: string
@@ -145,8 +174,9 @@ export async function getDevices(params: DeviceListParams): Promise<DeviceListPa
       orderBy: { name: 'asc' },
       skip: window.skip,
       take: window.take,
-      include: {
-        rack: { include: { site: true } },
+      select: {
+        ...DEVICE_SCALAR_SELECT,
+        rack: { select: RACK_WITH_SITE_SELECT },
         deviceStack: { select: { id: true, name: true } },
       },
     })
@@ -166,10 +196,13 @@ export const getDeviceById = cache(async (id: string): Promise<SafeDeviceDetail 
   return readInventoryData(() => unstable_cache(async () => {
     const device = await prisma.device.findUnique({
       where: { id },
-      include: {
-        rack: { include: { site: true } },
+      select: {
+        ...DEVICE_SCALAR_SELECT,
+        rack: { select: RACK_WITH_SITE_SELECT },
         deviceStack: {
-          include: {
+          select: {
+            id: true,
+            name: true,
             devices: {
               where: { id: { not: id } },
               select: {

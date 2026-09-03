@@ -285,13 +285,9 @@ export function DevicesTableClient({
   }
 
   return (
-    <div className="min-h-full bg-background">
-      <div className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">
-        <div className="px-8 h-16 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="font-serif text-[18px] font-semibold text-foreground">Devices</h1>
-            <p className="text-xs text-subtle mt-0.5">Physical device inventory</p>
-          </div>
+    <>
+      <div className="px-8 py-6 space-y-4">
+        <div className="flex items-center justify-between gap-4">
           <form onSubmit={submitSearch} className="relative flex-1 max-w-xs">
             <IconSearch size={13} stroke={1.75} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-faint" />
             <input
@@ -322,9 +318,7 @@ export function DevicesTableClient({
             </div>
           )}
         </div>
-      </div>
 
-      <div className="px-8 py-6 space-y-4">
         <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
           <div className={TABLE_SCROLL_CLS}>
             <table className="w-full text-xs">
@@ -485,6 +479,6 @@ export function DevicesTableClient({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   )
 }

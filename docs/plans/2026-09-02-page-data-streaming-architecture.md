@@ -41,6 +41,56 @@ the History slice moved `buildHistoryWhere` / `historyPageWindow` out of `query.
 **Run `bun run build` before claiming a slice is done**, and treat "the tsc error count did not change" as
 insufficient — check which files the errors are in.
 
+**Code-review response (post-Task-12), landed as `fix: address code review findings`:** an independent
+review of `9b481f2..7953523` raised 6 Standards + 8 Spec findings. Each was checked against the code
+before acting — three were incorrect or already-accepted deviations and were left as-is with evidence
+recorded here so they aren't re-litigated:
+
+- **Rejected — "legacy ingestion only expires its own tag, so Devices can go stale 8h":** false. Every
+  `invalidateLegacy{Health,Endpoint,Interface}Reads()` already calls `invalidateLegacyDeviceReads()`
+  (see `src/lib/legacy/{health,endpoints,interfaces}/mutation.ts`), and every ingest route under
+  `src/app/api/ingest/legacy/*/route.ts` wires its purpose-specific invalidator. Devices reads expire on
+  every legacy ingestion.
+- **Accepted as a pre-existing, deliberate pattern — "Legacy health/interface detail reads bypass the
+  persistent cache":** this is the same "drawer reads are on-demand, so they stay uncached" comment
+  already present in `src/lib/interface-health/query.ts` from Task 6, which predates this session and was
+  presumably already reviewed. Not changed.
+- **Accepted as a documented tradeoff — "Inventory relies only on `inventory:all`, not per-entity tags":**
+  this is Task 10's recorded shared-tag deviation (sites/racks/devices display each other's fields, so
+  per-tag invalidation needs hand-maintained cross-invalidation to stay correct). Not changed; noted here
+  again in case a future session wants finer-grained tags.
+
+Confirmed and fixed:
+
+- **Inventory device DTOs over-fetched via Prisma `include`:** `getDevices`/`getDeviceById` used
+  `include: { rack: { include: { site: true } } }`, fetching every Rack/Site column (address, coordinates,
+  `heightU`, timestamps) even though the declared `SafeDeviceWithRack` type only exposes `{id, name, site:
+  {id, name}}` — the extra fields were forwarded to the client at runtime despite what the types claimed.
+  Switched to explicit `select` (`DEVICE_SCALAR_SELECT` / `RACK_WITH_SITE_SELECT` in
+  `src/lib/inventory/devices/query.ts`) so the query and the declared type can't drift apart again; added a
+  regression test asserting the `select` shape.
+- **Scheduler's polling read lived in `actions.ts`:** that file is reserved for browser-invoked *mutations*
+  elsewhere in the codebase; `refreshResyncSchedules` was a read. Moved to a new `src/lib/scheduler/
+  polling.ts` (still `'use server'`, since a Server Action — not a GET route — is what keeps
+  `lastRunAt`/`nextRunAt` as real `Date` objects; see the Task 11 progress note on why a GET route was
+  rejected for this specific read).
+- **Racks page.tsx forwarded raw `searchParams`** into the render layer instead of parsing once in the
+  adapter, unlike every other purpose. Added `src/lib/inventory/racks/params.ts` (`parseRacksSearchParams`)
+  and call it from `page.tsx`.
+- **Duplicated `positivePage` helper** in the two Legacy detail history routes. Extracted to
+  `parseLegacyOptionalPage` in `src/lib/legacy/query.ts`.
+- **Legacy skeletons didn't match their resolved table geometry** (Devices/Endpoints/Health/Interfaces
+  skeletons rendered 6–7 placeholder columns against 10 actual columns; Scheduler rendered 6 against 7).
+  Corrected each skeleton's column count.
+- **APIC Hosts, Scheduler, Users, Inventory Devices, and Inventory Racks blocked their static page shell
+  (title, and for Racks the heading) behind the same Suspense boundary as their data**, unlike the
+  Legacy/Nodes/Interface-Health pattern used elsewhere in this plan (a `LegacyPageShell`- or
+  `NodesClient`-style frame renders the title immediately; only the data-dependent body streams). Moved
+  each purpose's static title (and, where present, description) into its `*-view.tsx`, outside the
+  Suspense boundary; the admin-gated toolbar/action buttons moved down into the streamed body since they
+  depend on the same role check as the data itself. Skeletons updated to no longer mimic a header that now
+  renders for real.
+
 ## Required skills and invariants
 
 - Use `@superpowers:test-driven-development` for every behavior change.

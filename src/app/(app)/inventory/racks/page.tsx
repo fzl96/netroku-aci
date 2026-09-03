@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { RacksView } from '@/components/inventory/racks/racks-view'
+import { parseRacksSearchParams } from '@/lib/inventory/racks/params'
 
 export const metadata: Metadata = {
   title: 'Racks',
@@ -7,5 +8,5 @@ export const metadata: Metadata = {
 }
 
 export default function Page({ searchParams }: PageProps<'/inventory/racks'>) {
-  return <RacksView searchParamsPromise={searchParams} />
+  return <RacksView paramsPromise={searchParams.then(parseRacksSearchParams)} />
 }

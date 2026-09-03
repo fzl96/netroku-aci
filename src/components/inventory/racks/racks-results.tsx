@@ -1,24 +1,18 @@
 import { getInventoryViewerRole } from '@/lib/inventory/authorize'
 import { InventoryReadError } from '@/lib/inventory/errors'
 import { getAllDevices } from '@/lib/inventory/devices/query'
+import type { RacksParams } from '@/lib/inventory/racks/params'
 import { getRacksBySite } from '@/lib/inventory/racks/query'
 import { getSites } from '@/lib/inventory/sites/query'
 import { RacksRegionError } from './racks-region-error'
 import { RacksTableClient } from './racks-table-client'
 
-export type RawRacksSearchParams = { siteId?: string | string[] }
-
-function firstSiteId(raw: RawRacksSearchParams): string | undefined {
-  const value = raw.siteId
-  return (Array.isArray(value) ? value[0] : value)?.trim() || undefined
-}
-
 export async function RacksResults({
-  searchParamsPromise,
+  paramsPromise,
 }: {
-  searchParamsPromise: Promise<RawRacksSearchParams>
+  paramsPromise: Promise<RacksParams>
 }) {
-  const siteIdParam = firstSiteId(await searchParamsPromise)
+  const { siteId: siteIdParam } = await paramsPromise
 
   let role: 'admin' | 'member'
   let sites: Awaited<ReturnType<typeof getSites>>

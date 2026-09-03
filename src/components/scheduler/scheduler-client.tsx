@@ -11,10 +11,10 @@ import {
 } from '@tabler/icons-react'
 import {
   deleteResyncSchedule,
-  refreshResyncSchedules,
   runResyncScheduleNow,
   upsertResyncSchedule,
 } from '@/lib/scheduler/actions'
+import { refreshResyncSchedules } from '@/lib/scheduler/polling'
 import { UNREADABLE_USERNAME, type SafeResyncSchedule } from '@/lib/apic/schedule-view'
 import { startSchedulePolling } from '@/lib/apic/schedule-polling'
 import { INTERVAL_MAX_MINUTES, INTERVAL_MIN_MINUTES } from '@/lib/apic/schedule-timing'
@@ -211,19 +211,7 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
   }
 
   return (
-    <div className="min-h-full bg-background">
-      {/* Page header */}
-      <div className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">
-        <div className="px-8 h-16 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="font-serif text-[18px] font-semibold text-foreground">Scheduler</h1>
-            <p className="text-xs text-subtle mt-0.5">
-              Automatic resyncs per controller, timed from the end of the previous run
-            </p>
-          </div>
-        </div>
-      </div>
-
+    <>
       <div className="px-8 py-6 space-y-6">
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4">
@@ -514,6 +502,6 @@ export function SchedulerClient({ initialSchedules }: { initialSchedules: SafeRe
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   )
 }

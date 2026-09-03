@@ -1,11 +1,5 @@
-import { LEGACY_RANGES } from '@/lib/legacy/query'
+import { LEGACY_RANGES, parseLegacyOptionalPage } from '@/lib/legacy/query'
 import { getLegacyHealthHistory, LegacyHealthReadError } from '@/lib/legacy/health/query'
-
-function positivePage(value: string | null): number | undefined {
-  if (!value) return undefined
-  const parsed = Number.parseInt(value, 10)
-  return Number.isFinite(parsed) ? parsed : undefined
-}
 
 /** Read transport for the legacy health drawer. Detail reads stay a plain
  *  authenticated GET so they are cancellable; mutations remain Server Actions. */
@@ -22,8 +16,8 @@ export async function GET(request: Request) {
   try {
     const history = await getLegacyHealthHistory(deviceId, {
       range: range as (typeof LEGACY_RANGES)[number],
-      samplePage: positivePage(params.get('samplePage')),
-      logPage: positivePage(params.get('logPage')),
+      samplePage: parseLegacyOptionalPage(params.get('samplePage')),
+      logPage: parseLegacyOptionalPage(params.get('logPage')),
     })
     if (!history) return Response.json({ error: 'Device not found' }, { status: 404 })
     return Response.json(history)

@@ -1,11 +1,5 @@
-import { LEGACY_RANGES } from '@/lib/legacy/query'
+import { LEGACY_RANGES, parseLegacyOptionalPage } from '@/lib/legacy/query'
 import { getLegacyInterfaceHistory, LegacyInterfaceReadError } from '@/lib/legacy/interfaces/query'
-
-function positivePage(value: string | null): number | undefined {
-  if (!value) return undefined
-  const parsed = Number.parseInt(value, 10)
-  return Number.isFinite(parsed) ? parsed : undefined
-}
 
 /** Read transport for the legacy interface drawer. Detail reads stay a plain
  *  authenticated GET so they are cancellable; mutations remain Server Actions. */
@@ -22,7 +16,7 @@ export async function GET(request: Request) {
   try {
     const history = await getLegacyInterfaceHistory(interfaceId, {
       range: range as (typeof LEGACY_RANGES)[number],
-      page: positivePage(params.get('page')),
+      page: parseLegacyOptionalPage(params.get('page')),
     })
     if (!history) return Response.json({ error: 'Interface not found' }, { status: 404 })
     return Response.json(history)

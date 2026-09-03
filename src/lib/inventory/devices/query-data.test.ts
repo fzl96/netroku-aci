@@ -34,8 +34,10 @@ const storedDevice = {
 }
 
 let findManyError: unknown = null
-const deviceFindMany = mock(async () => {
+const listCalls: Array<{ select?: { rack?: unknown } }> = []
+const deviceFindMany = mock(async (args?: { select?: { rack?: unknown } }) => {
   if (findManyError) throw findManyError
+  if (args) listCalls.push(args)
   return [storedDevice]
 })
 const deviceCount = mock(async () => 1)
@@ -75,9 +77,10 @@ mock.module('@/lib/auth', () => ({ AuthenticationRequiredError, requireSession, 
 mock.module('@/lib/audit', () => ({ recordAudit }))
 mock.module('@/lib/prisma', () => ({ prisma: {
   device: {
-    findMany: (args: unknown) => {
-      const a = args as { select?: unknown }
-      return a.select ? Promise.resolve([storedDevice]) : deviceFindMany()
+    findMany: (args: { skip?: number; select?: { rack?: unknown } }) => {
+      // Both the paged list and the flat catalog select now use `select`;
+      // only the paged list passes skip/take, so key off that instead.
+      return args.skip === undefined ? Promise.resolve([storedDevice]) : deviceFindMany(args)
     },
     count: deviceCount,
     findUnique: deviceFindUnique,
@@ -125,6 +128,16 @@ describe('getDevices', () => {
     const page = await query.getDevices(base)
     expect(page.devices[0].rack).toEqual(storedDevice.rack)
     expect(page.devices[0].deviceStack).toBeNull()
+  })
+
+  it('selects only the declared rack/site fields, not the full related rows', async () => {
+    listCalls.length = 0
+    await query.getDevices(base)
+    // `include` would fetch every Rack/Site column (address, coordinates,
+    // heightU, timestamps…); this locks the read to an explicit `select`.
+    expect(listCalls.at(-1)?.select?.rack).toEqual({
+      select: { id: true, name: true, site: { select: { id: true, name: true } } },
+    })
   })
 
   it('keys the cache by the query and page', async () => {

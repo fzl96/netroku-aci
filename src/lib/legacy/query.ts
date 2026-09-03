@@ -39,3 +39,12 @@ export function parseLegacySort<const T extends readonly string[]>(
 export function parseLegacyDirection(value?: string): 'asc' | 'desc' {
   return value === 'asc' ? 'asc' : 'desc'
 }
+
+/** A detail route's optional page query param: absent or non-numeric means
+ *  "use the read's own default," so this returns `undefined` rather than a
+ *  clamped fallback like `parseLegacyPage` does for the list pages. */
+export function parseLegacyOptionalPage(value: string | null): number | undefined {
+  if (!value) return undefined
+  const parsed = Number.parseInt(value, 10)
+  return Number.isFinite(parsed) ? parsed : undefined
+}

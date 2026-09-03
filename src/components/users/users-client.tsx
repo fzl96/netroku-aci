@@ -108,13 +108,9 @@ export function UsersClient({
   }
 
   return (
-    <div className="min-h-full bg-background">
-      <div className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">
-        <div className="px-8 h-16 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="font-serif text-[18px] font-semibold text-foreground">Users</h1>
-            <p className="text-xs text-subtle mt-0.5">Manage application access and roles</p>
-          </div>
+    <>
+      <div className="px-8 py-6 space-y-6">
+        <div className="flex justify-end">
           <button
             onClick={() => {
               resetForm()
@@ -126,9 +122,6 @@ export function UsersClient({
             Create User
           </button>
         </div>
-      </div>
-
-      <div className="px-8 py-6 space-y-6">
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-card border border-border rounded-xl px-5 py-4 animate-fade-up">
             <p className="text-[11px] text-subtle">Total Users</p>
@@ -338,6 +331,6 @@ export function UsersClient({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   )
 }

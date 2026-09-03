@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import {
   legacyRangeCutoff,
+  parseLegacyOptionalPage,
   parseLegacyPage,
   parseLegacyPageSize,
   parseLegacyRange,
@@ -21,6 +22,12 @@ describe('legacy list query parsing', () => {
     expect(parseLegacyRange('nope')).toBe('24h')
     expect(parseLegacySort('hostname', ['hostname', 'site'] as const, 'site')).toBe('hostname')
     expect(parseLegacySort('model', ['hostname', 'site'] as const, 'site')).toBe('site')
+  })
+
+  it('leaves an optional detail page absent rather than defaulting it', () => {
+    expect(parseLegacyOptionalPage(null)).toBeUndefined()
+    expect(parseLegacyOptionalPage('nope')).toBeUndefined()
+    expect(parseLegacyOptionalPage('3')).toBe(3)
   })
 
   it('builds fixed history cutoffs and leaves all unbounded', () => {

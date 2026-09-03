@@ -395,11 +395,8 @@ export function RacksTableClient({
 
   if (siteList.length === 0) {
     return (
-      <div className="px-8 py-6 space-y-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Racks</h1>
-          <p className="text-muted-foreground text-sm">Create a site to start visualizing racks.</p>
-        </div>
+      <div className="px-8 pb-6 space-y-4">
+        <p className="text-muted-foreground text-sm">Create a site to start visualizing racks.</p>
         {isAdmin && (
           <div className="rounded-lg border border-border p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -424,11 +421,8 @@ export function RacksTableClient({
   }
 
   return (
-    <div className="px-8 py-6 space-y-4">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Racks</h1>
-        <p className="text-muted-foreground text-sm">Select a site to view its rack elevation.</p>
-      </div>
+    <div className="px-8 pb-6 space-y-4">
+      <p className="text-muted-foreground text-sm">Select a site to view its rack elevation.</p>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-72">
