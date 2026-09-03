@@ -50,7 +50,6 @@ prisma/generated/
 
 /.claude
 /.superpowers
-/docs
 /.worktrees
 
 # fumadocs generated
