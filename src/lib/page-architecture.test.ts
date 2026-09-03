@@ -135,6 +135,15 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
     obsoletePaths: ['src/actions/resync-schedules.ts'],
   },
   {
+    name: 'users',
+    routes: [{
+      root: 'src/app/(app)/users',
+      allowedFiles: ['page.tsx'],
+    }],
+    entryRoots: ['src/components/users'],
+    obsoletePaths: ['src/actions/users.ts'],
+  },
+  {
     name: 'inventory',
     routes: [
       {

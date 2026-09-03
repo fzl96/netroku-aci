@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { IconShieldCheck, IconTrash, IconUser, IconUserPlus, IconUsers } from '@tabler/icons-react'
-import { createUser, deleteUser, type SafeUser } from '@/actions/users'
+import { createUser, deleteUser } from '@/lib/users/actions'
+import type { SafeUser } from '@/lib/users/query'
 import {
   DENSE_TABLE_HEAD_CLS,
   INPUT_CLS,
