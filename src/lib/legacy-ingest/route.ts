@@ -1,5 +1,6 @@
 import type { z } from 'zod'
 import { recordAudit, type AuditAction } from '@/lib/audit'
+import { invalidateLegacyDeviceReads } from '@/lib/legacy/devices/mutation'
 import { isLegacyIngestAuthorized } from './auth'
 import {
   IdempotencyConflictError,
@@ -14,6 +15,9 @@ interface RoutePayload {
 interface RouteDependencies {
   token?: string
   audit?: typeof recordAudit
+  /** Expires the purpose caches this payload invalidates. Defaults to the
+   *  device reads that every legacy feature payload touches. */
+  invalidateReads?: () => void
 }
 
 function collectionTooLarge(error: z.ZodError): boolean {
@@ -56,6 +60,12 @@ export async function handleLegacyIngestRequest<T extends RoutePayload>(
 
   try {
     const result = await ingest(parsed.data)
+    // A cache-expiry failure must not turn a committed ingestion into a 500.
+    try {
+      ;(dependencies.invalidateReads ?? invalidateLegacyDeviceReads)()
+    } catch (error) {
+      console.error('[legacy-ingest] failed to expire cached reads', error)
+    }
     const audit = dependencies.audit ?? recordAudit
     await audit({
       userId: null,

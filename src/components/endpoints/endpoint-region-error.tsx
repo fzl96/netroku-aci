@@ -1,0 +1,34 @@
+'use client'
+
+import { IconRefresh } from '@tabler/icons-react'
+import { useRouter } from 'next/navigation'
+import { useTransition } from 'react'
+
+export function EndpointRegionError({
+  region,
+  compact = false,
+}: {
+  region: 'overview' | 'results'
+  compact?: boolean
+}) {
+  const router = useRouter()
+  const [retrying, startTransition] = useTransition()
+
+  return (
+    <div role="alert" className={`flex items-center justify-between gap-4 border border-border bg-card ${compact ? 'rounded-lg px-3 py-2' : 'rounded-2xl px-4 py-5'}`}>
+      <div>
+        <p className="text-sm font-medium text-foreground">Could not load endpoint {region}</p>
+        {!compact && <p className="mt-1 text-xs text-subtle">The rest of the page is still available.</p>}
+      </div>
+      <button
+        type="button"
+        disabled={retrying}
+        onClick={() => startTransition(() => router.refresh())}
+        className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50"
+      >
+        <IconRefresh size={13} className={retrying ? 'animate-spin' : ''} />
+        {retrying ? 'Retrying…' : 'Retry'}
+      </button>
+    </div>
+  )
+}

@@ -1,8 +1,7 @@
-import { recordAudit } from '@/lib/audit'
-import { resyncEndpoints } from '@/lib/apic/endpoints'
-import { resyncInterfaces } from '@/lib/apic/interfaces'
-import { resyncNodes } from '@/lib/apic/nodes'
-import { resyncEpgs } from '@/lib/apic/epg-resync'
+import { resyncEndpointInventoryForScheduler } from '@/lib/endpoints/mutation'
+import { resyncEpgInventoryForScheduler } from '@/lib/epgs/mutation'
+import { resyncNodeInventoryForScheduler } from '@/lib/nodes/mutation'
+import { resyncInterfaceInventoryForScheduler } from '@/lib/interface-health/mutation'
 import type { DatasetResult, HostResult } from '@/lib/apic/cron-resync'
 
 export interface ResyncHostInput {
@@ -15,97 +14,83 @@ export interface ResyncHostInput {
   password: string
 }
 
+export interface ResyncHostDependencies {
+  resyncEndpointInventoryForScheduler: typeof resyncEndpointInventoryForScheduler
+  resyncInterfaceInventoryForScheduler: typeof resyncInterfaceInventoryForScheduler
+  resyncNodeInventoryForScheduler: typeof resyncNodeInventoryForScheduler
+  resyncEpgInventoryForScheduler: typeof resyncEpgInventoryForScheduler
+}
+
+const DEFAULT_DEPENDENCIES: ResyncHostDependencies = {
+  resyncEndpointInventoryForScheduler,
+  resyncInterfaceInventoryForScheduler,
+  resyncNodeInventoryForScheduler,
+  resyncEpgInventoryForScheduler,
+}
+
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback
 }
 
 /**
- * Resync all four datasets for a single host, auditing each one as `scheduler`.
+ * Resync all four datasets for a single host. Each purpose module owns its own
+ * `scheduler` audit entry and cache invalidation, so this runner only sequences
+ * them and collects per-dataset outcomes.
  * Never throws: every dataset failure is captured in the returned HostResult.
  */
-export async function resyncHost(input: ResyncHostInput): Promise<HostResult> {
+export async function resyncHost(
+  input: ResyncHostInput,
+  dependencies: ResyncHostDependencies = DEFAULT_DEPENDENCIES,
+): Promise<HostResult> {
   const { apicHostId, hostName, host, username, password } = input
-  const target = `${hostName} (${host})`
+  const {
+    resyncEndpointInventoryForScheduler: resyncEndpointInventory,
+    resyncInterfaceInventoryForScheduler: resyncInterfaceInventory,
+    resyncNodeInventoryForScheduler: resyncNodeInventory,
+    resyncEpgInventoryForScheduler: resyncEpgInventory,
+  } = dependencies
   const creds = { apicHostId, host, username, password }
   const result: HostResult = { apicHostId, host: hostName }
 
   // Endpoints
   let endpoints: DatasetResult
   try {
-    endpoints = await resyncEndpoints(creds)
+    endpoints = await resyncEndpointInventory({
+      ...creds,
+      hostName,
+    })
   } catch (err) {
     endpoints = { error: errorMessage(err, 'Failed to resync endpoints') }
   }
   result.endpoints = endpoints
-  await recordAudit({
-    userId: null,
-    userName: 'scheduler',
-    action: 'resync.endpoints',
-    target,
-    status: 'error' in endpoints ? 'failure' : 'success',
-    detail: 'error' in endpoints
-      ? endpoints.error
-      : `synced ${endpoints.synced} (total ${endpoints.total})`,
-  })
 
   // Interfaces
   let interfaces: DatasetResult
   try {
-    interfaces = await resyncInterfaces(creds)
+    interfaces = await resyncInterfaceInventory({ ...creds, hostName })
   } catch (err) {
     interfaces = { error: errorMessage(err, 'Failed to resync interfaces') }
   }
   result.interfaces = interfaces
-  await recordAudit({
-    userId: null,
-    userName: 'scheduler',
-    action: 'resync.interfaces',
-    target,
-    status: 'error' in interfaces ? 'failure' : 'success',
-    detail: 'error' in interfaces
-      ? interfaces.error
-      : `synced ${interfaces.synced} (total ${interfaces.total})`,
-  })
 
   // Nodes & hardware
   let nodes: DatasetResult
   try {
-    const r = await resyncNodes(creds)
+    const r = await resyncNodeInventory({ ...creds, hostName })
     nodes = { synced: r.syncedNodes, total: r.syncedNodes + r.syncedComponents }
   } catch (err) {
     nodes = { error: errorMessage(err, 'Failed to resync nodes') }
   }
   result.nodes = nodes
-  await recordAudit({
-    userId: null,
-    userName: 'scheduler',
-    action: 'resync.nodes',
-    target,
-    status: 'error' in nodes ? 'failure' : 'success',
-    detail: 'error' in nodes
-      ? nodes.error
-      : `synced ${nodes.synced} nodes (total ${nodes.total})`,
-  })
 
   // EPGs & static port bindings
   let epgs: DatasetResult
   try {
-    const r = await resyncEpgs(creds)
+    const r = await resyncEpgInventory({ ...creds, hostName })
     epgs = { synced: r.syncedEpgs, total: r.syncedEpgs + r.syncedBindings }
   } catch (err) {
     epgs = { error: errorMessage(err, 'Failed to resync EPGs') }
   }
   result.epgs = epgs
-  await recordAudit({
-    userId: null,
-    userName: 'scheduler',
-    action: 'resync.epgs',
-    target,
-    status: 'error' in epgs ? 'failure' : 'success',
-    detail: 'error' in epgs
-      ? epgs.error
-      : `synced ${epgs.synced} EPGs (total ${epgs.total})`,
-  })
-
   return result
 }

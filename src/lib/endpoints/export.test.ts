@@ -1,16 +1,17 @@
 import { describe, expect, it } from 'bun:test'
 import * as XLSX from 'xlsx'
-import type { Endpoint } from '@prisma/client'
 import {
+  buildEndpointExportFilename,
   buildEndpointWorkbook,
   groupEndpointsForExport,
   sanitizeWorksheetName,
+  serializeEndpointWorkbook,
+  type EndpointExportRow,
 } from './export'
 
-function endpoint(overrides: Partial<Endpoint> = {}): Endpoint {
+function endpoint(overrides: Partial<EndpointExportRow> = {}): EndpointExportRow {
   return {
     id: 'ep-1',
-    apicHostId: 'host-1',
     mac: 'aa:bb:cc:dd:ee:ff',
     ip: '10.0.0.1',
     vlan: 'vlan-100',
@@ -19,8 +20,8 @@ function endpoint(overrides: Partial<Endpoint> = {}): Endpoint {
     interface: 'eth1/1',
     epgDescr: 'Web',
     isActive: true,
-    firstSeenAt: new Date('2026-05-16T08:00:00.000Z'),
-    lastSeenAt: new Date('2026-05-16T09:00:00.000Z'),
+    firstSeenAt: '2026-05-16T08:00:00.000Z',
+    lastSeenAt: '2026-05-16T09:00:00.000Z',
     clearedAt: null,
     ...overrides,
   }
@@ -61,7 +62,7 @@ describe('buildEndpointWorkbook', () => {
       endpoint({
         id: 'older',
         node: 'node:/bad',
-        lastSeenAt: new Date('2026-05-16T08:00:00.000Z'),
+        lastSeenAt: '2026-05-16T08:00:00.000Z',
         isActive: false,
       }),
       endpoint({
@@ -69,7 +70,7 @@ describe('buildEndpointWorkbook', () => {
         node: 'node:/bad',
         mac: '11:22:33:44:55:66',
         ip: '',
-        lastSeenAt: new Date('2026-05-16T10:00:00.000Z'),
+        lastSeenAt: '2026-05-16T10:00:00.000Z',
       }),
       endpoint({
         id: 'other',
@@ -105,5 +106,30 @@ describe('buildEndpointWorkbook', () => {
     ], 'vlan')
 
     expect(workbook.SheetNames).toEqual(['bad-name', 'bad-name-2'])
+  })
+
+  it('converts valid ISO timestamps to Excel dates and leaves invalid values blank', () => {
+    const workbook = buildEndpointWorkbook([
+      endpoint({ id: 'valid' }),
+      endpoint({ id: 'invalid', mac: 'invalid-date', firstSeenAt: '', lastSeenAt: 'not-a-date' }),
+    ], 'node')
+    const bytes = serializeEndpointWorkbook(workbook)
+    const parsed = XLSX.read(bytes, { type: 'array', cellDates: true })
+    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(parsed.Sheets['101'], { defval: '' })
+
+    expect(rows.find(row => row.MAC === 'aa:bb:cc:dd:ee:ff')?.['First Seen']).toBeInstanceOf(Date)
+    expect(rows.find(row => row.MAC === 'invalid-date')?.['First Seen']).toBe('')
+    expect(rows.find(row => row.MAC === 'invalid-date')?.['Last Seen']).toBe('')
+  })
+})
+
+describe('buildEndpointExportFilename', () => {
+  it('sanitizes host names and uses the supplied timestamp', () => {
+    expect(buildEndpointExportFilename({
+      hostName: ' APIC / Jakarta ',
+      scope: 'filtered',
+      groupBy: 'vlan',
+      now: new Date('2026-09-02T03:04:05.678Z'),
+    })).toBe('endpoints-apic-jakarta-filtered-by-vlan-2026-09-02T03-04-05-678Z.xlsx')
   })
 })

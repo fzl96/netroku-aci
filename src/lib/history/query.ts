@@ -1,114 +1,130 @@
+import 'server-only'
+
 import type { Prisma } from '@prisma/client'
-import type { AuditAction } from '@/lib/audit'
+import { unstable_cache } from 'next/cache'
+import { AuthenticationRequiredError, requireSession } from '@/lib/auth'
+import type { AuditAction, AuditStatus } from '@/lib/audit'
+import { prisma } from '@/lib/prisma'
+import { buildHistoryWhere } from './filters'
+import {
+  historyPageWindow,
+  type HistoryPageParams,
+} from './params'
 
-export const HISTORY_PAGE_SIZE = 20
+const HISTORY_CACHE_SECONDS = 8 * 60 * 60
 
-export const HISTORY_ACTION_LABELS: Record<AuditAction, string> = {
-  'apic_host.create': 'Host added',
-  'apic_host.update': 'Host updated',
-  'apic_host.delete': 'Host deleted',
-  deploy: 'Deploy',
-  rollback: 'Rollback',
-  'resync.endpoints': 'Resync endpoints',
-  'resync.interfaces': 'Resync interfaces',
-  'resync.faults': 'Resync faults',
-  'resync.health': 'Resync health',
-  'resync.nodes': 'Resync nodes',
-  'resync.epgs': 'Resync EPGs',
-  'ingest.legacy.health': 'Ingest legacy health',
-  'ingest.legacy.interfaces': 'Ingest legacy interfaces',
-  'ingest.legacy.endpoints': 'Ingest legacy endpoints',
-  'user.create': 'User created',
-  'user.delete': 'User deleted',
-  'resync.schedule.run': 'Ran scheduled resync',
-  'resync.schedule.update': 'Resync schedule updated',
-  'resync.schedule.delete': 'Resync schedule deleted',
-  'site.create': 'Site added',
-  'site.update': 'Site updated',
-  'site.delete': 'Site deleted',
-  'rack.create': 'Rack added',
-  'rack.update': 'Rack updated',
-  'rack.delete': 'Rack deleted',
-  'device.create': 'Device added',
-  'device.update': 'Device updated',
-  'device.delete': 'Device deleted',
-  'device.place': 'Device placed in rack',
-  'device.unassign': 'Device removed from rack',
-  'device.resize': 'Device resized',
-  'device.import': 'Devices imported',
+const AUDIT_LOG_SELECT = {
+  id: true,
+  createdAt: true,
+  userId: true,
+  userName: true,
+  action: true,
+  target: true,
+  status: true,
+  detail: true,
+  payload: true,
+} satisfies Prisma.AuditLogSelect
+
+type StoredAuditLog = Prisma.AuditLogGetPayload<{
+  select: typeof AUDIT_LOG_SELECT
+}>
+
+export type HistoryLogEntry = {
+  id: string
+  createdAt: string
+  userId: string | null
+  userName: string
+  action: AuditAction
+  target: string | null
+  status: AuditStatus
+  detail: string | null
+  payload: unknown
 }
 
-const HISTORY_ACTIONS = Object.keys(HISTORY_ACTION_LABELS) as AuditAction[]
-
-export type HistoryActionFilter = AuditAction | 'all'
-
-export type HistoryPageParams = {
-  query: string
-  action: HistoryActionFilter
+export type HistoryPageData = {
+  logs: HistoryLogEntry[]
+  total: number
   page: number
 }
 
-export function parseHistoryPageParams(input: {
-  query?: string
-  action?: string
-  page?: string
-}): HistoryPageParams {
-  const parsedPage = Number.parseInt(input.page ?? '1', 10)
-  return {
-    query: input.query?.trim() ?? '',
-    action: HISTORY_ACTIONS.includes(input.action as AuditAction)
-      ? input.action as AuditAction
-      : 'all',
-    page: Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1,
+export type HistoryReadErrorCode = 'unauthorized' | 'read-failed'
+
+export class HistoryReadError extends Error {
+  constructor(
+    readonly code: HistoryReadErrorCode = 'unauthorized',
+    options?: ErrorOptions,
+  ) {
+    super(code === 'unauthorized' ? 'Unauthorized' : 'Unable to load history', options)
+    this.name = 'HistoryReadError'
   }
 }
 
-export function buildHistoryWhere(
-  params: HistoryPageParams,
-): Prisma.AuditLogWhereInput {
-  const matchingActions = params.query
-    ? HISTORY_ACTIONS.filter(action =>
-        HISTORY_ACTION_LABELS[action]
-          .toLowerCase()
-          .includes(params.query.toLowerCase()))
-    : []
-
+function serializeAuditLog(log: StoredAuditLog): HistoryLogEntry {
   return {
-    ...(params.action !== 'all' ? { action: params.action } : {}),
-    ...(params.query
-      ? {
-          OR: [
-            { userName: { contains: params.query, mode: 'insensitive' } },
-            { target: { contains: params.query, mode: 'insensitive' } },
-            { detail: { contains: params.query, mode: 'insensitive' } },
-            ...(matchingActions.length > 0
-              ? [{ action: { in: matchingActions } }]
-              : []),
-          ],
-        }
-      : {}),
+    id: log.id,
+    createdAt: log.createdAt.toISOString(),
+    userId: log.userId,
+    userName: log.userName,
+    action: log.action as AuditAction,
+    target: log.target,
+    status: log.status as AuditStatus,
+    detail: log.detail,
+    payload: log.payload ?? null,
   }
 }
 
-export function clampHistoryPage(page: number, total: number): number {
-  const totalPages = Math.max(1, Math.ceil(total / HISTORY_PAGE_SIZE))
-  return Math.min(Math.max(1, page), totalPages)
-}
-
-export function historyPageWindow(page: number, total: number) {
-  const effectivePage = clampHistoryPage(page, total)
-  return {
-    page: effectivePage,
-    skip: (effectivePage - 1) * HISTORY_PAGE_SIZE,
-    take: HISTORY_PAGE_SIZE,
+async function authorizeHistoryRead(): Promise<void> {
+  try {
+    await requireSession()
+  } catch (error) {
+    if (!(error instanceof AuthenticationRequiredError)) throw error
+    throw new HistoryReadError()
   }
 }
 
-export function buildHistoryUrl(params: HistoryPageParams): string {
-  const search = new URLSearchParams()
-  if (params.query.trim()) search.set('query', params.query.trim())
-  if (params.action !== 'all') search.set('action', params.action)
-  if (params.page > 1) search.set('page', String(params.page))
-  const queryString = search.toString()
-  return `/history${queryString ? `?${queryString}` : ''}`
+async function readHistoryData<T>(read: () => Promise<T>): Promise<T> {
+  try {
+    return await read()
+  } catch (error) {
+    if (error instanceof HistoryReadError) throw error
+    throw new HistoryReadError('read-failed', { cause: error })
+  }
+}
+
+export async function getHistoryPage(params: HistoryPageParams): Promise<HistoryPageData> {
+  await authorizeHistoryRead()
+
+  const normalized = {
+    query: params.query.trim(),
+    action: params.action,
+    page: params.page,
+  }
+
+  return readHistoryData(() => unstable_cache(async (): Promise<HistoryPageData> => {
+    const where = buildHistoryWhere(normalized)
+    const total = await prisma.auditLog.count({ where })
+    const window = historyPageWindow(normalized.page, total)
+    const logs = await prisma.auditLog.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: window.skip,
+      take: window.take,
+      select: AUDIT_LOG_SELECT,
+    })
+
+    return {
+      logs: logs.map(serializeAuditLog),
+      total,
+      page: window.page,
+    }
+  }, [
+    'history',
+    'page',
+    normalized.query,
+    normalized.action,
+    String(normalized.page),
+  ], {
+    tags: ['history:all'],
+    revalidate: HISTORY_CACHE_SECONDS,
+  })())
 }

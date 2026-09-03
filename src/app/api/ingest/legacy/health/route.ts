@@ -1,5 +1,6 @@
 import { legacyHealthPayloadSchema } from '@/lib/schemas/legacy-ingest'
 import { ingestLegacyHealth } from '@/lib/legacy-ingest/health'
+import { invalidateLegacyHealthReads } from '@/lib/legacy/health/mutation'
 import { handleLegacyIngestRequest } from '@/lib/legacy-ingest/route'
 
 export function POST(request: Request) {
@@ -8,5 +9,6 @@ export function POST(request: Request) {
     legacyHealthPayloadSchema,
     ingestLegacyHealth,
     'ingest.legacy.health',
+    { invalidateReads: invalidateLegacyHealthReads },
   )
 }

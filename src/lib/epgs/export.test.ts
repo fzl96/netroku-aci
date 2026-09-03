@@ -1,14 +1,17 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it, mock } from 'bun:test'
 import * as XLSX from 'xlsx'
-import type { EpgWithBindings } from './query'
-import {
+import type { EpgExportRow } from './export'
+
+mock.module('server-only', () => ({}))
+
+const {
   buildEpgWorkbook,
   expandNodeLeaves,
   filterEpgsByNode,
   sanitizeWorksheetName,
-} from './export'
+} = await import('./export')
 
-type Binding = EpgWithBindings['bindings'][number]
+type Binding = EpgExportRow['bindings'][number]
 
 function binding(overrides: Partial<Binding> = {}): Binding {
   return {
@@ -27,7 +30,7 @@ function binding(overrides: Partial<Binding> = {}): Binding {
   }
 }
 
-function epg(overrides: Partial<EpgWithBindings> = {}): EpgWithBindings {
+function epg(overrides: Partial<EpgExportRow> = {}): EpgExportRow {
   return {
     id: 'epg-1',
     apicHostId: 'host-1',

@@ -1,5 +1,8 @@
-import { describe, expect, it } from 'bun:test'
-import { buildEndpointWhere, countActiveEndpointFilterGroups, hasActiveEndpointFilters } from './query'
+import { describe, expect, it, mock } from 'bun:test'
+
+mock.module('server-only', () => ({}))
+
+const { buildEndpointWhere } = await import('./query')
 
 describe('buildEndpointWhere', () => {
   it('scopes unfiltered queries to the selected APIC host', () => {
@@ -46,38 +49,5 @@ describe('buildEndpointWhere', () => {
         { dn: { contains: 'needle', mode: 'insensitive' } },
       ],
     })
-  })
-})
-
-describe('hasActiveEndpointFilters', () => {
-  it('returns false when every filter is empty', () => {
-    expect(hasActiveEndpointFilters({})).toBe(false)
-    expect(hasActiveEndpointFilters({
-      query: '   ',
-      vlan: [],
-      node: [],
-      iface: [],
-      status: [],
-    })).toBe(false)
-  })
-
-  it('returns true when any exportable filter is active', () => {
-    expect(hasActiveEndpointFilters({ query: 'mac' })).toBe(true)
-    expect(hasActiveEndpointFilters({ vlan: ['vlan-100'] })).toBe(true)
-    expect(hasActiveEndpointFilters({ node: ['101'] })).toBe(true)
-    expect(hasActiveEndpointFilters({ iface: ['eth1/1'] })).toBe(true)
-    expect(hasActiveEndpointFilters({ status: ['historical'] })).toBe(true)
-  })
-})
-
-describe('countActiveEndpointFilterGroups', () => {
-  it('counts populated non-search filter groups instead of selected values', () => {
-    expect(countActiveEndpointFilterGroups({
-      query: 'aa',
-      vlan: ['vlan-100', 'vlan-200'],
-      node: ['101'],
-      iface: [],
-      status: ['active', 'historical'],
-    })).toBe(3)
   })
 })

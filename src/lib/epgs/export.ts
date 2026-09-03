@@ -1,9 +1,42 @@
+import 'server-only'
+
 import * as XLSX from 'xlsx-js-style'
-import type { EpgWithBindings } from './query'
 
 export type EpgExportGrouping = 'epg' | 'port'
 
-type Binding = EpgWithBindings['bindings'][number]
+export type EpgExportBinding = {
+  id: string
+  apicHostId: string
+  epgId: string
+  dn: string
+  pathTDn: string
+  pod: string
+  node: string
+  port: string
+  pathType: string
+  encap: string
+  mode: string
+}
+
+export type EpgExportRow = {
+  id: string
+  apicHostId: string
+  dn: string
+  name: string
+  tenant: string
+  appProfile: string
+  description: string
+  bridgeDomain: string
+  pcTag: string
+  preferredGroup: boolean
+  isolation: boolean
+  domains: string[]
+  providedContracts: string[]
+  consumedContracts: string[]
+  bindings: EpgExportBinding[]
+}
+
+type Binding = EpgExportBinding
 
 const EXCEL_INVALID_SHEET_CHARS = /[:\\/?*[\]]/g
 const MAX_SHEET_NAME_LENGTH = 31
@@ -65,13 +98,13 @@ function uniqueWorksheetName(rawName: string, usedNames: Set<string>): string {
  * when a node filter is active.
  */
 export function filterEpgsByNode(
-  epgs: EpgWithBindings[],
+  epgs: EpgExportRow[],
   nodes: string[],
-): EpgWithBindings[] {
+): EpgExportRow[] {
   if (nodes.length === 0) return epgs
   const selected = new Set(nodes)
 
-  const result: EpgWithBindings[] = []
+  const result: EpgExportRow[] = []
   for (const epg of epgs) {
     const bindings = epg.bindings.filter(b =>
       expandNodeLeaves(b.node).some(leaf => selected.has(leaf)),
@@ -81,7 +114,7 @@ export function filterEpgsByNode(
   return result
 }
 
-function sortedEpgs(epgs: EpgWithBindings[]): EpgWithBindings[] {
+function sortedEpgs(epgs: EpgExportRow[]): EpgExportRow[] {
   return [...epgs].sort(
     (a, b) =>
       NATURAL_COLLATOR.compare(a.tenant, b.tenant) ||
@@ -140,7 +173,7 @@ function finalizeSheet(
   return worksheet
 }
 
-function buildEpgSheet(epgs: EpgWithBindings[]): XLSX.WorkSheet {
+function buildEpgSheet(epgs: EpgExportRow[]): XLSX.WorkSheet {
   const rows: unknown[][] = [[...EPG_COLUMNS]]
   const merges: MergeRange[] = []
 
@@ -193,7 +226,7 @@ function buildEpgSheet(epgs: EpgWithBindings[]): XLSX.WorkSheet {
 }
 
 /** Leaf node -> (port -> EPG names on that port). */
-function portsByLeafNode(epgs: EpgWithBindings[]): Map<string, Map<string, Set<string>>> {
+function portsByLeafNode(epgs: EpgExportRow[]): Map<string, Map<string, Set<string>>> {
   const nodes = new Map<string, Map<string, Set<string>>>()
   for (const epg of epgs) {
     for (const b of epg.bindings) {
@@ -232,7 +265,7 @@ function buildPortSheet(node: string, ports: Map<string, Set<string>>): XLSX.Wor
 }
 
 export function buildEpgWorkbook(
-  epgs: EpgWithBindings[],
+  epgs: EpgExportRow[],
   groupBy: EpgExportGrouping,
 ): XLSX.WorkBook {
   const workbook = XLSX.utils.book_new()
@@ -250,4 +283,21 @@ export function buildEpgWorkbook(
   }
 
   return workbook
+}
+
+export function serializeEpgWorkbook(workbook: XLSX.WorkBook): Uint8Array {
+  const bytes = XLSX.write(workbook, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer
+  return new Uint8Array(bytes)
+}
+
+function safeFilenameSegment(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'host'
+}
+
+export function buildEpgExportFilename({
+  hostName, scope, groupBy, now = new Date(),
+}: {
+  hostName: string; scope: 'all' | 'filtered'; groupBy: EpgExportGrouping; now?: Date
+}): string {
+  return ['epgs', safeFilenameSegment(hostName), scope, `by-${groupBy}`, now.toISOString().replace(/[:.]/g, '-')].join('-') + '.xlsx'
 }

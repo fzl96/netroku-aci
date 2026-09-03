@@ -41,3 +41,35 @@ export const auth = betterAuth({
 export const getSession = cache(async () =>
   auth.api.getSession({ headers: await headers() }),
 );
+
+export type AuthenticatedUser = {
+  id: string;
+  role: string;
+  userName: string;
+};
+
+export class AuthenticationRequiredError extends Error {
+  constructor() {
+    super("Unauthorized");
+    this.name = "AuthenticationRequiredError";
+  }
+}
+
+/** Require an authenticated request and expose only the actor fields consumers need. */
+export const requireSession = cache(async (): Promise<AuthenticatedUser> => {
+  const session = await getSession();
+  if (!session) throw new AuthenticationRequiredError();
+
+  return {
+    id: session.user.id,
+    role: session.user.role ?? "member",
+    userName: session.user.username ?? session.user.name,
+  };
+});
+
+/** Require an administrator while sharing the same request-scoped session lookup. */
+export const requireAdmin = cache(async (): Promise<AuthenticatedUser> => {
+  const user = await requireSession();
+  if (user.role !== "admin") throw new Error("Forbidden");
+  return user;
+});

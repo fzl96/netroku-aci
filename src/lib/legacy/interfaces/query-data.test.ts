@@ -1,0 +1,273 @@
+import { beforeEach, describe, expect, it, mock } from 'bun:test'
+import type { LegacyInterfaceListState } from './params'
+
+class AuthenticationRequiredError extends Error {}
+let authenticationError: unknown = null
+const requireSession = mock(async () => {
+  if (authenticationError) throw authenticationError
+  return { id: 'u1', userName: 'alice' }
+})
+
+const sample = {
+  id: 's1',
+  collectedAt: new Date('2026-01-02T00:00:00Z'),
+  adminSt: 'up',
+  operSt: 'down',
+  speed: '1000',
+  inputErrors: BigInt(10),
+  outputErrors: BigInt(2),
+  crcErrors: BigInt(7),
+  dInputErrors: BigInt(1),
+  dOutputErrors: null,
+  dCrcErrors: BigInt(4),
+}
+
+const storedSnapshot = {
+  id: 'i1',
+  deviceId: 'd1',
+  ifName: 'Gi1/0/1',
+  description: 'uplink',
+  ipAddress: '10.0.0.1',
+  prefixLength: 24,
+  mtu: 1500,
+  speed: '1000',
+  adminSt: 'up',
+  operSt: 'down',
+  present: true,
+  firstSeenAt: new Date('2026-01-01T00:00:00Z'),
+  lastSeenAt: new Date('2026-01-02T00:00:00Z'),
+  device: { id: 'd1', hostname: 'edge-1', site: 'hq', managementIp: '10.0.0.254' },
+  samples: [sample],
+  secret: 'omit-snapshot',
+}
+
+let findManyError: unknown = null
+let snapshotMissing = false
+const snapshotWhereCalls: unknown[] = []
+let extraSnapshots = 0
+const snapshotFindMany = mock(async (args: { where?: unknown }) => {
+  if (findManyError) throw findManyError
+  snapshotWhereCalls.push(args.where)
+  return [
+    storedSnapshot,
+    { ...storedSnapshot, id: 'i2', ifName: 'Gi1/0/2', samples: [] },
+    ...Array.from({ length: extraSnapshots }, (_, index) => ({
+      ...storedSnapshot,
+      id: `x${index}`,
+      hostname: 'edge-1',
+      ifName: `Gi2/0/${index}`,
+    })),
+  ]
+})
+const snapshotCount = mock(async (args?: { where?: { present?: boolean } }) => {
+  if (args?.where?.present === false) return 3
+  if (args?.where) return 2
+  return 9
+})
+const snapshotFindUnique = mock(async () => (snapshotMissing ? null : storedSnapshot))
+const sampleFindMany = mock(async (args: { select?: { interfaceId?: boolean } }) => {
+  if (findManyError) throw findManyError
+  // The CRC window read projects only the delta columns it sums.
+  if (args.select?.interfaceId) return [{ interfaceId: 'i1', dCrcErrors: BigInt(4) }]
+  return [sample]
+})
+const sampleCount = mock(async () => 5)
+const deviceFindMany = mock(async () => [
+  { id: 'd1', hostname: 'edge-1', site: 'hq' },
+  { id: 'd2', hostname: 'edge-2', site: 'dc1' },
+])
+const queryRaw = mock(async () => [{ interfaceId: 'i1' }])
+
+const cacheCalls: Array<{ key: string[]; options: { tags: string[]; revalidate: number } }> = []
+
+mock.module('server-only', () => ({}))
+mock.module('@/lib/auth', () => ({ AuthenticationRequiredError, requireSession }))
+mock.module('@/lib/prisma', () => ({ prisma: {
+  legacyInterfaceSnapshot: {
+    findMany: snapshotFindMany, count: snapshotCount, findUnique: snapshotFindUnique,
+  },
+  legacyInterfaceSample: { findMany: sampleFindMany, count: sampleCount },
+  legacyDevice: { findMany: deviceFindMany },
+  $queryRaw: queryRaw,
+} }))
+mock.module('next/cache', () => ({
+  unstable_cache: (fn: () => unknown, key: string[], options: { tags: string[]; revalidate: number }) => {
+    cacheCalls.push({ key, options }); return fn
+  },
+  revalidateTag: () => {},
+}))
+
+const query = await import('./query')
+
+const base: LegacyInterfaceListState = {
+  query: '', deviceIds: [], view: 'all', mode: 'delta', window: '7d',
+  sortKey: 'hostname', sortDirection: 'asc', page: 1, pageSize: 50,
+}
+
+beforeEach(() => {
+  authenticationError = null
+  findManyError = null
+  snapshotMissing = false
+  extraSnapshots = 0
+  snapshotWhereCalls.length = 0
+  cacheCalls.length = 0
+})
+
+describe('legacy interface authorization', () => {
+  it('maps an unauthenticated session to a purpose read error', async () => {
+    authenticationError = new AuthenticationRequiredError('nope')
+    await expect(query.getLegacyInterfaceResults(base))
+      .rejects.toBeInstanceOf(query.LegacyInterfaceReadError)
+    await expect(query.getLegacyInterfaceHistory('i1', { range: '24h' }))
+      .rejects.toBeInstanceOf(query.LegacyInterfaceReadError)
+  })
+
+  it('propagates unexpected authorization failures unchanged', async () => {
+    authenticationError = new Error('database on fire')
+    await expect(query.getLegacyInterfaceSummary()).rejects.toThrow('database on fire')
+  })
+
+  it('reports a failed read as a retryable purpose error', async () => {
+    findManyError = new Error('connection reset')
+    const error = await query.getLegacyInterfaceResults(base).catch((e: unknown) => e)
+    expect((error as { code: string }).code).toBe('read-failed')
+  })
+})
+
+describe('getLegacyInterfaceResults', () => {
+  it('flattens the device relation and the latest sample into a safe row shape', async () => {
+    const results = await query.getLegacyInterfaceResults(base)
+    expect(results.rows[0]).toEqual({
+      id: 'i1',
+      deviceId: 'd1',
+      hostname: 'edge-1',
+      site: 'hq',
+      managementIp: '10.0.0.254',
+      ifName: 'Gi1/0/1',
+      description: 'uplink',
+      ipAddress: '10.0.0.1',
+      prefixLength: 24,
+      mtu: 1500,
+      speed: '1000',
+      adminSt: 'up',
+      operSt: 'down',
+      present: true,
+      firstSeenAt: '2026-01-01T00:00:00.000Z',
+      lastSeenAt: '2026-01-02T00:00:00.000Z',
+      crcWindowTotal: null,
+      sample: {
+        id: 's1',
+        collectedAt: '2026-01-02T00:00:00.000Z',
+        adminSt: 'up',
+        operSt: 'down',
+        speed: '1000',
+        inputErrors: '10',
+        outputErrors: '2',
+        crcErrors: '7',
+        dInputErrors: '1',
+        dOutputErrors: null,
+        dCrcErrors: '4',
+      },
+    })
+    expect(results.rows[0]).not.toHaveProperty('secret')
+    expect(results.rows[0]).not.toHaveProperty('device')
+    expect(results.rows[0]).not.toHaveProperty('samples')
+  })
+
+  it('keeps a snapshot without samples as a row with no sample', async () => {
+    const results = await query.getLegacyInterfaceResults(base)
+    expect(results.rows).toHaveLength(2)
+    expect(results.rows[1].sample).toBeNull()
+  })
+
+  it('pages the sorted rows and reports the unpaged total', async () => {
+    extraSnapshots = 10
+    const results = await query.getLegacyInterfaceResults({ ...base, page: 2, pageSize: 10 })
+    expect(results.rows).toHaveLength(2)
+    expect(results.total).toBe(12)
+    expect(results.page).toBe(2)
+    expect(results.pageSize).toBe(10)
+  })
+
+  it('keys the cache by the filters that change the row set, not by sort or page', async () => {
+    await query.getLegacyInterfaceResults({
+      ...base, query: 'edge', deviceIds: ['d2', 'd1'],
+      sortKey: 'crcErrors', sortDirection: 'desc', mode: 'current', page: 4, pageSize: 10,
+    })
+    // Device order is a URL detail, not a different row set.
+    expect(cacheCalls.at(-1)?.key).toEqual([
+      'legacy-interfaces', 'rows', 'edge', 'd1,d2', 'all', '',
+    ])
+    expect(cacheCalls.at(-1)?.options).toEqual({
+      tags: ['legacy-interfaces:all'], revalidate: 28_800,
+    })
+  })
+
+  it('keys the window only for the views whose row set depends on it', async () => {
+    await query.getLegacyInterfaceResults({ ...base, window: '30d' })
+    expect(cacheCalls.at(-1)?.key.at(-1)).toBe('')
+    await query.getLegacyInterfaceResults({ ...base, view: 'crc', window: '30d' })
+    expect(cacheCalls.at(-1)?.key.at(-1)).toBe('30d')
+  })
+
+  it('restricts the crc view to interfaces whose window total increased', async () => {
+    const results = await query.getLegacyInterfaceResults({ ...base, view: 'crc' })
+    expect(snapshotWhereCalls.at(-1)).toMatchObject({
+      AND: expect.arrayContaining([{ id: { in: ['i1'] } }]),
+    })
+    expect(results.rows.find(row => row.id === 'i1')?.crcWindowTotal).toBe('4')
+  })
+
+  it('restricts the state-changed view to the ids the raw query reports', async () => {
+    await query.getLegacyInterfaceResults({ ...base, view: 'state-changed' })
+    expect(queryRaw).toHaveBeenCalled()
+    expect(snapshotWhereCalls.at(-1)).toMatchObject({
+      AND: expect.arrayContaining([{ id: { in: ['i1'] } }]),
+    })
+  })
+})
+
+describe('getLegacyInterfaceSummary', () => {
+  it('counts the interface lifecycle states', async () => {
+    expect(await query.getLegacyInterfaceSummary()).toEqual({
+      total: 9, down: 2, absent: 3, withHistory: 2,
+    })
+  })
+})
+
+describe('getLegacyInterfaceFilterOptions', () => {
+  it('lists the devices that can be filtered on', async () => {
+    expect(await query.getLegacyInterfaceFilterOptions()).toEqual({
+      devices: [
+        { id: 'd1', hostname: 'edge-1', site: 'hq' },
+        { id: 'd2', hostname: 'edge-2', site: 'dc1' },
+      ],
+    })
+  })
+})
+
+describe('getLegacyInterfaceHistory', () => {
+  it('returns chart points oldest-first alongside the paged samples', async () => {
+    const history = await query.getLegacyInterfaceHistory('i1', { range: '7d', page: 2 })
+    expect(history?.snapshot.id).toBe('i1')
+    expect(history?.snapshot.device).toEqual({
+      id: 'd1', hostname: 'edge-1', site: 'hq', managementIp: '10.0.0.254',
+    })
+    expect(history?.snapshot).not.toHaveProperty('samples')
+    expect(history?.range).toBe('7d')
+    expect(history?.page).toBe(2)
+    expect(history?.total).toBe(5)
+    expect(history?.pageSize).toBe(25)
+    expect(history?.samples[0].dCrcErrors).toBe('4')
+  })
+
+  it('clamps non-positive page numbers', async () => {
+    expect((await query.getLegacyInterfaceHistory('i1', { range: '24h', page: 0 }))?.page).toBe(1)
+  })
+
+  it('reports a missing interface and a blank id as absent rather than throwing', async () => {
+    snapshotMissing = true
+    expect(await query.getLegacyInterfaceHistory('missing', { range: '24h' })).toBeNull()
+    expect(await query.getLegacyInterfaceHistory('', { range: '24h' })).toBeNull()
+  })
+})
