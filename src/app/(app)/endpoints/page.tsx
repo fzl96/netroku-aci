@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { EndpointsView } from '@/components/endpoints/endpoints-view'
+import { EndpointsShell } from '@/components/endpoints/endpoints-shell'
 import { parseEndpointPageParams, type RawEndpointPageParams } from '@/lib/endpoints/params'
 
 export const metadata: Metadata = {
@@ -12,5 +12,5 @@ export default function EndpointsPage({
 }: {
   searchParams: Promise<RawEndpointPageParams>
 }) {
-  return <EndpointsView paramsPromise={searchParams.then(parseEndpointPageParams)} />
+  return <EndpointsShell paramsPromise={searchParams.then(parseEndpointPageParams)} />
 }

@@ -75,6 +75,21 @@ export type EndpointResultsData =
       pagination: EndpointPagination
     }
 
+export type EndpointLoadState<T> =
+  { kind: 'ready'; data: T } | { kind: 'inactive' } | { kind: 'unauthorized' }
+
+export type EndpointOverviewPayload = {
+  params: EndpointPageParams
+  hosts: EndpointHostOption[]
+  overview: EndpointOverviewData
+  filteredTotal: number
+}
+
+export type EndpointResultsPayload = {
+  params: EndpointPageParams
+  results: EndpointResultsData
+}
+
 export type EndpointExportSelection = {
   hostId: string
   scope: 'all' | 'filtered'
