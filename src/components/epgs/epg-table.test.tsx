@@ -1,10 +1,12 @@
 import { describe, expect, it, mock } from 'bun:test'
+import * as navigation from 'next/navigation'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { EpgPageParams } from '@/lib/epgs/params'
 import type { EpgResultsData, EpgRow } from '@/lib/epgs/query'
 import type { EpgPortSummary } from '@/lib/epgs/sort'
 
 mock.module('next/navigation', () => ({
+  ...navigation,
   useRouter: () => ({ replace: () => {} }),
 }))
 
