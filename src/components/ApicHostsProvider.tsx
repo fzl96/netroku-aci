@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, type ReactNode } from 'react'
-import type { SafeApicHost } from '@/actions/apic-hosts'
+import type { SafeApicHost } from '@/lib/apic-hosts/query'
 
 const ApicHostsContext = createContext<SafeApicHost[] | null>(null)
 

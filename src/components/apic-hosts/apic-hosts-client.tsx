@@ -10,12 +10,8 @@ import {
   IconTrash,
 } from '@tabler/icons-react'
 
-import {
-  createApicHost,
-  updateApicHost,
-  deleteApicHost,
-  type SafeApicHost,
-} from '@/actions/apic-hosts'
+import { createApicHost, updateApicHost, deleteApicHost } from '@/lib/apic-hosts/actions'
+import type { SafeApicHost } from '@/lib/apic-hosts/query'
 import { apicHostSchema, apicHostUpdateSchema, type ApicHostFormValues, type ApicHostUpdateFormValues } from '@/lib/schemas/apic-host'
 
 import {

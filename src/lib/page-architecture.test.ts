@@ -117,6 +117,15 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
     obsoletePaths: ['src/actions/legacy-interfaces.ts'],
   },
   {
+    name: 'apic-hosts',
+    routes: [{
+      root: 'src/app/(app)/apic-hosts',
+      allowedFiles: ['page.tsx'],
+    }],
+    entryRoots: ['src/components/apic-hosts'],
+    obsoletePaths: ['src/actions/apic-hosts.ts'],
+  },
+  {
     name: 'inventory',
     routes: [
       {

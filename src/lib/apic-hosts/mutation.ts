@@ -14,14 +14,9 @@ import {
   type ApicHostFormValues,
   type ApicHostUpdateFormValues,
 } from '@/lib/schemas/apic-host'
+import { toSafeApicHost, type SafeApicHost } from './query'
 
-export type SafeApicHost = {
-  id: string
-  name: string
-  host: string
-  createdAt: Date
-  updatedAt: Date
-}
+export type { SafeApicHost }
 
 export type ApicHostActionResult<T> =
   | { success: true; data: T }
@@ -50,16 +45,6 @@ export type ApicHostMutationDependencies = {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Unknown error'
-}
-
-function toSafeApicHost(host: SafeApicHost): SafeApicHost {
-  return {
-    id: host.id,
-    name: host.name,
-    host: host.host,
-    createdAt: host.createdAt,
-    updatedAt: host.updatedAt,
-  }
 }
 
 export function invalidateApicHostReads(): void {
