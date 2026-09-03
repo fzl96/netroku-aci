@@ -144,6 +144,14 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
     obsoletePaths: ['src/actions/users.ts'],
   },
   {
+    name: 'settings',
+    routes: [{
+      root: 'src/app/(app)/settings',
+      allowedFiles: ['page.tsx'],
+    }],
+    entryRoots: ['src/components/settings'],
+  },
+  {
     name: 'inventory',
     routes: [
       {
