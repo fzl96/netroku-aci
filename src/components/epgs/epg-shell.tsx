@@ -76,9 +76,7 @@ export function EpgShell({
       </header>
       <main className="space-y-4 px-4 py-4 md:px-8 md:py-6">
         <EpgToolbarClient />
-        <Suspense fallback={null}>
-          <EpgBody paramsPromise={paramsPromise} hostPromise={hostPromise} />
-        </Suspense>
+        <EpgBody paramsPromise={paramsPromise} hostPromise={hostPromise} />
       </main>
     </div>
   )

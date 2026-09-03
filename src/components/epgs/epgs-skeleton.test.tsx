@@ -13,12 +13,12 @@ describe('EPG streaming shell', () => {
     )
   })
 
-  it('keeps the route adapter synchronous and nests a view-aware result fallback in the shell', () => {
+  it('keeps the route adapter synchronous and nests fallbacks around data regions only', () => {
     const source = readFileSync(
       path.join(process.cwd(), 'src/components/epgs/epg-shell.tsx'),
       'utf8',
     )
-    expect(source.match(/<Suspense/g)).toHaveLength(4)
+    expect(source.match(/<Suspense/g)).toHaveLength(3)
     expect(source).toContain('export function EpgShell')
     expect(source).toContain('EpgReadError')
     expect(source).toContain('<EpgRegionError region="overview" />')
@@ -51,14 +51,15 @@ describe('EPG streaming shell', () => {
     expect(viewSource).not.toContain('<EpgsClient')
   })
 
-  it('renders the static toolbar before the host-dependent body boundary', () => {
+  it('renders the static toolbar before the host-dependent body without hiding the whole body', () => {
     const source = readFileSync(
       path.join(process.cwd(), 'src/components/epgs/epg-shell.tsx'),
       'utf8',
     )
     const mainSource = source.slice(source.indexOf('<main'), source.indexOf('</main>'))
     expect(mainSource.indexOf('<EpgToolbarClient')).toBeGreaterThanOrEqual(0)
-    expect(mainSource.indexOf('<EpgToolbarClient')).toBeLessThan(mainSource.indexOf('<Suspense'))
+    expect(mainSource.indexOf('<EpgToolbarClient')).toBeLessThan(mainSource.indexOf('<EpgBody'))
+    expect(mainSource).not.toContain('<Suspense')
   })
 
   it('removes the obsolete page-wide client wrapper', () => {

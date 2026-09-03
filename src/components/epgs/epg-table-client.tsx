@@ -29,11 +29,12 @@ export function EpgTableClient({
             </tr>
           </thead>
           <tbody>
-            {results.rows.map((row) => (
+            {results.rows.map((row, index) => (
               <tr
                 key={row.id}
                 onClick={() => onEpgSelect(row.id)}
-                className="cursor-pointer border-b border-border-faint hover:bg-muted"
+                className="animate-fade-up cursor-pointer border-b border-border-faint hover:bg-muted"
+                style={{ animationDelay: `${Math.min(index * 20, 200)}ms` }}
               >
                 <td className="border-l-2 border-l-transparent px-4 py-2.5 font-mono font-medium">
                   {row.name}
@@ -65,11 +66,12 @@ export function EpgTableClient({
             </tr>
           </thead>
           <tbody>
-            {results.rows.map((row) => (
+            {results.rows.map((row, index) => (
               <tr
                 key={row.id}
                 onClick={() => onPortSelect(row)}
-                className="cursor-pointer border-b border-border-faint hover:bg-muted"
+                className="animate-fade-up cursor-pointer border-b border-border-faint hover:bg-muted"
+                style={{ animationDelay: `${Math.min(index * 20, 200)}ms` }}
               >
                 <td className="px-4 py-2.5 font-medium">{row.node}</td>
                 <td className="px-4 py-2.5 font-mono text-muted-foreground">{row.port}</td>
