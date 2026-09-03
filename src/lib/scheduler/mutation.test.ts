@@ -55,6 +55,7 @@ const resyncSchedule = {
     return schedule
   }),
   findUnique: mock(async () => ({ ...schedule, apicHost: host })),
+  deleteMany: mock(async () => ({ count: 1 })),
   update: mock(async ({ data, include }: {
     data: Partial<ScheduleRow>
     include?: { apicHost?: boolean }
@@ -83,7 +84,7 @@ const tx = {
           }]
         : []
     }
-    throw new Error('Unexpected query in schedule action test')
+    throw new Error('Unexpected query in schedule mutation test')
   }),
 }
 const prisma = {
@@ -94,11 +95,15 @@ const prisma = {
   }),
 }
 
-mock.module('@/lib/auth', () => ({
-  getSession: async () => ({
-    user: { id: 'admin-1', role: 'admin', username: 'admin', name: 'Admin' },
-  }),
-}))
+class AuthenticationRequiredError extends Error {}
+let authError: unknown = null
+const requireAdmin = mock(async () => {
+  if (authError) throw authError
+  return { id: 'admin-1', role: 'admin', userName: 'admin' }
+})
+
+mock.module('server-only', () => ({}))
+mock.module('@/lib/auth', () => ({ AuthenticationRequiredError, requireAdmin }))
 mock.module('@/lib/prisma', () => ({ prisma }))
 mock.module('@/lib/audit', () => ({ recordAudit: async () => undefined }))
 mock.module('@/lib/crypto', () => ({
@@ -107,12 +112,13 @@ mock.module('@/lib/crypto', () => ({
 }))
 
 const {
-  refreshResyncSchedules,
-  runResyncScheduleNow,
-  upsertResyncSchedule,
-} = await import('./resync-schedules')
+  deleteResyncScheduleRecord,
+  runResyncScheduleNowRecord,
+  upsertResyncScheduleRecord,
+} = await import('./mutation')
 
 beforeEach(() => {
+  authError = null
   transactionCalls = 0
   schedule = {
     id: 'schedule-1',
@@ -134,55 +140,61 @@ beforeEach(() => {
 
 afterAll(() => mock.restore())
 
-describe('upsertResyncSchedule timing', () => {
+describe('scheduler mutation authorization', () => {
+  it('requires the admin role, not just a session', async () => {
+    authError = new Error('Forbidden')
+    await expect(upsertResyncScheduleRecord(host.id, {
+      enabled: true, intervalMinutes: 60, username: 'svc-apic',
+      password: undefined,
+    })).rejects.toThrow('Forbidden')
+  })
+})
+
+describe('upsertResyncScheduleRecord timing', () => {
   it('serializes schedule reads and edits in one transaction', async () => {
-    const result = await upsertResyncSchedule(host.id, {
+    const result = await upsertResyncScheduleRecord(host.id, {
       enabled: true,
       intervalMinutes: 240,
       username: 'svc-apic',
+      password: undefined,
     })
 
-    expect(result).toEqual(expect.objectContaining({ success: true }))
+    expect(result.intervalMinutes).toBe(240)
     expect(transactionCalls).toBe(1)
   })
 
   it('recomputes Next Run when changing an existing interval from 1h to 4h', async () => {
-    const result = await upsertResyncSchedule(host.id, {
+    const result = await upsertResyncScheduleRecord(host.id, {
       enabled: true,
       intervalMinutes: 240,
       username: 'svc-apic',
+      password: undefined,
     })
 
-    expect(result).toEqual(expect.objectContaining({ success: true }))
-    if (!result.success) return
-    expect(result.data.intervalMinutes).toBe(240)
-    expect(result.data.nextRunAt?.toISOString()).toBe('2099-08-17T16:00:00.000Z')
+    expect(result.nextRunAt?.toISOString()).toBe('2099-08-17T16:00:00.000Z')
     expect(schedule.nextRunAt?.toISOString()).toBe('2099-08-17T16:00:00.000Z')
   })
 
   it('preserves Next Run when only credentials change', async () => {
-    const result = await upsertResyncSchedule(host.id, {
+    const result = await upsertResyncScheduleRecord(host.id, {
       enabled: true,
       intervalMinutes: 60,
       username: 'new-user',
       password: 'new-password',
     })
 
-    expect(result).toEqual(expect.objectContaining({ success: true }))
-    if (!result.success) return
-    expect(result.data.nextRunAt).toEqual(OLD_NEXT_RUN)
+    expect(result.nextRunAt).toEqual(OLD_NEXT_RUN)
   })
 
   it('clears Next Run when disabling', async () => {
-    const result = await upsertResyncSchedule(host.id, {
+    const result = await upsertResyncScheduleRecord(host.id, {
       enabled: false,
       intervalMinutes: 60,
       username: 'svc-apic',
+      password: undefined,
     })
 
-    expect(result).toEqual(expect.objectContaining({ success: true }))
-    if (!result.success) return
-    expect(result.data.nextRunAt).toBeNull()
+    expect(result.nextRunAt).toBeNull()
   })
 
   it('queues immediately when re-enabling', async () => {
@@ -190,65 +202,51 @@ describe('upsertResyncSchedule timing', () => {
     schedule.nextRunAt = null
     const before = Date.now()
 
-    const result = await upsertResyncSchedule(host.id, {
+    const result = await upsertResyncScheduleRecord(host.id, {
       enabled: true,
       intervalMinutes: 60,
       username: 'svc-apic',
+      password: undefined,
     })
     const after = Date.now()
 
-    expect(result).toEqual(expect.objectContaining({ success: true }))
-    if (!result.success) return
-    expect(result.data.nextRunAt?.getTime()).toBeGreaterThanOrEqual(before)
-    expect(result.data.nextRunAt?.getTime()).toBeLessThanOrEqual(after)
+    expect(result.nextRunAt?.getTime()).toBeGreaterThanOrEqual(before)
+    expect(result.nextRunAt?.getTime()).toBeLessThanOrEqual(after)
   })
 })
 
-describe('scheduler refresh actions', () => {
+describe('runResyncScheduleNowRecord', () => {
   it('returns authoritative queued state from Run now', async () => {
     const before = Date.now()
 
-    const result = await runResyncScheduleNow(host.id)
+    const result = await runResyncScheduleNowRecord(host.id)
     const after = Date.now()
 
-    expect(result).toEqual(expect.objectContaining({ success: true }))
-    if (!result.success) return
-    expect(result.data.apicHostId).toBe(host.id)
-    expect(result.data.lastRunAt).toEqual(LAST_RUN)
-    expect(result.data.nextRunAt?.getTime()).toBeGreaterThanOrEqual(before)
-    expect(result.data.nextRunAt?.getTime()).toBeLessThanOrEqual(after)
+    expect(result.apicHostId).toBe(host.id)
+    expect(result.lastRunAt).toEqual(LAST_RUN)
+    expect(result.nextRunAt?.getTime()).toBeGreaterThanOrEqual(before)
+    expect(result.nextRunAt?.getTime()).toBeLessThanOrEqual(after)
     expect(transactionCalls).toBe(1)
   })
 
   it('does not queue a disabled or already-running schedule', async () => {
     schedule.enabled = false
-    const disabled = await runResyncScheduleNow(host.id)
-
-    expect(disabled).toEqual({ success: false, error: 'Schedule is disabled' })
+    await expect(runResyncScheduleNowRecord(host.id)).rejects.toThrow('Schedule is disabled')
     expect(schedule.nextRunAt).toEqual(OLD_NEXT_RUN)
     expect(transactionCalls).toBe(1)
 
     transactionCalls = 0
     schedule.enabled = true
     schedule.runningAt = new Date('2099-08-17T12:30:00.000Z')
-    const running = await runResyncScheduleNow(host.id)
-
-    expect(running).toEqual({ success: false, error: 'A run is already in progress' })
+    await expect(runResyncScheduleNowRecord(host.id)).rejects.toThrow('A run is already in progress')
     expect(schedule.nextRunAt).toEqual(OLD_NEXT_RUN)
     expect(transactionCalls).toBe(1)
   })
+})
 
-  it('returns a fresh safe snapshot for polling', async () => {
-    const result = await refreshResyncSchedules()
-
-    expect(result).toEqual(expect.objectContaining({ success: true }))
-    if (!result.success) return
-    expect(result.data).toHaveLength(1)
-    expect(result.data[0]).toEqual(expect.objectContaining({
-      apicHostId: host.id,
-      intervalMinutes: 60,
-      lastRunAt: LAST_RUN,
-      nextRunAt: OLD_NEXT_RUN,
-    }))
+describe('deleteResyncScheduleRecord', () => {
+  it('reports a missing schedule rather than a Prisma error', async () => {
+    resyncSchedule.deleteMany.mockImplementationOnce(async () => ({ count: 0 }))
+    await expect(deleteResyncScheduleRecord(host.id)).rejects.toThrow('No schedule for this host')
   })
 })

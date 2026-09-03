@@ -126,6 +126,15 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
     obsoletePaths: ['src/actions/apic-hosts.ts'],
   },
   {
+    name: 'scheduler',
+    routes: [{
+      root: 'src/app/(app)/scheduler',
+      allowedFiles: ['page.tsx'],
+    }],
+    entryRoots: ['src/components/scheduler'],
+    obsoletePaths: ['src/actions/resync-schedules.ts'],
+  },
+  {
     name: 'inventory',
     routes: [
       {
