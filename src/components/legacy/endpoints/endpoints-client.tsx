@@ -4,8 +4,8 @@ import { type FormEvent, useState } from 'react'
 import { IconDevices, IconSearch } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { DataCard, DataCardBody, DataCardHeader, DataCardRow, DataCardTitle } from '@/components/ui/data-card'
-import { LegacyEmptyState } from '@/components/legacy/LegacyEmptyState'
-import { LegacyPagination } from '@/components/legacy/LegacyPagination'
+import { LegacyEmptyState } from '@/components/legacy/legacy-empty-state'
+import { LegacyPagination } from '@/components/legacy/legacy-pagination'
 import { DENSE_TABLE_HEAD_CLS, SEARCH_INPUT_CLS } from '@/lib/ui-classes'
 import {
   buildLegacyEndpointPageUrl,

@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { LegacyPageShell } from '@/components/legacy/LegacyPageShell'
+import { LegacyPageShell } from '@/components/legacy/legacy-page-shell'
 import type { LegacyDevicePageParams } from '@/lib/legacy/devices/params'
 import { LegacyDeviceFilters } from './device-filters'
 import { LegacyDeviceResults } from './device-results'

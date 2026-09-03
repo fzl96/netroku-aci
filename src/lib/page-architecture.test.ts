@@ -25,7 +25,7 @@ type ArchitectureFile = {
 
 type ArchitectureViolation = {
   path: string
-  rule: 'direct-prisma' | 'page-action' | 'page-session' | 'route-loading' | 'route-implementation'
+  rule: 'direct-prisma' | 'page-action' | 'page-session' | 'page-data-layer' | 'route-loading' | 'route-implementation'
 }
 
 type MigratedPurpose = {
@@ -131,7 +131,7 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
       root: 'src/app/(app)/scheduler',
       allowedFiles: ['page.tsx'],
     }],
-    entryRoots: ['src/components/scheduler'],
+    entryRoots: ['src/app/api/scheduler', 'src/components/scheduler'],
     obsoletePaths: ['src/actions/resync-schedules.ts'],
   },
   {
@@ -203,6 +203,12 @@ function inspectArchitectureFiles(
     if (basename === 'page.tsx' && file.source.includes('getSession')) {
       violations.push({ path: file.path, rule: 'page-session' })
     }
+    if (
+      basename === 'page.tsx'
+      && /from\s+['"]@\/lib\/(?:auth['"]|[^'"]+\/(?:query|mutation|actions|polling(?:-client)?)['"])/.test(file.source)
+    ) {
+      violations.push({ path: file.path, rule: 'page-data-layer' })
+    }
     if (file.routeImplementation && basename === 'loading.tsx') {
       violations.push({ path: file.path, rule: 'route-loading' })
     }
@@ -249,11 +255,19 @@ function collectTypeScriptFiles(
 }
 
 describe('page data architecture guard', () => {
+  it('keeps migrated shared component filenames in kebab-case', () => {
+    const migratedSharedRoots = ['src/components/inventory', 'src/components/legacy']
+    const files = migratedSharedRoots.flatMap(root => collectTypeScriptFiles(root, false))
+
+    expect(files.filter(file => !/^[a-z0-9]+(?:-[a-z0-9]+)*(?:\.test)?\.tsx?$/.test(path.basename(file.path))))
+      .toEqual([])
+  })
+
   it('detects forbidden entry-point dependencies and route implementation files', () => {
     const files: ArchitectureFile[] = [
       {
         path: 'src/app/(app)/example/page.tsx',
-        source: "import { prisma } from '@/lib/prisma'\nimport { read } from '@/actions/example'\ngetSession()",
+        source: "import { prisma } from '@/lib/prisma'\nimport { read } from '@/actions/example'\nimport { getExample } from '@/lib/example/query'\ngetSession()",
         routeImplementation: true,
         routeRelativePath: 'page.tsx',
       },
@@ -275,6 +289,7 @@ describe('page data architecture guard', () => {
       { path: 'src/app/(app)/example/page.tsx', rule: 'direct-prisma' },
       { path: 'src/app/(app)/example/page.tsx', rule: 'page-action' },
       { path: 'src/app/(app)/example/page.tsx', rule: 'page-session' },
+      { path: 'src/app/(app)/example/page.tsx', rule: 'page-data-layer' },
       { path: 'src/app/(app)/example/loading.tsx', rule: 'route-loading' },
       { path: 'src/app/(app)/example/example-client.tsx', rule: 'route-implementation' },
     ])

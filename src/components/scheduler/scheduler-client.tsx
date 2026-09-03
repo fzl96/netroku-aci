@@ -14,7 +14,7 @@ import {
   runResyncScheduleNow,
   upsertResyncSchedule,
 } from '@/lib/scheduler/actions'
-import { refreshResyncSchedules } from '@/lib/scheduler/polling'
+import { refreshResyncSchedules } from '@/lib/scheduler/polling-client'
 import { UNREADABLE_USERNAME, type SafeResyncSchedule } from '@/lib/apic/schedule-view'
 import { startSchedulePolling } from '@/lib/apic/schedule-polling'
 import { INTERVAL_MAX_MINUTES, INTERVAL_MIN_MINUTES } from '@/lib/apic/schedule-timing'

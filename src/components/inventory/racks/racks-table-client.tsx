@@ -44,15 +44,15 @@ import { clearDevicePlacement, updateDeviceHeight, updateDevicePlacement } from 
 import type { DeviceCatalogEntry } from '@/lib/inventory/devices/query'
 import { siteSchema, type SiteFormValues } from '@/lib/schemas/site'
 import { rackSchema, type RackFormValues } from '@/lib/schemas/rack'
-import { SiteForm } from '@/components/inventory/SiteForm'
-import { RackForm } from '@/components/inventory/RackForm'
+import { SiteForm } from '@/components/inventory/site-form'
+import { RackForm } from '@/components/inventory/rack-form'
 import { FooterCancel, FooterSubmit } from '@/components/inventory/dialog-footer-buttons'
 import {
   RackVisualization,
   type DragPayload,
   type HoverTarget,
   type RackItem,
-} from '@/components/inventory/RackVisualization'
+} from '@/components/inventory/rack-visualization'
 import { canPlaceDevice, type PlaceableDevice } from '@/lib/inventory/rack-placement'
 
 export function RacksTableClient({

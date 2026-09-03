@@ -20,9 +20,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { LegacyEmptyState } from '@/components/legacy/LegacyEmptyState'
-import { LegacyPageShell } from '@/components/legacy/LegacyPageShell'
-import { LegacyPagination } from '@/components/legacy/LegacyPagination'
+import { LegacyEmptyState } from '@/components/legacy/legacy-empty-state'
+import { LegacyPageShell } from '@/components/legacy/legacy-page-shell'
+import { LegacyPagination } from '@/components/legacy/legacy-pagination'
 import { normalizeLegacyInterfaceState } from '@/lib/legacy/interfaces/filters'
 import {
   buildLegacyInterfaceUrl,

@@ -1,4 +1,4 @@
-// src/components/inventory/RackVisualization.tsx
+// src/components/inventory/rack-visualization.tsx
 'use client'
 
 import * as React from 'react'

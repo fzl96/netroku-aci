@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { LegacyPageShell } from '@/components/legacy/LegacyPageShell'
+import { LegacyPageShell } from '@/components/legacy/legacy-page-shell'
 import type { LegacyHealthPageParams } from '@/lib/legacy/health/params'
 import { LegacyHealthFilters } from './health-filters'
 import { LegacyHealthResults } from './health-results'

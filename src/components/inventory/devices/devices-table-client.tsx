@@ -17,7 +17,7 @@ import {
   type DeviceUpdateFormValues,
 } from '@/lib/schemas/device'
 import { buildDeviceListUrl, buildDeviceSearchUrl } from '@/lib/inventory/devices/params'
-import { DeviceForm } from '@/components/inventory/DeviceForm'
+import { DeviceForm } from '@/components/inventory/device-form'
 import { FooterCancel, FooterSubmit } from '@/components/inventory/dialog-footer-buttons'
 
 import {

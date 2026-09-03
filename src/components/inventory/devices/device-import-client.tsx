@@ -5,7 +5,6 @@ import Link from 'next/link'
 import Papa from 'papaparse'
 import { toast } from 'sonner'
 import {
-  IconArrowLeft,
   IconDownload,
   IconUpload,
   IconCheck,
@@ -151,33 +150,12 @@ export function DeviceImportClient() {
   }) ?? []
 
   return (
-    <div className="flex-1 space-y-6 p-8 max-w-7xl mx-auto">
-      {/* Header Bar */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Link
-              href="/inventory/devices"
-              className="text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1 text-xs"
-            >
-              <IconArrowLeft className="h-3.5 w-3.5" />
-              <span>Back to Devices</span>
-            </Link>
-          </div>
-          <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
-            Import Devices from CSV
-          </h1>
-          <p className="text-xs text-subtle">
-            Bulk register new hardware, update existing devices via serial number, and assign rack and stack placements.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={downloadTemplate} className="gap-1.5 text-xs">
-            <IconDownload className="h-4 w-4 text-muted-foreground" />
-            Download Sample CSV
-          </Button>
-        </div>
+    <div className="space-y-6">
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={downloadTemplate} className="gap-1.5 text-xs">
+          <IconDownload className="h-4 w-4 text-muted-foreground" />
+          Download Sample CSV
+        </Button>
       </div>
 
       {/* STAGE 1: UPLOAD */}

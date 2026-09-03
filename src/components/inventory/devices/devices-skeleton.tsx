@@ -41,3 +41,19 @@ export function DevicesResultsSkeleton() {
     </div>
   )
 }
+
+export function DeviceImportContentSkeleton() {
+  return (
+    <div className="space-y-6" aria-busy="true" aria-label="Loading device import">
+      <div className="flex justify-end">
+        <div className="h-8 w-44 animate-pulse rounded-lg bg-muted" />
+      </div>
+      <div className="h-56 animate-pulse rounded-xl border border-dashed border-border bg-muted/30" />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, card) => (
+          <div key={card} className="h-24 animate-pulse rounded-xl border border-border bg-muted/40" />
+        ))}
+      </div>
+    </div>
+  )
+}

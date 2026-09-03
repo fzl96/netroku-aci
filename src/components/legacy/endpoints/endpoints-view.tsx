@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { LegacyPageShell } from '@/components/legacy/LegacyPageShell'
+import { LegacyPageShell } from '@/components/legacy/legacy-page-shell'
 import type { LegacyEndpointPageParams } from '@/lib/legacy/endpoints/params'
 import { LegacyEndpointFilters } from './endpoint-filters'
 import { LegacyEndpointResults } from './endpoint-results'

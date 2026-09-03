@@ -241,6 +241,9 @@ The project does not enable global Cache Components. Use scoped `unstable_cache`
 - return serialized, purpose-safe data rather than Prisma records
 - default synchronized monitoring reads to an eight-hour safety lifetime, `28_800` seconds
 - keep explicitly live behavior uncached, such as Scheduler background polling
+- keep Legacy health/interface drawer histories uncached: they are on-demand,
+  high-cardinality time-series reads where always-fresh data is more useful than
+  caching every entity/range/page combination
 - never cache secrets, session objects, user-specific authorization, request headers, or cookies
 
 ### Tag hierarchy
@@ -260,11 +263,13 @@ nodes:host:<apicHostId>
 epgs:all
 epgs:host:<apicHostId>
 
-inventory:devices
-inventory:device:<deviceId>
-inventory:rack:<rackId>
-inventory:site:<siteId>
+inventory:all
 ```
+
+Inventory deliberately uses one purpose-wide tag. Its sites, racks, and devices
+embed each other's display fields, and its writes are infrequent; broad expiry is
+safer than maintaining a cross-entity invalidation matrix. Introduce narrower
+tags only when measured cache churn makes that additional interface worthwhile.
 
 Dashboard regions use the tags of the datasets they consume. An endpoint resync must evict endpoint-dependent Dashboard data without evicting unrelated interface or node regions.
 
