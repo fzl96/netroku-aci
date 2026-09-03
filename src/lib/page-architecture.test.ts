@@ -56,6 +56,7 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
       },
     ],
     entryRoots: ['src/app/api/endpoints', 'src/components/endpoints'],
+    obsoletePaths: ['src/components/endpoints/endpoints-view.tsx'],
   },
   {
     name: 'epgs',
@@ -76,7 +77,7 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
       },
     ],
     entryRoots: ['src/app/api/nodes', 'src/components/nodes'],
-    obsoletePaths: ['src/actions/nodes.ts'],
+    obsoletePaths: ['src/actions/nodes.ts', 'src/components/nodes/nodes-view.tsx'],
   },
   {
     name: 'dashboard',
@@ -87,6 +88,7 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
       },
     ],
     entryRoots: ['src/components/dashboard'],
+    obsoletePaths: ['src/components/dashboard/dashboard-view.tsx'],
   },
   {
     name: 'history',
@@ -97,6 +99,7 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
       },
     ],
     entryRoots: ['src/components/history'],
+    obsoletePaths: ['src/components/history/history-view.tsx'],
   },
   {
     name: 'legacy-devices',
@@ -107,6 +110,7 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
       },
     ],
     entryRoots: ['src/components/legacy/devices'],
+    obsoletePaths: ['src/components/legacy/devices/devices-view.tsx'],
   },
   {
     name: 'legacy-endpoints',
@@ -117,6 +121,7 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
       },
     ],
     entryRoots: ['src/components/legacy/endpoints'],
+    obsoletePaths: ['src/components/legacy/endpoints/endpoints-view.tsx'],
   },
   {
     name: 'legacy-health',
@@ -127,7 +132,7 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
       },
     ],
     entryRoots: ['src/app/api/legacy/health', 'src/components/legacy/health'],
-    obsoletePaths: ['src/actions/legacy-health.ts'],
+    obsoletePaths: ['src/actions/legacy-health.ts', 'src/components/legacy/health/health-view.tsx'],
   },
   {
     name: 'legacy-interfaces',
@@ -138,7 +143,10 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
       },
     ],
     entryRoots: ['src/app/api/legacy/interfaces', 'src/components/legacy/interfaces'],
-    obsoletePaths: ['src/actions/legacy-interfaces.ts'],
+    obsoletePaths: [
+      'src/actions/legacy-interfaces.ts',
+      'src/components/legacy/interfaces/interfaces-view.tsx',
+    ],
   },
   {
     name: 'apic-hosts',
@@ -149,7 +157,7 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
       },
     ],
     entryRoots: ['src/components/apic-hosts'],
-    obsoletePaths: ['src/actions/apic-hosts.ts'],
+    obsoletePaths: ['src/actions/apic-hosts.ts', 'src/components/apic-hosts/apic-hosts-view.tsx'],
   },
   {
     name: 'scheduler',
@@ -160,7 +168,10 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
       },
     ],
     entryRoots: ['src/app/api/scheduler', 'src/components/scheduler'],
-    obsoletePaths: ['src/actions/resync-schedules.ts'],
+    obsoletePaths: [
+      'src/actions/resync-schedules.ts',
+      'src/components/scheduler/scheduler-view.tsx',
+    ],
   },
   {
     name: 'users',
@@ -171,7 +182,7 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
       },
     ],
     entryRoots: ['src/components/users'],
-    obsoletePaths: ['src/actions/users.ts'],
+    obsoletePaths: ['src/actions/users.ts', 'src/components/users/users-view.tsx'],
   },
   {
     name: 'settings',
@@ -182,6 +193,7 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
       },
     ],
     entryRoots: ['src/components/settings'],
+    obsoletePaths: ['src/components/settings/settings-view.tsx'],
   },
   {
     name: 'inventory',
@@ -201,6 +213,10 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
       'src/actions/inventory/racks.ts',
       'src/actions/inventory/sites.ts',
       'src/actions/inventory/import.ts',
+      'src/components/inventory/devices/devices-view.tsx',
+      'src/components/inventory/devices/device-detail-view.tsx',
+      'src/components/inventory/devices/device-import-view.tsx',
+      'src/components/inventory/racks/racks-view.tsx',
     ],
   },
   {
@@ -212,6 +228,7 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
       },
     ],
     entryRoots: ['src/app/api/interfaces', 'src/components/interface-health'],
+    obsoletePaths: ['src/components/interface-health/interface-health-view.tsx'],
   },
 ]
 
