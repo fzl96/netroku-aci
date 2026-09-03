@@ -20,3 +20,5 @@ next-env.d.ts
 .superpowers/
 .worktrees/
 .code-review-graph/
+AGENTS.md
+.github/instructions/
