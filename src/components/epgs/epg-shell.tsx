@@ -1,7 +1,16 @@
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import type { EpgPageParams } from '@/lib/epgs/params'
-import { EpgReadError, type EpgHostResolution } from '@/lib/epgs/query'
+import {
+  EpgReadError,
+  getEpgOverview,
+  getEpgResults,
+  resolveEpgHost,
+  type EpgHostResolution,
+  type EpgLoadState,
+  type EpgOverviewPayload,
+  type EpgResultsPayload,
+} from '@/lib/epgs/query'
 import { EpgFilters } from './epg-filters'
 import { EpgHeaderActions } from './epg-header-actions'
 import { EpgRegionError } from './epg-region-error'
@@ -10,55 +19,100 @@ import { EpgFilterSkeleton, EpgHeaderActionsSkeleton, EpgResultsSkeleton } from 
 import { EpgToolbarClient } from './epg-toolbar-client'
 import { NoEpgHost } from './epg-empty-state'
 
-async function EpgResultsFallback({ paramsPromise }: { paramsPromise: Promise<EpgPageParams> }) {
-  const params = await paramsPromise
-  return <EpgResultsSkeleton view={params.view} />
-}
+type EpgPageContext =
+  | {
+      kind: 'ready'
+      params: EpgPageParams
+      resolution: Extract<EpgHostResolution, { kind: 'selected' }>
+    }
+  | { kind: 'redirect'; location: string }
+  | { kind: 'empty' }
+  | { kind: 'unauthorized' }
 
-async function EpgBody({
-  paramsPromise,
-  hostPromise,
-}: {
-  paramsPromise: Promise<EpgPageParams>
-  hostPromise: Promise<EpgHostResolution>
-}) {
-  let params: EpgPageParams
-  let resolution: EpgHostResolution
+async function resolvePageContext(paramsPromise: Promise<EpgPageParams>): Promise<EpgPageContext> {
   try {
-    ;[params, resolution] = await Promise.all([paramsPromise, hostPromise])
+    const params = await paramsPromise
+    const resolution = await resolveEpgHost(params.hostId)
+    if (resolution.kind === 'redirect') {
+      return { kind: 'redirect', location: resolution.location }
+    }
+    if (resolution.kind === 'empty') return { kind: 'empty' }
+    return { kind: 'ready', params, resolution }
   } catch (error) {
     if (!(error instanceof EpgReadError)) throw error
     console.error('[epgs] failed to resolve host for page body', error)
-    return <EpgRegionError region="overview" />
+    return { kind: 'unauthorized' }
   }
+}
 
-  if (resolution.kind === 'redirect') redirect(resolution.location)
-  if (resolution.kind === 'empty') return <NoEpgHost />
+async function loadOverview(
+  pagePromise: Promise<EpgPageContext>,
+): Promise<EpgLoadState<EpgOverviewPayload>> {
+  const context = await pagePromise
+  if (context.kind === 'unauthorized') return context
+  if (context.kind !== 'ready') return { kind: 'inactive' }
+  try {
+    const overview = await getEpgOverview(context.resolution.host.id, context.params)
+    return {
+      kind: 'ready',
+      data: { params: context.params, hosts: context.resolution.hosts, overview },
+    }
+  } catch (error) {
+    if (!(error instanceof EpgReadError)) throw error
+    console.error('[epgs] failed to load overview data', error)
+    return { kind: 'unauthorized' }
+  }
+}
 
-  const resolvedParams = Promise.resolve(params)
-  const resolvedHost = Promise.resolve(resolution)
+async function loadResults(
+  pagePromise: Promise<EpgPageContext>,
+): Promise<EpgLoadState<EpgResultsPayload>> {
+  const context = await pagePromise
+  if (context.kind === 'unauthorized') return context
+  if (context.kind !== 'ready') return { kind: 'inactive' }
+  try {
+    const results = await getEpgResults(context.params)
+    return { kind: 'ready', data: { params: context.params, results } }
+  } catch (error) {
+    if (!(error instanceof EpgReadError)) throw error
+    console.error('[epgs] failed to load result data', error)
+    return { kind: 'unauthorized' }
+  }
+}
+
+async function EpgBody({
+  pagePromise,
+  overviewPromise,
+  resultsPromise,
+}: {
+  pagePromise: Promise<EpgPageContext>
+  overviewPromise: Promise<EpgLoadState<EpgOverviewPayload>>
+  resultsPromise: Promise<EpgLoadState<EpgResultsPayload>>
+}) {
+  const context = await pagePromise
+  if (context.kind === 'unauthorized') return <EpgRegionError region="overview" />
+  if (context.kind === 'redirect') redirect(context.location)
+  if (context.kind === 'empty') return <NoEpgHost />
 
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Suspense fallback={<EpgFilterSkeleton />}>
-          <EpgFilters paramsPromise={resolvedParams} hostPromise={resolvedHost} />
+          <EpgFilters dataPromise={overviewPromise} />
         </Suspense>
       </div>
-      <Suspense fallback={<EpgResultsFallback paramsPromise={resolvedParams} />}>
-        <EpgResults paramsPromise={resolvedParams} hostPromise={resolvedHost} />
+      <Suspense fallback={<EpgResultsSkeleton view={context.params.view} />}>
+        <EpgResults dataPromise={resultsPromise} />
       </Suspense>
     </>
   )
 }
 
-export function EpgShell({
-  paramsPromise,
-  hostPromise,
-}: {
-  paramsPromise: Promise<EpgPageParams>
-  hostPromise: Promise<EpgHostResolution>
-}) {
+export function EpgShell({ paramsPromise }: { paramsPromise: Promise<EpgPageParams> }) {
+  const pagePromise = resolvePageContext(paramsPromise)
+  const overviewPromise = loadOverview(pagePromise)
+  const resultsPromise = loadResults(pagePromise)
+
   return (
     <div className="min-h-full bg-background">
       <header className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">
@@ -70,13 +124,17 @@ export function EpgShell({
             </p>
           </div>
           <Suspense fallback={<EpgHeaderActionsSkeleton />}>
-            <EpgHeaderActions paramsPromise={paramsPromise} hostPromise={hostPromise} />
+            <EpgHeaderActions dataPromise={overviewPromise} />
           </Suspense>
         </div>
       </header>
       <main className="space-y-4 px-4 py-4 md:px-8 md:py-6">
         <EpgToolbarClient />
-        <EpgBody paramsPromise={paramsPromise} hostPromise={hostPromise} />
+        <EpgBody
+          pagePromise={pagePromise}
+          overviewPromise={overviewPromise}
+          resultsPromise={resultsPromise}
+        />
       </main>
     </div>
   )

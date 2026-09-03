@@ -1,34 +1,54 @@
-import { redirect } from 'next/navigation'
-import type { EpgPageParams } from '@/lib/epgs/params'
-import { EpgReadError, getEpgResults, type EpgHostResolution } from '@/lib/epgs/query'
-import { EpgResultsClient } from './epg-results-client'
-import { EpgRegionError } from './epg-region-error'
+'use client'
 
-export async function EpgResults({
-  paramsPromise,
-  hostPromise,
+import { use, useState } from 'react'
+import type { EpgLoadState, EpgResultsPayload } from '@/lib/epgs/query'
+import type { EpgPortSummary } from '@/lib/epgs/sort'
+import { EpgDetailPanel } from './epg-detail-panel'
+import { EpgPaginationClient } from './epg-pagination-client'
+import { EpgPortDetailPanel } from './epg-port-detail-panel'
+import { EpgRegionError } from './epg-region-error'
+import { EpgTableClient } from './epg-table-client'
+
+export function EpgResults({
+  dataPromise,
 }: {
-  paramsPromise: Promise<EpgPageParams>
-  hostPromise: Promise<EpgHostResolution>
+  dataPromise: Promise<EpgLoadState<EpgResultsPayload>>
 }) {
-  let params: EpgPageParams
-  let resolution: EpgHostResolution
-  try {
-    ;[params, resolution] = await Promise.all([paramsPromise, hostPromise])
-  } catch (error) {
-    if (!(error instanceof EpgReadError)) throw error
-    console.error('[epgs] failed to load results', error)
-    return <EpgRegionError region="results" />
-  }
-  if (resolution.kind === 'redirect') redirect(resolution.location)
-  if (resolution.kind === 'empty') return null
-  let results: Awaited<ReturnType<typeof getEpgResults>>
-  try {
-    results = await getEpgResults(params)
-  } catch (error) {
-    if (!(error instanceof EpgReadError)) throw error
-    console.error('[epgs] failed to load result data', error)
-    return <EpgRegionError region="results" />
-  }
-  return <EpgResultsClient params={params} results={results} />
+  const [epgId, setEpgId] = useState<string | null>(null)
+  const [port, setPort] = useState<EpgPortSummary | null>(null)
+  const state = use(dataPromise)
+  if (state.kind === 'unauthorized') return <EpgRegionError region="results" />
+  if (state.kind === 'inactive') return null
+
+  const { params, results } = state.data
+  const noun = results.view === 'epg' ? 'EPGs' : 'ports'
+  const filtered = Boolean(
+    params.query || params.tenants.length || params.appProfiles.length || params.nodes.length,
+  )
+  const selectedEpg =
+    results.view === 'epg' ? (results.rows.find((row) => row.id === epgId) ?? null) : null
+
+  return (
+    <section className="space-y-3">
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        {results.rows.length === 0 ? (
+          <div className="px-4 py-14 text-center">
+            <p className="text-sm text-subtle">
+              {filtered ? `No ${noun} match the current filters` : `No ${noun} found`}
+            </p>
+            <p className="mt-1 text-xs text-faint">
+              {filtered
+                ? 'Try adjusting the search or filter values'
+                : 'Click Resync to pull the latest data from the APIC'}
+            </p>
+          </div>
+        ) : (
+          <EpgTableClient results={results} onEpgSelect={setEpgId} onPortSelect={setPort} />
+        )}
+      </div>
+      <EpgPaginationClient params={params} pagination={results.pagination} view={results.view} />
+      <EpgDetailPanel epg={selectedEpg} onClose={() => setEpgId(null)} />
+      <EpgPortDetailPanel port={port} onClose={() => setPort(null)} />
+    </section>
+  )
 }

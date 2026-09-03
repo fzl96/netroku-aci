@@ -111,6 +111,17 @@ export type EpgPagination = {
 export type EpgResultsData =
   | { view: 'epg'; rows: EpgRow[]; pagination: EpgPagination }
   | { view: 'port'; rows: EpgPortSummary[]; pagination: EpgPagination }
+export type EpgLoadState<T> =
+  { kind: 'ready'; data: T } | { kind: 'inactive' } | { kind: 'unauthorized' }
+export type EpgOverviewPayload = {
+  params: EpgPageParams
+  hosts: EpgHostOption[]
+  overview: EpgOverviewData
+}
+export type EpgResultsPayload = {
+  params: EpgPageParams
+  results: EpgResultsData
+}
 export type EpgExportSelection = { hostId: string; scope: 'all' | 'filtered'; filters?: EpgFilters }
 export type EpgExportData =
   | { kind: 'ready'; host: EpgHostOption; rows: EpgExportRow[] }

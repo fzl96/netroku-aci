@@ -13,27 +13,35 @@ describe('EPG streaming shell', () => {
     )
   })
 
-  it('keeps the route adapter synchronous and nests fallbacks around data regions only', () => {
-    const source = readFileSync(
-      path.join(process.cwd(), 'src/components/epgs/epg-shell.tsx'),
-      'utf8',
-    )
-    expect(source.match(/<Suspense/g)).toHaveLength(3)
-    expect(source).toContain('export function EpgShell')
-    expect(source).toContain('EpgReadError')
-    expect(source).toContain('<EpgRegionError region="overview" />')
-    expect(source).toContain('<EpgToolbarClient')
-    expect(source).toContain('<EpgResultsFallback paramsPromise={resolvedParams}')
-    expect(source).toContain('<EpgResultsSkeleton view={params.view}')
-  })
-
-  it('keeps the static shell outside the page-wide client wrapper', () => {
+  it('starts shared data promises in the synchronous shell', () => {
     const shellSource = readFileSync(
       path.join(process.cwd(), 'src/components/epgs/epg-shell.tsx'),
       'utf8',
     )
-    const viewSource = readFileSync(
-      path.join(process.cwd(), 'src/components/epgs/epgs-view.tsx'),
+    expect(shellSource.match(/<Suspense/g)).toHaveLength(3)
+    expect(shellSource).toContain('export function EpgShell')
+    expect(shellSource).toContain('const overviewPromise')
+    expect(shellSource).toContain('const resultsPromise')
+    expect(shellSource).toContain('<EpgRegionError region="overview" />')
+    expect(shellSource).toContain('<EpgToolbarClient')
+  })
+
+  it('consumes server-created promises in the interactive regions', () => {
+    const shellSource = readFileSync(
+      path.join(process.cwd(), 'src/components/epgs/epg-shell.tsx'),
+      'utf8',
+    )
+    const pageSource = readFileSync(path.join(process.cwd(), 'src/app/(app)/epgs/page.tsx'), 'utf8')
+    const filterSource = readFileSync(
+      path.join(process.cwd(), 'src/components/epgs/epg-filters.tsx'),
+      'utf8',
+    )
+    const headerSource = readFileSync(
+      path.join(process.cwd(), 'src/components/epgs/epg-header-actions.tsx'),
+      'utf8',
+    )
+    const resultsSource = readFileSync(
+      path.join(process.cwd(), 'src/components/epgs/epg-results.tsx'),
       'utf8',
     )
 
@@ -47,8 +55,11 @@ describe('EPG streaming shell', () => {
       'utf8',
     )
     expect(toolbarSource).toContain('<SearchBar')
-    expect(viewSource).toContain('<EpgShell')
-    expect(viewSource).not.toContain('<EpgsClient')
+    expect(pageSource).toContain('<EpgShell')
+    expect(filterSource).toContain("'use client'")
+    expect(filterSource).toContain('use(dataPromise)')
+    expect(headerSource).toContain('use(dataPromise)')
+    expect(resultsSource).toContain('use(dataPromise)')
   })
 
   it('renders the static toolbar before the host-dependent body without hiding the whole body', () => {
@@ -62,8 +73,16 @@ describe('EPG streaming shell', () => {
     expect(mainSource).not.toContain('<Suspense')
   })
 
-  it('removes the obsolete page-wide client wrapper', () => {
+  it('removes obsolete forwarding wrappers', () => {
     expect(existsSync(path.join(process.cwd(), 'src/components/epgs/epgs-client.tsx'))).toBe(false)
     expect(existsSync(path.join(process.cwd(), 'src/components/epgs/epg-overview.tsx'))).toBe(false)
+    for (const obsolete of [
+      'epg-filters-client.tsx',
+      'epg-header-actions-client.tsx',
+      'epg-results-client.tsx',
+      'epgs-view.tsx',
+    ]) {
+      expect(existsSync(path.join(process.cwd(), 'src/components/epgs', obsolete))).toBe(false)
+    }
   })
 })

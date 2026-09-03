@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { EpgsView } from '@/components/epgs/epgs-view'
+import { EpgShell } from '@/components/epgs/epg-shell'
 import { parseEpgPageParams } from '@/lib/epgs/params'
 
 export const metadata: Metadata = {
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 }
 
 export default function Page({ searchParams }: PageProps<'/epgs'>) {
-  return <EpgsView paramsPromise={searchParams.then(parseEpgPageParams)} />
+  return <EpgShell paramsPromise={searchParams.then(parseEpgPageParams)} />
 }
