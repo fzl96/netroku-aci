@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { DevicesView } from '@/components/inventory/devices/devices-view'
+import { DevicesShell } from '@/components/inventory/devices/devices-shell'
 import { parseDeviceListParams } from '@/lib/inventory/devices/params'
 
 export const metadata: Metadata = {
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 }
 
 export default function Page({ searchParams }: PageProps<'/inventory/devices'>) {
-  return <DevicesView paramsPromise={searchParams.then(parseDeviceListParams)} />
+  return <DevicesShell paramsPromise={searchParams.then(parseDeviceListParams)} />
 }
