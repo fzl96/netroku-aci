@@ -16,7 +16,7 @@ async function SettingsContent() {
   )
 }
 
-export function SettingsView() {
+export function SettingsShell() {
   return (
     <div className="min-h-full bg-background">
       <div className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">

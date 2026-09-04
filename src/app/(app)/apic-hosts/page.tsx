@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { ApicHostsView } from '@/components/apic-hosts/apic-hosts-view'
+import { ApicHostsShell } from '@/components/apic-hosts/apic-hosts-shell'
 
 export const metadata: Metadata = {
   title: 'APIC Hosts',
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 }
 
 export default function Page() {
-  return <ApicHostsView />
+  return <ApicHostsShell />
 }

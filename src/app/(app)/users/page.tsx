@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { UsersView } from '@/components/users/users-view'
+import { UsersShell } from '@/components/users/users-shell'
 
 export const metadata: Metadata = {
   title: 'Users',
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 }
 
 export default function Page() {
-  return <UsersView />
+  return <UsersShell />
 }

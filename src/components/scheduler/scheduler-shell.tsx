@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { SchedulerResults } from './scheduler-results'
 import { SchedulerResultsSkeleton } from './scheduler-skeleton'
 
-export function SchedulerView() {
+export function SchedulerShell() {
   return (
     <div className="min-h-full bg-background">
       <div className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">

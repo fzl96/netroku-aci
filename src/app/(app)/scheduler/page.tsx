@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { SchedulerView } from '@/components/scheduler/scheduler-view'
+import { SchedulerShell } from '@/components/scheduler/scheduler-shell'
 
 export const metadata: Metadata = {
   title: 'Scheduler',
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 }
 
 export default function Page() {
-  return <SchedulerView />
+  return <SchedulerShell />
 }

@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { UsersResults } from './users-results'
 import { UsersResultsSkeleton } from './users-skeleton'
 
-export function UsersView() {
+export function UsersShell() {
   return (
     <div className="min-h-full bg-background">
       <div className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">

@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { ApicHostsResults } from './apic-hosts-results'
 import { ApicHostsResultsSkeleton } from './apic-hosts-skeleton'
 
-export function ApicHostsView() {
+export function ApicHostsShell() {
   return (
     <div className="min-h-full bg-background">
       <div className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">

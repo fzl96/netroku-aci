@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { SettingsView } from '@/components/settings/settings-view'
+import { SettingsShell } from '@/components/settings/settings-shell'
 
 export const metadata: Metadata = {
   title: 'Settings',
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 }
 
 export default function Page() {
-  return <SettingsView />
+  return <SettingsShell />
 }
