@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { NodesView } from '@/components/nodes/nodes-view'
+import { NodesShell } from '@/components/nodes/nodes-shell'
 import { parseNodePageParams } from '@/lib/nodes/params'
 
 export const metadata: Metadata = {
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 }
 
 export default function Page({ searchParams }: PageProps<'/nodes'>) {
-  return <NodesView paramsPromise={searchParams.then(parseNodePageParams)} />
+  return <NodesShell paramsPromise={searchParams.then(parseNodePageParams)} />
 }

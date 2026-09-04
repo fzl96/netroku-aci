@@ -80,6 +80,24 @@ export type NodeResultsData =
   | { view: 'nodes'; rows: NodeRow[]; pagination: NodePagination }
   | { view: 'components'; rows: HardwareComponentRow[]; pagination: NodePagination }
 
+export type NodeLoadState<T> =
+  { kind: 'ready'; data: T } | { kind: 'inactive' } | { kind: 'unauthorized' }
+
+export type NodeOverviewPayload = {
+  params: NodePageParams
+  hosts: NodeHostOption[]
+  overview: NodeOverviewData
+}
+
+export type NodeTrendPayload = {
+  trend: NodeTrendPoint[]
+}
+
+export type NodeResultsPayload = {
+  params: NodePageParams
+  results: NodeResultsData
+}
+
 export type NodeReadErrorCode = 'unauthorized' | 'read-failed'
 
 export class NodeReadError extends Error {
