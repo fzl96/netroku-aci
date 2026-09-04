@@ -1,23 +1,19 @@
-import type { InterfaceHealthPageParams } from '@/lib/interface-health/params'
-import { InterfaceReadError, type InterfaceResultsData } from '@/lib/interface-health/query'
+'use client'
 
-export async function InterfaceSummary({
-  paramsPromise,
-  resultsPromise,
+import { use } from 'react'
+import type { InterfaceLoadState, InterfaceResultsPayload } from '@/lib/interface-health/query'
+
+export function InterfaceSummary({
+  dataPromise,
 }: {
-  paramsPromise: Promise<InterfaceHealthPageParams>
-  resultsPromise: Promise<InterfaceResultsData | null>
+  dataPromise: Promise<InterfaceLoadState<InterfaceResultsPayload>>
 }) {
-  let data: [InterfaceHealthPageParams, InterfaceResultsData | null]
-  try {
-    data = await Promise.all([paramsPromise, resultsPromise])
-  } catch (error) {
-    if (!(error instanceof InterfaceReadError)) throw error
-    return null
-  }
-  const [params, results] = data
-  if (!results) return null
+  const state = use(dataPromise)
+  // Silent by design: the summary is decoration next to the filter bar, so a
+  // failure here should not add another error tile beside the results table.
+  if (state.kind !== 'ready') return null
 
+  const { params, results } = state.data
   const scope =
     params.view === 'crc'
       ? ` (CRC increase in last ${params.window})`

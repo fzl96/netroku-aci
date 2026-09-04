@@ -105,6 +105,23 @@ export type InterfaceResultsData = {
   sortDirection: InterfaceSortDirection
 }
 
+export type InterfaceLoadState<T> =
+  { kind: 'ready'; data: T } | { kind: 'inactive' } | { kind: 'unauthorized' }
+
+export type InterfaceOverviewPayload = {
+  params: InterfaceHealthPageParams
+  overview: InterfaceOverviewData
+}
+
+export type InterfaceCrcTrendPayload = {
+  trend: CrcTrendPoint[]
+}
+
+export type InterfaceResultsPayload = {
+  params: InterfaceHealthPageParams
+  results: InterfaceResultsData
+}
+
 export class InterfaceReadError extends Error {
   readonly code = 'unauthorized'
   constructor() {

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { InterfaceHealthView } from '@/components/interface-health/interface-health-view'
+import { InterfaceHealthShell } from '@/components/interface-health/interface-health-shell'
 import { parseInterfaceHealthPageParams } from '@/lib/interface-health/params'
 
 export const metadata: Metadata = {
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 }
 
 export default function Page({ searchParams }: PageProps<'/interface-health'>) {
-  return <InterfaceHealthView paramsPromise={searchParams.then(parseInterfaceHealthPageParams)} />
+  return <InterfaceHealthShell paramsPromise={searchParams.then(parseInterfaceHealthPageParams)} />
 }

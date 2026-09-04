@@ -20,7 +20,7 @@ import {
   fetchInterfaceErrorSamples,
   fetchInterfaceStatusDetails,
 } from './interface-samples-request'
-import { OperStBadge } from './interface-health-client'
+import { OperStBadge } from './interface-status-badge'
 import { type InterfaceStatusDetails } from '@/lib/interface-health/state-changes'
 import {
   DEFAULT_ERROR_TREND_RANGE,
