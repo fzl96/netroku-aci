@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { HistoryView } from '@/components/history/history-view'
+import { HistoryShell } from '@/components/history/history-shell'
 import { parseHistoryPageParams } from '@/lib/history/params'
 
 export const metadata: Metadata = {
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 }
 
 export default function Page({ searchParams }: PageProps<'/history'>) {
-  return <HistoryView paramsPromise={searchParams.then(parseHistoryPageParams)} />
+  return <HistoryShell paramsPromise={searchParams.then(parseHistoryPageParams)} />
 }

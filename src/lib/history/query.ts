@@ -44,6 +44,13 @@ export type HistoryPageData = {
   page: number
 }
 
+export type HistoryLoadState<T> = { kind: 'ready'; data: T } | { kind: 'unauthorized' }
+
+export type HistoryResultsPayload = {
+  params: HistoryPageParams
+  results: HistoryPageData
+}
+
 export type HistoryReadErrorCode = 'unauthorized' | 'read-failed'
 
 export class HistoryReadError extends Error {

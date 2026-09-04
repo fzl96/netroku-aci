@@ -5,14 +5,14 @@ import path from 'node:path'
 const root = process.cwd()
 
 describe('history streaming architecture', () => {
-  it('has a synchronous purpose view with independent controls and results regions', () => {
-    const viewPath = path.join(root, 'src/components/history/history-view.tsx')
-    expect(existsSync(viewPath)).toBe(true)
-    if (!existsSync(viewPath)) return
+  it('has a synchronous streaming shell with independent controls and results regions', () => {
+    const shellPath = path.join(root, 'src/components/history/history-shell.tsx')
+    expect(existsSync(shellPath)).toBe(true)
+    if (!existsSync(shellPath)) return
 
-    const source = readFileSync(viewPath, 'utf8')
-    expect(source).toContain('export function HistoryView')
-    expect(source).not.toContain('export async function HistoryView')
+    const source = readFileSync(shellPath, 'utf8')
+    expect(source).toContain('export function HistoryShell')
+    expect(source).not.toContain('export async function HistoryShell')
     expect(source.match(/<Suspense/g)).toHaveLength(2)
     expect(source).toContain('<HistoryControls')
     expect(source).toContain('<HistoryResults')

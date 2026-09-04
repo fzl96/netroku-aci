@@ -1,10 +1,33 @@
 import { Suspense } from 'react'
 import type { HistoryPageParams } from '@/lib/history/params'
+import {
+  getHistoryPage,
+  HistoryReadError,
+  type HistoryLoadState,
+  type HistoryResultsPayload,
+} from '@/lib/history/query'
 import { HistoryControls } from './history-controls'
 import { HistoryResults } from './history-results'
 import { HistoryControlsSkeleton, HistoryResultsSkeleton } from './history-skeleton'
 
-export function HistoryView({ paramsPromise }: { paramsPromise: Promise<HistoryPageParams> }) {
+async function loadResults(
+  paramsPromise: Promise<HistoryPageParams>,
+): Promise<HistoryLoadState<HistoryResultsPayload>> {
+  const params = await paramsPromise
+
+  try {
+    const results = await getHistoryPage(params)
+    return { kind: 'ready', data: { params, results } }
+  } catch (error) {
+    if (!(error instanceof HistoryReadError)) throw error
+    console.error('[history] failed to load results', error)
+    return { kind: 'unauthorized' }
+  }
+}
+
+export function HistoryShell({ paramsPromise }: { paramsPromise: Promise<HistoryPageParams> }) {
+  const resultsPromise = loadResults(paramsPromise)
+
   return (
     <div className="min-h-full bg-background">
       <header className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">
@@ -21,7 +44,7 @@ export function HistoryView({ paramsPromise }: { paramsPromise: Promise<HistoryP
           <HistoryControls paramsPromise={paramsPromise} />
         </Suspense>
         <Suspense fallback={<HistoryResultsSkeleton />}>
-          <HistoryResults paramsPromise={paramsPromise} />
+          <HistoryResults dataPromise={resultsPromise} />
         </Suspense>
       </main>
     </div>
