@@ -113,6 +113,21 @@ const ACI_NAV: NavSection[] = [
         label: 'Documentation',
         icon: <IconBook size={15} stroke={1.75} />,
       },
+      {
+        href: '/inventory',
+        label: 'Inventroy',
+        icon: <IconBoxSeam size={15} stroke={1.75} />,
+        children: [
+          {
+            href: '/inventory/devices',
+            label: 'Devices',
+          },
+          {
+            href: '/inventory/racks',
+            label: 'Racks',
+          },
+        ]
+      },
     ],
   },
   {
@@ -153,21 +168,6 @@ const ACI_NAV: NavSection[] = [
         label: 'Nodes',
         icon: <IconServer2 size={15} stroke={1.75} />,
         apicParam: true,
-      },
-    ],
-  },
-  {
-    group: 'Inventory',
-    items: [
-      {
-        href: '/inventory/devices',
-        label: 'Devices',
-        icon: <IconBoxSeam size={15} stroke={1.75} />,
-      },
-      {
-        href: '/inventory/racks',
-        label: 'Racks',
-        icon: <IconStack2 size={15} stroke={1.75} />,
       },
     ],
   },
