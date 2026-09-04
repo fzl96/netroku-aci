@@ -130,4 +130,46 @@ describe('interface health streaming shell', () => {
       ),
     ).toBe(false)
   })
+
+  // The following four assertions were carried over from the deleted
+  // src/lib/interface-health/interface-health-streaming.test.ts. That file's
+  // other assertions referenced the removed interface-health-view.tsx/
+  // interface-health-client.tsx and are obsolete post-refactor, but these
+  // four still describe files this task left untouched (page.tsx's framework
+  // constraints, the regional skeleton shapes, the region-error retry, and
+  // the drawer's authenticated-route data path) and remain true today, so
+  // their coverage is preserved here rather than dropped.
+
+  it('keeps the route adapter synchronous and framework-only', () => {
+    const pageSource = read('src/app/(app)/interface-health/page.tsx')
+    expect(pageSource).toContain('export default function Page')
+    expect(pageSource).not.toContain('export default async function')
+    expect(pageSource).not.toContain('getSession')
+    expect(pageSource).not.toContain('redirect')
+  })
+
+  it('provides accessible shape-matched fallbacks', () => {
+    const skeleton = read('src/components/interface-health/interface-health-skeleton.tsx')
+    expect(skeleton).toContain('aria-busy="true"')
+    expect(skeleton).toContain('Loading interface filters')
+    expect(skeleton).toContain('Loading interface results')
+    expect(skeleton).toContain('Loading node filter')
+    expect(skeleton).toContain('Array.from({ length: 12 })')
+  })
+
+  it('offers a regional retry rather than failing the whole page', () => {
+    const error = read('src/components/interface-health/interface-region-error.tsx')
+    expect(error).toContain('router.refresh()')
+    expect(error).toContain('Retry')
+    expect(error).toContain('role="alert"')
+  })
+
+  it('routes drawer detail reads through an authenticated route, not an action', () => {
+    const drawer = read('src/components/interface-health/interface-error-trend-drawer.tsx')
+    expect(drawer).not.toContain('@/actions/')
+    expect(drawer).toContain('./interface-samples-request')
+    expect(
+      existsSync(path.join(process.cwd(), 'src/app/api/interfaces/samples/route.ts')),
+    ).toBe(true)
+  })
 })
