@@ -17,7 +17,7 @@ it('preserves authorization, redirect, and expected-error handling in UsersResul
   expect(results).toContain('export async function UsersResults')
   expect(results).toContain('requireSession()')
   expect(results).toContain("redirect('/signin')")
-  expect(results).toContain("notFound()")
+  expect(results).toContain('notFound()')
   expect(results).toContain('UserReadError')
   expect(results).toContain('<UsersRegionError')
 })

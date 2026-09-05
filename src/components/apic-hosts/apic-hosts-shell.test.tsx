@@ -17,7 +17,7 @@ it('preserves authorization, redirect, and expected-error handling in ApicHostsR
   expect(results).toContain('export async function ApicHostsResults')
   expect(results).toContain('requireSession()')
   expect(results).toContain("redirect('/signin')")
-  expect(results).toContain("notFound()")
+  expect(results).toContain('notFound()')
   expect(results).toContain('ApicHostReadError')
   expect(results).toContain('<ApicHostsRegionError')
 })

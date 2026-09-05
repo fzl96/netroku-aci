@@ -173,7 +173,11 @@ const ROUTES: RouteSpec[] = [
       'LegacyPagination',
       'DataCard',
     ],
-    resultsForbidden: ['LegacyInterfacesFrame', 'NavigationContext', 'useLegacyInterfaceNavigation'],
+    resultsForbidden: [
+      'LegacyInterfacesFrame',
+      'NavigationContext',
+      'useLegacyInterfaceNavigation',
+    ],
   },
 ]
 

@@ -17,7 +17,7 @@ it('preserves authorization, redirect, and expected-error handling in SchedulerR
   expect(results).toContain('export async function SchedulerResults')
   expect(results).toContain('requireSession()')
   expect(results).toContain("redirect('/signin')")
-  expect(results).toContain("notFound()")
+  expect(results).toContain('notFound()')
   expect(results).toContain('SchedulerReadError')
   expect(results).toContain('<SchedulerRegionError')
 })

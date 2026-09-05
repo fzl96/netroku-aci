@@ -76,7 +76,6 @@ import {
   IconHeartbeat,
   IconClockPlay,
   IconBoxSeam,
-  IconStack2,
 } from '@tabler/icons-react'
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
@@ -126,7 +125,7 @@ const ACI_NAV: NavSection[] = [
             href: '/inventory/racks',
             label: 'Racks',
           },
-        ]
+        ],
       },
     ],
   },

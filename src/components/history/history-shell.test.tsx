@@ -55,18 +55,14 @@ describe('history streaming shell', () => {
     expect(pageSource).toContain("from '@/components/history/history-shell'")
     expect(pageSource).toContain('<HistoryShell')
 
+    expect(existsSync(path.join(process.cwd(), 'src/components/history/history-view.tsx'))).toBe(
+      false,
+    )
     expect(
-      existsSync(path.join(process.cwd(), 'src/components/history/history-view.tsx')),
+      existsSync(path.join(process.cwd(), 'src/components/history/history-controls-client.tsx')),
     ).toBe(false)
     expect(
-      existsSync(
-        path.join(process.cwd(), 'src/components/history/history-controls-client.tsx'),
-      ),
-    ).toBe(false)
-    expect(
-      existsSync(
-        path.join(process.cwd(), 'src/components/history/history-results-client.tsx'),
-      ),
+      existsSync(path.join(process.cwd(), 'src/components/history/history-results-client.tsx')),
     ).toBe(false)
   })
 })

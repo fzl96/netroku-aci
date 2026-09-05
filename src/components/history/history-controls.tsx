@@ -16,11 +16,7 @@ const HISTORY_SELECT_CLS =
   'text-xs text-foreground outline-none ' +
   'focus:border-primary focus:ring-2 focus:ring-primary/15 transition-colors'
 
-export function HistoryControls({
-  paramsPromise,
-}: {
-  paramsPromise: Promise<HistoryPageParams>
-}) {
+export function HistoryControls({ paramsPromise }: { paramsPromise: Promise<HistoryPageParams> }) {
   const { query, action } = use(paramsPromise)
   const router = useRouter()
   const [isPending, startTransition] = useTransition()

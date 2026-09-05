@@ -87,9 +87,7 @@ describe('Nodes streaming shell', () => {
 
     expect(pageSource).toContain("from '@/components/nodes/nodes-shell'")
     expect(pageSource).toContain('<NodesShell')
-    expect(existsSync(path.join(process.cwd(), 'src/components/nodes/nodes-view.tsx'))).toBe(
-      false,
-    )
+    expect(existsSync(path.join(process.cwd(), 'src/components/nodes/nodes-view.tsx'))).toBe(false)
     expect(existsSync(path.join(process.cwd(), 'src/components/nodes/nodes-client.tsx'))).toBe(
       false,
     )

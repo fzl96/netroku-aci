@@ -168,8 +168,8 @@ describe('interface health streaming shell', () => {
     const drawer = read('src/components/interface-health/interface-error-trend-drawer.tsx')
     expect(drawer).not.toContain('@/actions/')
     expect(drawer).toContain('./interface-samples-request')
-    expect(
-      existsSync(path.join(process.cwd(), 'src/app/api/interfaces/samples/route.ts')),
-    ).toBe(true)
+    expect(existsSync(path.join(process.cwd(), 'src/app/api/interfaces/samples/route.ts'))).toBe(
+      true,
+    )
   })
 })

@@ -78,9 +78,7 @@ describe('racks streaming shell', () => {
       existsSync(path.join(process.cwd(), 'src/components/inventory/racks/racks-view.tsx')),
     ).toBe(false)
     expect(
-      existsSync(
-        path.join(process.cwd(), 'src/components/inventory/racks/racks-table-client.tsx'),
-      ),
+      existsSync(path.join(process.cwd(), 'src/components/inventory/racks/racks-table-client.tsx')),
     ).toBe(false)
   })
 })
