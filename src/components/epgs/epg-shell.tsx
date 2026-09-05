@@ -95,16 +95,9 @@ async function EpgBody({
   if (context.kind === 'empty') return <NoEpgHost />
 
   return (
-    <>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Suspense fallback={<EpgFilterSkeleton />}>
-          <EpgFilters dataPromise={overviewPromise} />
-        </Suspense>
-      </div>
-      <Suspense fallback={<EpgResultsSkeleton view={context.params.view} />}>
-        <EpgResults dataPromise={resultsPromise} />
-      </Suspense>
-    </>
+    <Suspense fallback={<EpgResultsSkeleton view={context.params.view} />}>
+      <EpgResults dataPromise={resultsPromise} />
+    </Suspense>
   )
 }
 
@@ -129,7 +122,12 @@ export function EpgShell({ paramsPromise }: { paramsPromise: Promise<EpgPagePara
         </div>
       </header>
       <main className="space-y-4 px-4 py-4 md:px-8 md:py-6">
-        <EpgToolbarClient />
+        <div className="flex flex-wrap items-center gap-3">
+          <EpgToolbarClient />
+          <Suspense fallback={<EpgFilterSkeleton />}>
+            <EpgFilters dataPromise={overviewPromise} />
+          </Suspense>
+        </div>
         <EpgBody
           pagePromise={pagePromise}
           overviewPromise={overviewPromise}
