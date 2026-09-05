@@ -44,7 +44,7 @@ export function EpgFilters({
   }
 
   return (
-    <section className="flex flex-wrap items-center justify-between gap-3">
+    <section className="flex items-center gap-2">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
