@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { LegacyDevicesView } from '@/components/legacy/devices/devices-view'
+import { LegacyDevicesShell } from '@/components/legacy/devices/devices-shell'
 import { parseLegacyDevicePageParams } from '@/lib/legacy/devices/params'
 
 export const metadata: Metadata = {
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 }
 
 export default function Page({ searchParams }: PageProps<'/legacy/devices'>) {
-  return <LegacyDevicesView paramsPromise={searchParams.then(parseLegacyDevicePageParams)} />
+  return <LegacyDevicesShell paramsPromise={searchParams.then(parseLegacyDevicePageParams)} />
 }

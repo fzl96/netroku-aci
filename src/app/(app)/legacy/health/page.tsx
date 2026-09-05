@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { LegacyHealthView } from '@/components/legacy/health/health-view'
+import { LegacyHealthShell } from '@/components/legacy/health/health-shell'
 import { parseLegacyHealthPageParams } from '@/lib/legacy/health/params'
 
 export const metadata: Metadata = {
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 }
 
 export default function Page({ searchParams }: PageProps<'/legacy/health'>) {
-  return <LegacyHealthView paramsPromise={searchParams.then(parseLegacyHealthPageParams)} />
+  return <LegacyHealthShell paramsPromise={searchParams.then(parseLegacyHealthPageParams)} />
 }

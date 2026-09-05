@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { LegacyEndpointsView } from '@/components/legacy/endpoints/endpoints-view'
+import { LegacyEndpointsShell } from '@/components/legacy/endpoints/endpoints-shell'
 import { parseLegacyEndpointPageParams } from '@/lib/legacy/endpoints/params'
 
 export const metadata: Metadata = {
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 }
 
 export default function Page({ searchParams }: PageProps<'/legacy/endpoints'>) {
-  return <LegacyEndpointsView paramsPromise={searchParams.then(parseLegacyEndpointPageParams)} />
+  return <LegacyEndpointsShell paramsPromise={searchParams.then(parseLegacyEndpointPageParams)} />
 }

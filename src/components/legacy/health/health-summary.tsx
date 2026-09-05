@@ -1,10 +1,17 @@
-import { LegacyHealthReadError, getLegacyHealthSummary } from '@/lib/legacy/health/query'
+import {
+  LegacyHealthReadError,
+  type LegacyHealthSummary as LegacyHealthSummaryData,
+} from '@/lib/legacy/health/query'
 import { LegacyHealthRegionError } from './health-region-error'
 
-export async function LegacyHealthSummary() {
-  let summary: Awaited<ReturnType<typeof getLegacyHealthSummary>>
+export async function LegacyHealthSummary({
+  summaryPromise,
+}: {
+  summaryPromise: Promise<LegacyHealthSummaryData>
+}) {
+  let summary: LegacyHealthSummaryData
   try {
-    summary = await getLegacyHealthSummary()
+    summary = await summaryPromise
   } catch (error) {
     if (!(error instanceof LegacyHealthReadError)) throw error
     console.error('[legacy-health] failed to load summary', error)

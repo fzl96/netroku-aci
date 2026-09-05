@@ -71,6 +71,13 @@ export type LegacyDeviceResults = {
   pageSize: LegacyPageSize
 }
 
+export type LegacyDeviceLoadState<T> = { kind: 'ready'; data: T } | { kind: 'unauthorized' }
+
+export type LegacyDeviceFiltersPayload = {
+  params: LegacyDevicePageParams
+  options: LegacyDeviceFilterOptions
+}
+
 export type LegacyDeviceReadErrorCode = 'unauthorized' | 'read-failed'
 
 export class LegacyDeviceReadError extends Error {

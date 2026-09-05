@@ -71,6 +71,13 @@ export type LegacyEndpointResults = {
   pageSize: LegacyPageSize
 }
 
+export type LegacyEndpointLoadState<T> = { kind: 'ready'; data: T } | { kind: 'unauthorized' }
+
+export type LegacyEndpointFiltersPayload = {
+  params: LegacyEndpointPageParams
+  options: LegacyEndpointFilterOptions
+}
+
 export type LegacyEndpointReadErrorCode = 'unauthorized' | 'read-failed'
 
 export class LegacyEndpointReadError extends Error {

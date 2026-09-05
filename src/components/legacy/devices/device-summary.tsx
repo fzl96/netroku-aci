@@ -1,11 +1,18 @@
 import { IconDeviceDesktop, IconMapPin, IconSearch, IconServer2 } from '@tabler/icons-react'
-import { LegacyDeviceReadError, getLegacyDeviceSummary } from '@/lib/legacy/devices/query'
+import {
+  LegacyDeviceReadError,
+  type LegacyDeviceSummary as LegacyDeviceSummaryData,
+} from '@/lib/legacy/devices/query'
 import { LegacyDeviceRegionError } from './device-region-error'
 
-export async function LegacyDeviceSummary() {
-  let summary: Awaited<ReturnType<typeof getLegacyDeviceSummary>>
+export async function LegacyDeviceSummary({
+  summaryPromise,
+}: {
+  summaryPromise: Promise<LegacyDeviceSummaryData>
+}) {
+  let summary: LegacyDeviceSummaryData
   try {
-    summary = await getLegacyDeviceSummary()
+    summary = await summaryPromise
   } catch (error) {
     if (!(error instanceof LegacyDeviceReadError)) throw error
     console.error('[legacy-devices] failed to load summary', error)

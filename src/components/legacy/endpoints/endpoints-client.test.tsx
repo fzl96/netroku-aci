@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'bun:test'
 
-import { LegacyMac } from './endpoints-client'
+import { LegacyMac } from './endpoint-results'
 
 describe('LegacyMac', () => {
   it('prefixes reported markers and omits an empty marker', () => {

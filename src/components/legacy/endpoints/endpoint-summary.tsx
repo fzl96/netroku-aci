@@ -1,10 +1,17 @@
-import { LegacyEndpointReadError, getLegacyEndpointSummary } from '@/lib/legacy/endpoints/query'
+import {
+  LegacyEndpointReadError,
+  type LegacyEndpointSummary as LegacyEndpointSummaryData,
+} from '@/lib/legacy/endpoints/query'
 import { LegacyEndpointRegionError } from './endpoint-region-error'
 
-export async function LegacyEndpointSummary() {
-  let summary: Awaited<ReturnType<typeof getLegacyEndpointSummary>>
+export async function LegacyEndpointSummary({
+  summaryPromise,
+}: {
+  summaryPromise: Promise<LegacyEndpointSummaryData>
+}) {
+  let summary: LegacyEndpointSummaryData
   try {
-    summary = await getLegacyEndpointSummary()
+    summary = await summaryPromise
   } catch (error) {
     if (!(error instanceof LegacyEndpointReadError)) throw error
     console.error('[legacy-endpoints] failed to load summary', error)

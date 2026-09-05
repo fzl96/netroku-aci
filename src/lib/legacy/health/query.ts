@@ -48,6 +48,13 @@ export type LegacyHealthResults = {
   pageSize: LegacyPageSize
 }
 
+export type LegacyHealthLoadState<T> = { kind: 'ready'; data: T } | { kind: 'unauthorized' }
+
+export type LegacyHealthFiltersPayload = {
+  params: LegacyHealthPageParams
+  options: LegacyHealthFilterOptions
+}
+
 export type LegacyHealthLogEntry = {
   id: string
   eventAt: string | null
