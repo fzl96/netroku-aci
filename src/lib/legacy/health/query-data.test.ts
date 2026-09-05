@@ -87,9 +87,7 @@ const query = await import('./query')
 
 const base: LegacyHealthPageParams = {
   query: '',
-  site: '',
-  sort: 'collected',
-  direction: 'desc',
+  sites: [],
   page: 1,
   pageSize: 50,
 }
@@ -143,9 +141,7 @@ describe('getLegacyHealthResults', () => {
     await query.getLegacyHealthResults({
       ...base,
       query: 'edge',
-      site: 'hq',
-      sort: 'hostname',
-      direction: 'asc',
+      sites: ['dc1', 'hq'],
       page: 2,
       pageSize: 100,
     })
@@ -153,9 +149,7 @@ describe('getLegacyHealthResults', () => {
       'legacy-health',
       'results',
       'edge',
-      'hq',
-      'hostname',
-      'asc',
+      'dc1,hq',
       '2',
       '100',
     ])

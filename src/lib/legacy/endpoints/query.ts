@@ -5,8 +5,8 @@ import { unstable_cache } from 'next/cache'
 import { AuthenticationRequiredError, requireSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import type { LegacyPageSize } from '@/lib/legacy/query'
-import { buildLegacyEndpointWhere, legacyEndpointOrderBy } from './filters'
-import { legacyEndpointStatuses, type LegacyEndpointPageParams } from './params'
+import { buildLegacyEndpointWhere, LEGACY_ENDPOINT_ORDER_BY } from './filters'
+import type { LegacyEndpointPageParams } from './params'
 
 const LEGACY_ENDPOINT_CACHE_SECONDS = 28_800
 const LEGACY_ENDPOINT_TAG = 'legacy-endpoints:all'
@@ -202,16 +202,16 @@ export async function getLegacyEndpointResults(
       async (): Promise<LegacyEndpointResults> => {
         const where = buildLegacyEndpointWhere({
           query: params.query,
-          sites: params.site ? [params.site] : [],
-          deviceIds: params.device ? [params.device] : [],
-          vlans: params.vlan ? [params.vlan] : [],
-          interfaces: params.interface ? [params.interface] : [],
-          statuses: legacyEndpointStatuses(params.status),
+          sites: params.sites,
+          deviceIds: params.devices,
+          vlans: params.vlans,
+          interfaces: params.interfaces,
+          statuses: params.statuses,
         })
         const [records, total] = await Promise.all([
           prisma.legacyEndpoint.findMany({
             where,
-            orderBy: legacyEndpointOrderBy(params.sort, params.direction),
+            orderBy: LEGACY_ENDPOINT_ORDER_BY,
             skip: (params.page - 1) * params.pageSize,
             take: params.pageSize,
             select: ENDPOINT_SELECT,
@@ -229,13 +229,11 @@ export async function getLegacyEndpointResults(
         'legacy-endpoints',
         'results',
         params.query,
-        params.site,
-        params.device,
-        params.vlan,
-        params.interface,
-        params.status,
-        params.sort,
-        params.direction,
+        params.sites.join(','),
+        params.devices.join(','),
+        params.vlans.join(','),
+        params.interfaces.join(','),
+        params.statuses.join(',') || 'all',
         String(params.page),
         String(params.pageSize),
       ],

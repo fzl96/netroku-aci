@@ -1,3 +1,5 @@
+import { LegacyListToolbarSkeleton } from '@/components/legacy/legacy-list-toolbar'
+
 export function LegacyEndpointSummarySkeleton() {
   return (
     <div
@@ -16,18 +18,7 @@ export function LegacyEndpointSummarySkeleton() {
 }
 
 export function LegacyEndpointFiltersSkeleton() {
-  return (
-    <div
-      aria-busy="true"
-      aria-label="Loading legacy endpoint filters"
-      className="flex flex-wrap gap-2"
-    >
-      <div className="h-8 min-w-56 flex-1 animate-pulse rounded-lg bg-muted sm:max-w-xs" />
-      {Array.from({ length: 7 }).map((_, control) => (
-        <div key={control} className="h-8 w-28 animate-pulse rounded-lg bg-muted" />
-      ))}
-    </div>
-  )
+  return <LegacyListToolbarSkeleton label="Loading legacy endpoint filters" />
 }
 
 export function LegacyEndpointResultsSkeleton() {
@@ -40,7 +31,7 @@ export function LegacyEndpointResultsSkeleton() {
       <div className="space-y-3 p-4">
         {Array.from({ length: 8 }).map((_, row) => (
           <div key={row} className="flex gap-4">
-            {Array.from({ length: 10 }).map((_, column) => (
+            {Array.from({ length: 9 }).map((_, column) => (
               <div
                 key={column}
                 className="h-3 flex-1 animate-pulse rounded-sm bg-muted"

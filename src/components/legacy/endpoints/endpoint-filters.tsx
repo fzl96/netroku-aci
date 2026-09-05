@@ -1,15 +1,14 @@
 'use client'
 
-import { type FormEvent, use, useState } from 'react'
-import { IconSearch } from '@tabler/icons-react'
-import { useRouter } from 'next/navigation'
-import { SEARCH_INPUT_CLS } from '@/lib/ui-classes'
+import { use, useMemo } from 'react'
+import { FilterSubmenu, type FilterOption } from '@/components/FilterSubmenu'
+import { LegacyListToolbar } from '@/components/legacy/legacy-list-toolbar'
+import { countActiveFilterGroups, useLegacyFilters } from '@/components/legacy/use-legacy-filters'
+import type { LegacyEndpointStatus } from '@/lib/legacy/endpoints/filters'
 import {
   buildLegacyEndpointPageUrl,
-  LEGACY_ENDPOINT_SORTS,
+  LEGACY_ENDPOINT_STATUSES,
   type LegacyEndpointPageParams,
-  type LegacyEndpointSort,
-  type LegacyEndpointStatusFilter,
 } from '@/lib/legacy/endpoints/params'
 import type {
   LegacyEndpointFilterOptions,
@@ -18,16 +17,10 @@ import type {
 } from '@/lib/legacy/endpoints/query'
 import { LegacyEndpointRegionError } from './endpoint-region-error'
 
-const SELECT_CLS = 'rounded-lg border border-border bg-muted px-3 py-1.5 text-xs text-foreground'
-
-const SORT_LABELS: Record<LegacyEndpointSort, string> = {
-  lastSeen: 'Last seen',
-  firstSeen: 'First seen',
-  mac: 'MAC',
-  vlan: 'VLAN',
-  interface: 'Interface',
-  cleared: 'Cleared time',
-}
+const STATUS_OPTIONS: FilterOption[] = [
+  { value: 'active', label: 'Active' },
+  { value: 'historical', label: 'Historical' },
+]
 
 function LegacyEndpointFiltersContent({
   params,
@@ -36,131 +29,82 @@ function LegacyEndpointFiltersContent({
   params: LegacyEndpointPageParams
   options: LegacyEndpointFilterOptions
 }) {
-  const router = useRouter()
-  const [search, setSearch] = useState(params.query)
+  const { search, isPending, apply, handleSearchChange, submitSearch } = useLegacyFilters({
+    params,
+    buildUrl: buildLegacyEndpointPageUrl,
+  })
 
-  function apply(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const form = new FormData(event.currentTarget)
-    const read = (key: string) => String(form.get(key) ?? '').trim()
-    const status = read('status')
-    router.push(
-      buildLegacyEndpointPageUrl({
-        ...params,
-        query: read('query'),
-        site: read('site'),
-        device: read('device'),
-        vlan: read('vlan'),
-        interface: read('interface'),
-        status:
-          status === 'historical' || status === 'all'
-            ? (status as LegacyEndpointStatusFilter)
-            : 'active',
-        sort: (LEGACY_ENDPOINT_SORTS as readonly string[]).includes(read('sort'))
-          ? (read('sort') as LegacyEndpointSort)
-          : 'lastSeen',
-        direction: read('dir') === 'asc' ? 'asc' : 'desc',
-        page: 1,
-      }),
-    )
-  }
+  const deviceOptions = useMemo<FilterOption[]>(
+    () =>
+      options.devices.map((device) => ({
+        value: device.id,
+        label: device.site ? `${device.hostname} · ${device.site}` : device.hostname,
+      })),
+    [options.devices],
+  )
+
+  // Active-only is the resting state, so it is not a narrowing the reader chose.
+  const statusIsFiltered = !(params.statuses.length === 1 && params.statuses[0] === 'active')
 
   return (
-    <form onSubmit={apply} className="flex flex-wrap gap-2">
-      <div className="relative min-w-56 flex-1 sm:max-w-xs">
-        <IconSearch
-          size={13}
-          className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-faint"
-        />
-        <input
-          name="query"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search MAC, IP, VLAN, or device…"
-          className={SEARCH_INPUT_CLS}
-        />
-      </div>
-      <select
-        name="site"
-        defaultValue={params.site}
-        aria-label="Filter by site"
-        className={SELECT_CLS}
-      >
-        <option value="">All sites</option>
-        {options.sites.map((value) => (
-          <option key={value}>{value}</option>
-        ))}
-      </select>
-      <select
-        name="device"
-        defaultValue={params.device}
-        aria-label="Filter by device"
-        className={SELECT_CLS}
-      >
-        <option value="">All devices</option>
-        {options.devices.map((device) => (
-          <option key={device.id} value={device.id}>
-            {device.hostname} · {device.site}
-          </option>
-        ))}
-      </select>
-      <select
-        name="vlan"
-        defaultValue={params.vlan}
-        aria-label="Filter by VLAN"
-        className={SELECT_CLS}
-      >
-        <option value="">All VLANs</option>
-        {options.vlans.map((value) => (
-          <option key={value}>{value}</option>
-        ))}
-      </select>
-      <select
-        name="interface"
-        defaultValue={params.interface}
-        aria-label="Filter by interface"
-        className={SELECT_CLS}
-      >
-        <option value="">All interfaces</option>
-        {options.interfaces.map((value) => (
-          <option key={value}>{value}</option>
-        ))}
-      </select>
-      <select
-        name="status"
-        defaultValue={params.status}
-        aria-label="Filter by lifecycle"
-        className={SELECT_CLS}
-      >
-        <option value="active">Active</option>
-        <option value="historical">Historical</option>
-        <option value="all">All lifecycle records</option>
-      </select>
-      <select
-        name="sort"
-        defaultValue={params.sort}
-        aria-label="Sort endpoints"
-        className={SELECT_CLS}
-      >
-        {LEGACY_ENDPOINT_SORTS.map((value) => (
-          <option key={value} value={value}>
-            {SORT_LABELS[value]}
-          </option>
-        ))}
-      </select>
-      <select
-        name="dir"
-        defaultValue={params.direction}
-        aria-label="Sort direction"
-        className={SELECT_CLS}
-      >
-        <option value="desc">Descending</option>
-        <option value="asc">Ascending</option>
-      </select>
-      <button className="rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground">
-        Apply
-      </button>
-    </form>
+    <LegacyListToolbar
+      search={search}
+      onSearchChange={handleSearchChange}
+      onSearchSubmit={submitSearch}
+      placeholder="Search MAC, IP, VLAN, or device…"
+      searchLabel="Search endpoints"
+      filterLabel="Filter endpoints"
+      activeFilterCount={
+        countActiveFilterGroups(params.sites, params.devices, params.vlans, params.interfaces) +
+        (statusIsFiltered ? 1 : 0)
+      }
+      pending={isPending}
+    >
+      <FilterSubmenu
+        label="Site"
+        value={params.sites}
+        options={options.sites}
+        onChange={(sites) => apply({ sites })}
+        disabled={isPending}
+      />
+      <FilterSubmenu
+        label="Device"
+        value={params.devices}
+        options={deviceOptions}
+        onChange={(devices) => apply({ devices })}
+        disabled={isPending}
+        searchable
+      />
+      <FilterSubmenu
+        label="VLAN"
+        value={params.vlans}
+        options={options.vlans}
+        onChange={(vlans) => apply({ vlans })}
+        disabled={isPending}
+        searchable
+      />
+      <FilterSubmenu
+        label="Interface"
+        value={params.interfaces}
+        options={options.interfaces}
+        onChange={(interfaces) => apply({ interfaces })}
+        disabled={isPending}
+        searchable
+      />
+      <FilterSubmenu
+        label="Lifecycle"
+        value={params.statuses}
+        options={STATUS_OPTIONS}
+        onChange={(statuses) =>
+          apply({
+            statuses: LEGACY_ENDPOINT_STATUSES.filter((status) =>
+              statuses.includes(status),
+            ) as LegacyEndpointStatus[],
+          })
+        }
+        disabled={isPending}
+      />
+    </LegacyListToolbar>
   )
 }
 

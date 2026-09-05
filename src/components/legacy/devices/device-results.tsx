@@ -20,10 +20,6 @@ import type {
 import { LegacyDeviceDrawer } from './device-drawer'
 import { LegacyDeviceRegionError } from './device-region-error'
 
-function shortDate(value: string | null): string {
-  return value ? new Date(value).toLocaleString() : 'Never'
-}
-
 function LegacyDeviceResultsContent({ results }: { results: LegacyDeviceResultsData }) {
   const [selected, setSelected] = useState<LegacyDeviceRow | null>(null)
   const { rows, page, pageSize, total } = results
@@ -52,10 +48,6 @@ function LegacyDeviceResultsContent({ results }: { results: LegacyDeviceResultsD
                   'Platform',
                   'Model / Serial',
                   'Software',
-                  'Last seen',
-                  'Health',
-                  'Interfaces',
-                  'Endpoints',
                 ].map((label) => (
                   <th key={label} className={DENSE_TABLE_HEAD_CLS}>
                     {label}
@@ -70,29 +62,22 @@ function LegacyDeviceResultsContent({ results }: { results: LegacyDeviceResultsD
                   onClick={() => setSelected(row)}
                   className="cursor-pointer border-b border-border/70 hover:bg-muted/60"
                 >
-                  <td className="px-4 py-3 font-semibold text-foreground">{row.hostname}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{row.site}</td>
-                  <td className="px-4 py-3 font-mono text-muted-foreground">{row.managementIp}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {row.vendor || '—'} · {row.deviceType}
+                  <td className="px-4 py-3 font-semibold whitespace-nowrap text-foreground">
+                    {row.hostname}
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{row.site}</td>
+                  <td className="px-4 py-3 font-mono whitespace-nowrap text-muted-foreground">
+                    {row.managementIp}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                    <div>{row.vendor || 'Unknown vendor'}</div>
+                    <div className="text-[10px] text-faint">{row.deviceType}</div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
                     <div>{row.model || '—'}</div>
                     <div className="text-[10px] text-faint">{row.serialNumber || 'No serial'}</div>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{row.softwareVersion || '—'}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-                    {shortDate(row.lastSeenAt)}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-                    {shortDate(row.lastHealthSyncAt)}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-                    {shortDate(row.lastInterfaceSyncAt)}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-                    {shortDate(row.lastEndpointSyncAt)}
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -107,7 +92,7 @@ function LegacyDeviceResultsContent({ results }: { results: LegacyDeviceResultsD
               <DataCardBody>
                 <DataCardRow label="IP" value={row.managementIp} />
                 <DataCardRow label="Model" value={row.model || 'Not reported'} />
-                <DataCardRow label="Last seen" value={shortDate(row.lastSeenAt)} />
+                <DataCardRow label="Software" value={row.softwareVersion || 'Not reported'} />
               </DataCardBody>
             </DataCard>
           ))}

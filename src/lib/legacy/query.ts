@@ -23,16 +23,18 @@ export function legacyRangeCutoff(range: LegacyRange, now = new Date()): Date | 
   return new Date(now.getTime() - hours * 60 * 60 * 1000)
 }
 
-export function parseLegacySort<const T extends readonly string[]>(
-  value: string | undefined,
-  allowed: T,
-  fallback: T[number],
-): T[number] {
-  return allowed.includes(value ?? '') ? (value as T[number]) : fallback
-}
+const NATURAL_COLLATOR = new Intl.Collator('en', { numeric: true, sensitivity: 'base' })
 
-export function parseLegacyDirection(value?: string): 'asc' | 'desc' {
-  return value === 'asc' ? 'asc' : 'desc'
+/** A multi-select list param. Repeated keys and comma-joined values both read
+ *  the same, and the result is deduped and naturally ordered so the same
+ *  selection always produces the same URL and the same cache key. */
+export function parseLegacyList(value: string | string[] | undefined): string[] {
+  const values = Array.isArray(value) ? value : value === undefined ? [] : [value]
+  const entries = values
+    .flatMap((item) => item.split(','))
+    .map((item) => item.trim())
+    .filter(Boolean)
+  return [...new Set(entries)].sort(NATURAL_COLLATOR.compare)
 }
 
 /** A detail route's optional page query param: absent or non-numeric means

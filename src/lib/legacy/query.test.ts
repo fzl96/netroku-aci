@@ -4,8 +4,8 @@ import {
   parseLegacyOptionalPage,
   parseLegacyPage,
   parseLegacyPageSize,
+  parseLegacyList,
   parseLegacyRange,
-  parseLegacySort,
 } from './query'
 
 describe('legacy list query parsing', () => {
@@ -17,11 +17,17 @@ describe('legacy list query parsing', () => {
     expect(parseLegacyPageSize('999')).toBe(50)
   })
 
-  it('validates history ranges and sort values', () => {
+  it('validates history ranges', () => {
     expect(parseLegacyRange('all')).toBe('all')
     expect(parseLegacyRange('nope')).toBe('24h')
-    expect(parseLegacySort('hostname', ['hostname', 'site'] as const, 'site')).toBe('hostname')
-    expect(parseLegacySort('model', ['hostname', 'site'] as const, 'site')).toBe('site')
+  })
+
+  it('reads list params from repeated keys or comma-joined values', () => {
+    expect(parseLegacyList(undefined)).toEqual([])
+    expect(parseLegacyList('')).toEqual([])
+    expect(parseLegacyList(' hq , dc1 ')).toEqual(['dc1', 'hq'])
+    expect(parseLegacyList(['hq', 'dc1,hq'])).toEqual(['dc1', 'hq'])
+    expect(parseLegacyList('vlan10,vlan9')).toEqual(['vlan9', 'vlan10'])
   })
 
   it('leaves an optional detail page absent rather than defaulting it', () => {

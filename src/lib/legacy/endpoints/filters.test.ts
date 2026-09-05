@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { buildLegacyEndpointWhere, legacyEndpointOrderBy } from './filters'
+import { buildLegacyEndpointWhere, LEGACY_ENDPOINT_ORDER_BY } from './filters'
 
 describe('legacy endpoint helpers', () => {
   test('builds active, historical, and all lifecycle views', () => {
@@ -45,8 +45,7 @@ describe('legacy endpoint helpers', () => {
     })
   })
 
-  test('maps supported sorts and uses a stable id tie-breaker', () => {
-    expect(legacyEndpointOrderBy('mac', 'asc')).toEqual([{ mac: 'asc' }, { id: 'asc' }])
-    expect(legacyEndpointOrderBy('unknown', 'asc')).toEqual([{ lastSeenAt: 'desc' }, { id: 'asc' }])
+  test('orders by the most recent sighting with a stable id tie-breaker', () => {
+    expect(LEGACY_ENDPOINT_ORDER_BY).toEqual([{ lastSeenAt: 'desc' }, { id: 'asc' }])
   })
 })

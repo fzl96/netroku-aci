@@ -59,7 +59,6 @@ function LegacyEndpointResultsContent({ results }: { results: LegacyEndpointResu
                 'IP address',
                 'VLAN',
                 'Interface',
-                'Learning',
                 'Status',
                 'First seen',
                 'Last seen',
@@ -91,7 +90,6 @@ function LegacyEndpointResultsContent({ results }: { results: LegacyEndpointResu
                 <td className="px-4 py-3 font-mono whitespace-nowrap text-subtle">
                   {row.interface || '—'}
                 </td>
-                <td className="px-4 py-3 text-subtle">{row.learningType || '—'}</td>
                 <td className="px-4 py-3">{statusBadge(row.isActive)}</td>
                 <td className="px-4 py-3 whitespace-nowrap text-subtle">
                   {new Date(row.firstSeenAt).toLocaleString()}

@@ -67,10 +67,8 @@ const query = await import('./query')
 
 const base: LegacyDevicePageParams = {
   query: '',
-  site: '',
-  deviceType: '',
-  sort: 'lastSeenAt',
-  direction: 'desc',
+  sites: [],
+  deviceTypes: [],
   page: 1,
   pageSize: 50,
 }
@@ -140,10 +138,8 @@ describe('getLegacyDeviceResults', () => {
     await query.getLegacyDeviceResults({
       ...base,
       query: 'edge',
-      site: 'hq',
-      deviceType: 'switch',
-      sort: 'hostname',
-      direction: 'asc',
+      sites: ['dc1', 'hq'],
+      deviceTypes: ['switch'],
       page: 2,
       pageSize: 100,
     })
@@ -151,10 +147,8 @@ describe('getLegacyDeviceResults', () => {
       'legacy-devices',
       'results',
       'edge',
-      'hq',
+      'dc1,hq',
       'switch',
-      'hostname',
-      'asc',
       '2',
       '100',
     ])
