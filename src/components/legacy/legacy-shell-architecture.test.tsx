@@ -166,8 +166,8 @@ const ROUTES: RouteSpec[] = [
     viewFile: 'interfaces-view.tsx',
     clientFile: 'interfaces-client.tsx',
     resultsBehaviors: [
-      'LegacyInterfaceDrawer',
-      'setSelected',
+      'buildLegacyInterfaceDetailUrl',
+      'openInterface',
       'handleSort',
       'LegacyEmptyState',
       'LegacyPagination',
@@ -177,6 +177,8 @@ const ROUTES: RouteSpec[] = [
       'LegacyInterfacesFrame',
       'NavigationContext',
       'useLegacyInterfaceNavigation',
+      // Interface detail is a page now; nothing about it opens in place.
+      'LegacyInterfaceDrawer',
     ],
   },
 ]

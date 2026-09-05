@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { buildLegacyDeviceWhere, legacyDeviceOrderBy } from './filters'
+import { buildLegacyDeviceWhere, LEGACY_DEVICE_ORDER_BY } from './filters'
 
 describe('legacy device queries', () => {
   it('combines identity search with site and type filters', () => {
@@ -30,9 +30,11 @@ describe('legacy device queries', () => {
     })
   })
 
-  it('returns an empty filter and safe sort mappings', () => {
+  it('returns an empty filter when nothing is selected', () => {
     expect(buildLegacyDeviceWhere({})).toEqual({})
-    expect(legacyDeviceOrderBy('hostname', 'asc')).toEqual({ hostname: 'asc' })
-    expect(legacyDeviceOrderBy('unknown', 'asc')).toEqual({ lastSeenAt: 'desc' })
+  })
+
+  it('orders the roster by hostname with a stable id tie-breaker', () => {
+    expect(LEGACY_DEVICE_ORDER_BY).toEqual([{ hostname: 'asc' }, { id: 'asc' }])
   })
 })

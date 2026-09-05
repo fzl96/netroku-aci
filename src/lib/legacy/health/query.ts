@@ -12,7 +12,7 @@ import {
 } from '@/lib/legacy/query'
 import {
   buildLegacyHealthDeviceWhere,
-  legacyHealthOrderBy,
+  LEGACY_HEALTH_ORDER_BY,
   serializeLegacyHealthSample,
 } from './filters'
 import type { LegacyHealthPageParams } from './params'
@@ -170,12 +170,12 @@ export async function getLegacyHealthResults(
       async (): Promise<LegacyHealthResults> => {
         const where = buildLegacyHealthDeviceWhere({
           query: params.query,
-          sites: params.site ? [params.site] : [],
+          sites: params.sites,
         })
         const [devices, total] = await Promise.all([
           prisma.legacyDevice.findMany({
             where,
-            orderBy: legacyHealthOrderBy(params.sort, params.direction),
+            orderBy: LEGACY_HEALTH_ORDER_BY,
             skip: (params.page - 1) * params.pageSize,
             take: params.pageSize,
             select: DEVICE_SELECT,
@@ -206,9 +206,7 @@ export async function getLegacyHealthResults(
         'legacy-health',
         'results',
         params.query,
-        params.site,
-        params.sort,
-        params.direction,
+        params.sites.join(','),
         String(params.page),
         String(params.pageSize),
       ],

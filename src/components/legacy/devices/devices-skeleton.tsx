@@ -1,3 +1,5 @@
+import { LegacyListToolbarSkeleton } from '@/components/legacy/legacy-list-toolbar'
+
 export function LegacyDeviceSummarySkeleton() {
   return (
     <div
@@ -16,18 +18,7 @@ export function LegacyDeviceSummarySkeleton() {
 }
 
 export function LegacyDeviceFiltersSkeleton() {
-  return (
-    <div
-      aria-busy="true"
-      aria-label="Loading legacy device filters"
-      className="flex flex-col gap-2 sm:flex-row sm:items-center"
-    >
-      <div className="h-8 flex-1 animate-pulse rounded-lg bg-muted sm:max-w-xs" />
-      {Array.from({ length: 4 }).map((_, control) => (
-        <div key={control} className="h-8 w-32 animate-pulse rounded-lg bg-muted" />
-      ))}
-    </div>
-  )
+  return <LegacyListToolbarSkeleton label="Loading legacy device filters" />
 }
 
 export function LegacyDeviceResultsSkeleton() {
@@ -40,7 +31,7 @@ export function LegacyDeviceResultsSkeleton() {
       <div className="space-y-3 p-4">
         {Array.from({ length: 8 }).map((_, row) => (
           <div key={row} className="flex gap-4">
-            {Array.from({ length: 10 }).map((_, column) => (
+            {Array.from({ length: 6 }).map((_, column) => (
               <div
                 key={column}
                 className="h-3 flex-1 animate-pulse rounded-sm bg-muted"

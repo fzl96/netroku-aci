@@ -40,19 +40,9 @@ export function buildLegacyEndpointWhere(
   return and.length ? { AND: and } : {}
 }
 
-const SORT_FIELDS = {
-  mac: 'mac',
-  vlan: 'vlan',
-  interface: 'interface',
-  firstSeen: 'firstSeenAt',
-  lastSeen: 'lastSeenAt',
-  cleared: 'clearedAt',
-} as const
-
-export function legacyEndpointOrderBy(
-  sort: string | undefined,
-  direction: 'asc' | 'desc',
-): Prisma.LegacyEndpointOrderByWithRelationInput[] {
-  const field = SORT_FIELDS[sort as keyof typeof SORT_FIELDS]
-  return field ? [{ [field]: direction }, { id: 'asc' }] : [{ lastSeenAt: 'desc' }, { id: 'asc' }]
-}
+/** Most recently learned first, which is what someone tracing a MAC is after.
+ *  The id keeps paging stable across endpoints seen in the same sweep. */
+export const LEGACY_ENDPOINT_ORDER_BY: Prisma.LegacyEndpointOrderByWithRelationInput[] = [
+  { lastSeenAt: 'desc' },
+  { id: 'asc' },
+]

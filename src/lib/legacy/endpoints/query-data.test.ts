@@ -70,13 +70,11 @@ const query = await import('./query')
 
 const base: LegacyEndpointPageParams = {
   query: '',
-  site: '',
-  device: '',
-  vlan: '',
-  interface: '',
-  status: 'active',
-  sort: 'lastSeen',
-  direction: 'desc',
+  sites: [],
+  devices: [],
+  vlans: [],
+  interfaces: [],
+  statuses: ['active'],
   page: 1,
   pageSize: 50,
 }
@@ -143,13 +141,11 @@ describe('getLegacyEndpointResults', () => {
     await query.getLegacyEndpointResults({
       ...base,
       query: 'aa',
-      site: 'hq',
-      device: 'd1',
-      vlan: '100',
-      interface: 'Gi1/0/1',
-      status: 'all',
-      sort: 'mac',
-      direction: 'asc',
+      sites: ['hq'],
+      devices: ['d1'],
+      vlans: ['100'],
+      interfaces: ['Gi1/0/1'],
+      statuses: [],
       page: 2,
       pageSize: 100,
     })
@@ -162,8 +158,6 @@ describe('getLegacyEndpointResults', () => {
       '100',
       'Gi1/0/1',
       'all',
-      'mac',
-      'asc',
       '2',
       '100',
     ])

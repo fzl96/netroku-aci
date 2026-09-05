@@ -31,18 +31,9 @@ export function buildLegacyDeviceWhere(
   return and.length ? { AND: and } : {}
 }
 
-const SORT_FIELDS = {
-  hostname: 'hostname',
-  site: 'site',
-  managementIp: 'managementIp',
-  model: 'model',
-  lastSeenAt: 'lastSeenAt',
-} as const
-
-export function legacyDeviceOrderBy(
-  sort: string | undefined,
-  direction: 'asc' | 'desc',
-): Prisma.LegacyDeviceOrderByWithRelationInput {
-  const field = SORT_FIELDS[sort as keyof typeof SORT_FIELDS]
-  return field ? { [field]: direction } : { lastSeenAt: 'desc' }
-}
+/** Inventory reads as an alphabetical roster, so hostname leads and the id
+ *  keeps paging stable across duplicate hostnames. */
+export const LEGACY_DEVICE_ORDER_BY: Prisma.LegacyDeviceOrderByWithRelationInput[] = [
+  { hostname: 'asc' },
+  { id: 'asc' },
+]

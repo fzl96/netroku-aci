@@ -5,22 +5,24 @@ describe('parseLegacyDevicePageParams', () => {
   it('applies defaults when nothing is supplied', () => {
     expect(parseLegacyDevicePageParams({})).toEqual({
       query: '',
-      site: '',
-      deviceType: '',
-      sort: 'lastSeenAt',
-      direction: 'desc',
+      sites: [],
+      deviceTypes: [],
       page: 1,
       pageSize: 50,
     })
   })
 
-  it('takes the first value of a repeated key and trims whitespace', () => {
+  it('takes the first value of a repeated query key and trims whitespace', () => {
+    expect(parseLegacyDevicePageParams({ query: ['  edge  ', 'ignored'] }).query).toBe('edge')
+  })
+
+  it('collects every selected site and device type', () => {
     const params = parseLegacyDevicePageParams({
-      query: ['  edge  ', 'ignored'],
-      site: ['  hq  '],
+      site: '  hq , dc1 ',
+      deviceType: ['switch', 'router,switch'],
     })
-    expect(params.query).toBe('edge')
-    expect(params.site).toBe('hq')
+    expect(params.sites).toEqual(['dc1', 'hq'])
+    expect(params.deviceTypes).toEqual(['router', 'switch'])
   })
 
   it('rejects invalid pages and page sizes', () => {
@@ -31,11 +33,9 @@ describe('parseLegacyDevicePageParams', () => {
     expect(parseLegacyDevicePageParams({ pageSize: '100' }).pageSize).toBe(100)
   })
 
-  it('falls back to the default sort for unknown columns', () => {
-    expect(parseLegacyDevicePageParams({ sort: 'hostname' }).sort).toBe('hostname')
-    expect(parseLegacyDevicePageParams({ sort: 'nonsense' }).sort).toBe('lastSeenAt')
-    expect(parseLegacyDevicePageParams({ dir: 'asc' }).direction).toBe('asc')
-    expect(parseLegacyDevicePageParams({ dir: 'sideways' }).direction).toBe('desc')
+  it('ignores the retired sort parameters a bookmarked URL may still carry', () => {
+    const bookmarked = Object.fromEntries(new URLSearchParams('sort=hostname&dir=asc'))
+    expect(parseLegacyDevicePageParams(bookmarked)).toEqual(parseLegacyDevicePageParams({}))
   })
 })
 
@@ -47,24 +47,19 @@ describe('buildLegacyDevicePageUrl', () => {
       buildLegacyDevicePageUrl({
         ...base,
         query: 'edge',
-        site: 'hq',
-        deviceType: 'switch',
-        sort: 'hostname',
-        direction: 'asc',
+        sites: ['hq', 'dc1'],
+        deviceTypes: ['switch'],
         page: 2,
         pageSize: 100,
       }),
-    ).toBe(
-      '/legacy/devices?query=edge&site=hq&deviceType=switch&sort=hostname&dir=asc&page=2&pageSize=100',
-    )
+    ).toBe('/legacy/devices?query=edge&site=hq%2Cdc1&deviceType=switch&page=2&pageSize=100')
   })
 
   it('round-trips through the parser', () => {
     const params = parseLegacyDevicePageParams({
       query: 'core',
-      site: 'dc1',
-      sort: 'model',
-      dir: 'asc',
+      site: 'dc1,hq',
+      deviceType: 'router',
       page: '3',
     })
     const parsed = parseLegacyDevicePageParams(

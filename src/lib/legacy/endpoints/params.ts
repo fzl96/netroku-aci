@@ -1,23 +1,12 @@
 import {
-  parseLegacyDirection,
+  parseLegacyList,
   parseLegacyPage,
   parseLegacyPageSize,
-  parseLegacySort,
   type LegacyPageSize,
 } from '@/lib/legacy/query'
 import type { LegacyEndpointStatus } from './filters'
 
-export const LEGACY_ENDPOINT_SORTS = [
-  'mac',
-  'vlan',
-  'interface',
-  'firstSeen',
-  'lastSeen',
-  'cleared',
-] as const
-
-export type LegacyEndpointSort = (typeof LEGACY_ENDPOINT_SORTS)[number]
-export type LegacyEndpointStatusFilter = LegacyEndpointStatus | 'all'
+export const LEGACY_ENDPOINT_STATUSES: readonly LegacyEndpointStatus[] = ['active', 'historical']
 
 export type RawLegacyEndpointParam = string | string[] | undefined
 export type RawLegacyEndpointPageParams = {
@@ -27,21 +16,17 @@ export type RawLegacyEndpointPageParams = {
   vlan?: RawLegacyEndpointParam
   interface?: RawLegacyEndpointParam
   status?: RawLegacyEndpointParam
-  sort?: RawLegacyEndpointParam
-  dir?: RawLegacyEndpointParam
   page?: RawLegacyEndpointParam
   pageSize?: RawLegacyEndpointParam
 }
 
 export type LegacyEndpointPageParams = {
   query: string
-  site: string
-  device: string
-  vlan: string
-  interface: string
-  status: LegacyEndpointStatusFilter
-  sort: LegacyEndpointSort
-  direction: 'asc' | 'desc'
+  sites: string[]
+  devices: string[]
+  vlans: string[]
+  interfaces: string[]
+  statuses: LegacyEndpointStatus[]
   page: number
   pageSize: LegacyPageSize
 }
@@ -50,40 +35,45 @@ function first(value: RawLegacyEndpointParam): string {
   return (Array.isArray(value) ? value[0] : value)?.trim() ?? ''
 }
 
+/** Lifecycle is a checkbox group like every other filter, but the page opens on
+ *  active endpoints because historical records outnumber them. An absent param
+ *  therefore means active, and clearing the group — which the URL spells `all`
+ *  — is what asks for both. */
+function parseStatuses(value: RawLegacyEndpointParam): LegacyEndpointStatus[] {
+  const raw = parseLegacyList(value)
+  if (raw.length === 0) return ['active']
+  return LEGACY_ENDPOINT_STATUSES.filter((status) => raw.includes(status))
+}
+
 export function parseLegacyEndpointPageParams(
   input: RawLegacyEndpointPageParams,
 ): LegacyEndpointPageParams {
-  const status = first(input.status)
   return {
     query: first(input.query),
-    site: first(input.site),
-    device: first(input.device),
-    vlan: first(input.vlan),
-    interface: first(input.interface),
-    status: status === 'historical' || status === 'all' ? status : 'active',
-    sort: parseLegacySort(first(input.sort), LEGACY_ENDPOINT_SORTS, 'lastSeen'),
-    direction: parseLegacyDirection(first(input.dir)),
+    sites: parseLegacyList(input.site),
+    devices: parseLegacyList(input.device),
+    vlans: parseLegacyList(input.vlan),
+    interfaces: parseLegacyList(input.interface),
+    statuses: parseStatuses(input.status),
     page: parseLegacyPage(first(input.page)),
     pageSize: parseLegacyPageSize(first(input.pageSize)),
   }
 }
 
-/** The `all` filter spans both lifecycle states, so it becomes an empty
- *  narrowing rather than a status predicate. */
-export function legacyEndpointStatuses(status: LegacyEndpointStatusFilter): LegacyEndpointStatus[] {
-  return status === 'all' ? ['active', 'historical'] : [status]
+function statusParam(statuses: LegacyEndpointStatus[]): string | null {
+  if (statuses.length === 1 && statuses[0] === 'active') return null
+  return statuses.length === 0 ? 'all' : statuses.join(',')
 }
 
 export function buildLegacyEndpointPageUrl(params: LegacyEndpointPageParams): string {
   const search = new URLSearchParams()
   if (params.query) search.set('query', params.query)
-  if (params.site) search.set('site', params.site)
-  if (params.device) search.set('device', params.device)
-  if (params.vlan) search.set('vlan', params.vlan)
-  if (params.interface) search.set('interface', params.interface)
-  if (params.status !== 'active') search.set('status', params.status)
-  if (params.sort !== 'lastSeen') search.set('sort', params.sort)
-  if (params.direction !== 'desc') search.set('dir', params.direction)
+  if (params.sites.length) search.set('site', params.sites.join(','))
+  if (params.devices.length) search.set('device', params.devices.join(','))
+  if (params.vlans.length) search.set('vlan', params.vlans.join(','))
+  if (params.interfaces.length) search.set('interface', params.interfaces.join(','))
+  const status = statusParam(params.statuses)
+  if (status) search.set('status', status)
   if (params.page > 1) search.set('page', String(params.page))
   if (params.pageSize !== 50) search.set('pageSize', String(params.pageSize))
   const value = search.toString()

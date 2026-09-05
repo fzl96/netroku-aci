@@ -12,6 +12,18 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 
+/** An option whose stored value differs from what the reader searches and
+ *  picks — a device id shown as its hostname, say. A bare string is both. */
+export type FilterOption = string | { value: string; label: string }
+
+function optionValue(option: FilterOption): string {
+  return typeof option === 'string' ? option : option.value
+}
+
+function optionLabel(option: FilterOption): string {
+  return typeof option === 'string' ? option : option.label
+}
+
 export function FilterSubmenu({
   label,
   value,
@@ -22,7 +34,7 @@ export function FilterSubmenu({
 }: {
   label: string
   value: string[]
-  options: string[]
+  options: readonly FilterOption[]
   onChange: (value: string[]) => void
   disabled?: boolean
   searchable?: boolean
@@ -35,7 +47,9 @@ export function FilterSubmenu({
 
   const visibleOptions =
     searchable && searchValue.trim()
-      ? options.filter((option) => option.toLowerCase().includes(searchValue.trim().toLowerCase()))
+      ? options.filter((option) =>
+          optionLabel(option).toLowerCase().includes(searchValue.trim().toLowerCase()),
+        )
       : options
 
   return (
@@ -71,13 +85,13 @@ export function FilterSubmenu({
           ) : (
             visibleOptions.map((opt) => (
               <DropdownMenuCheckboxItem
-                key={opt}
-                checked={value.includes(opt)}
+                key={optionValue(opt)}
+                checked={value.includes(optionValue(opt))}
                 disabled={disabled}
-                onCheckedChange={() => toggle(opt)}
+                onCheckedChange={() => toggle(optionValue(opt))}
                 onSelect={(event) => event.preventDefault()}
               >
-                {opt}
+                {optionLabel(opt)}
               </DropdownMenuCheckboxItem>
             ))
           )}

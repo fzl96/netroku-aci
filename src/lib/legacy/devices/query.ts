@@ -6,7 +6,7 @@ import { AuthenticationRequiredError, requireSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { serializeLegacyDate } from '@/lib/legacy/serialize'
 import type { LegacyPageSize } from '@/lib/legacy/query'
-import { buildLegacyDeviceWhere, legacyDeviceOrderBy } from './filters'
+import { buildLegacyDeviceWhere, LEGACY_DEVICE_ORDER_BY } from './filters'
 import type { LegacyDevicePageParams } from './params'
 
 const LEGACY_DEVICE_CACHE_SECONDS = 28_800
@@ -198,13 +198,13 @@ export async function getLegacyDeviceResults(
       async (): Promise<LegacyDeviceResults> => {
         const where = buildLegacyDeviceWhere({
           query: params.query,
-          sites: params.site ? [params.site] : [],
-          deviceTypes: params.deviceType ? [params.deviceType] : [],
+          sites: params.sites,
+          deviceTypes: params.deviceTypes,
         })
         const [records, total] = await Promise.all([
           prisma.legacyDevice.findMany({
             where,
-            orderBy: legacyDeviceOrderBy(params.sort, params.direction),
+            orderBy: LEGACY_DEVICE_ORDER_BY,
             skip: (params.page - 1) * params.pageSize,
             take: params.pageSize,
             select: DEVICE_SELECT,
@@ -222,10 +222,8 @@ export async function getLegacyDeviceResults(
         'legacy-devices',
         'results',
         params.query,
-        params.site,
-        params.deviceType,
-        params.sort,
-        params.direction,
+        params.sites.join(','),
+        params.deviceTypes.join(','),
         String(params.page),
         String(params.pageSize),
       ],

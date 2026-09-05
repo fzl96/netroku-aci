@@ -1,3 +1,5 @@
+import { LegacyListToolbarSkeleton } from '@/components/legacy/legacy-list-toolbar'
+
 export function LegacyHealthSummarySkeleton() {
   return (
     <div
@@ -16,18 +18,7 @@ export function LegacyHealthSummarySkeleton() {
 }
 
 export function LegacyHealthFiltersSkeleton() {
-  return (
-    <div
-      aria-busy="true"
-      aria-label="Loading legacy health filters"
-      className="flex flex-col gap-2 sm:flex-row"
-    >
-      <div className="h-8 flex-1 animate-pulse rounded-lg bg-muted sm:max-w-xs" />
-      {Array.from({ length: 3 }).map((_, control) => (
-        <div key={control} className="h-8 w-32 animate-pulse rounded-lg bg-muted" />
-      ))}
-    </div>
-  )
+  return <LegacyListToolbarSkeleton label="Loading legacy health filters" />
 }
 
 export function LegacyHealthResultsSkeleton() {

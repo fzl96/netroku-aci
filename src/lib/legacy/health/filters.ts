@@ -35,22 +35,12 @@ export function buildLegacyHealthDeviceWhere(
   return { AND: and }
 }
 
-const HEALTH_SORT_FIELDS = {
-  hostname: 'hostname',
-  site: 'site',
-  managementIp: 'managementIp',
-  collected: 'lastHealthSyncAt',
-} as const
-
-export function legacyHealthOrderBy(
-  sort: string | undefined,
-  direction: 'asc' | 'desc',
-): Prisma.LegacyDeviceOrderByWithRelationInput[] {
-  const field = HEALTH_SORT_FIELDS[sort as keyof typeof HEALTH_SORT_FIELDS]
-  return field
-    ? [{ [field]: direction }, { id: 'asc' }]
-    : [{ lastHealthSyncAt: 'desc' }, { id: 'asc' }]
-}
+/** Freshest collection first, so a device that stopped reporting sinks rather
+ *  than hiding mid-list. The id keeps paging stable across equal timestamps. */
+export const LEGACY_HEALTH_ORDER_BY: Prisma.LegacyDeviceOrderByWithRelationInput[] = [
+  { lastHealthSyncAt: 'desc' },
+  { id: 'asc' },
+]
 
 export function legacyStatusText(statuses: string[]): string {
   return statuses.length ? statuses.join(', ') : 'Not reported'
