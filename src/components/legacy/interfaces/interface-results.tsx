@@ -30,6 +30,7 @@ import type {
   LegacyInterfaceRow,
 } from '@/lib/legacy/interfaces/query'
 import { DENSE_TABLE_HEAD_CLS } from '@/lib/ui-classes'
+import { cn } from '@/lib/utils'
 import { LegacyInterfaceRegionError } from './interface-region-error'
 
 function operState(value: string) {
@@ -61,32 +62,9 @@ function exactCounter(value: string | null): string {
   }
 }
 
-interface VisibleCounters {
-  input: string | null
-  output: string | null
-  crc: string | null
-}
-
-function visibleCounters(
-  row: LegacyInterfaceRow,
-  state: LegacyInterfaceListState,
-): VisibleCounters {
-  return {
-    input:
-      state.mode === 'delta'
-        ? (row.sample?.dInputErrors ?? null)
-        : (row.sample?.inputErrors ?? null),
-    output:
-      state.mode === 'delta'
-        ? (row.sample?.dOutputErrors ?? null)
-        : (row.sample?.outputErrors ?? null),
-    crc:
-      state.view === 'crc'
-        ? row.crcWindowTotal
-        : state.mode === 'delta'
-          ? (row.sample?.dCrcErrors ?? null)
-          : (row.sample?.crcErrors ?? null),
-  }
+function visibleCrc(row: LegacyInterfaceRow, state: LegacyInterfaceListState): string | null {
+  if (state.view === 'crc') return row.crcWindowTotal
+  return state.mode === 'delta' ? (row.sample?.dCrcErrors ?? null) : (row.sample?.crcErrors ?? null)
 }
 
 function emptyCopy(state: LegacyInterfaceListState) {
@@ -161,8 +139,6 @@ function LegacyInterfaceResultsContent({
     { label: 'IP address', key: 'ipAddress' },
     { label: 'Admin', key: 'adminSt' },
     { label: 'Operational', key: 'operSt' },
-    { label: `${counterPrefix}input`, key: 'inputErrors' },
-    { label: `${counterPrefix}output`, key: 'outputErrors' },
     {
       label: state.view === 'crc' ? `CRC (${state.window})` : `${counterPrefix}CRC`,
       key: 'crcErrors',
@@ -185,12 +161,22 @@ function LegacyInterfaceResultsContent({
     <>
       <div
         className={[
-          'overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-opacity duration-150',
+          '@container w-full max-w-full min-w-0 overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-opacity duration-150',
           isPending ? 'pointer-events-none opacity-60' : 'opacity-100',
         ].join(' ')}
       >
-        <div className="hidden max-h-[calc(100vh-17rem)] overflow-auto md:block">
-          <table className="w-full text-xs">
+        <div className="hidden max-h-[calc(100vh-17rem)] overflow-x-hidden overflow-y-auto @[64rem]:block">
+          <table className="w-full table-fixed text-xs">
+            <colgroup>
+              <col className="w-[17%]" />
+              <col className="w-[19%]" />
+              <col className="w-[15%]" />
+              <col className="w-[13%]" />
+              <col className="w-[7%]" />
+              <col className="w-[10%]" />
+              <col className="w-[7%]" />
+              <col className="w-[12%]" />
+            </colgroup>
             <thead>
               <tr>
                 {tableHeaders.map((header) => (
@@ -203,22 +189,22 @@ function LegacyInterfaceResultsContent({
                           : 'descending'
                         : undefined
                     }
-                    className={DENSE_TABLE_HEAD_CLS}
+                    className={cn(DENSE_TABLE_HEAD_CLS, 'px-3')}
                   >
                     <button
                       type="button"
                       onClick={() => handleSort(header.key)}
-                      className="inline-flex items-center gap-1 text-inherit transition-colors hover:text-foreground"
+                      className="inline-flex max-w-full items-center gap-1 text-inherit transition-colors hover:text-foreground"
                     >
-                      <span>{header.label}</span>
+                      <span className="truncate">{header.label}</span>
                       {state.sortKey === header.key ? (
                         state.sortDirection === 'asc' ? (
-                          <IconChevronUp size={11} stroke={2} />
+                          <IconChevronUp size={11} stroke={2} className="shrink-0" />
                         ) : (
-                          <IconChevronDown size={11} stroke={2} />
+                          <IconChevronDown size={11} stroke={2} className="shrink-0" />
                         )
                       ) : (
-                        <span className="w-[11px]" aria-hidden="true" />
+                        <span className="w-[11px] shrink-0" aria-hidden="true" />
                       )}
                     </button>
                   </th>
@@ -227,51 +213,73 @@ function LegacyInterfaceResultsContent({
             </thead>
             <tbody>
               {rows.map((row) => {
-                const counters = visibleCounters(row, state)
+                const crc = exactCounter(visibleCrc(row, state))
                 return (
                   <tr
                     key={row.id}
                     onClick={(event) => openInterface(event, row.id)}
                     className="cursor-pointer border-b border-border/70 hover:bg-muted/60"
                   >
-                    <td className="px-4 py-3 font-semibold text-foreground">
-                      {row.hostname}
-                      <div className="text-[10px] font-normal text-faint">{row.site}</div>
+                    <td className="px-3 py-3 font-semibold text-foreground">
+                      <div className="truncate" title={row.hostname}>
+                        {row.hostname}
+                      </div>
+                      <div className="truncate text-[10px] font-normal text-faint" title={row.site}>
+                        {row.site}
+                      </div>
                     </td>
-                    <td className="px-4 py-3 font-mono whitespace-nowrap text-foreground">
+                    <td className="px-3 py-3 font-mono whitespace-nowrap text-foreground">
                       <Link
                         href={detailUrl(row.id)}
                         prefetch={false}
-                        className="rounded-sm underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
+                        title={row.ifName}
+                        className="block truncate rounded-sm underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
                       >
                         {row.ifName}
                       </Link>
                     </td>
-                    <td className="max-w-52 truncate px-4 py-3 text-subtle">
+                    <td
+                      title={row.description || undefined}
+                      className="truncate px-3 py-3 text-subtle"
+                    >
                       {row.description || '—'}
                     </td>
-                    <td className="px-4 py-3 font-mono whitespace-nowrap text-subtle">
+                    <td
+                      title={
+                        row.ipAddress
+                          ? `${row.ipAddress}${row.prefixLength === null ? '' : `/${row.prefixLength}`}`
+                          : undefined
+                      }
+                      className="truncate px-3 py-3 font-mono text-subtle"
+                    >
                       {row.ipAddress
                         ? `${row.ipAddress}${row.prefixLength === null ? '' : `/${row.prefixLength}`}`
                         : '—'}
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">
+                    <td className="px-3 py-3 text-muted-foreground">
                       {normalizeLegacyInterfaceState(row.adminSt)}
                     </td>
-                    <td className="px-4 py-3">{operState(row.operSt)}</td>
-                    <td className="px-4 py-3 text-right font-mono text-subtle">
-                      {exactCounter(counters.input)}
+                    <td className="px-3 py-3">{operState(row.operSt)}</td>
+                    <td title={crc} className="truncate px-3 py-3 text-right font-mono text-subtle">
+                      {crc}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-subtle">
-                      {exactCounter(counters.output)}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-subtle">
-                      {exactCounter(counters.crc)}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-subtle">
-                      {row.sample
-                        ? new Date(row.sample.collectedAt).toLocaleString()
-                        : 'No samples'}
+                    <td className="px-3 py-3 whitespace-nowrap text-subtle">
+                      {row.sample ? (
+                        <time
+                          dateTime={row.sample.collectedAt}
+                          title={new Date(row.sample.collectedAt).toLocaleString()}
+                          className="block"
+                        >
+                          <span className="block truncate">
+                            {new Date(row.sample.collectedAt).toLocaleDateString()}
+                          </span>
+                          <span className="block truncate text-[10px] text-faint">
+                            {new Date(row.sample.collectedAt).toLocaleTimeString()}
+                          </span>
+                        </time>
+                      ) : (
+                        <span className="block truncate">No samples</span>
+                      )}
                     </td>
                   </tr>
                 )
@@ -279,9 +287,9 @@ function LegacyInterfaceResultsContent({
             </tbody>
           </table>
         </div>
-        <div className="space-y-2 p-3 md:hidden">
+        <div className="space-y-2 p-3 @[64rem]:hidden">
           {rows.map((row) => {
-            const counters = visibleCounters(row, state)
+            const crc = exactCounter(visibleCrc(row, state))
             return (
               <Link key={row.id} href={detailUrl(row.id)} prefetch={false} className="block">
                 <DataCard>
@@ -294,8 +302,8 @@ function LegacyInterfaceResultsContent({
                     <DataCardRow label="Site" value={row.site} />
                     <DataCardRow label="Description" value={row.description || 'Not reported'} />
                     <DataCardRow
-                      label={`${state.mode === 'delta' ? 'Error deltas' : 'Errors'} (in / out / CRC)`}
-                      value={`${exactCounter(counters.input)} / ${exactCounter(counters.output)} / ${exactCounter(counters.crc)}`}
+                      label={state.view === 'crc' ? `CRC (${state.window})` : `${counterPrefix}CRC`}
+                      value={crc}
                     />
                   </DataCardBody>
                 </DataCard>

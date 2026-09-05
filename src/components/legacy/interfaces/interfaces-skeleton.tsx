@@ -40,7 +40,7 @@ export function LegacyInterfaceResultsSkeleton() {
       <div className="space-y-3 p-4">
         {Array.from({ length: 8 }).map((_, row) => (
           <div key={row} className="flex gap-4">
-            {Array.from({ length: 10 }).map((_, column) => (
+            {Array.from({ length: 8 }).map((_, column) => (
               <div
                 key={column}
                 className="h-3 flex-1 animate-pulse rounded-sm bg-muted"
