@@ -224,7 +224,7 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
     routes: [
       {
         root: 'src/app/(app)/interface-health',
-        allowedFiles: ['page.tsx'],
+        allowedFiles: ['page.tsx', '[id]/page.tsx'],
       },
     ],
     entryRoots: ['src/app/api/interfaces', 'src/components/interface-health'],

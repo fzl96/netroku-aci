@@ -1,8 +1,8 @@
 'use client'
 
-import type { FormEvent } from 'react'
+import type { FormEvent, MouseEvent } from 'react'
 import { use, useState, useTransition } from 'react'
-import dynamic from 'next/dynamic'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   IconChevronDown,
@@ -18,6 +18,7 @@ import {
   DataCardTitle,
 } from '@/components/ui/data-card'
 import { selectVisibleCounters, type CounterMode } from '@/lib/interface-health/counter-mode'
+import { buildInterfaceDetailUrl } from '@/lib/interface-health/detail-params'
 import {
   buildInterfaceHealthPageUrl,
   INTERFACE_PAGE_SIZES,
@@ -29,20 +30,12 @@ import type {
   InterfaceLoadState,
   InterfaceResultsData,
   InterfaceResultsPayload,
-  InterfaceRow,
 } from '@/lib/interface-health/query'
 import type { InterfaceSortDirection, TableSortKey } from '@/lib/interface-health/sort'
 import { DENSE_TABLE_HEAD_CLS, TABLE_SCROLL_CLS } from '@/lib/ui-classes'
+import { fmtDate, fmtRelative } from '@/lib/interface-health/format'
 import { InterfaceRegionError } from './interface-region-error'
 import { OperStBadge } from './interface-status-badge'
-import type { SelectedInterface } from './interface-error-trend-drawer'
-
-// recharts (via the drawer's chart) is heavy and only needed once a row is
-// clicked, so the drawer is code-split out of the initial results bundle.
-const InterfaceErrorTrendDrawer = dynamic(
-  () => import('./interface-error-trend-drawer').then((m) => m.InterfaceErrorTrendDrawer),
-  { ssr: false },
-)
 
 const PAGE_SIZE_OPTIONS: { label: string; value: InterfacePageSize }[] = [
   ...INTERFACE_PAGE_SIZES.map((value) => ({
@@ -57,23 +50,6 @@ function interfaceUrl(
   overrides: Partial<InterfaceHealthPageParams>,
 ): string {
   return buildInterfaceHealthPageUrl({ ...params, ...overrides })
-}
-
-function fmtDate(date: string | null): string {
-  if (!date) return '—'
-  return new Date(date).toLocaleString()
-}
-
-function fmtRelative(date: string | null): string {
-  if (!date) return 'never'
-  const ms = Date.now() - new Date(date).getTime()
-  if (ms < 60_000) return 'just now'
-  const min = Math.floor(ms / 60_000)
-  if (min < 60) return `${min}m ago`
-  const hr = Math.floor(min / 60)
-  if (hr < 48) return `${hr}h ago`
-  const day = Math.floor(hr / 24)
-  return `${day}d ago`
 }
 
 function fmtCount(value: string | null): string {
@@ -180,7 +156,6 @@ function InterfaceResultsContent({
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [selected, setSelected] = useState<SelectedInterface | null>(null)
   const [jumpValue, setJumpValue] = useState('')
 
   const { rows, total, page, pageSize, sortKey, sortDirection } = results
@@ -200,14 +175,21 @@ function InterfaceResultsContent({
     setJumpValue('')
   }
 
-  function openDrawer(row: InterfaceRow) {
-    setSelected({
-      id: row.id,
-      node: row.node,
-      ifName: row.ifName,
-      description: row.description,
-      operSt: row.operSt,
-    })
+  // Every row links to its port, and the detail page carries this list back so
+  // returning does not drop the reader's filters.
+  const detailUrl = (id: string) =>
+    buildInterfaceDetailUrl(id, { backUrl: interfaceUrl({ ...params, page }, {}) })
+
+  function openInterface(event: MouseEvent, id: string) {
+    // The name cell is a real link so it can be tabbed to and opened in a new
+    // tab; when that is what was clicked, let it navigate on its own terms.
+    if ((event.target as HTMLElement).closest('a')) return
+    // Deliberately outside `startTransition`: that pending flag swaps the rows
+    // for an in-place skeleton, which is right for a filter or sort but wrong
+    // when leaving. Pending here would strip the table on the way out and then
+    // hand over to the detail route's own fallback — two skeletons for one
+    // click. Leave the rows standing until the new page takes the screen.
+    router.push(detailUrl(id))
   }
 
   const tableHeaders: { label: string; sortKey?: TableSortKey }[] = [
@@ -296,12 +278,20 @@ function InterfaceResultsContent({
                         key={r.id}
                         className="group animate-fade-up cursor-pointer border-b border-border-faint transition-colors duration-100 last:border-0 hover:bg-muted"
                         style={{ animationDelay: `${Math.min(i * 12, 200)}ms` }}
-                        onClick={() => openDrawer(r)}
+                        onClick={(e) => openInterface(e, r.id)}
                       >
                         <td className="border-l-2 border-l-transparent px-4 py-2.5 text-muted-foreground tabular-nums transition-colors duration-100 group-hover:border-l-primary">
                           {r.node || '—'}
                         </td>
-                        <td className="px-4 py-2.5 font-mono text-foreground">{r.ifName}</td>
+                        <td className="px-4 py-2.5 font-mono text-foreground">
+                          <Link
+                            href={detailUrl(r.id)}
+                            prefetch={false}
+                            className="rounded-sm underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
+                          >
+                            {r.ifName}
+                          </Link>
+                        </td>
                         <td className="px-4 py-2.5 text-muted-foreground">
                           {r.description || '—'}
                         </td>
@@ -423,42 +413,45 @@ function InterfaceResultsContent({
             const fmtCounter = (v: string | null) =>
               params.counterMode === 'delta' && params.view !== 'crc' ? fmtDelta(v) : fmtCount(v)
             return (
-              <DataCard key={r.id} role="button" tabIndex={0} onClick={() => openDrawer(r)}>
-                <DataCardHeader trailing={<OperStBadge st={r.operSt} adminSt={r.adminSt} />}>
-                  <DataCardTitle className="font-mono">{r.ifName}</DataCardTitle>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    Node {r.node || '—'}
-                    {r.description ? ` · ${r.description}` : ''}
-                  </p>
-                </DataCardHeader>
-                <DataCardBody>
-                  <DataCardRow label="Speed" value={r.operSpeed || '—'} />
-                  <DataCardRow
-                    label="RX / TX err"
-                    value={
-                      <span
-                        className={
-                          isNonZero(visibleCounters.rxErrors) || isNonZero(visibleCounters.txErrors)
-                            ? 'text-danger font-semibold'
-                            : ''
-                        }
-                      >
-                        {fmtCounter(visibleCounters.rxErrors)} /{' '}
-                        {fmtCounter(visibleCounters.txErrors)}
-                      </span>
-                    }
-                  />
-                  <DataCardRow
-                    label={params.view === 'crc' ? 'CRC (window)' : 'CRC err'}
-                    value={
-                      <span className={isNonZero(crcValue) ? 'text-danger font-semibold' : ''}>
-                        {fmtCounter(crcValue)}
-                      </span>
-                    }
-                  />
-                  <DataCardRow label="Sampled" value={fmtRelative(r.lastSampledAt)} />
-                </DataCardBody>
-              </DataCard>
+              <Link key={r.id} href={detailUrl(r.id)} prefetch={false} className="block">
+                <DataCard>
+                  <DataCardHeader trailing={<OperStBadge st={r.operSt} adminSt={r.adminSt} />}>
+                    <DataCardTitle className="font-mono">{r.ifName}</DataCardTitle>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                      Node {r.node || '—'}
+                      {r.description ? ` · ${r.description}` : ''}
+                    </p>
+                  </DataCardHeader>
+                  <DataCardBody>
+                    <DataCardRow label="Speed" value={r.operSpeed || '—'} />
+                    <DataCardRow
+                      label="RX / TX err"
+                      value={
+                        <span
+                          className={
+                            isNonZero(visibleCounters.rxErrors) ||
+                            isNonZero(visibleCounters.txErrors)
+                              ? 'text-danger font-semibold'
+                              : ''
+                          }
+                        >
+                          {fmtCounter(visibleCounters.rxErrors)} /{' '}
+                          {fmtCounter(visibleCounters.txErrors)}
+                        </span>
+                      }
+                    />
+                    <DataCardRow
+                      label={params.view === 'crc' ? 'CRC (window)' : 'CRC err'}
+                      value={
+                        <span className={isNonZero(crcValue) ? 'text-danger font-semibold' : ''}>
+                          {fmtCounter(crcValue)}
+                        </span>
+                      }
+                    />
+                    <DataCardRow label="Sampled" value={fmtRelative(r.lastSampledAt)} />
+                  </DataCardBody>
+                </DataCard>
+              </Link>
             )
           })
         )}
@@ -549,8 +542,6 @@ function InterfaceResultsContent({
           </div>
         </div>
       )}
-
-      <InterfaceErrorTrendDrawer selected={selected} onClose={() => setSelected(null)} />
     </>
   )
 }

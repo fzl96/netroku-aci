@@ -102,11 +102,11 @@ describe('interface health streaming shell', () => {
     expect(badgeSource).toContain('export function OperStBadge')
 
     const resultsSource = read('src/components/interface-health/interface-results.tsx')
-    const drawerSource = read('src/components/interface-health/interface-error-trend-drawer.tsx')
+    const detailSource = read('src/components/interface-health/interface-detail-shell.tsx')
     expect(resultsSource).toContain("from './interface-status-badge'")
-    expect(drawerSource).toContain("from './interface-status-badge'")
+    expect(detailSource).toContain("from './interface-status-badge'")
     expect(resultsSource).not.toContain('interface-health-client')
-    expect(drawerSource).not.toContain('interface-health-client')
+    expect(detailSource).not.toContain('interface-health-client')
   })
 
   it('uses serializable interface payload states across the server-client boundary', () => {
@@ -139,8 +139,9 @@ describe('interface health streaming shell', () => {
   // interface-health-client.tsx and are obsolete post-refactor, but these
   // four still describe files this task left untouched (page.tsx's framework
   // constraints, the regional skeleton shapes, the region-error retry, and
-  // the drawer's authenticated-route data path) and remain true today, so
-  // their coverage is preserved here rather than dropped.
+  // the port-detail data path, since rewritten around the detail route that
+  // replaced the drawer), so their coverage is preserved here rather than
+  // dropped.
 
   it('keeps the route adapter synchronous and framework-only', () => {
     const pageSource = read('src/app/(app)/interface-health/page.tsx')
@@ -166,12 +167,30 @@ describe('interface health streaming shell', () => {
     expect(error).toContain('role="alert"')
   })
 
-  it('routes drawer detail reads through an authenticated route, not an action', () => {
-    const drawer = read('src/components/interface-health/interface-error-trend-drawer.tsx')
-    expect(drawer).not.toContain('@/actions/')
-    expect(drawer).toContain('./interface-samples-request')
+  it('reads one interface through the query layer, not an action', () => {
+    const detail = read('src/components/interface-health/interface-detail-shell.tsx')
+    expect(detail).not.toContain('@/actions/')
+    expect(detail).toContain("from '@/lib/interface-health/query'")
+    // The drawer's browser-side transport went with it; nothing fetches port
+    // detail from the client any more.
     expect(existsSync(path.join(process.cwd(), 'src/app/api/interfaces/samples/route.ts'))).toBe(
-      true,
+      false,
     )
+  })
+
+  it('opens an interface with a real link so rows are reachable by keyboard', () => {
+    const results = read('src/components/interface-health/interface-results.tsx')
+    expect(results).toContain('buildInterfaceDetailUrl')
+    expect(results).toContain('prefetch={false}')
+    expect(results).not.toContain('Drawer')
+  })
+
+  it('leaves the table standing while the detail route loads', () => {
+    // The pending flag swaps rows for an in-place skeleton, which suits a
+    // filter or sort. Reusing it for a row click stacked that skeleton behind
+    // the detail route's own fallback.
+    const results = read('src/components/interface-health/interface-results.tsx')
+    expect(results).toContain('router.push(detailUrl(id))')
+    expect(results).not.toContain('startTransition(() => router.push')
   })
 })

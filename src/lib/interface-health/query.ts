@@ -394,8 +394,8 @@ const STATUS_SAMPLE_SELECT = {
   operSpeed: true,
 } satisfies Prisma.InterfaceSampleSelect
 
-/** Drawer reads are on-demand detail lookups for one port, so they stay
- *  uncached; only the authorization boundary is shared with the page reads. */
+/** Detail reads are on-demand lookups for one port, so they stay uncached;
+ *  only the authorization boundary is shared with the page reads. */
 export async function getInterfaceErrorSamples(
   interfaceId: string,
   range: ErrorTrendRange,
