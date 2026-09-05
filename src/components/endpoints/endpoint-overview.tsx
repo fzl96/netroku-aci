@@ -1,5 +1,6 @@
 'use client'
 
+import type { FormEvent } from 'react'
 import { use, useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { IconFilter2, IconSearch } from '@tabler/icons-react'
@@ -66,7 +67,19 @@ function EndpointOverviewContent({
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [searchValue, setSearchValue] = useState(params.query)
+  const [previousQuery, setPreviousQuery] = useState(params.query)
+  const [lastDispatchedQuery, setLastDispatchedQuery] = useState(params.query)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Sync input when query changes via back/forward navigation, but ignore the
+  // echo from our own debounced router.replace so in-flight typing isn't clobbered.
+  if (params.query !== previousQuery) {
+    setPreviousQuery(params.query)
+    if (params.query !== lastDispatchedQuery) {
+      setSearchValue(params.query)
+    }
+  }
+
   const noun = params.view === 'endpoint' ? 'endpoints' : 'ports'
   const activeFilterGroupCount = countActiveEndpointFilterGroups(
     {
@@ -89,10 +102,24 @@ function EndpointOverviewContent({
     startTransition(() => router.replace(endpointUrl(params, overrides), { scroll: false }))
   }
 
+  function dispatchSearch(value: string) {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    const trimmed = value.trim()
+    setLastDispatchedQuery(trimmed)
+    navigate({ query: trimmed, page: 1 })
+  }
+
   function handleSearchChange(value: string) {
     setSearchValue(value)
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => navigate({ query: value, page: 1 }), 300)
+    debounceRef.current = setTimeout(() => {
+      dispatchSearch(value)
+    }, 300)
+  }
+
+  function handleSearchSubmit(event: FormEvent) {
+    event.preventDefault()
+    dispatchSearch(searchValue)
   }
 
   function handleFilterChange(key: 'vlan' | 'node' | 'iface' | 'status', value: string[]) {
@@ -100,9 +127,7 @@ function EndpointOverviewContent({
   }
 
   return (
-    <section
-      className={`flex flex-wrap items-center justify-between gap-3 transition-opacity ${isPending ? 'pointer-events-none opacity-60' : ''}`}
-    >
+    <section aria-busy={isPending} className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex w-full min-w-0 flex-wrap items-center gap-2 md:w-auto">
         <div className="flex shrink-0 overflow-hidden rounded-lg border border-border">
           {(
@@ -122,22 +147,32 @@ function EndpointOverviewContent({
             </button>
           ))}
         </div>
-        <div className="relative min-w-[140px] flex-1 md:w-56 md:flex-none">
+        <form
+          onSubmit={handleSearchSubmit}
+          className="relative min-w-[140px] flex-1 md:w-56 md:flex-none"
+        >
           <IconSearch
             size={13}
             stroke={1.75}
             className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-faint"
           />
           <input
-            type="text"
+            type="search"
             value={searchValue}
             onChange={(event) => handleSearchChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                dispatchSearch(searchValue)
+              }
+            }}
             placeholder={
               params.view === 'endpoint' ? 'Search MAC, IP, VLAN…' : 'Search node, port, MAC, IP…'
             }
+            aria-label={params.view === 'endpoint' ? 'Search endpoints' : 'Search ports'}
             className={SEARCH_INPUT_CLS}
           />
-        </div>
+        </form>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -216,11 +251,5 @@ export function EndpointOverview({
   if (state.kind === 'unauthorized') return <EndpointRegionError region="overview" />
   if (state.kind === 'inactive') return null
 
-  return (
-    <EndpointOverviewContent
-      key={state.data.params.query}
-      params={state.data.params}
-      overview={state.data.overview}
-    />
-  )
+  return <EndpointOverviewContent params={state.data.params} overview={state.data.overview} />
 }
