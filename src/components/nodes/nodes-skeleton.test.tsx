@@ -23,7 +23,7 @@ describe('node regional skeletons', () => {
     expect(html).toContain('Loading node overview')
     expect(html).toContain('Loading node trend')
     expect(html).toContain('Loading component results')
-    expect((html.match(/<th /g) ?? []).length).toBe(5)
+    expect((html.match(/<th /g) ?? []).length).toBe(6)
   })
 })
 

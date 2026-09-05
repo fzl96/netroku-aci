@@ -237,8 +237,8 @@ function NodeResultsContent({
               <thead>
                 <tr>
                   {(results.view === 'components'
-                    ? ['Node', 'Type', 'Name', 'Status', 'Model']
-                    : ['Node', 'Name', 'Role', 'Model', 'Version', 'State', 'Uptime', 'PSU', 'Fan']
+                    ? ['Node', 'Type', 'Name', 'Status', 'Model', 'Serial']
+                    : ['Node', 'Name', 'Serial', 'Model', 'Version', 'State', 'Uptime', 'PSU', 'Fan']
                   ).map((label) => (
                     <th key={label} className={DENSE_TABLE_HEAD_CLS}>
                       {label}
@@ -263,6 +263,9 @@ function NodeResultsContent({
                           <ComponentStatusBadge row={row} />
                         </td>
                         <td className="px-4 py-2.5 text-muted-foreground">{row.model || '–'}</td>
+                        <td className="px-4 py-2.5 font-mono text-muted-foreground">
+                          {row.serial || '–'}
+                        </td>
                       </tr>
                     ))
                   : results.rows.map((row, index) => (
@@ -277,8 +280,8 @@ function NodeResultsContent({
                         <td className="max-w-[180px] truncate px-4 py-2.5 font-mono text-foreground">
                           {row.name || '–'}
                         </td>
-                        <td className="px-4 py-2.5 text-muted-foreground capitalize">
-                          {row.role || '–'}
+                        <td className="px-4 py-2.5 font-mono text-muted-foreground">
+                          {row.serial || '–'}
                         </td>
                         <td className="px-4 py-2.5 whitespace-nowrap text-muted-foreground">
                           {row.model || '–'}
@@ -320,6 +323,10 @@ function NodeResultsContent({
               <DataCardBody>
                 <DataCardRow label="Node" value={<span className="font-mono">{row.nodeId}</span>} />
                 <DataCardRow label="Model" value={row.model || '—'} />
+                <DataCardRow
+                  label="Serial"
+                  value={<span className="font-mono">{row.serial || '—'}</span>}
+                />
               </DataCardBody>
             </DataCard>
           ))
@@ -335,6 +342,10 @@ function NodeResultsContent({
                 </p>
               </DataCardHeader>
               <DataCardBody>
+                <DataCardRow
+                  label="Serial"
+                  value={<span className="font-mono">{row.serial || '—'}</span>}
+                />
                 <DataCardRow label="Model" value={row.model || '—'} />
                 <DataCardRow label="Version" value={row.version || '—'} />
                 <DataCardRow label="Uptime" value={row.uptime || '—'} />
