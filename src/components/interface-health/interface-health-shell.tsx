@@ -111,7 +111,6 @@ async function loadResults(
   crcWindowDataPromise: Promise<InterfaceCrcWindowData | null>,
 ): Promise<InterfaceLoadState<InterfaceResultsPayload>> {
   const context = await pagePromise
-  if (context.kind === 'unauthorized') return context
   if (context.kind !== 'ready') return { kind: 'inactive' }
 
   try {
@@ -147,17 +146,15 @@ function NoInterfaceHost() {
   )
 }
 
-async function InterfaceHealthBody({
+async function InterfaceControlsGate({
   pagePromise,
   paramsPromise,
   overviewPromise,
-  crcTrendPromise,
   resultsPromise,
 }: {
   pagePromise: Promise<InterfacePageContext>
   paramsPromise: Promise<InterfaceHealthPageParams>
   overviewPromise: Promise<InterfaceLoadState<InterfaceOverviewPayload>>
-  crcTrendPromise: Promise<InterfaceLoadState<InterfaceCrcTrendPayload>>
   resultsPromise: Promise<InterfaceLoadState<InterfaceResultsPayload>>
 }) {
   const context = await pagePromise
@@ -166,33 +163,35 @@ async function InterfaceHealthBody({
   if (context.kind === 'empty') return <NoInterfaceHost />
 
   return (
-    <>
-      <Suspense fallback={<InterfaceControlsSkeleton />}>
-        <InterfaceControls
-          paramsPromise={paramsPromise}
-          nodeFilter={
-            <Suspense fallback={<InterfaceNodeFilterSkeleton />}>
-              <InterfaceNodeFilter dataPromise={overviewPromise} />
-            </Suspense>
-          }
-          summary={
-            <Suspense fallback={<InterfaceSummarySkeleton />}>
-              <InterfaceSummary dataPromise={resultsPromise} />
-            </Suspense>
-          }
-        />
-      </Suspense>
-
-      {context.params.view === 'crc' && (
-        <Suspense fallback={<InterfaceCrcTrendSkeleton />}>
-          <InterfaceCrcTrend dataPromise={crcTrendPromise} />
+    <InterfaceControls
+      paramsPromise={paramsPromise}
+      nodeFilter={
+        <Suspense fallback={<InterfaceNodeFilterSkeleton />}>
+          <InterfaceNodeFilter dataPromise={overviewPromise} />
         </Suspense>
-      )}
+      }
+      summary={
+        <Suspense fallback={<InterfaceSummarySkeleton />}>
+          <InterfaceSummary dataPromise={resultsPromise} />
+        </Suspense>
+      }
+    />
+  )
+}
 
-      <Suspense fallback={<InterfaceResultsSkeleton />}>
-        <InterfaceResults dataPromise={resultsPromise} />
-      </Suspense>
-    </>
+async function InterfaceCrcGate({
+  pagePromise,
+  crcTrendPromise,
+}: {
+  pagePromise: Promise<InterfacePageContext>
+  crcTrendPromise: Promise<InterfaceLoadState<InterfaceCrcTrendPayload>>
+}) {
+  const context = await pagePromise
+  if (context.kind !== 'ready' || context.params.view !== 'crc') return null
+  return (
+    <Suspense fallback={<InterfaceCrcTrendSkeleton />}>
+      <InterfaceCrcTrend dataPromise={crcTrendPromise} />
+    </Suspense>
   )
 }
 
@@ -226,13 +225,20 @@ export function InterfaceHealthShell({
         </div>
       </header>
       <main className="space-y-4 px-4 py-4 md:px-8 md:py-6">
-        <InterfaceHealthBody
-          pagePromise={pagePromise}
-          paramsPromise={paramsPromise}
-          overviewPromise={overviewPromise}
-          crcTrendPromise={crcTrendPromise}
-          resultsPromise={resultsPromise}
-        />
+        <Suspense fallback={<InterfaceControlsSkeleton />}>
+          <InterfaceControlsGate
+            pagePromise={pagePromise}
+            paramsPromise={paramsPromise}
+            overviewPromise={overviewPromise}
+            resultsPromise={resultsPromise}
+          />
+        </Suspense>
+        <Suspense fallback={null}>
+          <InterfaceCrcGate pagePromise={pagePromise} crcTrendPromise={crcTrendPromise} />
+        </Suspense>
+        <Suspense fallback={<InterfaceResultsSkeleton />}>
+          <InterfaceResults dataPromise={resultsPromise} />
+        </Suspense>
       </main>
     </div>
   )

@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { IconRefresh } from '@tabler/icons-react'
 import { ApicCredentialDialog } from '@/components/ApicCredentialDialog'
-import type { EndpointLoadState, EndpointOverviewPayload } from '@/lib/endpoints/query'
+import type { EndpointLoadState, EndpointHeaderPayload } from '@/lib/endpoints/query'
 import { EndpointRegionError } from './endpoint-region-error'
 import { ExportEndpointsDialog } from './export-endpoints-dialog'
 
 export function EndpointHeaderActions({
   dataPromise,
 }: {
-  dataPromise: Promise<EndpointLoadState<EndpointOverviewPayload>>
+  dataPromise: Promise<EndpointLoadState<EndpointHeaderPayload>>
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()

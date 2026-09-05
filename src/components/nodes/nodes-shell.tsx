@@ -78,7 +78,6 @@ async function loadTrend(
   pagePromise: Promise<NodePageContext>,
 ): Promise<NodeLoadState<NodeTrendPayload>> {
   const context = await pagePromise
-  if (context.kind === 'unauthorized') return context
   if (context.kind !== 'ready') return { kind: 'inactive' }
 
   try {
@@ -127,34 +126,33 @@ function NoNodeHost() {
   )
 }
 
-async function NodeBody({
+async function NodeOverviewGate({
   pagePromise,
   overviewPromise,
-  trendPromise,
-  resultsPromise,
 }: {
   pagePromise: Promise<NodePageContext>
   overviewPromise: Promise<NodeLoadState<NodeOverviewPayload>>
-  trendPromise: Promise<NodeLoadState<NodeTrendPayload>>
-  resultsPromise: Promise<NodeLoadState<NodeResultsPayload>>
 }) {
   const context = await pagePromise
   if (context.kind === 'unauthorized') return <NodeRegionError region="overview" />
   if (context.kind === 'redirect') redirect(context.location)
   if (context.kind === 'empty') return <NoNodeHost />
+  return <NodeOverview dataPromise={overviewPromise} />
+}
 
+async function NodeResultsGate({
+  pagePromise,
+  resultsPromise,
+}: {
+  pagePromise: Promise<NodePageContext>
+  resultsPromise: Promise<NodeLoadState<NodeResultsPayload>>
+}) {
+  const context = await pagePromise
+  if (context.kind !== 'ready') return null
   return (
-    <>
-      <Suspense fallback={<NodeOverviewSkeleton />}>
-        <NodeOverview dataPromise={overviewPromise} />
-      </Suspense>
-      <Suspense fallback={<NodeTrendSkeleton />}>
-        <NodeTrend dataPromise={trendPromise} />
-      </Suspense>
-      <Suspense fallback={<NodeResultsSkeleton view={context.params.view} />}>
-        <NodeResults dataPromise={resultsPromise} />
-      </Suspense>
-    </>
+    <Suspense fallback={<NodeResultsSkeleton view={context.params.view} />}>
+      <NodeResults dataPromise={resultsPromise} />
+    </Suspense>
   )
 }
 
@@ -178,12 +176,15 @@ export function NodesShell({ paramsPromise }: { paramsPromise: Promise<NodePageP
         </div>
       </header>
       <main className="space-y-4 px-4 py-4 md:px-8 md:py-6">
-        <NodeBody
-          pagePromise={pagePromise}
-          overviewPromise={overviewPromise}
-          trendPromise={trendPromise}
-          resultsPromise={resultsPromise}
-        />
+        <Suspense fallback={<NodeOverviewSkeleton />}>
+          <NodeOverviewGate pagePromise={pagePromise} overviewPromise={overviewPromise} />
+        </Suspense>
+        <Suspense fallback={<NodeTrendSkeleton />}>
+          <NodeTrend dataPromise={trendPromise} />
+        </Suspense>
+        <Suspense fallback={<NodeResultsSkeleton />}>
+          <NodeResultsGate pagePromise={pagePromise} resultsPromise={resultsPromise} />
+        </Suspense>
       </main>
     </div>
   )

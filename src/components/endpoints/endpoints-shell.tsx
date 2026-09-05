@@ -8,6 +8,7 @@ import {
   getEndpointResults,
   resolveEndpointHost,
   type EndpointHostResolution,
+  type EndpointHeaderPayload,
   type EndpointLoadState,
   type EndpointOverviewPayload,
   type EndpointResultsPayload,
@@ -69,31 +70,38 @@ async function loadResults(
 
 async function loadOverview(
   pagePromise: Promise<EndpointPageContext>,
-  resultsPromise: Promise<EndpointLoadState<EndpointResultsPayload>>,
 ): Promise<EndpointLoadState<EndpointOverviewPayload>> {
   const context = await pagePromise
   if (context.kind === 'unauthorized') return context
   if (context.kind !== 'ready') return { kind: 'inactive' }
 
   try {
-    const [overview, resultsState] = await Promise.all([
-      getEndpointOverview(context.resolution.host.id),
-      resultsPromise,
-    ])
-    if (resultsState.kind !== 'ready') return resultsState
+    const overview = await getEndpointOverview(context.resolution.host.id)
     return {
       kind: 'ready',
       data: {
         params: context.params,
         hosts: context.resolution.hosts,
         overview,
-        filteredTotal: resultsState.data.results.pagination.total,
       },
     }
   } catch (error) {
     if (!(error instanceof EndpointReadError)) throw error
     console.error('[endpoints] failed to load overview data', error)
     return { kind: 'unauthorized' }
+  }
+}
+
+async function loadHeader(
+  overviewPromise: Promise<EndpointLoadState<EndpointOverviewPayload>>,
+  resultsPromise: Promise<EndpointLoadState<EndpointResultsPayload>>,
+): Promise<EndpointLoadState<EndpointHeaderPayload>> {
+  const [overviewState, resultsState] = await Promise.all([overviewPromise, resultsPromise])
+  if (overviewState.kind !== 'ready') return overviewState
+  if (resultsState.kind !== 'ready') return resultsState
+  return {
+    kind: 'ready',
+    data: { ...overviewState.data, filteredTotal: resultsState.data.results.pagination.total },
   }
 }
 
@@ -116,36 +124,41 @@ function NoEndpointHost() {
   )
 }
 
-async function EndpointBody({
+async function EndpointOverviewGate({
   pagePromise,
   overviewPromise,
-  resultsPromise,
 }: {
   pagePromise: Promise<EndpointPageContext>
   overviewPromise: Promise<EndpointLoadState<EndpointOverviewPayload>>
-  resultsPromise: Promise<EndpointLoadState<EndpointResultsPayload>>
 }) {
   const context = await pagePromise
   if (context.kind === 'unauthorized') return <EndpointRegionError region="overview" />
   if (context.kind === 'redirect') redirect(context.location)
   if (context.kind === 'empty') return <NoEndpointHost />
+  return <EndpointOverview dataPromise={overviewPromise} />
+}
 
+async function EndpointResultsGate({
+  pagePromise,
+  resultsPromise,
+}: {
+  pagePromise: Promise<EndpointPageContext>
+  resultsPromise: Promise<EndpointLoadState<EndpointResultsPayload>>
+}) {
+  const context = await pagePromise
+  if (context.kind !== 'ready') return null
   return (
-    <>
-      <Suspense fallback={<EndpointOverviewSkeleton />}>
-        <EndpointOverview dataPromise={overviewPromise} />
-      </Suspense>
-      <Suspense fallback={<EndpointResultsSkeleton view={context.params.view} />}>
-        <EndpointResults dataPromise={resultsPromise} />
-      </Suspense>
-    </>
+    <Suspense fallback={<EndpointResultsSkeleton view={context.params.view} />}>
+      <EndpointResults dataPromise={resultsPromise} />
+    </Suspense>
   )
 }
 
 export function EndpointsShell({ paramsPromise }: { paramsPromise: Promise<EndpointPageParams> }) {
   const pagePromise = resolvePageContext(paramsPromise)
   const resultsPromise = loadResults(pagePromise)
-  const overviewPromise = loadOverview(pagePromise, resultsPromise)
+  const overviewPromise = loadOverview(pagePromise)
+  const headerPromise = loadHeader(overviewPromise, resultsPromise)
 
   return (
     <div className="min-h-full bg-background">
@@ -156,16 +169,17 @@ export function EndpointsShell({ paramsPromise }: { paramsPromise: Promise<Endpo
             <p className="mt-0.5 text-xs text-subtle">ACI fabric endpoint inventory</p>
           </div>
           <Suspense fallback={<EndpointHeaderActionsSkeleton />}>
-            <EndpointHeaderActions dataPromise={overviewPromise} />
+            <EndpointHeaderActions dataPromise={headerPromise} />
           </Suspense>
         </div>
       </header>
       <main className="space-y-4 px-4 py-4 md:px-8 md:py-6">
-        <EndpointBody
-          pagePromise={pagePromise}
-          overviewPromise={overviewPromise}
-          resultsPromise={resultsPromise}
-        />
+        <Suspense fallback={<EndpointOverviewSkeleton />}>
+          <EndpointOverviewGate pagePromise={pagePromise} overviewPromise={overviewPromise} />
+        </Suspense>
+        <Suspense fallback={<EndpointResultsSkeleton />}>
+          <EndpointResultsGate pagePromise={pagePromise} resultsPromise={resultsPromise} />
+        </Suspense>
       </main>
     </div>
   )

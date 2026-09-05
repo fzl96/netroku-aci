@@ -66,7 +66,9 @@ describe('interface health streaming shell', () => {
       shellSource.indexOf('<main'),
       shellSource.indexOf('</main>'),
     )
-    expect(mainSource).not.toMatch(/^<main[^>]*>\s*<Suspense[\s>]/)
+    // Sibling boundaries allow static content and other regions to stream independently.
+    expect(mainSource.match(/<Suspense /g)).toHaveLength(3)
+    expect(mainSource.match(/<\/Suspense>/g)).toHaveLength(3)
   })
 
   it('shares one CRC window read between the trend chart and the results table', () => {
@@ -77,7 +79,7 @@ describe('interface health streaming shell', () => {
 
   it('renders the CRC trend region only for the crc view, without a whole-body fallback', () => {
     const shellSource = read('src/components/interface-health/interface-health-shell.tsx')
-    expect(shellSource).toContain("context.params.view === 'crc'")
+    expect(shellSource).toContain("context.params.view !== 'crc'")
   })
 
   it('consumes server-created promises in focused client regions', () => {

@@ -82,8 +82,9 @@ export type EndpointOverviewPayload = {
   params: EndpointPageParams
   hosts: EndpointHostOption[]
   overview: EndpointOverviewData
-  filteredTotal: number
 }
+
+export type EndpointHeaderPayload = EndpointOverviewPayload & { filteredTotal: number }
 
 export type EndpointResultsPayload = {
   params: EndpointPageParams

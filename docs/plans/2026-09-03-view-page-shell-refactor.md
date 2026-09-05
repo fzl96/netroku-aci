@@ -10,6 +10,60 @@
 
 ---
 
+## Verification and review record — 2026-09-05
+
+Tasks 1–11 were already committed when work resumed at `4acc4d4`. Task 12 automated
+verification and Task 13 code review are now complete on `fix/page-shell-review`.
+Integration remains pending; no merge or push was performed.
+
+The independent review compared `294b243..4acc4d4` against this plan and the design.
+It found two behavior regressions, both repaired and re-reviewed:
+
+- Endpoints, Nodes, and Interface Health awaited host resolution outside their
+  regional Suspense boundaries. Their static headings could not stream until the
+  host read completed. The server gates now sit inside the overview/controls
+  boundaries, while results and trends mount independently. Endpoint and node
+  results retain nested, view-specific skeletons after the host resolves. The
+  conditional CRC region retains its own boundary.
+- Endpoint overview loading awaited results and inherited results failures. The
+  overview now loads independently; only the header payload combines overview and
+  the shared results promise for export totals.
+
+The additional nested boundaries intentionally refine the original exact boundary
+counts without adding a whole-body fallback. Server authorization, redirect,
+empty-state, and substantial server rendering responsibilities are preserved.
+
+Verification repairs also replaced the EPG suite's process-wide APIC-host query
+mock with a restored spy, resolving the four APIC-host test failures reported by
+the previous verification commit. Eight plan/spec documents added during the
+migration were formatted so the repository-wide formatting check passes.
+
+Validation:
+
+- Focused architecture/component checks plus streaming regressions: **123 pass**.
+- Full `bun test`: **868 pass, 2 skip, 0 fail** across 140 files. The two skips are
+  the existing PostgreSQL locking integration cases.
+- Fourteen executable streaming cases use real shells and React rendering with
+  deferred params, hosts, and data. They cover isolated loading, view-specific
+  fallbacks, no-host/auth/redirect gates, CRC visibility, and endpoint result
+  failure isolation. The initial thirteen cases all failed against the original
+  shells, then passed with the repairs. Query/client stand-ins run in subprocesses
+  to avoid leaking module mocks into other suites.
+- `npm run format:check`: pass. `npm run lint`: zero errors and four existing
+  unused-variable warnings. `npm run build`: pass.
+- The installed local code-review-graph CLI refreshed the graph and inspected
+  changes against `294b243`; graph MCP tools were unavailable in this session.
+  The graph reported no affected stored flows. Coverage links are incomplete, so
+  source comparisons and executable tests supplemented graph inspection.
+- Production HTTP smoke checks: `/endpoints`, `/interface-health`,
+  `/inventory/devices`, and `/legacy/interfaces` each returned `307 /signin`;
+  `/signin` returned `200`. The temporary server was stopped after verification.
+  Authenticated browser checks for filters, pagination, resync, and animations
+  remain unverified because browser tooling and a signed-in session were not
+  available. Existing interaction implementations were reviewed against the base.
+
+---
+
 ### Task 1: Extend the architecture guard for shell-based routes
 
 **Files:**

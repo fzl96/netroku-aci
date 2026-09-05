@@ -34,7 +34,8 @@ describe('Nodes streaming shell', () => {
       'utf8',
     )
 
-    expect(shellSource.match(/<Suspense/g)).toHaveLength(4)
+    // Results have an inner, view-specific fallback once host resolution finishes.
+    expect(shellSource.match(/<Suspense/g)).toHaveLength(5)
     expect(shellSource).toContain('export function NodesShell')
     expect(shellSource).not.toContain('export async function NodesShell')
     expect(shellSource).toContain('const pagePromise')
@@ -51,7 +52,9 @@ describe('Nodes streaming shell', () => {
       shellSource.indexOf('<main'),
       shellSource.indexOf('</main>'),
     )
-    expect(mainSource).not.toMatch(/^<main[^>]*>\s*<Suspense[\s>]/)
+    // Sibling boundaries allow static content and other regions to stream independently.
+    expect(mainSource.match(/<Suspense /g)).toHaveLength(3)
+    expect(mainSource.match(/<\/Suspense>/g)).toHaveLength(3)
   })
 
   it('consumes server-created promises in focused client regions', () => {
