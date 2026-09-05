@@ -76,6 +76,8 @@ export type InterfaceRow = {
   operSt: string
   operSpeed: string
   description: string
+  guiCiscoPID: string | null
+  guiSN: string | null
   lastLinkStChg: string | null
   lastSampledAt: string | null
   rxBytes: string | null
@@ -264,6 +266,8 @@ type StoredSnapshot = {
   operSt: string
   operSpeed: string
   description: string
+  guiCiscoPID: string | null
+  guiSN: string | null
   lastLinkStChg: Date | null
   samples: Array<Prisma.InterfaceSampleGetPayload<{ select: typeof SAMPLE_SELECT }>>
 }
@@ -284,6 +288,8 @@ function serializeRow(
     operSt: row.operSt,
     operSpeed: row.operSpeed,
     description: row.description,
+    guiCiscoPID: row.guiCiscoPID,
+    guiSN: row.guiSN,
     lastLinkStChg: row.lastLinkStChg?.toISOString() ?? null,
     lastSampledAt: latest?.sampledAt.toISOString() ?? null,
     rxBytes: latest?.rxBytes.toString() ?? null,
