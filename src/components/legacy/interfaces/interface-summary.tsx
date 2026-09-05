@@ -1,10 +1,17 @@
-import { LegacyInterfaceReadError, getLegacyInterfaceSummary } from '@/lib/legacy/interfaces/query'
+import {
+  LegacyInterfaceReadError,
+  type LegacyInterfaceSummary as LegacyInterfaceSummaryData,
+} from '@/lib/legacy/interfaces/query'
 import { LegacyInterfaceRegionError } from './interface-region-error'
 
-export async function LegacyInterfaceSummary() {
-  let summary: Awaited<ReturnType<typeof getLegacyInterfaceSummary>>
+export async function LegacyInterfaceSummary({
+  summaryPromise,
+}: {
+  summaryPromise: Promise<LegacyInterfaceSummaryData>
+}) {
+  let summary: LegacyInterfaceSummaryData
   try {
-    summary = await getLegacyInterfaceSummary()
+    summary = await summaryPromise
   } catch (error) {
     if (!(error instanceof LegacyInterfaceReadError)) throw error
     console.error('[legacy-interfaces] failed to load summary', error)

@@ -84,6 +84,18 @@ export type LegacyInterfaceHistory = {
   pageSize: number
 }
 
+export type LegacyInterfaceLoadState<T> = { kind: 'ready'; data: T } | { kind: 'unauthorized' }
+
+export type LegacyInterfaceFiltersPayload = {
+  state: LegacyInterfaceListState
+  devices: LegacyInterfaceDeviceOption[]
+}
+
+export type LegacyInterfaceResultsPayload = {
+  state: LegacyInterfaceListState
+  results: LegacyInterfaceResults
+}
+
 export type LegacyInterfaceReadErrorCode = 'unauthorized' | 'read-failed'
 
 export class LegacyInterfaceReadError extends Error {

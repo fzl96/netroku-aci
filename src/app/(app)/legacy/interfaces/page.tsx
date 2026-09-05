@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { LegacyInterfacesView } from '@/components/legacy/interfaces/interfaces-view'
+import { LegacyInterfacesShell } from '@/components/legacy/interfaces/interfaces-shell'
 import { parseLegacyInterfaceListState } from '@/lib/legacy/interfaces/params'
 
 export const metadata: Metadata = {
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 }
 
 export default function Page({ searchParams }: PageProps<'/legacy/interfaces'>) {
-  return <LegacyInterfacesView paramsPromise={searchParams.then(parseLegacyInterfaceListState)} />
+  return <LegacyInterfacesShell paramsPromise={searchParams.then(parseLegacyInterfaceListState)} />
 }

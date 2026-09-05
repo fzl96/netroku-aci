@@ -1,22 +1,302 @@
-import type { LegacyInterfaceListState } from '@/lib/legacy/interfaces/params'
-import { LegacyInterfaceReadError, getLegacyInterfaceResults } from '@/lib/legacy/interfaces/query'
-import { LegacyInterfaceResultsClient } from './interfaces-client'
+'use client'
+
+import { use, useState, useTransition } from 'react'
+import { IconChevronDown, IconChevronUp, IconPlugConnected } from '@tabler/icons-react'
+import { useRouter } from 'next/navigation'
+import {
+  DataCard,
+  DataCardBody,
+  DataCardHeader,
+  DataCardRow,
+  DataCardTitle,
+} from '@/components/ui/data-card'
+import { LegacyEmptyState } from '@/components/legacy/legacy-empty-state'
+import { LegacyPagination } from '@/components/legacy/legacy-pagination'
+import { normalizeLegacyInterfaceState } from '@/lib/legacy/interfaces/filters'
+import {
+  buildLegacyInterfaceUrl,
+  mergeLegacyInterfaceListState,
+  nextLegacyInterfaceSort,
+  type LegacyInterfaceListState,
+  type LegacyInterfaceSortKey,
+} from '@/lib/legacy/interfaces/params'
+import type {
+  LegacyInterfaceLoadState,
+  LegacyInterfaceResults as LegacyInterfaceResultsData,
+  LegacyInterfaceResultsPayload,
+  LegacyInterfaceRow,
+} from '@/lib/legacy/interfaces/query'
+import { DENSE_TABLE_HEAD_CLS } from '@/lib/ui-classes'
+import { LegacyInterfaceDrawer } from './interface-drawer'
 import { LegacyInterfaceRegionError } from './interface-region-error'
 
-export async function LegacyInterfaceResults({
-  paramsPromise,
-}: {
-  paramsPromise: Promise<LegacyInterfaceListState>
-}) {
-  const state = await paramsPromise
-  let results: Awaited<ReturnType<typeof getLegacyInterfaceResults>>
-  try {
-    results = await getLegacyInterfaceResults(state)
-  } catch (error) {
-    if (!(error instanceof LegacyInterfaceReadError)) throw error
-    console.error('[legacy-interfaces] failed to load results', error)
-    return <LegacyInterfaceRegionError region="results" />
+function operState(value: string) {
+  const state = normalizeLegacyInterfaceState(value)
+
+  if (state === 'down') {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400">
+        <span className="size-1.5 shrink-0 rounded-full bg-red-500" />
+        down
+      </span>
+    )
   }
 
-  return <LegacyInterfaceResultsClient state={state} results={results} />
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-success">
+      <span className="size-1.5 shrink-0 rounded-full bg-success-dot" />
+      up
+    </span>
+  )
+}
+
+function exactCounter(value: string | null): string {
+  if (value === null) return '—'
+  try {
+    return BigInt(value).toLocaleString()
+  } catch {
+    return value
+  }
+}
+
+interface VisibleCounters {
+  input: string | null
+  output: string | null
+  crc: string | null
+}
+
+function visibleCounters(
+  row: LegacyInterfaceRow,
+  state: LegacyInterfaceListState,
+): VisibleCounters {
+  return {
+    input:
+      state.mode === 'delta'
+        ? (row.sample?.dInputErrors ?? null)
+        : (row.sample?.inputErrors ?? null),
+    output:
+      state.mode === 'delta'
+        ? (row.sample?.dOutputErrors ?? null)
+        : (row.sample?.outputErrors ?? null),
+    crc:
+      state.view === 'crc'
+        ? row.crcWindowTotal
+        : state.mode === 'delta'
+          ? (row.sample?.dCrcErrors ?? null)
+          : (row.sample?.crcErrors ?? null),
+  }
+}
+
+function emptyCopy(state: LegacyInterfaceListState) {
+  if (state.query || state.deviceIds.length) {
+    return {
+      title: 'No interfaces match the current filters',
+      description: 'Try adjusting the search or selected devices.',
+    }
+  }
+  const windowLabel = state.window === '30d' ? '30 days' : '7 days'
+  if (state.view === 'crc') {
+    return {
+      title: `No increasing CRC errors in the last ${windowLabel}`,
+      description: 'All present interfaces report zero CRC error increases in this window.',
+    }
+  }
+  if (state.view === 'state-changed') {
+    return {
+      title: `No state changes in the last ${windowLabel}`,
+      description: 'No present interface changed its Admin or Oper state in this window.',
+    }
+  }
+  return {
+    title: 'No legacy interfaces found',
+    description: 'Run legacy_sync.py monitor or all to collect interfaces.',
+  }
+}
+
+function LegacyInterfaceResultsContent({
+  state,
+  results,
+}: {
+  state: LegacyInterfaceListState
+  results: LegacyInterfaceResultsData
+}) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [selected, setSelected] = useState<LegacyInterfaceRow | null>(null)
+  const { rows, total, page, pageSize } = results
+
+  function handleSort(key: LegacyInterfaceSortKey) {
+    const next = nextLegacyInterfaceSort(state.sortKey, state.sortDirection, key)
+    const url = buildLegacyInterfaceUrl(
+      mergeLegacyInterfaceListState(state, {
+        sortKey: next.key,
+        sortDirection: next.direction,
+      }),
+    )
+    startTransition(() => router.replace(url))
+  }
+
+  const counterPrefix = state.mode === 'delta' ? 'Δ ' : ''
+  const tableHeaders: Array<{ label: string; key: LegacyInterfaceSortKey }> = [
+    { label: 'Device', key: 'hostname' },
+    { label: 'Interface', key: 'ifName' },
+    { label: 'Description', key: 'description' },
+    { label: 'IP address', key: 'ipAddress' },
+    { label: 'Admin', key: 'adminSt' },
+    { label: 'Operational', key: 'operSt' },
+    { label: `${counterPrefix}input`, key: 'inputErrors' },
+    { label: `${counterPrefix}output`, key: 'outputErrors' },
+    {
+      label: state.view === 'crc' ? `CRC (${state.window})` : `${counterPrefix}CRC`,
+      key: 'crcErrors',
+    },
+    { label: 'Collected', key: 'collectedAt' },
+  ]
+
+  if (rows.length === 0 && !isPending) {
+    const copy = emptyCopy(state)
+    return (
+      <LegacyEmptyState
+        icon={<IconPlugConnected size={24} />}
+        title={copy.title}
+        description={copy.description}
+      />
+    )
+  }
+
+  return (
+    <>
+      <div
+        className={[
+          'overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-opacity duration-150',
+          isPending ? 'pointer-events-none opacity-60' : 'opacity-100',
+        ].join(' ')}
+      >
+        <div className="hidden max-h-[calc(100vh-17rem)] overflow-auto md:block">
+          <table className="w-full text-xs">
+            <thead>
+              <tr>
+                {tableHeaders.map((header) => (
+                  <th
+                    key={header.key}
+                    aria-sort={
+                      state.sortKey === header.key
+                        ? state.sortDirection === 'asc'
+                          ? 'ascending'
+                          : 'descending'
+                        : undefined
+                    }
+                    className={DENSE_TABLE_HEAD_CLS}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleSort(header.key)}
+                      className="inline-flex items-center gap-1 text-inherit transition-colors hover:text-foreground"
+                    >
+                      <span>{header.label}</span>
+                      {state.sortKey === header.key ? (
+                        state.sortDirection === 'asc' ? (
+                          <IconChevronUp size={11} stroke={2} />
+                        ) : (
+                          <IconChevronDown size={11} stroke={2} />
+                        )
+                      ) : (
+                        <span className="w-[11px]" aria-hidden="true" />
+                      )}
+                    </button>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => {
+                const counters = visibleCounters(row, state)
+                return (
+                  <tr
+                    key={row.id}
+                    onClick={() => setSelected(row)}
+                    className="cursor-pointer border-b border-border/70 hover:bg-muted/60"
+                  >
+                    <td className="px-4 py-3 font-semibold text-foreground">
+                      {row.hostname}
+                      <div className="text-[10px] font-normal text-faint">{row.site}</div>
+                    </td>
+                    <td className="px-4 py-3 font-mono whitespace-nowrap text-foreground">
+                      {row.ifName}
+                    </td>
+                    <td className="max-w-52 truncate px-4 py-3 text-subtle">
+                      {row.description || '—'}
+                    </td>
+                    <td className="px-4 py-3 font-mono whitespace-nowrap text-subtle">
+                      {row.ipAddress
+                        ? `${row.ipAddress}${row.prefixLength === null ? '' : `/${row.prefixLength}`}`
+                        : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {normalizeLegacyInterfaceState(row.adminSt)}
+                    </td>
+                    <td className="px-4 py-3">{operState(row.operSt)}</td>
+                    <td className="px-4 py-3 text-right font-mono text-subtle">
+                      {exactCounter(counters.input)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-subtle">
+                      {exactCounter(counters.output)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-subtle">
+                      {exactCounter(counters.crc)}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-subtle">
+                      {row.sample
+                        ? new Date(row.sample.collectedAt).toLocaleString()
+                        : 'No samples'}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="space-y-2 p-3 md:hidden">
+          {rows.map((row) => {
+            const counters = visibleCounters(row, state)
+            return (
+              <DataCard key={row.id} onClick={() => setSelected(row)}>
+                <DataCardHeader trailing={operState(row.operSt)}>
+                  <DataCardTitle>
+                    {row.hostname} · {row.ifName}
+                  </DataCardTitle>
+                </DataCardHeader>
+                <DataCardBody>
+                  <DataCardRow label="Site" value={row.site} />
+                  <DataCardRow label="Description" value={row.description || 'Not reported'} />
+                  <DataCardRow
+                    label={`${state.mode === 'delta' ? 'Error deltas' : 'Errors'} (in / out / CRC)`}
+                    value={`${exactCounter(counters.input)} / ${exactCounter(counters.output)} / ${exactCounter(counters.crc)}`}
+                  />
+                </DataCardBody>
+              </DataCard>
+            )
+          })}
+        </div>
+        <LegacyPagination page={page} pageSize={pageSize} total={total} />
+      </div>
+      <LegacyInterfaceDrawer
+        key={selected?.id ?? 'closed'}
+        selected={selected}
+        onClose={() => setSelected(null)}
+      />
+    </>
+  )
+}
+
+export function LegacyInterfaceResults({
+  dataPromise,
+}: {
+  dataPromise: Promise<LegacyInterfaceLoadState<LegacyInterfaceResultsPayload>>
+}) {
+  const loadState = use(dataPromise)
+  if (loadState.kind === 'unauthorized') return <LegacyInterfaceRegionError region="results" />
+
+  const { state, results } = loadState.data
+  return <LegacyInterfaceResultsContent state={state} results={results} />
 }
