@@ -5,20 +5,11 @@ import type { DeviceListParams } from '@/lib/inventory/devices/params'
 import {
   getDevices,
   getDeviceStacks,
-  type DeviceListPage,
-  type SafeDeviceStack,
+  type DevicesLoadState,
+  type DevicesResultsPayload,
 } from '@/lib/inventory/devices/query'
 import { DevicesResults } from './devices-results'
 import { DevicesResultsSkeleton } from './devices-skeleton'
-
-export type DevicesLoadState<T> = { kind: 'ready'; data: T } | { kind: 'unauthorized' }
-
-export type DevicesResultsPayload = {
-  params: DeviceListParams
-  role: 'admin' | 'member'
-  page: DeviceListPage
-  stacks: SafeDeviceStack[]
-}
 
 async function loadResults(
   paramsPromise: Promise<DeviceListParams>,

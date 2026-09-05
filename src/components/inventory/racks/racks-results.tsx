@@ -40,7 +40,11 @@ import {
 import { createSite, deleteSite, updateSite } from '@/lib/inventory/sites/actions'
 import type { SafeSite } from '@/lib/inventory/sites/query'
 import { createRack, deleteRack, updateRack } from '@/lib/inventory/racks/actions'
-import type { SafeRackWithDevices } from '@/lib/inventory/racks/query'
+import type {
+  RacksLoadState,
+  RacksResultsPayload,
+  SafeRackWithDevices,
+} from '@/lib/inventory/racks/query'
 import {
   clearDevicePlacement,
   updateDeviceHeight,
@@ -59,7 +63,6 @@ import {
   type RackItem,
 } from '@/components/inventory/rack-visualization'
 import { canPlaceDevice, type PlaceableDevice } from '@/lib/inventory/rack-placement'
-import type { RacksLoadState, RacksResultsPayload } from './racks-shell'
 import { RacksRegionError } from './racks-region-error'
 
 function RacksResultsContent({

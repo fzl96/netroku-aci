@@ -16,7 +16,12 @@ import {
 import { DeviceStatus } from '@prisma/client'
 
 import { createDevice, updateDevice, deleteDevice } from '@/lib/inventory/devices/actions'
-import type { SafeDeviceStack, SafeDeviceWithRack } from '@/lib/inventory/devices/query'
+import type {
+  DevicesLoadState,
+  DevicesResultsPayload,
+  SafeDeviceStack,
+  SafeDeviceWithRack,
+} from '@/lib/inventory/devices/query'
 import {
   deviceSchema,
   deviceUpdateSchema,
@@ -48,7 +53,6 @@ import {
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { DENSE_TABLE_HEAD_CLS, SEARCH_INPUT_CLS, TABLE_SCROLL_CLS } from '@/lib/ui-classes'
-import type { DevicesLoadState, DevicesResultsPayload } from './devices-shell'
 import { DevicesRegionError } from './devices-region-error'
 
 const STATUS_BADGE_CLS: Record<string, string> = {

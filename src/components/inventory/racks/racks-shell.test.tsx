@@ -34,10 +34,15 @@ describe('racks streaming shell', () => {
 
   it('maps InventoryReadError to a serializable load state', () => {
     const shellSource = read('src/components/inventory/racks/racks-shell.tsx')
-    expect(shellSource).toContain('export type RacksLoadState<T>')
     expect(shellSource).toContain('InventoryReadError')
     expect(shellSource).toContain("kind: 'unauthorized'")
     expect(shellSource).toContain("kind: 'ready'")
+  })
+
+  it('uses a serializable racks load state across the server-client boundary', () => {
+    const querySource = read('src/lib/inventory/racks/query.ts')
+    expect(querySource).toContain('export type RacksLoadState<T>')
+    expect(querySource).toContain('export type RacksResultsPayload')
   })
 
   it('consumes one server-created promise in the mutation-capable results region', () => {

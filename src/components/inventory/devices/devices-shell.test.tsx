@@ -28,10 +28,15 @@ describe('devices streaming shell', () => {
 
   it('maps InventoryReadError to a serializable load state', () => {
     const shellSource = read('src/components/inventory/devices/devices-shell.tsx')
-    expect(shellSource).toContain('export type DevicesLoadState<T>')
     expect(shellSource).toContain('InventoryReadError')
     expect(shellSource).toContain("kind: 'unauthorized'")
     expect(shellSource).toContain("kind: 'ready'")
+  })
+
+  it('uses a serializable devices load state across the server-client boundary', () => {
+    const querySource = read('src/lib/inventory/devices/query.ts')
+    expect(querySource).toContain('export type DevicesLoadState<T>')
+    expect(querySource).toContain('export type DevicesResultsPayload')
   })
 
   it('starts role, paged devices, and stacks concurrently', () => {

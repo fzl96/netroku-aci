@@ -5,6 +5,8 @@ import { unstable_cache } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { authorizeInventoryRead, readInventoryData } from '@/lib/inventory/authorize'
 import { INVENTORY_CACHE_SECONDS, INVENTORY_TAG } from '@/lib/inventory/cache'
+import type { DeviceCatalogEntry } from '@/lib/inventory/devices/query'
+import type { SafeSite } from '@/lib/inventory/sites/query'
 
 export type SafeRack = {
   id: string
@@ -31,6 +33,16 @@ export type SafeRackDevice = {
 export type SafeRackWithDevices = SafeRack & { devices: SafeRackDevice[] }
 
 export type RackDropdownOption = { id: string; name: string; site: { name: string } }
+
+export type RacksLoadState<T> = { kind: 'ready'; data: T } | { kind: 'unauthorized' }
+
+export type RacksResultsPayload = {
+  role: 'admin' | 'member'
+  sites: SafeSite[]
+  selectedSiteId: string | null
+  racks: SafeRackWithDevices[]
+  allDevices: DeviceCatalogEntry[]
+}
 
 export function toSafeRack(rack: SafeRack): SafeRack {
   return {

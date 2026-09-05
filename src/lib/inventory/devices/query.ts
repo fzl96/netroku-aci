@@ -111,6 +111,15 @@ export type DeviceListPage = {
   pageSize: number
 }
 
+export type DevicesLoadState<T> = { kind: 'ready'; data: T } | { kind: 'unauthorized' }
+
+export type DevicesResultsPayload = {
+  params: DeviceListParams
+  role: 'admin' | 'member'
+  page: DeviceListPage
+  stacks: SafeDeviceStack[]
+}
+
 type RawDevice = SafeDevice
 
 export function toSafe(device: RawDevice): SafeDevice {
