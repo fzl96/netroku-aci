@@ -15,6 +15,7 @@ import {
   serializeLegacyInterfaceCounters,
   serializeLegacyInterfaceSample,
 } from './filters'
+import { queryLegacyLatestSamples } from './latest-sample-query'
 import { sortLegacyInterfaceRows } from './list-data'
 import type { LegacyInterfaceListState } from './params'
 import { queryLegacyStateChangedInterfaceIds } from './state-change-query'
@@ -154,7 +155,6 @@ const LIST_SELECT = {
   adminSt: true,
   operSt: true,
   device: { select: { hostname: true, site: true } },
-  samples: { orderBy: { collectedAt: 'desc' }, take: 1, select: COUNTER_SELECT },
 } satisfies Prisma.LegacyInterfaceSnapshotSelect
 
 const DETAIL_SELECT = {
@@ -173,9 +173,6 @@ const DETAIL_SELECT = {
   device: { select: { id: true, hostname: true, site: true, managementIp: true } },
 } satisfies Prisma.LegacyInterfaceSnapshotSelect
 
-/** Natural interface ordering and exact BigInt counters have no SQL equivalent,
- *  so the matched rows are assembled in one read and sorted and paged in
- *  memory. That read is kept to the table's own columns for the same reason. */
 function windowStartFor(window: LegacyInterfaceListState['window']): Date {
   const days = window === '30d' ? 30 : 7
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000)
@@ -198,6 +195,8 @@ async function readCrcWindowTotals(windowStart: Date): Promise<Map<string, bigin
   return totals
 }
 
+/** The list preserves its JavaScript natural ordering and exact counter
+ *  comparisons by sorting and paging matched snapshots in memory. */
 async function readInterfaceRows(params: LegacyInterfaceListState): Promise<LegacyInterfaceRow[]> {
   const windowStart = windowStartFor(params.window)
   let crcTotals = new Map<string, bigint>()
@@ -235,8 +234,19 @@ async function readInterfaceRows(params: LegacyInterfaceListState): Promise<Lega
     adminSt: snapshot.adminSt,
     operSt: snapshot.operSt,
     crcWindowTotal: crcTotals.get(snapshot.id)?.toString() ?? null,
-    sample: snapshot.samples[0] ? serializeLegacyInterfaceCounters(snapshot.samples[0]) : null,
+    sample: null,
   }))
+}
+
+async function readRowSamples(rows: LegacyInterfaceRow[]): Promise<LegacyInterfaceRow[]> {
+  const latestSamples = await queryLegacyLatestSamples(
+    (sql) => prisma.$queryRaw(sql),
+    rows.map((row) => row.id),
+  )
+  return rows.map((row) => {
+    const sample = latestSamples.get(row.id)
+    return { ...row, sample: sample ? serializeLegacyInterfaceCounters(sample) : null }
+  })
 }
 
 export async function getLegacyInterfaceSummary(): Promise<LegacyInterfaceSummary> {
@@ -281,21 +291,16 @@ export async function getLegacyInterfaceResults(
 ): Promise<LegacyInterfaceResults> {
   await authorize()
   return readInterfaceData(async () => {
-    // Only the filters reach the database; sort, page, and counter mode reshape
-    // the same row set, so they stay out of the cache key.
-    const rows = await unstable_cache(
-      () => readInterfaceRows(params),
-      [
-        'legacy-interfaces',
-        'rows',
-        params.query,
-        [...params.deviceIds].sort().join(','),
-        params.view,
-        // The window only narrows the row set in the derived views.
-        params.view === 'all' ? '' : params.window,
-      ],
-      cacheOptions,
-    )()
+    // Keep the full matched set out of the data cache: fleet-sized results
+    // exceed its per-entry limit. Samples are loaded only where needed below.
+    const snapshots = await readInterfaceRows(params)
+    const sortNeedsSamples =
+      params.sortKey === 'collectedAt' ||
+      params.sortKey === 'inputErrors' ||
+      params.sortKey === 'outputErrors' ||
+      (params.sortKey === 'crcErrors' && params.view !== 'crc')
+    // CRC view sorts by the aggregated window total, already on each row.
+    const rows = sortNeedsSamples ? await readRowSamples(snapshots) : snapshots
 
     const sorted = sortLegacyInterfaceRows(rows, {
       key: params.sortKey,
@@ -304,8 +309,9 @@ export async function getLegacyInterfaceResults(
       view: params.view,
     })
     const start = (params.page - 1) * params.pageSize
+    const pageRows = sorted.slice(start, start + params.pageSize)
     return {
-      rows: sorted.slice(start, start + params.pageSize),
+      rows: sortNeedsSamples ? pageRows : await readRowSamples(pageRows),
       total: sorted.length,
       page: params.page,
       pageSize: params.pageSize,

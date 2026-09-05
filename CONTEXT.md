@@ -323,6 +323,13 @@ Every request uses `Authorization: Bearer <LEGACY_INGEST_TOKEN>`. Idempotency is
 
 Only complete collections are submitted. Missing interfaces in a completed interface snapshot become not present. Missing endpoints become inactive and retain history. Successful ingestion invalidates only the affected legacy purpose tags.
 
+The legacy interface list sorts matched snapshots in memory to preserve natural
+ordering. Snapshot-field and CRC-window-total sorts fetch latest samples only
+for the visible page; latest-counter and collection-time sorts fetch samples for
+all matches before paging. Latest samples use a lateral indexed lookup. The full
+matched list is uncached because fleet-sized entries exceed the data cache limit;
+summary and filter metadata remain cached.
+
 ### ACI configuration workflows
 
 The CSV workflows connect to APIC, validate rows, deploy configuration, roll it back, and write audit results. Validation uses bounded parallelism and request-local APIC read deduplication.
