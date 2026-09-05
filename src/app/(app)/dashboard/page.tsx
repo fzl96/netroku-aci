@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { DashboardView } from '@/components/dashboard/dashboard-view'
+import { DashboardShell } from '@/components/dashboard/dashboard-shell'
 
 export const metadata: Metadata = {
   title: 'Dashboard',
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 }
 
 export default function DashboardPage() {
-  return <DashboardView />
+  return <DashboardShell />
 }

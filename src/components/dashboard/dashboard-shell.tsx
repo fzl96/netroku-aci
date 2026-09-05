@@ -20,7 +20,7 @@ import {
 } from './dashboard-skeleton'
 import { DashboardStatus } from './dashboard-status'
 
-export function DashboardView() {
+export function DashboardShell() {
   const hostsPromise = getDashboardHosts()
   const endpointsPromise = getDashboardEndpoints()
   const interfacesPromise = getDashboardInterfaces()
