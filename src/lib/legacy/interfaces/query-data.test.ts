@@ -41,13 +41,16 @@ const storedSnapshot = {
   secret: 'omit-snapshot',
 }
 
+const snapshotSelectCalls: unknown[] = []
+
 let findManyError: unknown = null
 let snapshotMissing = false
 const snapshotWhereCalls: unknown[] = []
 let extraSnapshots = 0
-const snapshotFindMany = mock(async (args: { where?: unknown }) => {
+const snapshotFindMany = mock(async (args: { where?: unknown; select?: unknown }) => {
   if (findManyError) throw findManyError
   snapshotWhereCalls.push(args.where)
+  snapshotSelectCalls.push(args.select)
   return [
     storedSnapshot,
     { ...storedSnapshot, id: 'i2', ifName: 'Gi1/0/2', samples: [] },
@@ -65,11 +68,19 @@ const snapshotCount = mock(async (args?: { where?: { present?: boolean } }) => {
   return 9
 })
 const snapshotFindUnique = mock(async () => (snapshotMissing ? null : storedSnapshot))
-const sampleFindMany = mock(async (args: { select?: { interfaceId?: boolean } }) => {
+const sampleFindMany = mock(async () => {
   if (findManyError) throw findManyError
-  // The CRC window read projects only the delta columns it sums.
-  if (args.select?.interfaceId) return [{ interfaceId: 'i1', dCrcErrors: BigInt(4) }]
   return [sample]
+})
+type CrcGroupByArgs = {
+  by: string[]
+  where: { collectedAt: { gte: Date }; dCrcErrors: unknown }
+  _sum: unknown
+}
+const sampleGroupBy = mock(async (_args: CrcGroupByArgs) => {
+  if (findManyError) throw findManyError
+  // The CRC window totals are summed in the database, not row by row.
+  return [{ interfaceId: 'i1', _sum: { dCrcErrors: BigInt(4) } }]
 })
 const sampleCount = mock(async () => 5)
 const deviceFindMany = mock(async () => [
@@ -89,7 +100,11 @@ mock.module('@/lib/prisma', () => ({
       count: snapshotCount,
       findUnique: snapshotFindUnique,
     },
-    legacyInterfaceSample: { findMany: sampleFindMany, count: sampleCount },
+    legacyInterfaceSample: {
+      findMany: sampleFindMany,
+      count: sampleCount,
+      groupBy: sampleGroupBy,
+    },
     legacyDevice: { findMany: deviceFindMany },
     $queryRaw: queryRaw,
   },
@@ -126,6 +141,7 @@ beforeEach(() => {
   snapshotMissing = false
   extraSnapshots = 0
   snapshotWhereCalls.length = 0
+  snapshotSelectCalls.length = 0
   cacheCalls.length = 0
 })
 
@@ -157,28 +173,18 @@ describe('getLegacyInterfaceResults', () => {
     const results = await query.getLegacyInterfaceResults(base)
     expect(results.rows[0]).toEqual({
       id: 'i1',
-      deviceId: 'd1',
       hostname: 'edge-1',
       site: 'hq',
-      managementIp: '10.0.0.254',
       ifName: 'Gi1/0/1',
       description: 'uplink',
       ipAddress: '10.0.0.1',
       prefixLength: 24,
-      mtu: 1500,
       speed: '1000',
       adminSt: 'up',
       operSt: 'down',
-      present: true,
-      firstSeenAt: '2026-01-01T00:00:00.000Z',
-      lastSeenAt: '2026-01-02T00:00:00.000Z',
       crcWindowTotal: null,
       sample: {
-        id: 's1',
         collectedAt: '2026-01-02T00:00:00.000Z',
-        adminSt: 'up',
-        operSt: 'down',
-        speed: '1000',
         inputErrors: '10',
         outputErrors: '2',
         crcErrors: '7',
@@ -190,6 +196,26 @@ describe('getLegacyInterfaceResults', () => {
     expect(results.rows[0]).not.toHaveProperty('secret')
     expect(results.rows[0]).not.toHaveProperty('device')
     expect(results.rows[0]).not.toHaveProperty('samples')
+  })
+
+  it('reads only the columns the table renders and sorts on', async () => {
+    await query.getLegacyInterfaceResults(base)
+    const select = snapshotSelectCalls.at(-1) as Record<string, unknown>
+    // Detail-only facts stay on the detail page's read.
+    for (const column of ['mtu', 'present', 'firstSeenAt', 'lastSeenAt', 'deviceId']) {
+      expect(select).not.toHaveProperty(column)
+    }
+    expect(select.device).toEqual({ select: { hostname: true, site: true } })
+    const samples = select.samples as { select: Record<string, unknown> }
+    expect(Object.keys(samples.select).sort()).toEqual([
+      'collectedAt',
+      'crcErrors',
+      'dCrcErrors',
+      'dInputErrors',
+      'dOutputErrors',
+      'inputErrors',
+      'outputErrors',
+    ])
   })
 
   it('keeps a snapshot without samples as a row with no sample', async () => {
@@ -242,10 +268,19 @@ describe('getLegacyInterfaceResults', () => {
 
   it('restricts the crc view to interfaces whose window total increased', async () => {
     const results = await query.getLegacyInterfaceResults({ ...base, view: 'crc' })
+    expect(sampleGroupBy).toHaveBeenCalled()
     expect(snapshotWhereCalls.at(-1)).toMatchObject({
       AND: expect.arrayContaining([{ id: { in: ['i1'] } }]),
     })
     expect(results.rows.find((row) => row.id === 'i1')?.crcWindowTotal).toBe('4')
+  })
+
+  it('sums the crc window in the database, restricted to positive deltas', async () => {
+    await query.getLegacyInterfaceResults({ ...base, view: 'crc', window: '30d' })
+    const args = sampleGroupBy.mock.calls.at(-1)![0]
+    expect(args.by).toEqual(['interfaceId'])
+    expect(args.where.dCrcErrors).toEqual({ gt: BigInt(0) })
+    expect(args._sum).toEqual({ dCrcErrors: true })
   })
 
   it('restricts the state-changed view to the ids the raw query reports', async () => {

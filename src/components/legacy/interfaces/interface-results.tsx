@@ -1,7 +1,9 @@
 'use client'
 
-import { use, useState, useTransition } from 'react'
+import type { MouseEvent } from 'react'
+import { use, useTransition } from 'react'
 import { IconChevronDown, IconChevronUp, IconPlugConnected } from '@tabler/icons-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   DataCard,
@@ -13,6 +15,7 @@ import {
 import { LegacyEmptyState } from '@/components/legacy/legacy-empty-state'
 import { LegacyPagination } from '@/components/legacy/legacy-pagination'
 import { normalizeLegacyInterfaceState } from '@/lib/legacy/interfaces/filters'
+import { buildLegacyInterfaceDetailUrl } from '@/lib/legacy/interfaces/detail-params'
 import {
   buildLegacyInterfaceUrl,
   mergeLegacyInterfaceListState,
@@ -27,7 +30,6 @@ import type {
   LegacyInterfaceRow,
 } from '@/lib/legacy/interfaces/query'
 import { DENSE_TABLE_HEAD_CLS } from '@/lib/ui-classes'
-import { LegacyInterfaceDrawer } from './interface-drawer'
 import { LegacyInterfaceRegionError } from './interface-region-error'
 
 function operState(value: string) {
@@ -122,8 +124,23 @@ function LegacyInterfaceResultsContent({
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [selected, setSelected] = useState<LegacyInterfaceRow | null>(null)
   const { rows, total, page, pageSize } = results
+
+  // Every row links to its interface, and the detail page carries this list
+  // back so returning does not drop the reader's filters.
+  const detailUrl = (id: string) =>
+    buildLegacyInterfaceDetailUrl(id, {
+      backUrl: buildLegacyInterfaceUrl(mergeLegacyInterfaceListState(state, { page })),
+    })
+
+  function openInterface(event: MouseEvent, id: string) {
+    // The name cell is a real link so it can be tabbed to and opened in a new
+    // tab; when that is what was clicked, let it navigate on its own terms.
+    if ((event.target as HTMLElement).closest('a')) return
+    // Deliberately outside startTransition: the pending flag dims the table,
+    // which is right for a sort and wrong on the way out.
+    router.push(detailUrl(id))
+  }
 
   function handleSort(key: LegacyInterfaceSortKey) {
     const next = nextLegacyInterfaceSort(state.sortKey, state.sortDirection, key)
@@ -214,7 +231,7 @@ function LegacyInterfaceResultsContent({
                 return (
                   <tr
                     key={row.id}
-                    onClick={() => setSelected(row)}
+                    onClick={(event) => openInterface(event, row.id)}
                     className="cursor-pointer border-b border-border/70 hover:bg-muted/60"
                   >
                     <td className="px-4 py-3 font-semibold text-foreground">
@@ -222,7 +239,13 @@ function LegacyInterfaceResultsContent({
                       <div className="text-[10px] font-normal text-faint">{row.site}</div>
                     </td>
                     <td className="px-4 py-3 font-mono whitespace-nowrap text-foreground">
-                      {row.ifName}
+                      <Link
+                        href={detailUrl(row.id)}
+                        prefetch={false}
+                        className="rounded-sm underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:outline-none"
+                      >
+                        {row.ifName}
+                      </Link>
                     </td>
                     <td className="max-w-52 truncate px-4 py-3 text-subtle">
                       {row.description || '—'}
@@ -260,31 +283,28 @@ function LegacyInterfaceResultsContent({
           {rows.map((row) => {
             const counters = visibleCounters(row, state)
             return (
-              <DataCard key={row.id} onClick={() => setSelected(row)}>
-                <DataCardHeader trailing={operState(row.operSt)}>
-                  <DataCardTitle>
-                    {row.hostname} · {row.ifName}
-                  </DataCardTitle>
-                </DataCardHeader>
-                <DataCardBody>
-                  <DataCardRow label="Site" value={row.site} />
-                  <DataCardRow label="Description" value={row.description || 'Not reported'} />
-                  <DataCardRow
-                    label={`${state.mode === 'delta' ? 'Error deltas' : 'Errors'} (in / out / CRC)`}
-                    value={`${exactCounter(counters.input)} / ${exactCounter(counters.output)} / ${exactCounter(counters.crc)}`}
-                  />
-                </DataCardBody>
-              </DataCard>
+              <Link key={row.id} href={detailUrl(row.id)} prefetch={false} className="block">
+                <DataCard>
+                  <DataCardHeader trailing={operState(row.operSt)}>
+                    <DataCardTitle>
+                      {row.hostname} · {row.ifName}
+                    </DataCardTitle>
+                  </DataCardHeader>
+                  <DataCardBody>
+                    <DataCardRow label="Site" value={row.site} />
+                    <DataCardRow label="Description" value={row.description || 'Not reported'} />
+                    <DataCardRow
+                      label={`${state.mode === 'delta' ? 'Error deltas' : 'Errors'} (in / out / CRC)`}
+                      value={`${exactCounter(counters.input)} / ${exactCounter(counters.output)} / ${exactCounter(counters.crc)}`}
+                    />
+                  </DataCardBody>
+                </DataCard>
+              </Link>
             )
           })}
         </div>
         <LegacyPagination page={page} pageSize={pageSize} total={total} />
       </div>
-      <LegacyInterfaceDrawer
-        key={selected?.id ?? 'closed'}
-        selected={selected}
-        onClose={() => setSelected(null)}
-      />
     </>
   )
 }

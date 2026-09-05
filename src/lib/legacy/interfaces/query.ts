@@ -10,8 +10,12 @@ import {
   type LegacyPageSize,
   type LegacyRange,
 } from '@/lib/legacy/query'
-import { buildLegacyInterfaceWhere, serializeLegacyInterfaceSample } from './filters'
-import { sortLegacyInterfaceRows, sumLegacyCrcByInterface } from './list-data'
+import {
+  buildLegacyInterfaceWhere,
+  serializeLegacyInterfaceCounters,
+  serializeLegacyInterfaceSample,
+} from './filters'
+import { sortLegacyInterfaceRows } from './list-data'
 import type { LegacyInterfaceListState } from './params'
 import { queryLegacyStateChangedInterfaceIds } from './state-change-query'
 
@@ -21,26 +25,25 @@ const HISTORY_PAGE_SIZE = 25
 const CHART_POINT_LIMIT = 300
 
 export type LegacyInterfaceSampleView = ReturnType<typeof serializeLegacyInterfaceSample>
+export type LegacyInterfaceCounterView = ReturnType<typeof serializeLegacyInterfaceCounters>
 
+/** Exactly what the list table renders and sorts on. Everything else about an
+ *  interface — MTU, presence, first/last seen, the device's management IP, the
+ *  non-counter sample columns — belongs to the detail page, which reads it for
+ *  one interface instead of for every row on the page. */
 export type LegacyInterfaceRow = {
   id: string
-  deviceId: string
   hostname: string
   site: string
-  managementIp: string
   ifName: string
   description: string
   ipAddress: string | null
   prefixLength: number | null
-  mtu: number | null
   speed: string
   adminSt: string
   operSt: string
-  present: boolean
-  firstSeenAt: string
-  lastSeenAt: string
   crcWindowTotal: string | null
-  sample: LegacyInterfaceSampleView | null
+  sample: LegacyInterfaceCounterView | null
 }
 
 export type LegacyInterfaceSummary = {
@@ -77,7 +80,7 @@ export type LegacyInterfaceHistory = {
     device: { id: string; hostname: string; site: string; managementIp: string }
   }
   range: LegacyRange
-  chart: LegacyInterfaceSampleView[]
+  chart: LegacyInterfaceCounterView[]
   samples: LegacyInterfaceSampleView[]
   page: number
   total: number
@@ -131,22 +134,27 @@ const cacheOptions = {
   revalidate: LEGACY_INTERFACE_CACHE_SECONDS,
 }
 
-const SNAPSHOT_SELECT = {
+const COUNTER_SELECT = {
+  collectedAt: true,
+  inputErrors: true,
+  outputErrors: true,
+  crcErrors: true,
+  dInputErrors: true,
+  dOutputErrors: true,
+  dCrcErrors: true,
+} satisfies Prisma.LegacyInterfaceSampleSelect
+
+const LIST_SELECT = {
   id: true,
-  deviceId: true,
   ifName: true,
   description: true,
   ipAddress: true,
   prefixLength: true,
-  mtu: true,
   speed: true,
   adminSt: true,
   operSt: true,
-  present: true,
-  firstSeenAt: true,
-  lastSeenAt: true,
-  device: { select: { id: true, hostname: true, site: true, managementIp: true } },
-  samples: { orderBy: { collectedAt: 'desc' }, take: 1 },
+  device: { select: { hostname: true, site: true } },
+  samples: { orderBy: { collectedAt: 'desc' }, take: 1, select: COUNTER_SELECT },
 } satisfies Prisma.LegacyInterfaceSnapshotSelect
 
 const DETAIL_SELECT = {
@@ -165,12 +173,29 @@ const DETAIL_SELECT = {
   device: { select: { id: true, hostname: true, site: true, managementIp: true } },
 } satisfies Prisma.LegacyInterfaceSnapshotSelect
 
-/** The counters that drive both the CRC view and its column live in the newest
- *  sample per interface, so the row set is assembled in one read and the sort
- *  runs over the assembled rows rather than in SQL. */
+/** Natural interface ordering and exact BigInt counters have no SQL equivalent,
+ *  so the matched rows are assembled in one read and sorted and paged in
+ *  memory. That read is kept to the table's own columns for the same reason. */
 function windowStartFor(window: LegacyInterfaceListState['window']): Date {
   const days = window === '30d' ? 30 : 7
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+}
+
+/** Positive deltas only, summed in the database. A busy 30-day window holds far
+ *  more qualifying samples than there are interfaces, so the totals come back
+ *  already grouped rather than row by row. */
+async function readCrcWindowTotals(windowStart: Date): Promise<Map<string, bigint>> {
+  const grouped = await prisma.legacyInterfaceSample.groupBy({
+    by: ['interfaceId'],
+    where: { collectedAt: { gte: windowStart }, dCrcErrors: { gt: BigInt(0) } },
+    _sum: { dCrcErrors: true },
+  })
+  const totals = new Map<string, bigint>()
+  for (const row of grouped) {
+    const total = row._sum.dCrcErrors
+    if (total !== null && total > BigInt(0)) totals.set(row.interfaceId, total)
+  }
+  return totals
 }
 
 async function readInterfaceRows(params: LegacyInterfaceListState): Promise<LegacyInterfaceRow[]> {
@@ -179,11 +204,7 @@ async function readInterfaceRows(params: LegacyInterfaceListState): Promise<Lega
   let interfaceIds: string[] | undefined
 
   if (params.view === 'crc') {
-    const crcSamples = await prisma.legacyInterfaceSample.findMany({
-      where: { collectedAt: { gte: windowStart }, dCrcErrors: { gt: BigInt(0) } },
-      select: { interfaceId: true, dCrcErrors: true },
-    })
-    crcTotals = sumLegacyCrcByInterface(crcSamples)
+    crcTotals = await readCrcWindowTotals(windowStart)
     interfaceIds = [...crcTotals.keys()]
   } else if (params.view === 'state-changed') {
     interfaceIds = await queryLegacyStateChangedInterfaceIds(
@@ -199,28 +220,22 @@ async function readInterfaceRows(params: LegacyInterfaceListState): Promise<Lega
       interfaceIds,
       presence: 'present',
     }),
-    select: SNAPSHOT_SELECT,
+    select: LIST_SELECT,
   })
 
   return snapshots.map((snapshot) => ({
     id: snapshot.id,
-    deviceId: snapshot.deviceId,
     hostname: snapshot.device.hostname,
     site: snapshot.device.site,
-    managementIp: snapshot.device.managementIp,
     ifName: snapshot.ifName,
     description: snapshot.description,
     ipAddress: snapshot.ipAddress,
     prefixLength: snapshot.prefixLength,
-    mtu: snapshot.mtu,
     speed: snapshot.speed,
     adminSt: snapshot.adminSt,
     operSt: snapshot.operSt,
-    present: snapshot.present,
-    firstSeenAt: snapshot.firstSeenAt.toISOString(),
-    lastSeenAt: snapshot.lastSeenAt.toISOString(),
     crcWindowTotal: crcTotals.get(snapshot.id)?.toString() ?? null,
-    sample: snapshot.samples[0] ? serializeLegacyInterfaceSample(snapshot.samples[0]) : null,
+    sample: snapshot.samples[0] ? serializeLegacyInterfaceCounters(snapshot.samples[0]) : null,
   }))
 }
 
@@ -298,8 +313,10 @@ export async function getLegacyInterfaceResults(
   })
 }
 
-/** Drawer history is an on-demand detail read for one interface, so it stays
- *  uncached; only the authorization boundary is shared with the page reads. */
+/** The detail page's read: one interface, its facts, and the samples behind its
+ *  chart and table. Uncached — it is a single-row read whose range the reader
+ *  changes freely — and it shares only the authorization boundary with the
+ *  list. */
 export async function getLegacyInterfaceHistory(
   interfaceId: string,
   options: { range: LegacyRange; page?: number },
@@ -322,6 +339,7 @@ export async function getLegacyInterfaceHistory(
         where,
         orderBy: { collectedAt: 'desc' },
         take: CHART_POINT_LIMIT,
+        select: COUNTER_SELECT,
       }),
       prisma.legacyInterfaceSample.findMany({
         where,
@@ -350,7 +368,7 @@ export async function getLegacyInterfaceHistory(
         device: snapshot.device,
       },
       range,
-      chart: chartDesc.reverse().map(serializeLegacyInterfaceSample),
+      chart: chartDesc.reverse().map(serializeLegacyInterfaceCounters),
       samples: samples.map(serializeLegacyInterfaceSample),
       page,
       total,

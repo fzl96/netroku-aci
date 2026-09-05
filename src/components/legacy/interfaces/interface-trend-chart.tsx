@@ -10,9 +10,9 @@ import {
   YAxis,
 } from 'recharts'
 import { safeLegacyCounterNumber } from '@/lib/legacy/interfaces/filters'
-import type { LegacyInterfaceSampleView } from '@/lib/legacy/interfaces/query'
+import type { LegacyInterfaceCounterView } from '@/lib/legacy/interfaces/query'
 
-export function LegacyInterfaceTrendChart({ points }: { points: LegacyInterfaceSampleView[] }) {
+export function LegacyInterfaceTrendChart({ points }: { points: LegacyInterfaceCounterView[] }) {
   const chartPoints = points.map((point) => ({
     collectedAt: point.collectedAt,
     input: safeLegacyCounterNumber(point.dInputErrors),

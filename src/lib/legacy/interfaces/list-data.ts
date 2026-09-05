@@ -6,11 +6,6 @@ import type {
 } from './params'
 import { normalizeLegacyInterfaceState } from './filters'
 
-export interface LegacyCrcDeltaSample {
-  interfaceId: string
-  dCrcErrors: bigint | null
-}
-
 export interface SortableLegacyInterfaceSample {
   collectedAt: string
   inputErrors: string
@@ -45,18 +40,6 @@ const NATURAL_COLLATOR = new Intl.Collator(undefined, {
   numeric: true,
   sensitivity: 'base',
 })
-
-export function sumLegacyCrcByInterface(samples: LegacyCrcDeltaSample[]): Map<string, bigint> {
-  const totals = new Map<string, bigint>()
-  for (const sample of samples) {
-    if (sample.dCrcErrors === null || sample.dCrcErrors <= BigInt(0)) continue
-    totals.set(
-      sample.interfaceId,
-      (totals.get(sample.interfaceId) ?? BigInt(0)) + sample.dCrcErrors,
-    )
-  }
-  return totals
-}
 
 function parseCounter(value: string | null | undefined): bigint | null {
   if (value === null || value === undefined) return null

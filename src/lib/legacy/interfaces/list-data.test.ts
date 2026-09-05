@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { sortLegacyInterfaceRows, sumLegacyCrcByInterface } from './list-data'
+import { sortLegacyInterfaceRows } from './list-data'
 
 interface TestRow {
   id: string
@@ -198,17 +198,5 @@ describe('legacy interface list data', () => {
         view: 'all',
       }).map((item) => item.id),
     ).toEqual(['one', 'ten'])
-  })
-
-  test('sums only positive CRC deltas with exact BigInt arithmetic', () => {
-    expect(
-      sumLegacyCrcByInterface([
-        { interfaceId: 'if-1', dCrcErrors: 9_007_199_254_740_993n },
-        { interfaceId: 'if-1', dCrcErrors: 2n },
-        { interfaceId: 'if-1', dCrcErrors: null },
-        { interfaceId: 'if-2', dCrcErrors: 0n },
-        { interfaceId: 'if-3', dCrcErrors: -1n },
-      ]),
-    ).toEqual(new Map([['if-1', 9_007_199_254_740_995n]]))
   })
 })

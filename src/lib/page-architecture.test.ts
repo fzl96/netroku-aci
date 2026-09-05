@@ -139,13 +139,18 @@ const MIGRATED_PURPOSES: MigratedPurpose[] = [
     routes: [
       {
         root: 'src/app/(app)/legacy/interfaces',
-        allowedFiles: ['page.tsx'],
+        allowedFiles: ['page.tsx', '[id]/page.tsx'],
       },
     ],
-    entryRoots: ['src/app/api/legacy/interfaces', 'src/components/legacy/interfaces'],
+    entryRoots: ['src/components/legacy/interfaces'],
     obsoletePaths: [
       'src/actions/legacy-interfaces.ts',
       'src/components/legacy/interfaces/interfaces-view.tsx',
+      // The drawer's browser-side transport and its route handler: the detail
+      // page reads through the query layer on the server instead.
+      'src/app/api/legacy/interfaces/history/route.ts',
+      'src/components/legacy/interfaces/interface-drawer.tsx',
+      'src/components/legacy/interfaces/interface-history-request.ts',
     ],
   },
   {

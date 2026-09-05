@@ -13,18 +13,23 @@ export interface LegacyInterfaceFilters {
   presence?: LegacyInterfacePresence
 }
 
-export interface LegacyInterfaceSampleInput {
-  id: string
+/** The counters alone. The list table shows nothing else from a sample, so it
+ *  reads only these columns. */
+export interface LegacyInterfaceCounterInput {
   collectedAt: Date
-  adminSt: string
-  operSt: string
-  speed: string
   inputErrors: bigint
   outputErrors: bigint
   crcErrors: bigint
   dInputErrors: bigint | null
   dOutputErrors: bigint | null
   dCrcErrors: bigint | null
+}
+
+export interface LegacyInterfaceSampleInput extends LegacyInterfaceCounterInput {
+  id: string
+  adminSt: string
+  operSt: string
+  speed: string
 }
 
 export function normalizeLegacyInterfaceState(value: string): 'up' | 'down' {
@@ -59,9 +64,11 @@ export function buildLegacyInterfaceWhere(
   return and.length ? { AND: and } : {}
 }
 
-export function serializeLegacyInterfaceSample(sample: LegacyInterfaceSampleInput) {
+/** Named rather than spread: the list row is what crosses to the browser, and
+ *  listing its fields keeps a widened database select from quietly widening the
+ *  payload too. */
+export function serializeLegacyInterfaceCounters(sample: LegacyInterfaceCounterInput) {
   return {
-    ...sample,
     collectedAt: sample.collectedAt.toISOString(),
     inputErrors: sample.inputErrors.toString(),
     outputErrors: sample.outputErrors.toString(),
@@ -69,6 +76,16 @@ export function serializeLegacyInterfaceSample(sample: LegacyInterfaceSampleInpu
     dInputErrors: serializeLegacyCounter(sample.dInputErrors),
     dOutputErrors: serializeLegacyCounter(sample.dOutputErrors),
     dCrcErrors: serializeLegacyCounter(sample.dCrcErrors),
+  }
+}
+
+export function serializeLegacyInterfaceSample(sample: LegacyInterfaceSampleInput) {
+  return {
+    ...serializeLegacyInterfaceCounters(sample),
+    id: sample.id,
+    adminSt: sample.adminSt,
+    operSt: sample.operSt,
+    speed: sample.speed,
   }
 }
 

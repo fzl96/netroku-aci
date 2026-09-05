@@ -53,3 +53,25 @@ export function LegacyInterfaceResultsSkeleton() {
     </div>
   )
 }
+
+export function LegacyInterfaceDetailSkeleton() {
+  return (
+    <div
+      aria-busy="true"
+      aria-label="Loading interface detail"
+      className="min-h-full bg-background"
+    >
+      <div className="border-b border-border px-4 py-3 md:px-8 md:py-4">
+        <div className="h-3 w-20 animate-pulse rounded-sm bg-muted" />
+        <div className="mt-3 h-5 w-72 animate-pulse rounded-sm bg-muted" />
+        <div className="mt-2 h-3 w-40 animate-pulse rounded-sm bg-muted" />
+      </div>
+      <div className="space-y-4 px-4 py-4 md:px-8 md:py-6">
+        <div className="h-8 w-56 animate-pulse rounded-lg bg-muted" />
+        <div className="h-64 animate-pulse rounded-2xl bg-muted" />
+        <div className="h-32 animate-pulse rounded-2xl bg-muted" />
+        <div className="h-80 animate-pulse rounded-2xl bg-muted" />
+      </div>
+    </div>
+  )
+}
