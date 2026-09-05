@@ -86,3 +86,28 @@ export function InterfaceHeaderActionsSkeleton() {
     </div>
   )
 }
+
+export function InterfaceDetailSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading interface" className="min-h-full bg-background">
+      <header className="border-b border-border bg-background/90">
+        <div className="flex flex-col gap-3 px-4 py-3 md:px-8 md:py-4">
+          <div className="h-3 w-20 animate-pulse rounded-sm bg-muted" />
+          <div className="flex flex-col justify-between gap-2 md:flex-row md:items-center">
+            <div className="space-y-2">
+              <div className="h-5 w-56 animate-pulse rounded-sm bg-muted" />
+              <div className="h-3 w-40 animate-pulse rounded-sm bg-muted" />
+            </div>
+            <div className="h-3 w-48 animate-pulse rounded-sm bg-muted" />
+          </div>
+        </div>
+      </header>
+      <main className="space-y-4 px-4 py-4 md:px-8 md:py-6">
+        <div className="h-9 w-[220px] animate-pulse rounded-lg bg-muted" />
+        <div className="h-[440px] animate-pulse rounded-2xl border border-border bg-card" />
+        <div className="h-[200px] animate-pulse rounded-2xl border border-border bg-card" />
+        <div className="h-[320px] animate-pulse rounded-2xl border border-border bg-card" />
+      </main>
+    </div>
+  )
+}
