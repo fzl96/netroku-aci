@@ -261,6 +261,11 @@ model InterfaceSnapshot {
   firstSeenAt   DateTime  @default(now())
   lastSeenAt    DateTime  @default(now())
 
+  // Transceiver identity observed at this snapshot/sample; null when unavailable.
+  guiCiscoEID String?
+  guiCiscoPID String?
+  guiSN       String?
+
   samples InterfaceSample[]
 
   @@unique([apicHostId, dn])
@@ -275,6 +280,11 @@ model InterfaceSample {
   interfaceId String
   interface   InterfaceSnapshot @relation(fields: [interfaceId], references: [id], onDelete: Cascade)
   sampledAt   DateTime          @default(now())
+
+  // Transceiver identity observed at this snapshot/sample; null when unavailable.
+  guiCiscoEID String?
+  guiCiscoPID String?
+  guiSN       String?
 
   adminSt   String
   operSt    String

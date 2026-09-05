@@ -78,6 +78,8 @@ function snapshot(id: string, node: string, ifName: string, crc: bigint) {
     operSt: 'up',
     operSpeed: '10G',
     description: '',
+    guiCiscoPID: 'SFP-10G-SR-S',
+    guiSN: 'ACW274905XX',
     lastLinkStChg: new Date('2026-01-03T00:00:00Z'),
     secret: 'omit-snapshot',
     samples: [
@@ -258,6 +260,8 @@ describe('getInterfaceResults', () => {
       operSt: 'up',
       operSpeed: '10G',
       description: '',
+      guiCiscoPID: 'SFP-10G-SR-S',
+      guiSN: 'ACW274905XX',
       lastLinkStChg: '2026-01-03T00:00:00.000Z',
       lastSampledAt: '2026-01-04T00:00:00.000Z',
       rxBytes: '10',

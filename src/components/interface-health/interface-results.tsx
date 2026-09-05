@@ -198,16 +198,14 @@ function InterfaceResultsContent({
     { label: 'Description' },
     { label: 'Admin' },
     { label: 'Oper' },
-    { label: 'Speed' },
-    { label: params.counterMode === 'delta' ? 'Rx err Δ' : 'Rx err', sortKey: 'rxErrors' },
-    { label: params.counterMode === 'delta' ? 'Tx err Δ' : 'Tx err', sortKey: 'txErrors' },
+    { label: 'PID' },
+    { label: 'SN' },
     params.view === 'crc'
       ? { label: `CRC (${params.window})`, sortKey: 'crcWindowTotal' as TableSortKey }
       : {
           label: params.counterMode === 'delta' ? 'CRC Δ' : 'CRC',
           sortKey: 'rxCrcErrors' as TableSortKey,
         },
-    { label: params.counterMode === 'delta' ? 'Align Δ' : 'Align', sortKey: 'rxAlignErrors' },
     { label: 'Last link change' },
     { label: 'Sampled' },
   ]
@@ -299,32 +297,11 @@ function InterfaceResultsContent({
                         <td className="px-4 py-2.5">
                           <OperStBadge st={r.operSt} adminSt={r.adminSt} />
                         </td>
-                        <td className="px-4 py-2.5 text-muted-foreground tabular-nums">
-                          {r.operSpeed || '—'}
+                        <td className="px-4 py-2.5 font-mono whitespace-nowrap text-muted-foreground">
+                          {r.guiCiscoPID || '—'}
                         </td>
-                        <td
-                          className={[
-                            'px-4 py-2.5 tabular-nums',
-                            isNonZero(visibleCounters.rxErrors)
-                              ? 'text-danger font-semibold'
-                              : 'text-faint',
-                          ].join(' ')}
-                        >
-                          {params.counterMode === 'delta'
-                            ? fmtDelta(visibleCounters.rxErrors)
-                            : fmtCount(visibleCounters.rxErrors)}
-                        </td>
-                        <td
-                          className={[
-                            'px-4 py-2.5 tabular-nums',
-                            isNonZero(visibleCounters.txErrors)
-                              ? 'text-danger font-semibold'
-                              : 'text-faint',
-                          ].join(' ')}
-                        >
-                          {params.counterMode === 'delta'
-                            ? fmtDelta(visibleCounters.txErrors)
-                            : fmtCount(visibleCounters.txErrors)}
+                        <td className="px-4 py-2.5 font-mono whitespace-nowrap text-muted-foreground">
+                          {r.guiSN || '—'}
                         </td>
                         {params.view === 'crc' ? (
                           <td className="px-4 py-2.5 tabular-nums">
@@ -359,18 +336,6 @@ function InterfaceResultsContent({
                               : fmtCount(visibleCounters.rxCrcErrors)}
                           </td>
                         )}
-                        <td
-                          className={[
-                            'px-4 py-2.5 tabular-nums',
-                            isNonZero(visibleCounters.rxAlignErrors)
-                              ? 'text-danger font-semibold'
-                              : 'text-faint',
-                          ].join(' ')}
-                        >
-                          {params.counterMode === 'delta'
-                            ? fmtDelta(visibleCounters.rxAlignErrors)
-                            : fmtCount(visibleCounters.rxAlignErrors)}
-                        </td>
                         <td className="px-4 py-2.5 whitespace-nowrap tabular-nums">
                           {r.hasRecentStateChange ? (
                             <span className="inline-flex items-center gap-1.5 font-medium text-amber-600 dark:text-amber-400">
@@ -423,23 +388,8 @@ function InterfaceResultsContent({
                     </p>
                   </DataCardHeader>
                   <DataCardBody>
-                    <DataCardRow label="Speed" value={r.operSpeed || '—'} />
-                    <DataCardRow
-                      label="RX / TX err"
-                      value={
-                        <span
-                          className={
-                            isNonZero(visibleCounters.rxErrors) ||
-                            isNonZero(visibleCounters.txErrors)
-                              ? 'text-danger font-semibold'
-                              : ''
-                          }
-                        >
-                          {fmtCounter(visibleCounters.rxErrors)} /{' '}
-                          {fmtCounter(visibleCounters.txErrors)}
-                        </span>
-                      }
-                    />
+                    <DataCardRow label="PID" value={r.guiCiscoPID || '—'} />
+                    <DataCardRow label="SN" value={r.guiSN || '—'} />
                     <DataCardRow
                       label={params.view === 'crc' ? 'CRC (window)' : 'CRC err'}
                       value={
