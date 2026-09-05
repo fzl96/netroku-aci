@@ -10,6 +10,9 @@ export interface ApicInterfaceRow {
   operSt: string
   operSpeed: string
   description: string
+  guiCiscoEID: string | null
+  guiCiscoPID: string | null
+  guiSN: string | null
   lastLinkStChg: Date | null
 
   rxBytes: bigint
@@ -148,6 +151,7 @@ export function parseInterfaceRows(imdata: PhysIfNode[]): ApicInterfaceRow[] {
     const { node, ifName } = parseDn(dn)
 
     const attrsByClass = collectByClass(phys.children ?? [])
+    const fcot = attrsByClass.get('ethpmFcot')
     const ethpm = (attrsByClass.get('ethpmPhysIf') ?? {}) as EthpmPhysIfAttrs
     const rmonIn = (attrsByClass.get('rmonIfIn') ?? {}) as RmonIfInAttrs
     const rmonOut = (attrsByClass.get('rmonIfOut') ?? {}) as RmonIfOutAttrs
@@ -172,6 +176,9 @@ export function parseInterfaceRows(imdata: PhysIfNode[]): ApicInterfaceRow[] {
       operSt: ethpm.operSt ?? '',
       operSpeed: ethpm.operSpeed ?? '',
       description: descr ?? '',
+      guiCiscoEID: fcot?.guiCiscoEID?.trim() || null,
+      guiCiscoPID: fcot?.guiCiscoPID?.trim() || null,
+      guiSN: fcot?.guiSN?.trim() || null,
       lastLinkStChg: parseDate(ethpm.lastLinkStChg),
       rxBytes: toBigInt(rmonIn.octets),
       rxPkts,
@@ -211,7 +218,7 @@ export async function fetchInterfacesFromApic(
   const path =
     '/api/node/class/l1PhysIf.json' +
     '?rsp-subtree=full' +
-    '&rsp-subtree-class=ethpmPhysIf,rmonIfIn,rmonIfOut,rmonDot3Stats,rmonEtherStats'
+    '&rsp-subtree-class=ethpmPhysIf,ethpmFcot,rmonIfIn,rmonIfOut,rmonDot3Stats,rmonEtherStats'
 
   const res = await apicFetch(host, path, { token })
   if (!res.ok) throw new Error(`APIC GET ${path} failed: ${res.status}`)
@@ -295,6 +302,9 @@ export async function executeInterfaceResyncWrites(
                 adminSt: row.adminSt,
                 operSt: row.operSt,
                 operSpeed: row.operSpeed,
+                guiCiscoEID: row.guiCiscoEID,
+                guiCiscoPID: row.guiCiscoPID,
+                guiSN: row.guiSN,
                 description: row.description,
                 lastLinkStChg: row.lastLinkStChg,
                 lastSeenAt: now,
@@ -308,6 +318,9 @@ export async function executeInterfaceResyncWrites(
                 adminSt: row.adminSt,
                 operSt: row.operSt,
                 operSpeed: row.operSpeed,
+                guiCiscoEID: row.guiCiscoEID,
+                guiCiscoPID: row.guiCiscoPID,
+                guiSN: row.guiSN,
                 description: row.description,
                 lastLinkStChg: row.lastLinkStChg,
                 firstSeenAt: now,
@@ -384,6 +397,9 @@ export async function executeInterfaceResyncWrites(
                 adminSt: row.adminSt,
                 operSt: row.operSt,
                 operSpeed: row.operSpeed,
+                guiCiscoEID: row.guiCiscoEID,
+                guiCiscoPID: row.guiCiscoPID,
+                guiSN: row.guiSN,
                 rxBytes: row.rxBytes,
                 rxPkts: row.rxPkts,
                 rxErrors: row.rxErrors,

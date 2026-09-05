@@ -55,6 +55,9 @@ describe('parseInterfaceRows', () => {
     expect(rows[0].ifName).toBe('eth1/4')
     expect(rows[0].usage).toBe('epg')
     expect(rows[0].adminSt).toBe('up')
+    expect(rows[0].guiCiscoEID).toBeNull()
+    expect(rows[0].guiCiscoPID).toBeNull()
+    expect(rows[0].guiSN).toBeNull()
   })
 
   it('reads counters from rmon classes nested under ethpmPhysIf', () => {
@@ -77,6 +80,15 @@ describe('parseInterfaceRows', () => {
                   lastLinkStChg: '2026-05-01T00:00:00.000Z',
                 },
                 children: [
+                  {
+                    ethpmFcot: {
+                      attributes: {
+                        guiCiscoEID: '10Gbase-SR-S',
+                        guiCiscoPID: 'SFP-10G-SR-S        ',
+                        guiSN: 'ACW274905XX     ',
+                      },
+                    },
+                  },
                   {
                     rmonIfIn: {
                       attributes: {
@@ -109,6 +121,9 @@ describe('parseInterfaceRows', () => {
     ])
 
     const row = rows[0]
+    expect(row.guiCiscoEID).toBe('10Gbase-SR-S')
+    expect(row.guiCiscoPID).toBe('SFP-10G-SR-S')
+    expect(row.guiSN).toBe('ACW274905XX')
     expect(row.operSt).toBe('up')
     expect(row.operSpeed).toBe('25G')
     expect(row.lastLinkStChg?.toISOString()).toBe('2026-05-01T00:00:00.000Z')
@@ -224,6 +239,26 @@ describe('parseInterfaceRows', () => {
     expect(rows[0].lastLinkStChg).toBeNull()
   })
 
+  it('normalizes blank and missing transceiver attributes to null', () => {
+    const [row] = parseInterfaceRows([
+      {
+        l1PhysIf: {
+          attributes: {
+            dn: 'topology/pod-1/node-101/sys/phys-[eth1/1]',
+            id: 'eth1/1',
+            adminSt: 'up',
+            usage: '',
+            descr: '',
+          },
+          children: [{ ethpmFcot: { attributes: { guiCiscoEID: '', guiCiscoPID: '   ' } } }],
+        },
+      },
+    ])
+    expect(row.guiCiscoEID).toBeNull()
+    expect(row.guiCiscoPID).toBeNull()
+    expect(row.guiSN).toBeNull()
+  })
+
   it('skips items without an l1PhysIf payload', () => {
     const rows = parseInterfaceRows([{} as Parameters<typeof parseInterfaceRows>[0][number]])
     expect(rows).toEqual([])
@@ -233,9 +268,15 @@ describe('parseInterfaceRows', () => {
 describe('executeInterfaceResyncWrites', () => {
   it('runs snapshot upserts, previous-sample reads, sample inserts, host stamp, and total count in one transaction', async () => {
     const calls: string[] = []
+    const snapshots: Array<{
+      create: Partial<ApicInterfaceRow>
+      update: Partial<ApicInterfaceRow>
+    }> = []
+    const samples: Array<Partial<ApicInterfaceRow> & { sampledAt: Date }> = []
     let inTransaction = false
     const interfaceSnapshot = {
-      upsert: async () => {
+      upsert: async (args: (typeof snapshots)[number]) => {
+        snapshots.push(args)
         expect(inTransaction).toBe(true)
         calls.push('snapshot:upsert')
         return { id: 'snapshot-1', dn: 'topology/pod-1/node-101/sys/phys-[eth1/1]' }
@@ -252,7 +293,8 @@ describe('executeInterfaceResyncWrites', () => {
         calls.push('sample:findMany')
         return []
       },
-      create: async () => {
+      create: async (args: { data: (typeof samples)[number] }) => {
+        samples.push(args.data)
         expect(inTransaction).toBe(true)
         calls.push('sample:create')
         return {}
@@ -293,6 +335,9 @@ describe('executeInterfaceResyncWrites', () => {
       operSt: 'up',
       operSpeed: '25G',
       description: '',
+      guiCiscoEID: '10Gbase-SR-S',
+      guiCiscoPID: 'SFP-10G-SR-S',
+      guiSN: 'ACW274905XX',
       lastLinkStChg: null,
       rxBytes: b(1),
       rxPkts: b(1),
@@ -323,5 +368,31 @@ describe('executeInterfaceResyncWrites', () => {
       'snapshot:count',
       'transaction:end',
     ])
+
+    const replacement = {
+      guiCiscoEID: '10Gbase-LR',
+      guiCiscoPID: 'SFP-10G-LR',
+      guiSN: 'NEW-SERIAL',
+    }
+    const removed = { guiCiscoEID: null, guiCiscoPID: null, guiSN: null }
+    for (const [index, identity] of [replacement, removed].entries()) {
+      await executeInterfaceResyncWrites(
+        db as unknown as InterfaceWriteClient,
+        'host-1',
+        [{ ...row, ...identity }],
+        new Date(`2026-06-${20 + index}T00:00:00Z`),
+      )
+    }
+    const identities = [
+      { guiCiscoEID: row.guiCiscoEID, guiCiscoPID: row.guiCiscoPID, guiSN: row.guiSN },
+      replacement,
+      removed,
+    ]
+    for (const [index, identity] of identities.entries()) {
+      expect(snapshots[index].create).toMatchObject(identity)
+      expect(snapshots[index].update).toMatchObject(identity)
+      expect(samples[index]).toMatchObject(identity)
+      expect(samples[index].sampledAt).toEqual(new Date(`2026-06-${19 + index}T00:00:00Z`))
+    }
   })
 })

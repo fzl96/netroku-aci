@@ -157,7 +157,7 @@ describe('interface health streaming shell', () => {
     expect(skeleton).toContain('Loading interface filters')
     expect(skeleton).toContain('Loading interface results')
     expect(skeleton).toContain('Loading node filter')
-    expect(skeleton).toContain('Array.from({ length: 12 })')
+    expect(skeleton).toContain('Array.from({ length: 10 })')
   })
 
   it('offers a regional retry rather than failing the whole page', () => {
