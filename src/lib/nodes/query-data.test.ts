@@ -19,6 +19,7 @@ type StoredNodeFixture = {
   name: string
   role: string
   model: string
+  serial: string
   version: string | null
   fabricSt: string
   state: string | null
@@ -32,6 +33,7 @@ const nodeFindMany = mock(async (): Promise<StoredNodeFixture[]> => [
     name: 'leaf-101',
     role: 'leaf',
     model: 'N9K',
+    serial: 'FOX101',
     version: '1.0',
     fabricSt: 'active',
     state: null,
@@ -48,6 +50,7 @@ const hardwareFindMany = mock(async () => [
     operSt: 'ok',
     healthy: true,
     model: 'FAN',
+    serial: 'SN-FAN-1',
     secret: 'omit-component',
   },
 ])
@@ -181,6 +184,7 @@ describe('node data interface', () => {
         name: '',
         role: 'leaf',
         model: '',
+        serial: 'FOX10',
         version: null,
         fabricSt: 'active',
         state: null,
@@ -193,6 +197,7 @@ describe('node data interface', () => {
         name: '',
         role: 'leaf',
         model: '',
+        serial: 'FOX2',
         version: null,
         fabricSt: 'active',
         state: null,
@@ -202,7 +207,15 @@ describe('node data interface', () => {
     ])
     const result = await query.getNodeResults({ ...base, pageSize: 10 })
     expect(result.view).toBe('nodes')
-    expect(result.rows.map((row: { nodeId: string }) => row.nodeId)).toEqual(['2', '10'])
+    expect(
+      result.rows.map((row: { nodeId: string; serial: string }) => ({
+        nodeId: row.nodeId,
+        serial: row.serial,
+      })),
+    ).toEqual([
+      { nodeId: '2', serial: 'FOX2' },
+      { nodeId: '10', serial: 'FOX10' },
+    ])
     expect(JSON.stringify(result)).not.toContain('secret')
     expect(nodeFindMany).toHaveBeenCalledWith(
       expect.objectContaining({ select: expect.any(Object) }),
@@ -223,6 +236,7 @@ describe('node data interface', () => {
             operSt: 'ok',
             healthy: true,
             model: 'FAN',
+            serial: 'SN-FAN-1',
           },
         ],
       }),

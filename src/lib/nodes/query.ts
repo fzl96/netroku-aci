@@ -16,6 +16,7 @@ const NODE_SELECT = {
   name: true,
   role: true,
   model: true,
+  serial: true,
   version: true,
   fabricSt: true,
   state: true,
@@ -29,6 +30,7 @@ const COMPONENT_SELECT = {
   operSt: true,
   healthy: true,
   model: true,
+  serial: true,
 } satisfies Prisma.HardwareComponentSelect
 
 type StoredNode = Prisma.NodeSnapshotGetPayload<{ select: typeof NODE_SELECT }>
@@ -47,6 +49,7 @@ export type NodeRow = {
   name: string
   role: string
   model: string
+  serial: string
   version: string | null
   fabricSt: string
   state: string | null
@@ -62,6 +65,7 @@ export type HardwareComponentRow = {
   operSt: string
   healthy: boolean
   model: string
+  serial: string
 }
 export type NodeOverviewData = {
   lastNodeSyncAt: string | null
@@ -233,6 +237,7 @@ function serializeNode(row: StoredNode, counts: ComponentCount[]): NodeRow {
     name: row.name,
     role: row.role,
     model: row.model,
+    serial: row.serial,
     version: row.version,
     fabricSt: row.fabricSt,
     state: row.state,
@@ -251,6 +256,7 @@ function serializeComponent(row: StoredComponent): HardwareComponentRow {
     operSt: row.operSt,
     healthy: row.healthy,
     model: row.model,
+    serial: row.serial,
   }
 }
 
@@ -277,6 +283,7 @@ export async function getNodeResults(params: NodePageParams): Promise<NodeResult
                     { name: { contains: query, mode: 'insensitive' } },
                     { nodeId: { contains: query, mode: 'insensitive' } },
                     { dn: { contains: query, mode: 'insensitive' } },
+                    { serial: { contains: query, mode: 'insensitive' } },
                   ],
                 }
               : {}),
@@ -293,6 +300,7 @@ export async function getNodeResults(params: NodePageParams): Promise<NodeResult
                 OR: [
                   { name: { contains: query, mode: 'insensitive' } },
                   { nodeId: { contains: query, mode: 'insensitive' } },
+                  { serial: { contains: query, mode: 'insensitive' } },
                 ],
               }
             : {}),

@@ -51,8 +51,8 @@ export function NodeTrendSkeleton() {
 export function NodeResultsSkeleton({ view = 'nodes' }: { view?: NodeView }) {
   const columns =
     view === 'components'
-      ? ['Node', 'Type', 'Name', 'Status', 'Model']
-      : ['Node', 'Name', 'Role', 'Model', 'Version', 'State', 'Uptime', 'PSU', 'Fan']
+      ? ['Node', 'Type', 'Name', 'Status', 'Model', 'Serial']
+      : ['Node', 'Name', 'Serial', 'Model', 'Version', 'State', 'Uptime', 'PSU', 'Fan']
   return (
     <section
       aria-busy="true"
