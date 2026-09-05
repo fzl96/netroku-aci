@@ -22,11 +22,13 @@
 ### Task 1: Define and test the docs layout options
 
 **Files:**
+
 - Create: `src/app/docs/layout-options.test.tsx`
 - Create: `src/app/docs/layout-options.tsx`
 - Modify: `src/app/docs/layout.tsx`
 
 **Interfaces:**
+
 - Consumes: `DocsLayoutProps` from `fumadocs-ui/layouts/docs` and the existing `source.getPageTree()`.
 - Produces: `docsLayoutOptions: Omit<DocsLayoutProps, "tree" | "children">` with home navigation, dashboard link, sidebar open depth, custom footer, and stock theme-switch disabling.
 
@@ -95,11 +97,13 @@ Expected: PASS with 2 tests.
 ### Task 2: Build the docs brand and compact theme button
 
 **Files:**
+
 - Create: `src/components/docs/DocsThemeToggle.tsx`
 - Complete: `src/app/docs/layout-options.tsx`
 - Test: `src/components/theme-toggle.test.ts`
 
 **Interfaces:**
+
 - Consumes: `useTheme()` from `@/components/ThemeProvider`, `nextBinaryTheme(theme)` from `@/components/theme-toggle`, `cn()` from `@/lib/utils`, and `/brand-icon.png`.
 - Produces: `DocsThemeToggle(): JSX.Element`, plus a branded title element in `docsLayoutOptions`.
 

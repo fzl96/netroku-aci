@@ -22,9 +22,11 @@
 ### Task 1: Write `index.mdx` — Admin & Setup overview
 
 **Files:**
+
 - Modify: `content/docs/admin/index.mdx`
 
 **Interfaces:**
+
 - Produces: A short overview page with prerequisites checklist and links to sub-pages. No components imported.
 
 - [ ] **Step 1: Write the file**
@@ -62,6 +64,7 @@ bun dev
 ```
 
 Open [http://localhost:3000/docs/admin](http://localhost:3000/docs/admin). Confirm:
+
 - Heading: "Admin & Setup"
 - Three prerequisite bullet points visible
 - Four links in "What's in this section" all render as clickable links
@@ -80,9 +83,11 @@ git commit -m "docs(admin): write Admin & Setup overview page"
 ### Task 2: Write `deployment.mdx` — full deployment guide
 
 **Files:**
+
 - Modify: `content/docs/admin/deployment.mdx`
 
 **Interfaces:**
+
 - Consumes: `Tabs`, `Tab` from `fumadocs-ui/components/tabs` (imported in file). `Callout` from global `defaultMdxComponents` (no import).
 - Produces: Seven-section deployment guide with runtime tabs, env var table, database tabs, and runtime-switching code blocks throughout.
 
@@ -90,13 +95,13 @@ git commit -m "docs(admin): write Admin & Setup overview page"
 
 Replace the entire contents of `content/docs/admin/deployment.mdx` with:
 
-```mdx
+````mdx
 ---
 title: Deployment
 description: How to deploy Netroku ACI.
 ---
 
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs'
 
 Netroku ACI is a Next.js application backed by a PostgreSQL database. The app runs locally; the database can run in Docker or connect to an existing PostgreSQL instance.
 
@@ -110,6 +115,7 @@ Install Bun from [bun.sh](https://bun.sh), then verify:
 ```bash
 bun --version
 ```
+````
 
 <Callout type="warn" title="Windows users">
 Bun has a known compatibility issue with the TLS bypass used for self-signed APIC certificates. Use **WSL2** or Node.js instead.
@@ -137,7 +143,7 @@ cd netroku-aci
 Install dependencies:
 
 <Tabs items={['Bun', 'Node.js']}>
-  <Tab>
+<Tab>
 
 ```bash
 bun install
@@ -163,23 +169,23 @@ cp .env.example .env
 
 Open `.env` and fill in the values:
 
-| Variable | Required | Purpose | How to set |
-|---|---|---|---|
-| `DATABASE_URL` | yes | PostgreSQL connection string | See [Set up the database](#4-set-up-the-database) below |
-| `BETTER_AUTH_SECRET` | yes | Session signing secret | `openssl rand -hex 32` |
-| `BETTER_AUTH_URL` | yes | Base URL the app is served from | e.g. `http://localhost:3000` |
-| `NEXT_PUBLIC_APP_URL` | yes | Public base URL used by the browser | e.g. `http://localhost:3000` |
-| `TRUSTED_ORIGINS` | yes | Comma-separated origins Better Auth accepts | Add LAN IPs or Tailscale hosts as needed |
-| `SECURE_COOKIES` | no | Set to `true` only when served exclusively over HTTPS | Leave blank for HTTP/LAN |
-| `ENCRYPTION_KEY` | yes | 32-byte hex key for encrypted fields | `openssl rand -hex 32` |
-| `ADMIN_USERNAME` | yes (seeding) | Username for the first admin account | — |
-| `ADMIN_PASSWORD` | yes (seeding) | Password for the first admin account (≥ 8 chars) | — |
-| `SCHEDULER_TOKEN` | no | Bearer token for `POST /api/cron/resync` | `openssl rand -hex 32` |
+| Variable              | Required      | Purpose                                               | How to set                                              |
+| --------------------- | ------------- | ----------------------------------------------------- | ------------------------------------------------------- |
+| `DATABASE_URL`        | yes           | PostgreSQL connection string                          | See [Set up the database](#4-set-up-the-database) below |
+| `BETTER_AUTH_SECRET`  | yes           | Session signing secret                                | `openssl rand -hex 32`                                  |
+| `BETTER_AUTH_URL`     | yes           | Base URL the app is served from                       | e.g. `http://localhost:3000`                            |
+| `NEXT_PUBLIC_APP_URL` | yes           | Public base URL used by the browser                   | e.g. `http://localhost:3000`                            |
+| `TRUSTED_ORIGINS`     | yes           | Comma-separated origins Better Auth accepts           | Add LAN IPs or Tailscale hosts as needed                |
+| `SECURE_COOKIES`      | no            | Set to `true` only when served exclusively over HTTPS | Leave blank for HTTP/LAN                                |
+| `ENCRYPTION_KEY`      | yes           | 32-byte hex key for encrypted fields                  | `openssl rand -hex 32`                                  |
+| `ADMIN_USERNAME`      | yes (seeding) | Username for the first admin account                  | —                                                       |
+| `ADMIN_PASSWORD`      | yes (seeding) | Password for the first admin account (≥ 8 chars)      | —                                                       |
+| `SCHEDULER_TOKEN`     | no            | Bearer token for `POST /api/cron/resync`              | `openssl rand -hex 32`                                  |
 
 ## 4. Set up the database
 
 <Tabs items={['Local (Docker)', 'External']}>
-  <Tab>
+<Tab>
 
 The included Docker Compose file starts a PostgreSQL 17 instance with a named volume for persistence.
 
@@ -220,7 +226,7 @@ The machine running the app must be able to reach your database host on the Post
 Run migrations and generate the Prisma client:
 
 <Tabs items={['Bun', 'Node.js']}>
-  <Tab>
+<Tab>
 
 ```bash
 bun run db:setup
@@ -243,7 +249,7 @@ This creates all database tables from the committed migration files. Re-run afte
 Make sure `ADMIN_USERNAME` and `ADMIN_PASSWORD` are set in `.env`, then run:
 
 <Tabs items={['Bun', 'Node.js']}>
-  <Tab>
+<Tab>
 
 ```bash
 bun run seed:admin
@@ -264,10 +270,10 @@ This is a one-time operation that creates the first admin user. Use this account
 ## 7. Run the app
 
 <Tabs items={['Development', 'Production']}>
-  <Tab>
+<Tab>
 
 <Tabs items={['Bun', 'Node.js']}>
-  <Tab>
+<Tab>
 
 ```bash
 bun dev
@@ -289,7 +295,7 @@ Hot reload and detailed error output. The app is available at [http://localhost:
   <Tab>
 
 <Tabs items={['Bun', 'Node.js']}>
-  <Tab>
+<Tab>
 
 ```bash
 bun run build && bun start
@@ -318,6 +324,7 @@ bun dev
 ```
 
 Open [http://localhost:3000/docs/admin/deployment](http://localhost:3000/docs/admin/deployment). Confirm:
+
 - All seven H2 sections visible in the page and TOC
 - Section 1: Two tabs ("Bun (recommended)" / "Node.js") switch correctly; Windows callout visible in Bun tab
 - Section 3: Env var table renders with 10 rows

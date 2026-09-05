@@ -7,8 +7,8 @@
 
 The interface-health page has a **Counting CRC** view that lists ports which
 accumulated CRC errors over the trailing 7 days. The header reads
-*"N interfaces (CRC delta in last 7d)"*, but each row's **CRC Δ** column shows
-only the *latest sample's* delta — the errors gained since the previous poll.
+_"N interfaces (CRC delta in last 7d)"_, but each row's **CRC Δ** column shows
+only the _latest sample's_ delta — the errors gained since the previous poll.
 
 This creates a disconnect: a port qualifies for the list because of its 7-day
 accumulation, but its cell can read `0` (spiked earlier, quiet now) or `Reset`
@@ -42,6 +42,7 @@ view, changes to rx/tx/align columns.
 
   This one query yields both the qualifying interface id set (the group keys)
   and each port's windowed total (`_sum.dRxCrcErrors`).
+
 - Attach `crcWindowTotal` (BigInt serialised to a decimal string, matching the
   other counter fields) to each `InterfaceRowProps` in the CRC view. In the
   "All" view it is `null`/absent.
@@ -76,7 +77,7 @@ view, changes to rx/tx/align columns.
 ### 4. Details that fall out
 
 - Header text becomes window-aware:
-  *"N interfaces (CRC increase in last 7d)"* / *"…30d"*.
+  _"N interfaces (CRC increase in last 7d)"_ / _"…30d"_.
 - `Reset` no longer corrupts the ranking: a counter reset contributes 0 to the
   sum (negative/absent deltas are excluded by the `gt: 0` filter), and the row
   still shows its real windowed total with `reset` as subtext.

@@ -21,10 +21,12 @@
 ### Task 1: `sumCrcByInterface` helper
 
 **Files:**
+
 - Create: `src/app/(app)/interface-health/crc-window.ts`
 - Test: `src/app/(app)/interface-health/crc-window.test.ts`
 
 **Interfaces:**
+
 - Produces: `sumCrcByInterface(samples: RawCrcInterfaceSample[]): Map<string, bigint>` where `RawCrcInterfaceSample = { interfaceId: string; dRxCrcErrors: bigint | null }`. Sums only strictly-positive deltas per `interfaceId`; skips `null` and `<= 0` (so a counter reset contributes 0). Interfaces with no positive samples are absent from the map.
 
 - [ ] **Step 1: Write the failing test**
@@ -119,10 +121,12 @@ git commit -m "feat(interface-health): add sumCrcByInterface windowed CRC helper
 ### Task 2: `sortByCrcWindowTotal` helper
 
 **Files:**
+
 - Modify: `src/app/(app)/interface-health/crc-window.ts`
 - Test: `src/app/(app)/interface-health/crc-window.test.ts`
 
 **Interfaces:**
+
 - Consumes: the `Map<string, bigint>` produced by `sumCrcByInterface` (Task 1).
 - Produces: `sortByCrcWindowTotal<T extends { id: string; node: string; ifName: string }>(rows: T[], totals: Map<string, bigint>, direction?: 'asc' | 'desc'): T[]`. Sorts by windowed total (default `'desc'`), missing id treated as 0, ties broken by natural node/ifName order. Pure — returns a new array.
 
@@ -233,9 +237,11 @@ git commit -m "feat(interface-health): add sortByCrcWindowTotal helper"
 ### Task 3: Add `TableSortKey` type for the CRC-total column
 
 **Files:**
+
 - Modify: `src/app/(app)/interface-health/sort.ts`
 
 **Interfaces:**
+
 - Produces: `export type TableSortKey = InterfaceSortKey | 'crcWindowTotal'`. `parseInterfaceSortParams` is unchanged and still returns `null` for `'crcWindowTotal'` (it is not in `INTERFACE_SORT_KEYS`), so sample-based sorting never receives it. `'crcWindowTotal'` is handled separately in `page.tsx` (Task 4).
 
 Note: This task has no standalone runtime behavior to unit-test; it is a type-only addition consumed by Tasks 4 and 5. Verification is a typecheck.
@@ -268,9 +274,11 @@ git commit -m "feat(interface-health): add TableSortKey for CRC windowed-total c
 ### Task 4: Wire windowed totals + window param into `page.tsx`
 
 **Files:**
+
 - Modify: `src/app/(app)/interface-health/page.tsx`
 
 **Interfaces:**
+
 - Consumes: `sumCrcByInterface`, `sortByCrcWindowTotal` (Tasks 1–2); `aggregateCrcTrend` (existing).
 - Produces: passes `window: '7d' | '30d'` to `InterfaceHealthClient`; each CRC-view row carries `crcWindowTotal: string | null`; CRC view is default-sorted by windowed total desc; `sortKey`/`sortDirection` props reflect `'crcWindowTotal'` when that sort is active.
 
@@ -470,9 +478,11 @@ git commit -m "feat(interface-health): compute per-port windowed CRC totals and 
 ### Task 5: CRC windowed-total column, subtext, and 7d/30d toggle in the client
 
 **Files:**
+
 - Modify: `src/app/(app)/interface-health/InterfaceHealthClient.tsx`
 
 **Interfaces:**
+
 - Consumes: `TableSortKey` (Task 3); `window: '7d' | '30d'` and per-row `crcWindowTotal: string | null` (Task 4).
 - Produces: final UI. No new exports.
 

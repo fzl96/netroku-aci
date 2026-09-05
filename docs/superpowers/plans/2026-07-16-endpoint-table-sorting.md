@@ -27,10 +27,12 @@
 ### Task 1: Pure endpoint and port sorting helpers
 
 **Files:**
+
 - Modify: `src/app/(app)/endpoints/sort.ts`
 - Test: `src/app/(app)/endpoints/sort.test.ts`
 
 **Interfaces:**
+
 - Consumes: Prisma `Endpoint` and local `EndpointPortSummary`.
 - Produces: `EndpointSortKey`, `PortSortKey`, `SortDirection`, `sortEndpointRows(endpoints, key, direction)`, and `sortPortRows(ports, key, direction)`.
 
@@ -102,10 +104,12 @@ git commit -m "feat: add endpoint table sort helpers"
 ### Task 2: Sortable endpoint-table headers and shared rendering order
 
 **Files:**
+
 - Modify: `src/app/(app)/endpoints/EndpointsClient.tsx`
 - Test: `src/app/(app)/endpoints/sort.test.ts`
 
 **Interfaces:**
+
 - Consumes: `sortEndpointRows`, `sortPortRows`, `EndpointSortKey`, `PortSortKey`, and `SortDirection` from `./sort`.
 - Produces: Client-side header interaction that updates the sort state and uses sorted data in desktop and mobile render paths.
 

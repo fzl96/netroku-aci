@@ -20,10 +20,12 @@
 ### Task 1: Add the bounded diagnostic step
 
 **Files:**
+
 - Modify: `.github/workflows/deploy.yml`
 - Test: GitHub Actions YAML parse and workflow review
 
 **Interfaces:**
+
 - Consumes: `secrets.SERVER_HOST`, `secrets.SERVER_USER`, and `secrets.SERVER_SSH_KEY`.
 - Produces: verbose OpenSSH connection logs in the `Debug SSH connectivity` workflow step.
 
@@ -36,18 +38,18 @@ The workflow contains `Connect to Tailscale` followed directly by `Deploy via SS
 Insert this YAML after `Connect to Tailscale`:
 
 ```yaml
-      - name: Debug SSH connectivity
-        continue-on-error: true
-        env:
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_USER: ${{ secrets.SERVER_USER }}
-          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
-        run: |
-          key_file="$(mktemp)"
-          trap 'rm -f "$key_file"' EXIT
-          printf '%s\n' "$SERVER_SSH_KEY" > "$key_file"
-          chmod 600 "$key_file"
-          ssh -vvv -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=25 -i "$key_file" "$SERVER_USER@$SERVER_HOST" exit
+- name: Debug SSH connectivity
+  continue-on-error: true
+  env:
+    SERVER_HOST: ${{ secrets.SERVER_HOST }}
+    SERVER_USER: ${{ secrets.SERVER_USER }}
+    SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+  run: |
+    key_file="$(mktemp)"
+    trap 'rm -f "$key_file"' EXIT
+    printf '%s\n' "$SERVER_SSH_KEY" > "$key_file"
+    chmod 600 "$key_file"
+    ssh -vvv -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=25 -i "$key_file" "$SERVER_USER@$SERVER_HOST" exit
 ```
 
 - [ ] **Step 3: Verify workflow syntax and secret handling**

@@ -1,10 +1,7 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test'
+import { afterAll, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test'
 import * as React from 'react'
 
 class AuthenticationRequiredError extends Error {}
-class ApicHostReadError extends Error {
-  readonly code = 'unauthorized'
-}
 let authenticationError: unknown = null
 const requireSession = mock(async () => {
   if (authenticationError) throw authenticationError
@@ -17,7 +14,6 @@ const hostFindFirst = mock(async () => ({
   host: 'apic.local',
   lastEpgSyncAt: new Date('2026-01-01T00:00:00Z'),
 }))
-const cachedHosts = mock(async () => [{ id: 'h1', name: 'Fabric', host: 'apic.local' }])
 const epgCount = mock(async () => 2)
 const epgFindMany = mock(async (args: Record<string, unknown>) => {
   if ('distinct' in args) return []
@@ -66,10 +62,6 @@ mock.module('@/lib/auth', () => ({
   requireSession,
   requireAdmin: async () => ({ id: 'admin', userName: 'admin' }),
 }))
-mock.module('@/lib/apic-hosts/query', () => ({
-  ApicHostReadError,
-  getApicHosts: cachedHosts,
-}))
 mock.module('@/lib/prisma', () => ({
   prisma: {
     apicHost: { findMany: hostFindMany, findFirst: hostFindFirst },
@@ -89,6 +81,20 @@ mock.module('next/cache', () => ({
   revalidateTag: () => {},
 }))
 mock.module('react', () => ({ ...React, cache: (fn: unknown) => fn }))
+
+// Restore the real query export after this suite: mock.module() would replace it
+// process-wide and make the APIC-host query tests exercise this fixture instead.
+const apicHostsQuery = await import('@/lib/apic-hosts/query')
+const cachedHosts = spyOn(apicHostsQuery, 'getApicHosts').mockResolvedValue([
+  {
+    id: 'h1',
+    name: 'Fabric',
+    host: 'apic.local',
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: new Date('2026-01-01T00:00:00Z'),
+  },
+])
+afterAll(() => cachedHosts.mockRestore())
 
 const query = await import('./query')
 const base = {
@@ -126,7 +132,7 @@ describe('EPG data interface', () => {
   })
 
   it('maps cached host authorization failures to an EPG read error', async () => {
-    cachedHosts.mockRejectedValueOnce(new ApicHostReadError('missing'))
+    cachedHosts.mockRejectedValueOnce(new apicHostsQuery.ApicHostReadError('unauthorized'))
     await expect(query.resolveEpgHost('h1')).rejects.toBeInstanceOf(query.EpgReadError)
   })
 

@@ -16,14 +16,14 @@ workbook whose layout depends on the grouping.
   Disabled when no APIC host is selected or the host has zero EPGs.
 - A two-step dialog reusing the endpoint dialog's `ChoiceCard` styling and flow:
   - **Step 1 — Scope**
-    - *All EPGs* — every EPG for the selected host.
-    - *Current filters* — respects the active tenant / app-profile / node /
+    - _All EPGs_ — every EPG for the selected host.
+    - _Current filters_ — respects the active tenant / app-profile / node /
       search filters. Disabled (and non-selectable) when nothing matches.
-    - Default scope: *Current filters* when filters are active and match > 0,
-      otherwise *All EPGs* (mirrors `getDefaultExportScope`).
+    - Default scope: _Current filters_ when filters are active and match > 0,
+      otherwise _All EPGs_ (mirrors `getDefaultExportScope`).
   - **Step 2 — Grouping**
-    - *Group by EPG*
-    - *Group by Port*
+    - _Group by EPG_
+    - _Group by Port_
 - On export: POST the payload to `/api/epgs/export`, download the returned blob
   using the `Content-Disposition` filename, close the dialog, toast on
   success/failure. Behaviour and error handling mirror `ExportEndpointsDialog`.
