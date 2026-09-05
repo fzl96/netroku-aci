@@ -20,7 +20,7 @@ async function DeviceImportContent() {
   return <DeviceImportClient />
 }
 
-export function DeviceImportView() {
+export function DeviceImportShell() {
   return (
     <div className="mx-auto max-w-7xl flex-1 space-y-6 p-8">
       <div className="space-y-1">

@@ -12,7 +12,7 @@ const STATUS_BADGE_CLS: Record<string, string> = {
   RETIRED: 'bg-muted text-muted-foreground',
 }
 
-export async function DeviceDetailView({ idPromise }: { idPromise: Promise<string> }) {
+export async function DeviceDetailShell({ idPromise }: { idPromise: Promise<string> }) {
   const id = await idPromise
   let device: Awaited<ReturnType<typeof getDeviceById>>
   try {
