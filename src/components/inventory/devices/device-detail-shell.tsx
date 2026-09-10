@@ -1,16 +1,214 @@
-import { SourcePanel } from '@/components/inventory/discovered/source-panel'
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { IconServer } from '@tabler/icons-react'
+import { SourcePanel } from '@/components/inventory/discovered/source-panel'
 import { InventoryReadError } from '@/lib/inventory/errors'
-import { getDeviceById } from '@/lib/inventory/devices/query'
+import { getDeviceById, type SafeDeviceDetail } from '@/lib/inventory/devices/query'
+import { cn } from '@/lib/utils'
+import { DetailSection } from './detail-section'
 import { DevicesRegionError } from './devices-region-error'
+import { DeviceStatusBadge } from './device-status-badge'
+import { RackLocator, unitRange } from './rack-locator'
 
-const STATUS_BADGE_CLS: Record<string, string> = {
-  ACTIVE: 'bg-green-500/15 text-green-700 dark:text-green-400',
-  PLANNED: 'bg-blue-500/15 text-blue-700 dark:text-blue-400',
-  MAINTENANCE: 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400',
-  RETIRED: 'bg-muted text-muted-foreground',
+const UPDATED_AT_FORMAT = new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' })
+
+const ROLE_LABEL = { MASTER: 'Master', MEMBER: 'Member' } as const
+
+function Empty() {
+  return <span className="text-faint">—</span>
+}
+
+function Fact({
+  label,
+  mono = false,
+  children,
+}: {
+  label: string
+  mono?: boolean
+  children: ReactNode
+}) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs text-subtle">{label}</dt>
+      <dd className={cn('mt-1 truncate text-sm text-foreground', mono && 'font-mono text-[13px]')}>
+        {children}
+      </dd>
+    </div>
+  )
+}
+
+function DeviceDetailHeader({ device }: { device: SafeDeviceDetail }) {
+  return (
+    <header className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">
+      <div className="flex min-h-16 items-center justify-between gap-4 px-4 py-3 md:px-8 md:py-0">
+        <div className="min-w-0">
+          <h1 className="truncate font-serif text-[18px] font-semibold text-foreground">
+            <Link
+              href="/inventory/devices"
+              className="text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Devices
+            </Link>
+            <span aria-hidden className="mx-1.5 font-normal text-faint">
+              /
+            </span>
+            {device.name}
+          </h1>
+          <p className="mt-0.5 truncate text-xs text-subtle">
+            {device.vendor} {device.model}
+          </p>
+        </div>
+        <div className="shrink-0 text-xs">
+          <DeviceStatusBadge status={device.status} />
+        </div>
+      </div>
+    </header>
+  )
+}
+
+function LocationSection({ device }: { device: SafeDeviceDetail }) {
+  const { rack } = device
+  if (!rack) {
+    return (
+      <DetailSection title="Location">
+        <p className="text-sm text-muted-foreground">Not placed in a rack yet.</p>
+        <Link
+          href="/inventory/racks"
+          className="mt-2 inline-block text-xs text-primary hover:underline"
+        >
+          Place it from Racks
+        </Link>
+      </DetailSection>
+    )
+  }
+
+  const rackHref = `/inventory/racks?${new URLSearchParams({ siteId: rack.site.id, q: device.name })}`
+  return (
+    <DetailSection
+      title="Location"
+      action={
+        <Link href={rackHref} className="text-xs text-primary hover:underline">
+          Show in rack
+        </Link>
+      }
+    >
+      <div className="flex gap-6">
+        {device.rackPosition != null && (
+          <RackLocator
+            rackHeight={rack.heightU}
+            position={device.rackPosition}
+            deviceHeight={device.heightU}
+          />
+        )}
+        <dl className="min-w-0 flex-1 space-y-4">
+          <Fact label="Site">
+            <Link href={`/inventory/racks?siteId=${rack.site.id}`} className="hover:underline">
+              {rack.site.name}
+            </Link>
+          </Fact>
+          <Fact label="Rack">
+            {rack.name} <span className="text-subtle">({rack.heightU}U)</span>
+          </Fact>
+          <Fact label="Position">
+            {device.rackPosition != null ? (
+              unitRange(device.rackPosition, device.heightU)
+            ) : (
+              <span className="text-subtle">Not set</span>
+            )}
+          </Fact>
+        </dl>
+      </div>
+    </DetailSection>
+  )
+}
+
+function StackSection({
+  device,
+  stack,
+}: {
+  device: SafeDeviceDetail
+  stack: NonNullable<SafeDeviceDetail['deviceStack']>
+}) {
+  const members = [
+    {
+      id: device.id,
+      name: device.name,
+      stackMember: device.stackMember,
+      stackRole: device.stackRole,
+      rackName: device.rack?.name ?? null,
+      rackPosition: device.rackPosition,
+      self: true,
+    },
+    ...stack.devices.map((peer) => ({
+      id: peer.id,
+      name: peer.name,
+      stackMember: peer.stackMember,
+      stackRole: peer.stackRole,
+      rackName: peer.rack?.name ?? null,
+      rackPosition: peer.rackPosition,
+      self: false,
+    })),
+  ].sort((a, b) => (a.stackMember ?? Infinity) - (b.stackMember ?? Infinity))
+
+  return (
+    <DetailSection title={`Stack ${stack.name}`} flush>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-border-faint text-left text-subtle">
+              <th className="px-5 py-2 font-normal">Switch</th>
+              <th className="px-5 py-2 font-normal">Name</th>
+              <th className="px-5 py-2 font-normal">Role</th>
+              <th className="px-5 py-2 font-normal">Rack</th>
+            </tr>
+          </thead>
+          <tbody>
+            {members.map((member) => (
+              <tr
+                key={member.id}
+                className={cn(
+                  'border-b border-border-faint last:border-0',
+                  member.self && 'bg-muted/60',
+                )}
+              >
+                <td className="px-5 py-2.5 font-mono text-muted-foreground">
+                  {member.stackMember != null ? `#${member.stackMember}` : '—'}
+                </td>
+                <td className="px-5 py-2.5">
+                  {member.self ? (
+                    <span className="font-medium text-foreground">
+                      {member.name}
+                      <span className="ml-2 font-normal text-subtle">This device</span>
+                    </span>
+                  ) : (
+                    <Link
+                      href={`/inventory/devices/${member.id}`}
+                      className="font-medium text-foreground hover:underline"
+                    >
+                      {member.name}
+                    </Link>
+                  )}
+                </td>
+                <td className="px-5 py-2.5 text-foreground">
+                  {member.stackRole ? ROLE_LABEL[member.stackRole] : <Empty />}
+                </td>
+                <td className="px-5 py-2.5 whitespace-nowrap text-subtle">
+                  {member.rackName ? (
+                    <>
+                      {member.rackName}
+                      {member.rackPosition != null && `, U${member.rackPosition}`}
+                    </>
+                  ) : (
+                    <Empty />
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </DetailSection>
+  )
 }
 
 export async function DeviceDetailShell({ idPromise }: { idPromise: Promise<string> }) {
@@ -26,154 +224,43 @@ export async function DeviceDetailShell({ idPromise }: { idPromise: Promise<stri
   }
   if (!device) notFound()
 
+  const updatedAt = new Date(device.updatedAt)
+
   return (
-    <div className="space-y-6 px-8 py-6">
-      <SourcePanel deviceId={device.id} />
-      <p className="text-sm text-muted-foreground">
-        Accepted version: {device.version || 'Unknown'}
-      </p>
-      <div className="flex items-center gap-4 rounded-xl border border-border p-6">
-        <div className="flex size-16 items-center justify-center rounded-lg bg-muted">
-          <IconServer size={28} stroke={1.5} className="text-muted-foreground" />
+    <div className="min-h-full bg-background">
+      <DeviceDetailHeader device={device} />
+      <div className="grid items-start gap-6 px-4 py-4 md:px-8 md:py-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="min-w-0 space-y-6">
+          <DetailSection title="Details">
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3">
+              <Fact label="Serial" mono>
+                {device.serialNumber}
+              </Fact>
+              <Fact label="Management IP" mono>
+                {device.managementIp ?? <Empty />}
+              </Fact>
+              <Fact label="Version" mono>
+                {device.version || <Empty />}
+              </Fact>
+              <Fact label="Vendor">{device.vendor}</Fact>
+              <Fact label="Model">{device.model}</Fact>
+              <Fact label="Height">{device.heightU}U</Fact>
+              <Fact label="Asset tag" mono>
+                {device.assetTag ?? <Empty />}
+              </Fact>
+              <Fact label="Stack">{device.deviceStack?.name ?? 'Standalone'}</Fact>
+              <Fact label="Last updated">
+                <time dateTime={updatedAt.toISOString()}>
+                  {UPDATED_AT_FORMAT.format(updatedAt)}
+                </time>
+              </Fact>
+            </dl>
+          </DetailSection>
+          {device.deviceStack && <StackSection device={device} stack={device.deviceStack} />}
         </div>
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold text-foreground">{device.name}</h1>
-          <p className="text-sm text-muted-foreground">
-            {device.vendor} {device.model}
-          </p>
-          <span
-            className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_BADGE_CLS[device.status] ?? ''}`}
-          >
-            {device.status}
-          </span>
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="space-y-3 rounded-xl border border-border p-5">
-          <h3 className="text-sm font-semibold text-foreground">General Information</h3>
-          <dl className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Serial</dt>
-              <dd className="font-mono">{device.serialNumber}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Management IP</dt>
-              <dd className="font-mono text-foreground">{device.managementIp ?? '—'}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Asset Tag</dt>
-              <dd className="font-mono">{device.assetTag ?? '—'}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Last Updated</dt>
-              <dd>{new Date(device.updatedAt).toLocaleString()}</dd>
-            </div>
-          </dl>
-        </div>
-
-        <div className="space-y-3 rounded-xl border border-border p-5">
-          <h3 className="text-sm font-semibold text-foreground">Hardware</h3>
-          <dl className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Vendor</dt>
-              <dd>{device.vendor}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Model</dt>
-              <dd>{device.model}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Height</dt>
-              <dd>{device.heightU}U</dd>
-            </div>
-          </dl>
-        </div>
-
-        <div className="space-y-3 rounded-xl border border-border p-5">
-          <h3 className="text-sm font-semibold text-foreground">Location</h3>
-          <dl className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Site</dt>
-              <dd>
-                {device.rack ? (
-                  <Link
-                    href={`/inventory/racks?siteId=${device.rack.site.id}`}
-                    className="text-primary hover:underline"
-                  >
-                    {device.rack.site.name}
-                  </Link>
-                ) : (
-                  '—'
-                )}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Rack</dt>
-              <dd>{device.rack?.name ?? '—'}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-muted-foreground">Position</dt>
-              <dd>{device.rackPosition != null ? `Unit ${device.rackPosition}` : '—'}</dd>
-            </div>
-          </dl>
-        </div>
-
-        <div className="space-y-3 rounded-xl border border-border p-5">
-          <h3 className="text-sm font-semibold text-foreground">Stack Membership</h3>
-          {device.deviceStack ? (
-            <div className="space-y-3 text-sm">
-              <dl className="space-y-2">
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Stack</dt>
-                  <dd className="font-mono font-medium text-foreground">
-                    {device.deviceStack.name}
-                  </dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Role</dt>
-                  <dd>
-                    <span
-                      className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${device.stackRole === 'MASTER' ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}
-                    >
-                      {device.stackRole === 'MASTER' ? 'Master (Active)' : 'Member (Standby)'}
-                    </span>
-                  </dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Switch ID</dt>
-                  <dd className="font-mono">
-                    {device.stackMember != null ? `Switch #${device.stackMember}` : '—'}
-                  </dd>
-                </div>
-              </dl>
-              {device.deviceStack.devices && device.deviceStack.devices.length > 0 && (
-                <div className="space-y-1.5 border-t border-border pt-2">
-                  <div className="text-[11px] font-medium text-muted-foreground">
-                    Peer Switches:
-                  </div>
-                  <div className="space-y-1 text-xs">
-                    {device.deviceStack.devices.map((peer) => (
-                      <div key={peer.id} className="flex items-center justify-between">
-                        <Link
-                          href={`/inventory/devices/${peer.id}`}
-                          className="mr-2 truncate text-primary hover:underline"
-                        >
-                          {peer.name}
-                        </Link>
-                        <span className="shrink-0 font-mono text-[10px] text-subtle">
-                          Switch #{peer.stackMember ?? '?'} ·{' '}
-                          {peer.stackRole === 'MASTER' ? 'Master' : 'Member'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <p className="text-xs text-subtle">Standalone switch (No stack configured).</p>
-          )}
+        <div className="min-w-0 space-y-6">
+          <LocationSection device={device} />
+          <SourcePanel deviceId={device.id} />
         </div>
       </div>
     </div>

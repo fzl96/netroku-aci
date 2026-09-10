@@ -255,8 +255,19 @@ export async function getTargetSource(deviceId: string) {
       ],
     },
     include: {
-      nodeSnapshot: { select: { present: true, lastSeenAt: true, inventoryRevision: true } },
-      legacyDevice: { select: { lastSeenAt: true, inventoryRevision: true } },
+      nodeSnapshot: {
+        select: {
+          present: true,
+          lastSeenAt: true,
+          inventoryRevision: true,
+          name: true,
+          nodeId: true,
+          apicHost: { select: { name: true } },
+        },
+      },
+      legacyDevice: {
+        select: { lastSeenAt: true, inventoryRevision: true, hostname: true, site: true },
+      },
       deviceStack: true,
     },
   })

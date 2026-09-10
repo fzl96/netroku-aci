@@ -1,18 +1,16 @@
 export type NavigationScope = 'aci' | 'legacy'
 
-const ACI_PREFIXES = [
-  '/apic-hosts',
-  '/endpoints',
-  '/epgs',
-  '/interface-health',
-  '/nodes',
-  '/bridge-domains',
-  '/policy/bridge-domains',
-  '/static-ports',
-  '/interface-selectors',
+// Routes that belong to neither fabric. Physical inventory spans ACI and Legacy
+// hardware alike, so it keeps whichever sidebar the reader arrived with.
+const SHARED_PREFIXES = [
+  '/',
+  '/dashboard',
+  '/docs',
+  '/history',
+  '/inventory',
+  '/settings',
+  '/users',
 ]
-
-const SHARED_PREFIXES = ['/', '/dashboard', '/docs', '/history', '/settings', '/users']
 
 function matchesSegment(pathname: string, prefix: string): boolean {
   if (prefix === '/') return pathname === '/'
@@ -23,11 +21,19 @@ function matchesAny(pathname: string, prefixes: string[]): boolean {
   return prefixes.some((prefix) => matchesSegment(pathname, prefix))
 }
 
-export function resolveNavigationScope(pathname: string, cookieScope?: string): NavigationScope {
+/** The scope a route pins on its own, or `null` for a shared route that
+ *  inherits the reader's last scope. Everything outside /legacy and the shared
+ *  routes is an ACI page. */
+export function explicitScopeForPath(pathname: string): NavigationScope | null {
   if (matchesSegment(pathname, '/legacy')) return 'legacy'
-  if (matchesAny(pathname, ACI_PREFIXES)) return 'aci'
-  if (matchesAny(pathname, SHARED_PREFIXES) && cookieScope === 'legacy') return 'legacy'
+  if (matchesAny(pathname, SHARED_PREFIXES)) return null
   return 'aci'
+}
+
+export function resolveNavigationScope(pathname: string, cookieScope?: string): NavigationScope {
+  const explicitScope = explicitScopeForPath(pathname)
+  if (explicitScope) return explicitScope
+  return cookieScope === 'legacy' ? 'legacy' : 'aci'
 }
 
 export function targetPathForScope(pathname: string, target: NavigationScope): string {

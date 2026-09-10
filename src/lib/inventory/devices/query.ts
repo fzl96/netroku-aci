@@ -92,6 +92,7 @@ export type SafeDeviceWithRack = SafeDevice & {
 }
 
 export type SafeDeviceDetail = SafeDeviceWithRack & {
+  rack: (NonNullable<SafeDeviceWithRack['rack']> & { heightU: number }) | null
   deviceStack:
     | (SafeDeviceStack & {
         devices: Array<{
@@ -136,6 +137,7 @@ export type DevicesResultsPayload = {
   role: 'admin' | 'member'
   page: DeviceListPage
   stacks: SafeDeviceStack[]
+  sites: Array<{ id: string; name: string }>
 }
 
 type RawDevice = SafeDevice
@@ -228,7 +230,7 @@ export async function getDevices(params: DeviceListParams): Promise<DeviceListPa
           pageSize: window.take,
         }
       },
-      ['inventory', 'devices', 'list', params.query, String(params.page)],
+      ['inventory', 'devices', 'list', params.query, params.sites.join(','), String(params.page)],
       cacheOptions,
     )(),
   )
@@ -245,7 +247,7 @@ export const getDeviceById = cache(async (id: string): Promise<SafeDeviceDetail 
           where: { id },
           select: {
             ...DEVICE_SCALAR_SELECT,
-            rack: { select: RACK_WITH_SITE_SELECT },
+            rack: { select: { ...RACK_WITH_SITE_SELECT, heightU: true } },
             deviceStack: {
               select: {
                 id: true,

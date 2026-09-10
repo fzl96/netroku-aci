@@ -108,7 +108,7 @@ const query = await import('./query')
 const mutation = await import('./mutation')
 const { InventoryReadError } = await import('@/lib/inventory/errors')
 
-const base: DeviceListParams = { query: '', page: 1 }
+const base: DeviceListParams = { query: '', sites: [], page: 1 }
 
 beforeEach(() => {
   authenticationError = null
@@ -148,9 +148,9 @@ describe('getDevices', () => {
     })
   })
 
-  it('keys the cache by the query and page', async () => {
-    await query.getDevices({ query: 'sw', page: 2 })
-    expect(cacheCalls.at(-1)?.key).toEqual(['inventory', 'devices', 'list', 'sw', '2'])
+  it('keys the cache by the query, site filter and page', async () => {
+    await query.getDevices({ query: 'sw', sites: ['s1', 's2'], page: 2 })
+    expect(cacheCalls.at(-1)?.key).toEqual(['inventory', 'devices', 'list', 'sw', 's1,s2', '2'])
     expect(cacheCalls.at(-1)?.options).toEqual({ tags: ['inventory:all'], revalidate: 28_800 })
   })
 })

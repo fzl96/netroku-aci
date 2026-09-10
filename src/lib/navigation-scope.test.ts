@@ -1,7 +1,28 @@
 import { describe, expect, it } from 'bun:test'
-import { resolveNavigationScope, targetPathForScope } from './navigation-scope'
+import {
+  explicitScopeForPath,
+  resolveNavigationScope,
+  targetPathForScope,
+} from './navigation-scope'
+
+describe('explicitScopeForPath', () => {
+  it('pins legacy and ACI routes and leaves shared routes unpinned', () => {
+    expect(explicitScopeForPath('/legacy/devices')).toBe('legacy')
+    expect(explicitScopeForPath('/nodes')).toBe('aci')
+    expect(explicitScopeForPath('/scheduler')).toBe('aci')
+    expect(explicitScopeForPath('/dashboard')).toBeNull()
+    expect(explicitScopeForPath('/inventory')).toBeNull()
+    expect(explicitScopeForPath('/inventory/devices/abc')).toBeNull()
+  })
+})
 
 describe('resolveNavigationScope', () => {
+  it('keeps the reader scope on inventory routes', () => {
+    expect(resolveNavigationScope('/inventory/devices', 'legacy')).toBe('legacy')
+    expect(resolveNavigationScope('/inventory/racks', 'aci')).toBe('aci')
+    expect(resolveNavigationScope('/inventory-internal', 'legacy')).toBe('aci')
+  })
+
   it('uses exact legacy path segments instead of prefix lookalikes', () => {
     expect(resolveNavigationScope('/legacy/interfaces', 'aci')).toBe('legacy')
     expect(resolveNavigationScope('/legacy', 'aci')).toBe('legacy')
@@ -33,6 +54,7 @@ describe('targetPathForScope', () => {
 
   it('keeps shared routes and applies documented fallbacks', () => {
     expect(targetPathForScope('/settings', 'legacy')).toBe('/settings')
+    expect(targetPathForScope('/inventory/devices', 'legacy')).toBe('/inventory/devices')
     expect(targetPathForScope('/legacy/health', 'aci')).toBe('/apic-hosts')
     expect(targetPathForScope('/epgs', 'legacy')).toBe('/legacy/devices')
   })

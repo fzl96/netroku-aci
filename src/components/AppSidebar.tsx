@@ -43,11 +43,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
 import { useApicHosts } from '@/components/ApicHostsProvider'
-import {
-  resolveNavigationScope,
-  targetPathForScope,
-  type NavigationScope,
-} from '@/lib/navigation-scope'
+import { useNavigationScope } from '@/components/NavigationScopeProvider'
+import { targetPathForScope } from '@/lib/navigation-scope'
 
 // Suppress the full leaf-active treatment (bg pill + left bar) for parent
 // containers — they only need to look "expanded", not "current page".
@@ -114,7 +111,7 @@ const ACI_NAV: NavSection[] = [
       },
       {
         href: '/inventory',
-        label: 'Inventroy',
+        label: 'Inventory',
         icon: <IconBoxSeam size={15} stroke={1.75} />,
         children: [
           {
@@ -281,22 +278,15 @@ const LEGACY_INFRASTRUCTURE: NavSection = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function AppSidebar({
-  role,
-  initialScope,
-}: {
-  role: 'admin' | 'member'
-  initialScope: NavigationScope
-}) {
+export function AppSidebar({ role }: { role: 'admin' | 'member' }) {
   const pathname = usePathname()
   const router = useRouter()
   const { setTheme } = useTheme()
   const [loggingOut, setLoggingOut] = useState(false)
   const [logoutOpen, setLogoutOpen] = useState(false)
-  const [sharedScope, setSharedScope] = useState(initialScope)
+  const { scope, setScope } = useNavigationScope()
   const apicHosts = useApicHosts()
   const defaultApicId = apicHosts[0]?.id
-  const scope = resolveNavigationScope(pathname, sharedScope)
   const sourceNav =
     scope === 'aci' ? ACI_NAV : [ACI_NAV[0], LEGACY_INFRASTRUCTURE, ACI_NAV[ACI_NAV.length - 1]]
   const nav = sourceNav
@@ -320,10 +310,8 @@ export function AppSidebar({
 
   function handleScopeChange(value: string) {
     if (value !== 'aci' && value !== 'legacy') return
-    const nextScope: NavigationScope = value
-    setSharedScope(nextScope)
-    document.cookie = `netroku_scope=${nextScope}; Path=/; SameSite=Lax; Max-Age=31536000`
-    const target = targetPathForScope(pathname, nextScope)
+    setScope(value)
+    const target = targetPathForScope(pathname, value)
     if (target !== pathname) router.push(target)
   }
 
