@@ -27,13 +27,36 @@ function fakeDb(existingReceipt?: Record<string, unknown>) {
     receipt: existingReceipt ?? null,
     receiptUpdate: null as Record<string, unknown> | null,
   }
+  const row = {
+    id: 'device-1',
+    hostname: 'SW-JKT-01',
+    site: 'Jakarta',
+    siteKey: 'jakarta',
+    hostnameKey: 'sw-jkt-01',
+    serialNumber: null,
+    model: null,
+    softwareVersion: null,
+    managementIp: '10.10.0.11',
+    inventoryRevision: 0,
+    inventoryMetadataClock: {},
+    inventoryMetadataConflict: null,
+    lastSeenAt: new Date(),
+  }
   const client = {
+    $queryRaw: async () => [],
+    inventoryReconcileJob: { create: async () => ({}) },
     legacyDevice: {
       upsert: async (args: Record<string, unknown>) => {
         state.upsertArgs = args
         return { id: 'device-1' }
       },
       findUnique: async () => ({ id: 'device-1' }),
+      findUniqueOrThrow: async () => row,
+      update: async (args: { data: Record<string, unknown> }) => ({
+        ...row,
+        ...args.data,
+        inventoryRevision: 1,
+      }),
     },
     legacyIngestReceipt: {
       findUnique: async () => state.receipt,

@@ -1,3 +1,4 @@
+import { enqueueLegacyChange, orderedMetadata } from '@/lib/inventory/sources/outbox'
 import { createHash } from 'crypto'
 import {
   Prisma,
@@ -163,15 +164,7 @@ export async function ingestLegacyFeature(
     return await db.$transaction(async (tx) => {
       const device = await tx.legacyDevice.upsert({
         where: { siteKey_hostnameKey: { siteKey, hostnameKey } },
-        update: {
-          site,
-          hostname,
-          managementIp: payload.device.management_ip,
-          deviceType: payload.device.device_type,
-          active: true,
-          lastSeenAt: new Date(),
-          ...metadata,
-        },
+        update: {},
         create: {
           site,
           siteKey,
@@ -198,6 +191,32 @@ export async function ingestLegacyFeature(
         return receiptResult(existing, device.id, true)
       }
 
+      // Serialize metadata acceptance for this source; duplicate receipts returned above.
+      await tx.$queryRaw`SELECT id FROM legacy_device WHERE id = ${device.id} FOR UPDATE`
+      const before = await tx.legacyDevice.findUniqueOrThrow({ where: { id: device.id } })
+      const ordered = orderedMetadata(
+        before,
+        {
+          ...metadata,
+          hostname,
+          site,
+          deviceType: payload.device.device_type,
+          managementIp: payload.device.management_ip,
+        },
+        before.inventoryMetadataClock,
+        collectedAt.toISOString(),
+      )
+      const after = await tx.legacyDevice.update({
+        where: { id: device.id },
+        data: {
+          ...ordered.data,
+          inventoryMetadataClock: ordered.clock,
+          inventoryMetadataConflict: ordered.conflict,
+          active: true,
+          lastSeenAt: new Date(),
+        },
+      })
+      await enqueueLegacyChange(tx, before.inventoryRevision === 0 ? null : before, after)
       const receipt = await tx.legacyIngestReceipt.create({
         data: { ...key, collectedAt, payloadHash },
         select: { id: true },

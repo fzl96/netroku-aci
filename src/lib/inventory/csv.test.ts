@@ -86,7 +86,7 @@ describe('parseCsvRows', () => {
 
     expect(errors).toHaveLength(0)
     expect(rows).toHaveLength(1)
-    expect(rows[0]).toEqual({
+    expect(rows[0]).toMatchObject({
       rowIndex: 1,
       hostname: 'sw-core-01',
       serialNumber: 'SN-1001',

@@ -139,20 +139,26 @@ model Rack {
 }
 
 model DeviceStack {
-  id      String   @id @default(cuid())
-  name    String
-  devices Device[]
+  observedHostname     String?
+  observedVersion      String?
+  observedManagementIp String?
+  source               InventorySource?
+  id                   String           @id @default(cuid())
+  name                 String
+  devices              Device[]
 
   @@map("device_stack")
 }
 
 model Device {
-  id           String       @id @default(cuid())
+  version      String?
+  source       InventorySource?
+  id           String           @id @default(cuid())
   name         String // Hostname
-  serialNumber String       @unique
-  assetTag     String?      @unique
-  managementIp String?      @map("management_ip")
-  status       DeviceStatus @default(ACTIVE)
+  serialNumber String           @unique
+  assetTag     String?          @unique
+  managementIp String?          @map("management_ip")
+  status       DeviceStatus     @default(ACTIVE)
 
   // Location
   rackId       String?
@@ -178,6 +184,8 @@ model Device {
 }
 
 model ApicHost {
+  nodeLeaseToken      String?
+  nodeLeaseExpiresAt  DateTime?
   id                  String              @id @default(cuid())
   name                String
   host                String
@@ -317,24 +325,26 @@ model InterfaceSample {
 }
 
 model NodeSnapshot {
-  id          String   @id @default(cuid())
-  apicHostId  String
-  apicHost    ApicHost @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
-  dn          String
-  nodeId      String
-  name        String   @default("")
-  role        String   @default("")
-  model       String   @default("")
-  serial      String   @default("")
-  version     String?
-  fabricSt    String   @default("")
-  state       String?
-  podId       String?
-  uptime      String?
-  oobMgmtAddr String?
-  present     Boolean  @default(true)
-  firstSeenAt DateTime @default(now())
-  lastSeenAt  DateTime @default(now())
+  inventoryRevision Int              @default(0)
+  inventorySource   InventorySource?
+  id                String           @id @default(cuid())
+  apicHostId        String
+  apicHost          ApicHost         @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  dn                String
+  nodeId            String
+  name              String           @default("")
+  role              String           @default("")
+  model             String           @default("")
+  serial            String           @default("")
+  version           String?
+  fabricSt          String           @default("")
+  state             String?
+  podId             String?
+  uptime            String?
+  oobMgmtAddr       String?
+  present           Boolean          @default(true)
+  firstSeenAt       DateTime         @default(now())
+  lastSeenAt        DateTime         @default(now())
 
   @@unique([apicHostId, dn])
   @@index([apicHostId])
@@ -433,26 +443,30 @@ enum LegacyIngestFeature {
 }
 
 model LegacyDevice {
-  id                  String    @id @default(cuid())
-  site                String
-  siteKey             String
-  hostname            String
-  hostnameKey         String
-  managementIp        String
-  deviceType          String
-  vendor              String?
-  model               String?
-  serialNumber        String?
-  softwareVersion     String?
-  location            String?
-  active              Boolean   @default(true)
-  firstSeenAt         DateTime  @default(now())
-  lastSeenAt          DateTime  @default(now())
-  lastHealthSyncAt    DateTime?
-  lastInterfaceSyncAt DateTime?
-  lastEndpointSyncAt  DateTime?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  inventoryRevision         Int              @default(0)
+  inventoryMetadataClock    Json             @default("{}")
+  inventoryMetadataConflict String?
+  inventorySource           InventorySource?
+  id                        String           @id @default(cuid())
+  site                      String
+  siteKey                   String
+  hostname                  String
+  hostnameKey               String
+  managementIp              String
+  deviceType                String
+  vendor                    String?
+  model                     String?
+  serialNumber              String?
+  softwareVersion           String?
+  location                  String?
+  active                    Boolean          @default(true)
+  firstSeenAt               DateTime         @default(now())
+  lastSeenAt                DateTime         @default(now())
+  lastHealthSyncAt          DateTime?
+  lastInterfaceSyncAt       DateTime?
+  lastEndpointSyncAt        DateTime?
+  createdAt                 DateTime         @default(now())
+  updatedAt                 DateTime         @updatedAt
 
   receipts         LegacyIngestReceipt[]
   healthSamples    LegacyHealthSample[]
@@ -597,4 +611,71 @@ model LegacyEndpoint {
   @@index([deviceId, mac, ipKey])
   @@index([deviceId, interfaceKey])
   @@map("legacy_endpoint")
+}
+
+enum InventorySourceKind {
+  ACI
+  LEGACY
+}
+
+enum InventoryMatchMethod {
+  SERIAL
+  MANUAL_SELECTION
+}
+
+// Target XOR and source-kind checks, and queue partial indexes, are migration SQL.
+model InventorySource {
+  id                       String               @id @default(cuid())
+  deviceId                 String?              @unique
+  device                   Device?              @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  deviceStackId            String?              @unique
+  deviceStack              DeviceStack?         @relation(fields: [deviceStackId], references: [id], onDelete: Cascade)
+  kind                     InventorySourceKind
+  nodeSnapshotId           String?              @unique
+  nodeSnapshot             NodeSnapshot?        @relation(fields: [nodeSnapshotId], references: [id], onDelete: SetNull)
+  legacyDeviceId           String?              @unique
+  legacyDevice             LegacyDevice?        @relation(fields: [legacyDeviceId], references: [id], onDelete: SetNull)
+  sourceKey                String
+  sourceLabel              String
+  matchedOn                InventoryMatchMethod
+  serialAtLink             String?
+  conflictReason           String?
+  lastSeenAt               DateTime?
+  lastAppliedAt            DateTime?
+  lastAppliedObservationAt DateTime?
+  acceptedRevision         Int                  @default(0)
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+
+  @@unique([kind, sourceKey])
+  @@map("inventory_source")
+}
+
+model InventoryReconcileJob {
+  id             String              @id @default(cuid())
+  kind           InventorySourceKind
+  sourceKey      String
+  sourceRecordId String
+  sourceRevision Int
+  observation    Json
+  createdAt      DateTime            @default(now())
+  availableAt    DateTime            @default(now())
+  attempts       Int                 @default(0)
+  lastError      String?
+  completedAt    DateTime?
+
+  @@unique([kind, sourceRecordId, sourceRevision])
+  // Pending due and predecessor indexes are partial indexes in the migration.
+  @@map("inventory_reconcile_job")
+}
+
+model InventoryWorkerHealth {
+  id              String    @id
+  lastStartedAt   DateTime?
+  lastCompletedAt DateTime?
+  lastSucceededAt DateTime?
+  lastErrorAt     DateTime?
+  lastError       String?
+
+  @@map("inventory_worker_health")
 }

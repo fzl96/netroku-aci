@@ -1,3 +1,9 @@
+import {
+  lockInventory,
+  assertStackCanBecomeEmpty,
+  assertAvailableSerial,
+} from '@/lib/inventory/sources/locking'
+import { assertOwnedFields } from '@/lib/inventory/sources/identity'
 import 'server-only'
 
 import { z } from 'zod'
@@ -26,6 +32,7 @@ export async function createDeviceRecord(data: DeviceFormValues): Promise<SafeDe
   const stackMember = stackName ? (parsed.data.stackMember ?? null) : null
 
   const device = await prisma.$transaction(async (tx) => {
+    await lockInventory(tx)
     let deviceStackId: string | null = null
     if (stackName) {
       let stack = await tx.deviceStack.findFirst({ where: { name: stackName } })
@@ -69,6 +76,7 @@ export async function createDeviceRecord(data: DeviceFormValues): Promise<SafeDe
       }
     }
 
+    await assertAvailableSerial(tx, parsed.data.serialNumber)
     const created = await tx.device.create({
       data: {
         name: parsed.data.name,
@@ -78,6 +86,7 @@ export async function createDeviceRecord(data: DeviceFormValues): Promise<SafeDe
         status: parsed.data.status,
         vendor: parsed.data.vendor,
         model: parsed.data.model,
+        version: parsed.data.version,
         heightU: parsed.data.heightU,
         deviceStackId,
         stackRole,
@@ -92,6 +101,7 @@ export async function createDeviceRecord(data: DeviceFormValues): Promise<SafeDe
     return tx.device.findUniqueOrThrow({
       where: { id: created.id },
       include: {
+        source: true,
         rack: { include: { site: true } },
         deviceStack: {
           select: {
@@ -131,11 +141,14 @@ export async function updateDeviceRecord(
   const stackMember = stackName ? (parsed.data.stackMember ?? null) : null
 
   const device = await prisma.$transaction(async (tx) => {
+    await lockInventory(tx)
     const existing = await tx.device.findUnique({
       where: { id },
-      select: { deviceStackId: true, stackRole: true },
+      include: { source: true },
     })
     if (!existing) throw new Error('Device not found')
+    assertOwnedFields(existing, parsed.data)
+    await assertAvailableSerial(tx, parsed.data.serialNumber, id)
 
     const prevStackId = existing.deviceStackId
     let nextStackId: string | null = null
@@ -183,6 +196,18 @@ export async function updateDeviceRecord(
       }
     }
 
+    if (existing.rackId && existing.rackPosition !== null) {
+      const rack = await tx.rack.findUniqueOrThrow({
+        where: { id: existing.rackId },
+        select: { heightU: true },
+      })
+      const siblings = await tx.device.findMany({
+        where: { rackId: existing.rackId },
+        select: { id: true, heightU: true, rackPosition: true },
+      })
+      if (!canPlaceDevice(siblings, id, existing.rackPosition, parsed.data.heightU, rack.heightU))
+        throw new Error('Cannot resize: not enough free U space')
+    }
     await tx.device.update({
       where: { id },
       data: {
@@ -193,6 +218,7 @@ export async function updateDeviceRecord(
         status: parsed.data.status,
         vendor: parsed.data.vendor,
         model: parsed.data.model,
+        version: parsed.data.version,
         heightU: parsed.data.heightU,
         deviceStackId: nextStackId,
         stackRole,
@@ -213,6 +239,7 @@ export async function updateDeviceRecord(
     if (prevStackId && prevStackId !== nextStackId) {
       const count = await tx.device.count({ where: { deviceStackId: prevStackId } })
       if (count === 0) {
+        await assertStackCanBecomeEmpty(tx, prevStackId)
         await tx.deviceStack.delete({ where: { id: prevStackId } })
       } else {
         await ensureStackHasMaster(tx, prevStackId)
@@ -222,6 +249,7 @@ export async function updateDeviceRecord(
     return tx.device.findUniqueOrThrow({
       where: { id },
       include: {
+        source: true,
         rack: { include: { site: true } },
         deviceStack: {
           select: {
@@ -250,22 +278,24 @@ export async function updateDeviceRecord(
 
 export async function deleteDeviceRecord(id: string): Promise<void> {
   const actor = await requireAdmin()
-  const existing = await prisma.device.findUnique({
-    where: { id },
-    select: { name: true, serialNumber: true, deviceStackId: true },
-  })
-  if (!existing) throw new Error('Device not found')
-
-  await prisma.$transaction(async (tx) => {
+  const existing = await prisma.$transaction(async (tx) => {
+    await lockInventory(tx)
+    const existing = await tx.device.findUnique({
+      where: { id },
+      select: { name: true, serialNumber: true, deviceStackId: true },
+    })
+    if (!existing) throw new Error('Device not found')
     await tx.device.delete({ where: { id } })
     if (existing.deviceStackId) {
       const count = await tx.device.count({ where: { deviceStackId: existing.deviceStackId } })
       if (count === 0) {
+        await assertStackCanBecomeEmpty(tx, existing.deviceStackId)
         await tx.deviceStack.delete({ where: { id: existing.deviceStackId } })
       } else {
         await ensureStackHasMaster(tx, existing.deviceStackId)
       }
     }
+    return existing
   })
 
   invalidateInventoryReads()
@@ -285,6 +315,7 @@ export async function updateDevicePlacementRecord(
   const actor = await requireAdmin()
 
   const device = await prisma.$transaction(async (tx) => {
+    await lockInventory(tx)
     const [rack, movingDevice, siblings] = await Promise.all([
       tx.rack.findUnique({ where: { id: rackId }, select: { heightU: true } }),
       tx.device.findUnique({ where: { id: deviceId }, select: { heightU: true } }),
@@ -315,12 +346,10 @@ export async function updateDevicePlacementRecord(
 
 export async function clearDevicePlacementRecord(deviceId: string): Promise<SafeDevice> {
   const actor = await requireAdmin()
-  const result = await prisma.device.updateMany({
-    where: { id: deviceId },
-    data: { rackId: null, rackPosition: null },
+  const device = await prisma.$transaction(async (tx) => {
+    await lockInventory(tx)
+    return tx.device.update({ where: { id: deviceId }, data: { rackId: null, rackPosition: null } })
   })
-  if (result.count === 0) throw new Error('Device not found')
-  const device = await prisma.device.findUniqueOrThrow({ where: { id: deviceId } })
   invalidateInventoryReads()
   await recordAudit({
     userId: actor.id,
@@ -340,6 +369,7 @@ export async function updateDeviceHeightRecord(
   if (!parsedHeight.success) throw new Error('Invalid height')
 
   const device = await prisma.$transaction(async (tx) => {
+    await lockInventory(tx)
     const movingDevice = await tx.device.findUnique({
       where: { id: deviceId },
       select: { rackId: true, rackPosition: true },

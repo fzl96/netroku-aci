@@ -4,6 +4,8 @@ export type RawCsvRow = Record<string, string>
 
 export type ParsedImportRow = {
   rowIndex: number
+  providedFields?: string[]
+  version?: string | null
   hostname: string
   serialNumber: string
   assetTag: string | null
@@ -49,6 +51,8 @@ export type CsvParseResult = {
 }
 
 const HEADER_ALIASES: Record<string, keyof ParsedImportRow> = {
+  version: 'version',
+  software_version: 'version',
   hostname: 'hostname',
   name: 'hostname',
   host: 'hostname',
@@ -136,10 +140,7 @@ export function checkRequiredHeaders(headers: string[]): CsvImportError | null {
   }
 
   const missing: string[] = []
-  if (!canonicalPresent.has('hostname')) missing.push('hostname (or name)')
   if (!canonicalPresent.has('serialNumber')) missing.push('serial_number (or serial)')
-  if (!canonicalPresent.has('vendor')) missing.push('vendor')
-  if (!canonicalPresent.has('model')) missing.push('model')
 
   if (missing.length > 0) {
     return {
@@ -207,9 +208,7 @@ export function parseCsvRows(rawRows: RawCsvRow[], headers: string[]): CsvParseR
 
     // Validate hostname
     const hostname = extracted.hostname ?? ''
-    if (!hostname) {
-      addErr('hostname', 'Hostname is required')
-    } else if (hostname.length > 128) {
+    if (hostname.length > 128) {
       addErr('hostname', 'Hostname must be 128 characters or fewer')
     }
 
@@ -258,25 +257,21 @@ export function parseCsvRows(rawRows: RawCsvRow[], headers: string[]): CsvParseR
 
     // Validate vendor
     const vendor = extracted.vendor ?? ''
-    if (!vendor) {
-      addErr('vendor', 'Vendor is required')
-    } else if (vendor.length > 128) {
+    if (vendor.length > 128) {
       addErr('vendor', 'Vendor must be 128 characters or fewer')
     }
 
     // Validate model
     const model = extracted.model ?? ''
-    if (!model) {
-      addErr('model', 'Model is required')
-    } else if (model.length > 128) {
+    if (model.length > 128) {
       addErr('model', 'Model must be 128 characters or fewer')
     }
 
     // Validate heightU
-    let heightU = 1
+    let heightU = 0
     if (extracted.heightU) {
-      const parsedH = parseInt(extracted.heightU, 10)
-      if (isNaN(parsedH) || parsedH < 1 || parsedH > 60) {
+      const parsedH = Number(extracted.heightU)
+      if (!Number.isInteger(parsedH) || parsedH < 1 || parsedH > 60) {
         addErr('heightU', `Height must be between 1 and 60 U, got "${extracted.heightU}"`)
       } else {
         heightU = parsedH
@@ -298,10 +293,6 @@ export function parseCsvRows(rawRows: RawCsvRow[], headers: string[]): CsvParseR
       } else {
         rackPosition = parsedPos
       }
-    }
-
-    if (rackPosition !== null && !rack) {
-      addErr('rack', 'Rack name is required when specifying a rack position')
     }
 
     // Validate stack
@@ -327,10 +318,6 @@ export function parseCsvRows(rawRows: RawCsvRow[], headers: string[]): CsvParseR
       }
     }
 
-    if ((stackRole !== null || switchId !== null) && !stackName) {
-      addErr('stackName', 'Stack name is required when stack role or switch number is specified')
-    }
-
     if (rowErrors.length > 0) {
       errors.push(...rowErrors)
       malformedRows.push({
@@ -351,6 +338,8 @@ export function parseCsvRows(rawRows: RawCsvRow[], headers: string[]): CsvParseR
     } else {
       rows.push({
         rowIndex,
+        providedFields: Object.keys(extracted).filter((key) => extracted[key] !== ''),
+        version: extracted.version || null,
         hostname,
         serialNumber,
         assetTag,
@@ -500,23 +489,23 @@ function validateIntraCsvConstraints(rows: ParsedImportRow[], errors: CsvImportE
   }
 }
 
-export const SAMPLE_CSV_TEMPLATE = `hostname,serial_number,asset_tag,management_ip,status,vendor,model,height_u,site,rack,rack_position,stack_name,stack_role,switch_id
-DCI-SPINE-01,FOX220199A1,TAG-1001,10.0.1.1,ACTIVE,Arista,DCS-7050SX3-48YC8,1,DCI,C1,42,,,
-DCI-SPINE-02,FOX220199A2,TAG-1002,10.0.1.2,ACTIVE,Arista,DCS-7050SX3-48YC8,1,DCI,C1,41,,,
-DCI-LEAF-01,FOC240101AA,TAG-1003,10.0.1.11,ACTIVE,Cisco,Nexus 9336C-FX2,2,DCI,C1,30,,,
-DCI-LEAF-02,FOC240101BB,TAG-1004,10.0.1.12,ACTIVE,Cisco,Nexus 9336C-FX2,2,DCI,C1,28,,,
-DCI-CORE-RTR-01,TTM280302D1,TAG-1005,10.0.0.1,ACTIVE,Cisco,C8500-12X,2,DCI,C1,10,,,
-DCI-FW-01,FG100FTK21001,TAG-1006,10.0.254.1,ACTIVE,Fortinet,FortiGate-100F,1,DCI,D1,40,,,
-DCI-FW-02,FG100FTK21002,TAG-1007,10.0.254.2,ACTIVE,Fortinet,FortiGate-100F,1,DCI,D1,39,,,
-DCI-CORE-RTR-02,TTM280302D2,TAG-1008,10.0.0.2,ACTIVE,Cisco,C8500-12X,2,DCI,D1,20,,,
-DCN-SPINE-01,FOX230110X1,TAG-2001,10.10.1.1,PLANNED,Arista,DCS-7050SX3-48YC8,1,DC-NORTH,RACK-N01,42,,,
-DCN-LEAF-01,JAE270110A1,TAG-2002,10.10.1.11,PLANNED,Cisco,C9300-48UXM,1,DC-NORTH,RACK-N01,35,,,
-DCN-LEAF-02,JAE270110A2,TAG-2003,10.10.1.12,PLANNED,Cisco,C9300-48UXM,1,DC-NORTH,RACK-N01,34,,,
-DCN-OOB-SW-01,CN0M311001A,TAG-2004,10.10.250.1,ACTIVE,Dell,PowerSwitch S5248F,1,DC-NORTH,RACK-N02,30,,,
-HQ-ACC-STK-01,FOC251001A1,TAG-3001,10.20.10.1,ACTIVE,Cisco,C9200L-48T-4X-E,1,HQ-CAMPUS,MDF-01,40,HQ-ACC-STACK,MASTER,1
-HQ-ACC-STK-02,FOC251001A2,TAG-3002,10.20.10.2,ACTIVE,Cisco,C9200L-48T-4X-E,1,HQ-CAMPUS,MDF-01,39,HQ-ACC-STACK,MEMBER,2
-HQ-ACC-STK-03,FOC251001A3,TAG-3003,10.20.10.3,ACTIVE,Cisco,C9200L-48T-4X-E,1,HQ-CAMPUS,MDF-01,38,HQ-ACC-STACK,MEMBER,3
-HQ-ACC-STK-04,FOC251001A4,TAG-3004,10.20.10.4,ACTIVE,Cisco,C9200L-48T-4X-E,1,HQ-CAMPUS,MDF-01,37,HQ-ACC-STACK,MEMBER,4
-SPARE-SW-9300-01,FOC259900X1,TAG-9001,,MAINTENANCE,Cisco,Catalyst 9300-48P,1,,,,,,
-SPARE-RTR-MX204-01,JN12894101A,TAG-9002,,PLANNED,Juniper,MX204,1,,,,,,
+export const SAMPLE_CSV_TEMPLATE = `hostname,serial_number,asset_tag,management_ip,status,vendor,model,height_u,site,rack,rack_position,stack_name,stack_role,switch_id,version
+DCI-SPINE-01,FOX220199A1,TAG-1001,10.0.1.1,ACTIVE,Arista,DCS-7050SX3-48YC8,1,DCI,C1,42,,,,
+DCI-SPINE-02,FOX220199A2,TAG-1002,10.0.1.2,ACTIVE,Arista,DCS-7050SX3-48YC8,1,DCI,C1,41,,,,
+DCI-LEAF-01,FOC240101AA,TAG-1003,10.0.1.11,ACTIVE,Cisco,Nexus 9336C-FX2,2,DCI,C1,30,,,,
+DCI-LEAF-02,FOC240101BB,TAG-1004,10.0.1.12,ACTIVE,Cisco,Nexus 9336C-FX2,2,DCI,C1,28,,,,
+DCI-CORE-RTR-01,TTM280302D1,TAG-1005,10.0.0.1,ACTIVE,Cisco,C8500-12X,2,DCI,C1,10,,,,
+DCI-FW-01,FG100FTK21001,TAG-1006,10.0.254.1,ACTIVE,Fortinet,FortiGate-100F,1,DCI,D1,40,,,,
+DCI-FW-02,FG100FTK21002,TAG-1007,10.0.254.2,ACTIVE,Fortinet,FortiGate-100F,1,DCI,D1,39,,,,
+DCI-CORE-RTR-02,TTM280302D2,TAG-1008,10.0.0.2,ACTIVE,Cisco,C8500-12X,2,DCI,D1,20,,,,
+DCN-SPINE-01,FOX230110X1,TAG-2001,10.10.1.1,PLANNED,Arista,DCS-7050SX3-48YC8,1,DC-NORTH,RACK-N01,42,,,,
+DCN-LEAF-01,JAE270110A1,TAG-2002,10.10.1.11,PLANNED,Cisco,C9300-48UXM,1,DC-NORTH,RACK-N01,35,,,,
+DCN-LEAF-02,JAE270110A2,TAG-2003,10.10.1.12,PLANNED,Cisco,C9300-48UXM,1,DC-NORTH,RACK-N01,34,,,,
+DCN-OOB-SW-01,CN0M311001A,TAG-2004,10.10.250.1,ACTIVE,Dell,PowerSwitch S5248F,1,DC-NORTH,RACK-N02,30,,,,
+HQ-ACC-STK-01,FOC251001A1,TAG-3001,10.20.10.1,ACTIVE,Cisco,C9200L-48T-4X-E,1,HQ-CAMPUS,MDF-01,40,HQ-ACC-STACK,MASTER,1,
+HQ-ACC-STK-02,FOC251001A2,TAG-3002,10.20.10.2,ACTIVE,Cisco,C9200L-48T-4X-E,1,HQ-CAMPUS,MDF-01,39,HQ-ACC-STACK,MEMBER,2,
+HQ-ACC-STK-03,FOC251001A3,TAG-3003,10.20.10.3,ACTIVE,Cisco,C9200L-48T-4X-E,1,HQ-CAMPUS,MDF-01,38,HQ-ACC-STACK,MEMBER,3,
+HQ-ACC-STK-04,FOC251001A4,TAG-3004,10.20.10.4,ACTIVE,Cisco,C9200L-48T-4X-E,1,HQ-CAMPUS,MDF-01,37,HQ-ACC-STACK,MEMBER,4,
+SPARE-SW-9300-01,FOC259900X1,TAG-9001,,MAINTENANCE,Cisco,Catalyst 9300-48P,1,,,,,,,
+SPARE-RTR-MX204-01,JN12894101A,TAG-9002,,PLANNED,Juniper,MX204,1,,,,,,,
 `

@@ -510,3 +510,15 @@ Tests cover path construction, CSV validation, and the parallel runner.
 - APIC session tokens expire after **600 seconds** (10 minutes) by default — reconnect if validation or deploy starts returning 401 errors
 
 ## CI
+
+### Inventory discovery integration
+
+Inventory → **Discovered devices** supports individual and bulk adoption, linking
+existing assets by reviewed serial matches, and Legacy logical-stack linking.
+Existing inventory stays manual after migration; no assets are recreated or
+automatically linked. Manual devices and CSV imports remain available.
+
+Automatic inventory refresh requires `SCHEDULER_TOKEN` and a running caller of
+`POST /api/cron/tick`, including Legacy-only deployments with no APIC schedules.
+See [Inventory discovery operations](docs/inventory-discovery-operations.md) for
+migration, worker health, field ownership, stack workflows, and verification.

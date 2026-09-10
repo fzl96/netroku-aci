@@ -18,7 +18,13 @@ export async function POST(request: Request) {
     const result = await resyncNodeInventory({ apicHostId, username, password })
     if (!result.ok) {
       const status =
-        result.code === 'unauthorized' ? 401 : result.code === 'host-not-found' ? 404 : 502
+        result.code === 'busy'
+          ? 409
+          : result.code === 'unauthorized'
+            ? 401
+            : result.code === 'host-not-found'
+              ? 404
+              : 502
       return Response.json({ error: result.error }, { status })
     }
     return Response.json({

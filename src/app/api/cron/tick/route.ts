@@ -1,3 +1,4 @@
+import { drainInventoryJobs } from '@/lib/inventory/sources/worker'
 import { recordAudit } from '@/lib/audit'
 import { decrypt } from '@/lib/crypto'
 import { isAuthorized, summarizeResults } from '@/lib/apic/cron-resync'
@@ -14,6 +15,14 @@ export async function POST(request: Request) {
   }
   if (!isAuthorized(request.headers.get('authorization'), token)) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  let inventory: { completed: number; failed: number } | { error: string }
+  try {
+    inventory = await drainInventoryJobs()
+  } catch (error) {
+    console.error('[tick] inventory drain failed', error)
+    inventory = { error: 'Inventory worker failed; inspect server logs.' }
   }
 
   const results: Array<{ apicHostId: string; host: string; status: string }> = []
@@ -81,7 +90,7 @@ export async function POST(request: Request) {
     results.push({ apicHostId: claimed.apicHostId, host: claimed.hostName, status })
   }
 
-  return Response.json({ ran: results.length, results })
+  return Response.json({ ran: results.length, results, inventory })
 }
 
 // Note: HostResult also has a host-level `error` string, which is intentionally not
