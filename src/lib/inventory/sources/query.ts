@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { authorizeInventoryRead } from '@/lib/inventory/authorize'
 import { nodeObservation, legacyObservation, observationReviewToken } from './outbox'
 import { serialKey, sourceKey } from './identity'
+import { discoveryGroups, groupFor, parseGroup, type DiscoveryGroup } from './groups'
 
 export async function getWorkerHealth() {
   await authorizeInventoryRead()
@@ -45,12 +46,13 @@ export async function getDiscoveredDevices(input: {
   linked?: string
   page?: string
   assetq?: string
+  group?: string
 }) {
   const viewer = await authorizeInventoryRead()
   const kind: 'ACI' | 'LEGACY' = input.kind === 'LEGACY' ? 'LEGACY' : 'ACI'
   const q = (input.q ?? '').trim().slice(0, 128)
   const assetq = (input.assetq ?? '').trim().slice(0, 128)
-  const page = Math.min(100000, Math.max(1, Math.floor(Number(input.page) || 1)))
+  const requestedPage = Math.min(100000, Math.max(1, Math.floor(Number(input.page) || 1)))
   const relation =
     input.linked === 'yes' ? { isNot: null } : input.linked === 'no' ? { is: null } : undefined
   const nodeWhere = {
@@ -86,14 +88,14 @@ export async function getDiscoveredDevices(input: {
       },
     },
   }
-  const [nodes, legacy, total, stacks, health] = await Promise.all([
+  // Load every matching discovery: a row's group depends on serial matches and links, so tab
+  // counts and per-group pages can only be computed over the whole filtered result.
+  const [nodes, legacy, stacks, health] = await Promise.all([
     kind === 'ACI'
       ? prisma.nodeSnapshot.findMany({
           where: nodeWhere,
           include,
           orderBy: [{ name: 'asc' }, { id: 'asc' }],
-          skip: (page - 1) * 25,
-          take: 25,
         })
       : [],
     kind === 'LEGACY'
@@ -101,13 +103,8 @@ export async function getDiscoveredDevices(input: {
           where: legacyWhere,
           include,
           orderBy: [{ hostname: 'asc' }, { id: 'asc' }],
-          skip: (page - 1) * 25,
-          take: 25,
         })
       : [],
-    kind === 'ACI'
-      ? prisma.nodeSnapshot.count({ where: nodeWhere })
-      : prisma.legacyDevice.count({ where: legacyWhere }),
     prisma.deviceStack.findMany({
       where: assetq ? { name: { contains: assetq, mode: 'insensitive' } } : {},
       take: 200,
@@ -190,22 +187,11 @@ export async function getDiscoveredDevices(input: {
   const devices = [
     ...new Map([...options, ...matchedDevices].map((device) => [device.id, device])).values(),
   ]
-  return {
-    kind,
-    q,
-    assetq,
-    linked: input.linked ?? '',
-    page,
-    total,
-    devices,
-    stacks,
-    health,
-    admin: viewer.role === 'admin',
-    rows: observations.map((row) => ({
-      id: row.id,
-      reviewToken: observationReviewToken(row.observation),
+  const matchBySerial = new Map(matches.map((match) => [match.serial, match]))
+  const grouped = observations.map((row) => {
+    const match = matchBySerial.get(serialKey(row.observation.serial) ?? '')
+    const summary = {
       ...row.observation,
-      vendor: row.vendor,
       link: row.link
         ? {
             id: row.link.id,
@@ -215,14 +201,43 @@ export async function getDiscoveredDevices(input: {
           }
         : null,
       reserved: row.reserved,
-      pending: row.link && !row.reserved ? row.link.acceptedRevision < row.revision : false,
-      matchCount:
-        matches.find((match) => match.serial === serialKey(row.observation.serial))?.count ?? 0,
-      matchId:
-        matches.find(
-          (match) => match.serial === serialKey(row.observation.serial) && match.count === 1,
-        )?.id ?? null,
-    })),
+      matchCount: match?.count ?? 0,
+      matchId: match && match.count === 1 ? match.id : null,
+    }
+    return { row, summary, group: groupFor(summary, matchedDevices) }
+  })
+  const counts = Object.fromEntries(
+    discoveryGroups.map((label) => [label, grouped.filter((item) => item.group === label).length]),
+  ) as Record<DiscoveryGroup, number>
+  const group: DiscoveryGroup =
+    parseGroup(input.group) ??
+    discoveryGroups.find((label) => label !== 'Linked' && counts[label] > 0) ??
+    'Ready to link'
+  const total = counts[group]
+  const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / 25)))
+  return {
+    kind,
+    q,
+    assetq,
+    linked: input.linked ?? '',
+    group,
+    counts,
+    page,
+    total,
+    devices,
+    stacks,
+    health,
+    admin: viewer.role === 'admin',
+    rows: grouped
+      .filter((item) => item.group === group)
+      .slice((page - 1) * 25, page * 25)
+      .map(({ row, summary }) => ({
+        id: row.id,
+        reviewToken: observationReviewToken(row.observation),
+        ...summary,
+        vendor: row.vendor,
+        pending: row.link && !row.reserved ? row.link.acceptedRevision < row.revision : false,
+      })),
   }
 }
 export type DiscoveryData = Awaited<ReturnType<typeof getDiscoveredDevices>>

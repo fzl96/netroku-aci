@@ -20,6 +20,7 @@ import { FooterCancel, FooterSubmit } from '@/components/inventory/dialog-footer
 import { linkSources, unlinkSource } from '@/lib/inventory/sources/actions'
 import type { LinkInput } from '@/lib/inventory/sources/mutation'
 import type { DiscoveryData } from '@/lib/inventory/sources/query'
+import { discoveryGroups } from '@/lib/inventory/sources/groups'
 import { fmtDate, fmtRelative } from '@/lib/interface-health/format'
 import {
   DENSE_TABLE_HEAD_CLS,
@@ -32,7 +33,6 @@ import { cn } from '@/lib/utils'
 import { DiscoveryHeader } from './discovery-header'
 import {
   blocker,
-  groupFor,
   initialDraft,
   selectionConflict,
   rowKey,
@@ -49,7 +49,6 @@ const sheetCls =
 const warningText = 'text-(--warning-text)'
 // The base checkbox is borderless-looking on muted surfaces; give it an edge and a fill.
 const checkboxCls = 'border-muted-foreground/45 bg-card shadow-xs'
-const groups: Group[] = ['Ready to link', 'New devices', 'Needs attention', 'Linked']
 const kindLabel = (kind: Row['kind']) => (kind === 'LEGACY' ? 'Legacy' : 'ACI')
 const mergeById = <T extends { id: string }>(old: T[], next: T[]) => [
   ...new Map([...old, ...next].map((v) => [v.id, v])).values(),
@@ -169,14 +168,8 @@ export function DiscoveryClient({ data }: { data: DiscoveryData }) {
   const [results, setResults] = useState<Record<string, string>>({})
   const [completed, setCompleted] = useState<string[]>([])
   const [notice, setNotice] = useState('')
-  const [group, setGroup] = useState<Group>(
-    () =>
-      groups.find(
-        (label) =>
-          label !== 'Linked' &&
-          data.rows.some((r) => groupFor({ ...r, kind: data.kind }, data.devices) === label),
-      ) ?? 'Ready to link',
-  )
+  // The server groups every matching discovery; rows are already the selected group's page.
+  const group = data.group
   const [editor, setEditor] = useState<string | null>(null)
   const [review, setReview] = useState(false)
   const [busy, start] = useTransition()
@@ -222,9 +215,7 @@ export function DiscoveryClient({ data }: { data: DiscoveryData }) {
   const ready = chosen.filter((row) => !issue(row))
   const batch = ready.slice(0, 50)
   const chosenCreate = chosen.filter((row) => draft(row).mode === 'CREATE')
-  const inGroup = (row: Row, label: Group) =>
-    (label === 'Linked' || !completed.includes(rowKey(row))) && groupFor(row, devices) === label
-  const visible = rows.filter((row) => inGroup(row, group))
+  const visible = rows.filter((row) => group === 'Linked' || !completed.includes(rowKey(row)))
   const selectable = visible.filter(
     (row) => row.present && !row.link && !row.conflict && !row.reserved,
   )
@@ -237,15 +228,17 @@ export function DiscoveryClient({ data }: { data: DiscoveryData }) {
   const pages = Math.max(1, Math.ceil(data.total / 25))
   const editing = editor ? known[editor] : undefined
   function navigate(params: URLSearchParams) {
-    router.push(`/inventory/discovered?${params}`)
+    start(() => router.push(`/inventory/discovered?${params}`))
   }
-  function search(kind: string) {
+  // Omitting the group lets the server open the first group that has discoveries.
+  function search(kind: string, group?: Group) {
     const values = formRef.current ? new FormData(formRef.current) : null
     navigate(
       new URLSearchParams({
         kind,
         q: String(values?.get('q') ?? data.q),
         assetq: String(values?.get('assetq') ?? data.assetq),
+        ...(group ? { group } : {}),
       }),
     )
   }
@@ -319,7 +312,7 @@ export function DiscoveryClient({ data }: { data: DiscoveryData }) {
           className="flex flex-wrap items-center gap-2"
           onSubmit={(e) => {
             e.preventDefault()
-            if (!busy) search(data.kind)
+            if (!busy) search(data.kind, group)
           }}
         >
           <div
@@ -398,15 +391,16 @@ export function DiscoveryClient({ data }: { data: DiscoveryData }) {
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="flex items-center justify-between gap-4 border-b border-border px-2">
             <div className="flex overflow-x-auto" aria-label="Discovery groups">
-              {groups.map((label) => {
-                const count = rows.filter((r) => inGroup(r, label)).length
+              {discoveryGroups.map((label) => {
+                const count = data.counts[label]
                 const active = group === label
                 return (
                   <button
                     key={label}
                     type="button"
                     aria-pressed={active}
-                    onClick={() => setGroup(label)}
+                    disabled={busy}
+                    onClick={() => !active && search(data.kind, label)}
                     className={cn(
                       '-mb-px flex h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-sm whitespace-nowrap transition-colors outline-none focus-visible:bg-muted',
                       active
@@ -432,12 +426,12 @@ export function DiscoveryClient({ data }: { data: DiscoveryData }) {
               })}
             </div>
             <p className="hidden shrink-0 px-2 text-xs text-subtle lg:block">
-              Counts cover this page. Selections carry across pages and filters.
+              Selections carry across groups, pages, and filters.
             </p>
           </div>
 
           {visible.length ? (
-            <div className={TABLE_SCROLL_CLS}>
+            <div className={cn(TABLE_SCROLL_CLS, 'transition-opacity', busy && 'opacity-60')}>
               <table className="w-full min-w-[880px] text-sm">
                 <thead>
                   <tr>
@@ -660,10 +654,8 @@ export function DiscoveryClient({ data }: { data: DiscoveryData }) {
             </div>
           ) : (
             <div className="px-6 py-16 text-center">
-              <p className="text-sm text-foreground">No {group.toLowerCase()} on this page</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Try another group, page, or search.
-              </p>
+              <p className="text-sm text-foreground">No discoveries in {group}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Try another group or search.</p>
             </div>
           )}
 
@@ -684,6 +676,7 @@ export function DiscoveryClient({ data }: { data: DiscoveryData }) {
                         kind: data.kind,
                         q: data.q,
                         assetq: data.assetq,
+                        group,
                         page: String(data.page + delta),
                       }),
                     )

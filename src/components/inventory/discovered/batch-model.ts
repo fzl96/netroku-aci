@@ -15,7 +15,7 @@ export type Draft = {
   memberIds: string[]
   relink: boolean
 }
-export type Group = 'Ready to link' | 'New devices' | 'Needs attention' | 'Linked'
+export { groupFor, type DiscoveryGroup as Group } from '@/lib/inventory/sources/groups'
 export const rowKey = (row: Row) => `${row.kind}:${row.id}`
 export function initialDraft(row: Row): Draft {
   return {
@@ -89,22 +89,6 @@ export function blocker(
   }
   return null
 }
-export function groupFor(row: Row, devices: DiscoveryData['devices']): Group {
-  if (row.link && !row.reserved && !row.link.conflict && !row.conflict) return 'Linked'
-  if (
-    !row.present ||
-    row.conflict ||
-    row.reserved ||
-    row.link?.conflict ||
-    row.matchCount > 1 ||
-    !serialKey(row.serial)
-  )
-    return 'Needs attention'
-  if (row.matchCount === 1)
-    return devices.find((d) => d.id === row.matchId)?.source ? 'Needs attention' : 'Ready to link'
-  return 'New devices'
-}
-
 export function selectionConflict(
   row: Row,
   draft: (row: Row) => Draft,

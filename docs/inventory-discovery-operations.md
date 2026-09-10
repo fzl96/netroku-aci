@@ -27,8 +27,10 @@ Use normal database backup and deployment procedures when rolling it out.
 
 Filter discoveries by ACI/Legacy, hostname/serial, and linked status. Select rows
 for review. Confirm proposed technical values and choose Add physical device,
-Link existing physical asset, or (Legacy only) Link logical stack. Up to 25 rows
-are displayed per page; the action API caps a batch at 50.
+Link existing physical asset, or (Legacy only) Link logical stack. Discoveries are
+grouped (Ready to link, New devices, Needs attention, Linked) across the whole
+filtered result, so group counts are totals; each group shows up to 25 rows per
+page; the action API caps a batch at 50.
 
 Exact, normalized serial matches are suggestions requiring confirmation. A link
 uses the existing device ID, preserving manual fields. Normalization trims and
