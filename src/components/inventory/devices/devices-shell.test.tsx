@@ -57,7 +57,7 @@ describe('devices streaming shell', () => {
     expect(resultsSource).toContain('updateDevice')
     expect(resultsSource).toContain('deleteDevice')
     expect(resultsSource).toContain('buildDeviceListUrl')
-    expect(resultsSource).toContain('buildDeviceSearchUrl')
+    expect(resultsSource).toContain('<SearchBar')
     expect(resultsSource).toContain('existingStacks')
     expect(resultsSource).not.toContain('devices-table-client')
   })

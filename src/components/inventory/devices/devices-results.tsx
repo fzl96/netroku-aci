@@ -1,7 +1,6 @@
 'use client'
 
-import type { FormEvent } from 'react'
-import { use, useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { use, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -10,7 +9,6 @@ import {
   IconPlus,
   IconPencil,
   IconTrash,
-  IconSearch,
   IconFileSpreadsheet,
   IconDeviceDesktopSearch,
 } from '@tabler/icons-react'
@@ -29,8 +27,11 @@ import {
   type DeviceFormValues,
   type DeviceUpdateFormValues,
 } from '@/lib/schemas/device'
-import { buildDeviceListUrl, buildDeviceSearchUrl } from '@/lib/inventory/devices/params'
+import { buildDeviceListUrl } from '@/lib/inventory/devices/params'
 import { DeviceForm } from '@/components/inventory/device-form'
+import { SearchBar } from '@/components/search-bar'
+import { FilterMenu } from '@/components/filter-menu'
+import { FilterSubmenu } from '@/components/FilterSubmenu'
 import { FooterCancel, FooterSubmit } from '@/components/inventory/dialog-footer-buttons'
 
 import {
@@ -54,40 +55,34 @@ import {
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import Link from 'next/link'
-import { DENSE_TABLE_HEAD_CLS, SEARCH_INPUT_CLS, TABLE_SCROLL_CLS } from '@/lib/ui-classes'
+import { DENSE_TABLE_HEAD_CLS, TABLE_SCROLL_CLS } from '@/lib/ui-classes'
 import { DevicesRegionError } from './devices-region-error'
-
-const STATUS_BADGE_CLS: Record<string, string> = {
-  ACTIVE: 'bg-green-500/15 text-green-700 dark:text-green-400',
-  PLANNED: 'bg-blue-500/15 text-blue-700 dark:text-blue-400',
-  MAINTENANCE: 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400',
-  RETIRED: 'bg-muted text-muted-foreground',
-}
+import { DeviceStatusBadge } from './device-status-badge'
 
 function DevicesResultsContent({
   initialDevices,
   existingStacks = [],
+  sites,
   total,
   page,
   query,
+  siteFilter,
   role,
 }: {
   initialDevices: SafeDeviceWithRack[]
   existingStacks?: SafeDeviceStack[]
+  sites: Array<{ id: string; name: string }>
   total: number
   page: number
   query: string
+  siteFilter: string[]
   role: 'admin' | 'member'
 }) {
   const router = useRouter()
   const [devices, setDevices] = useState<SafeDeviceWithRack[]>(initialDevices)
   const [stacks, setStacks] = useState(existingStacks)
-  const [searchValue, setSearchValue] = useState(query)
   const [isMutating, setIsMutating] = useState(false)
   const [isNavigationPending, startNavigation] = useTransition()
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [lastDispatchedQuery, setLastDispatchedQuery] = useState(query)
-  const [previousQuery, setPreviousQuery] = useState(query)
   const [previousInitialDevices, setPreviousInitialDevices] = useState(initialDevices)
   const [previousExistingStacks, setPreviousExistingStacks] = useState(existingStacks)
 
@@ -99,16 +94,6 @@ function DevicesResultsContent({
     setPreviousExistingStacks(existingStacks)
     setStacks(existingStacks)
   }
-  if (query !== previousQuery) {
-    setPreviousQuery(query)
-    if (query !== lastDispatchedQuery) setSearchValue(query)
-  }
-
-  useEffect(() => {
-    return () => {
-      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
-    }
-  }, [])
 
   const [createOpen, setCreateOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -218,31 +203,19 @@ function DevicesResultsContent({
     setDeleteOpen(true)
   }
 
-  function submitSearch(e: FormEvent) {
-    e.preventDefault()
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
-    setLastDispatchedQuery(searchValue.trim())
+  function applySiteFilter(nextSites: string[]) {
     startNavigation(() => {
-      router.replace(buildDeviceSearchUrl(searchValue))
+      router.replace(buildDeviceListUrl({ query, sites: nextSites, page: 1 }), { scroll: false })
     })
-  }
-
-  function handleSearchChange(value: string) {
-    setSearchValue(value)
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
-    searchDebounceRef.current = setTimeout(() => {
-      setLastDispatchedQuery(value.trim())
-      startNavigation(() => {
-        router.replace(buildDeviceSearchUrl(value))
-      })
-    }, 300)
   }
 
   function goToPage(nextPage: number) {
     startNavigation(() => {
-      router.replace(buildDeviceListUrl({ query, page: nextPage }))
+      router.replace(buildDeviceListUrl({ query, sites: siteFilter, page: nextPage }))
     })
   }
+
+  const isFiltered = Boolean(query || siteFilter.length)
 
   async function handleCreate(data: DeviceFormValues) {
     setIsMutating(true)
@@ -300,21 +273,32 @@ function DevicesResultsContent({
 
   return (
     <>
-      <div className="space-y-4 px-8 py-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <form onSubmit={submitSearch} className="relative max-w-xs flex-1">
-            <IconSearch
-              size={13}
-              stroke={1.75}
-              className="absolute top-1/2 left-2.5 -translate-y-1/2 text-faint"
+      <div className="space-y-4 px-4 py-4 md:px-8 md:py-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <section
+            aria-busy={isNavigationPending}
+            className="flex min-w-0 flex-1 items-center gap-2"
+          >
+            <SearchBar
+              paramKey="q"
+              text="Search name, serial, IP, model…"
+              className="min-w-0 flex-1 md:w-72 md:flex-none"
             />
-            <input
-              value={searchValue}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Search name, serial, vendor..."
-              className={SEARCH_INPUT_CLS}
-            />
-          </form>
+            <FilterMenu
+              label="Filter devices"
+              activeCount={siteFilter.length > 0 ? 1 : 0}
+              disabled={isNavigationPending}
+            >
+              <FilterSubmenu
+                label="Site"
+                value={siteFilter}
+                options={sites.map((site) => ({ value: site.id, label: site.name }))}
+                onChange={applySiteFilter}
+                disabled={isNavigationPending}
+                searchable={sites.length > 8}
+              />
+            </FilterMenu>
+          </section>
           {isAdmin && (
             <div className="flex flex-wrap items-center gap-2">
               <Tooltip>
@@ -362,6 +346,7 @@ function DevicesResultsContent({
                     'Management IP',
                     'Status',
                     'Vendor / Model',
+                    'Version',
                     'Rack',
                     'Stack',
                     ...(isAdmin ? [''] : []),
@@ -375,8 +360,17 @@ function DevicesResultsContent({
               <tbody>
                 {devices.length === 0 ? (
                   <tr>
-                    <td colSpan={isAdmin ? 8 : 7} className="px-4 py-14 text-center">
-                      <p className="text-sm text-subtle">No devices found</p>
+                    <td colSpan={isAdmin ? 9 : 8} className="px-4 py-14 text-center">
+                      <p className="text-sm text-foreground">
+                        {isFiltered ? 'No devices match this search or filter' : 'No devices yet'}
+                      </p>
+                      <p className="mt-1 text-xs text-subtle">
+                        {isFiltered
+                          ? 'Try another name, serial or IP, or clear the site filter.'
+                          : isAdmin
+                            ? 'Add a device, import a CSV, or import hardware found by discovery.'
+                            : 'Devices appear here once an admin adds them.'}
+                      </p>
                     </td>
                   </tr>
                 ) : (
@@ -385,7 +379,7 @@ function DevicesResultsContent({
                       key={device.id}
                       className="group border-b border-border-faint transition-colors duration-100 last:border-0 hover:bg-muted"
                     >
-                      <td className="border-l-2 border-l-transparent px-4 py-2.5 transition-colors duration-100 group-hover:border-l-primary">
+                      <td className="border-l-2 border-l-transparent px-4 py-2.5 whitespace-nowrap transition-colors duration-100 group-hover:border-l-primary">
                         <Link
                           href={`/inventory/devices/${device.id}`}
                           className="font-medium text-foreground hover:underline"
@@ -393,12 +387,12 @@ function DevicesResultsContent({
                           {device.name}
                         </Link>
                       </td>
-                      <td className="px-4 py-2.5">
+                      <td className="px-4 py-2.5 whitespace-nowrap">
                         <span className="font-mono text-muted-foreground">
                           {device.serialNumber}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5">
+                      <td className="px-4 py-2.5 whitespace-nowrap">
                         {device.managementIp ? (
                           <span className="font-mono text-foreground">{device.managementIp}</span>
                         ) : (
@@ -406,16 +400,24 @@ function DevicesResultsContent({
                         )}
                       </td>
                       <td className="px-4 py-2.5">
-                        <span
-                          className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_BADGE_CLS[device.status] ?? ''}`}
-                        >
-                          {device.status}
-                        </span>
+                        <DeviceStatusBadge status={device.status} />
                       </td>
-                      <td className="px-4 py-2.5 text-subtle">
+                      <td className="px-4 py-2.5 whitespace-nowrap text-subtle">
                         {device.vendor} {device.model}
                       </td>
-                      <td className="px-4 py-2.5 text-subtle">
+                      <td className="px-4 py-2.5">
+                        {device.version ? (
+                          <span
+                            title={device.version}
+                            className="block max-w-36 truncate font-mono text-foreground"
+                          >
+                            {device.version}
+                          </span>
+                        ) : (
+                          <span className="text-faint">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 whitespace-nowrap text-subtle">
                         {device.rack ? `${device.rack.site.name} · ${device.rack.name}` : '—'}
                       </td>
                       <td className="px-4 py-2.5 text-subtle">
@@ -465,7 +467,7 @@ function DevicesResultsContent({
         {totalPages > 1 && (
           <div className="flex items-center justify-between text-xs text-subtle">
             <span>
-              Page {page} of {totalPages} ({total} total)
+              Page {page} of {totalPages}, {total} devices
             </span>
             <div className="flex gap-2">
               <Button
@@ -612,14 +614,16 @@ export function DevicesResults({
   const state = use(dataPromise)
   if (state.kind === 'unauthorized') return <DevicesRegionError />
 
-  const { params, role, page, stacks } = state.data
+  const { params, role, page, stacks, sites } = state.data
   return (
     <DevicesResultsContent
       initialDevices={page.devices}
       existingStacks={stacks}
+      sites={sites}
       total={page.total}
       page={page.page}
       query={params.query}
+      siteFilter={params.sites}
       role={role}
     />
   )

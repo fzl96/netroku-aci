@@ -8,6 +8,7 @@ import {
   type DevicesLoadState,
   type DevicesResultsPayload,
 } from '@/lib/inventory/devices/query'
+import { getSites } from '@/lib/inventory/sites/query'
 import { DevicesResults } from './devices-results'
 import { DevicesResultsSkeleton } from './devices-skeleton'
 
@@ -17,12 +18,22 @@ async function loadResults(
   const params = await paramsPromise
 
   try {
-    const [role, page, stacks] = await Promise.all([
+    const [role, page, stacks, sites] = await Promise.all([
       getInventoryViewerRole(),
       getDevices(params),
       getDeviceStacks(),
+      getSites(),
     ])
-    return { kind: 'ready', data: { params, role, page, stacks } }
+    return {
+      kind: 'ready',
+      data: {
+        params,
+        role,
+        page,
+        stacks,
+        sites: sites.map((site) => ({ id: site.id, name: site.name })),
+      },
+    }
   } catch (error) {
     if (!(error instanceof InventoryReadError)) throw error
     console.error('[inventory] failed to load devices', error)
@@ -36,7 +47,7 @@ export function DevicesShell({ paramsPromise }: { paramsPromise: Promise<DeviceL
   return (
     <div className="min-h-full bg-background">
       <div className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">
-        <div className="flex h-16 items-center px-8">
+        <div className="flex h-16 items-center px-4 md:px-8">
           <div>
             <h1 className="font-serif text-[18px] font-semibold text-foreground">Devices</h1>
             <p className="mt-0.5 text-xs text-subtle">Physical device inventory</p>

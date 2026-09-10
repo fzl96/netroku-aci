@@ -5,6 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppSidebar } from '@/components/AppSidebar'
 import { MobileTopBar } from '@/components/MobileTopBar'
 import { ApicHostsProvider } from '@/components/ApicHostsProvider'
+import { NavigationScopeProvider } from '@/components/NavigationScopeProvider'
 import { cookies } from 'next/headers'
 import { APP_MAIN_CLS } from '@/lib/ui-classes'
 import type { NavigationScope } from '@/lib/navigation-scope'
@@ -29,11 +30,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <TooltipProvider>
       <SidebarProvider>
         <ApicHostsProvider hosts={apicHosts}>
-          <AppSidebar role={role} initialScope={initialScope} />
-          <main className={APP_MAIN_CLS}>
-            <MobileTopBar initialScope={initialScope} />
-            {children}
-          </main>
+          <NavigationScopeProvider initialScope={initialScope}>
+            <AppSidebar role={role} />
+            <main className={APP_MAIN_CLS}>
+              <MobileTopBar />
+              {children}
+            </main>
+          </NavigationScopeProvider>
         </ApicHostsProvider>
       </SidebarProvider>
     </TooltipProvider>

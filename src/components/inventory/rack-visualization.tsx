@@ -74,6 +74,7 @@ export function RackVisualization({
   pendingDeviceIds,
   isAdmin,
   headerActions,
+  highlightedDeviceIds,
 }: {
   rack: RackItem
   onDropDevice: (rackId: string, targetTopUnit: number, payload: DragPayload) => void
@@ -90,6 +91,8 @@ export function RackVisualization({
   pendingDeviceIds: Set<string>
   isAdmin: boolean
   headerActions?: React.ReactNode
+  /** Devices to mark, e.g. the ones a rack search matched. */
+  highlightedDeviceIds?: ReadonlySet<string>
 }) {
   const [rowSearchByKey, setRowSearchByKey] = React.useState<Record<string, string>>({})
   const units = Array.from({ length: rack.heightU }, (_, i) => rack.heightU - i)
@@ -169,7 +172,9 @@ export function RackVisualization({
         </div>
       </CardHeader>
       <CardContent className="p-4 pt-0">
-        <div className="relative overflow-hidden rounded-lg border border-border bg-card">
+        {/* `isolate` keeps the device cards' z-index inside the rack so they
+            never paint over the page's sticky header while scrolling. */}
+        <div className="relative isolate overflow-hidden rounded-lg border border-border bg-card">
           <div
             className="grid grid-cols-[52px_1fr] bg-muted/20"
             style={{ gridTemplateRows: `repeat(${rack.heightU}, minmax(32px, 1fr))` }}
@@ -304,7 +309,9 @@ export function RackVisualization({
                     'pointer-events-auto relative z-10 mx-1 my-0.5 flex h-[calc(100%-4px)] min-h-0 cursor-pointer flex-col justify-center overflow-hidden rounded border border-border bg-secondary py-1 pr-2 pl-7 text-xs text-secondary-foreground shadow-xs transition-all hover:border-primary/40 hover:bg-accent/80',
                     draggingPayload?.deviceId === device.id
                       ? '-translate-y-0.5 scale-[1.02] bg-accent shadow-xl ring-2 ring-primary/40'
-                      : '',
+                      : highlightedDeviceIds?.has(device.id)
+                        ? 'border-primary/60 ring-2 ring-primary/25'
+                        : '',
                   ].join(' ')}
                   style={{
                     gridRow: `${device.rowStart} / span ${device.rowSpan}`,

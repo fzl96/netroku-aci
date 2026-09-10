@@ -7,9 +7,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { IconDots, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { SearchBar } from '@/components/search-bar'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import {
   DropdownMenu,
@@ -63,6 +62,7 @@ import {
   type RackItem,
 } from '@/components/inventory/rack-visualization'
 import { canPlaceDevice, type PlaceableDevice } from '@/lib/inventory/rack-placement'
+import { filterRacks } from '@/lib/inventory/racks/filter'
 import { RacksRegionError } from './racks-region-error'
 
 function RacksResultsContent({
@@ -448,22 +448,29 @@ function RacksResultsContent({
   }
 
   const selectedSite = siteList.find((s) => s.id === selectedSiteId) ?? null
+  const rackQuery = searchParams.get('q')?.trim() ?? ''
+  const { racks: visibleRacks, matchedDeviceIds } = React.useMemo(
+    () => filterRacks(rackList, rackQuery),
+    [rackList, rackQuery],
+  )
 
   if (siteList.length === 0) {
     return (
-      <div className="space-y-4 px-8 pb-6">
-        <p className="text-sm text-muted-foreground">Create a site to start visualizing racks.</p>
-        {isAdmin && (
-          <div className="rounded-lg border border-border p-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-muted-foreground">No sites found.</p>
-              <Button size="sm" onClick={openCreateSite}>
-                <IconPlus size={14} stroke={1.75} />
-                Create Site
-              </Button>
-            </div>
-          </div>
-        )}
+      <div className="px-4 py-4 md:px-8 md:py-6">
+        <div className="rounded-2xl border border-dashed border-border px-6 py-14 text-center">
+          <p className="text-sm text-foreground">No sites yet</p>
+          <p className="mt-1 text-xs text-subtle">
+            {isAdmin
+              ? 'Create a site, then add racks to it to lay out devices.'
+              : 'Racks appear here once an admin creates a site.'}
+          </p>
+          {isAdmin && (
+            <Button size="sm" className="mt-4" onClick={openCreateSite}>
+              <IconPlus size={14} stroke={1.75} />
+              Create Site
+            </Button>
+          )}
+        </div>
         <SiteDrawer
           open={siteDialogOpen}
           onOpenChange={setSiteDialogOpen}
@@ -476,32 +483,76 @@ function RacksResultsContent({
     )
   }
 
-  return (
-    <div className="space-y-4 px-8 pb-6">
-      <p className="text-sm text-muted-foreground">Select a site to view its rack elevation.</p>
+  const rackCount = `${rackList.length} rack${rackList.length === 1 ? '' : 's'}`
+  const siteMeta = [
+    rackQuery ? `${visibleRacks.length} of ${rackCount} match` : rackCount,
+    selectedSite?.address,
+    selectedSite?.latitude != null && selectedSite?.longitude != null
+      ? `${selectedSite.latitude}, ${selectedSite.longitude}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-72">
-          <label htmlFor="rack-site-select" className="text-xs font-medium text-foreground">
-            Site
-          </label>
-          <NativeSelect
-            id="rack-site-select"
-            value={selectedSiteId ?? ''}
-            onChange={(e) => handleSelectSiteChange(e.target.value)}
-            className="w-full"
-          >
-            {siteList.map((site) => (
-              <NativeSelectOption key={site.id} value={site.id}>
-                {site.name}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
+  return (
+    <div className="space-y-4 px-4 py-4 md:px-8 md:py-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <div className="flex w-full items-center gap-1 sm:w-auto">
+            <NativeSelect
+              aria-label="Site"
+              value={selectedSiteId ?? ''}
+              onChange={(e) => handleSelectSiteChange(e.target.value)}
+              className="min-w-0 flex-1 sm:w-56 sm:flex-none"
+            >
+              {siteList.map((site) => (
+                <NativeSelectOption key={site.id} value={site.id}>
+                  {site.name}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+            {isAdmin && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    disabled={!selectedSiteId}
+                    aria-label="Site actions"
+                  >
+                    <IconDots size={15} stroke={1.75} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={openEditSite}>
+                    <IconPencil size={13} stroke={1.75} />
+                    Edit site
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onSelect={(event) => {
+                      event.preventDefault()
+                      setDeleteSiteOpen(true)
+                    }}
+                  >
+                    <IconTrash size={13} stroke={1.75} />
+                    Delete site
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+          <SearchBar
+            paramKey="q"
+            text="Search racks or devices…"
+            className="min-w-0 flex-1 sm:w-64 sm:flex-none"
+          />
         </div>
 
         {isAdmin && (
           <div className="flex items-center gap-2">
-            <Button size="sm" onClick={openCreateSite}>
+            <Button variant="outline" size="sm" onClick={openCreateSite}>
               <IconPlus size={14} stroke={1.75} />
               Create Site
             </Button>
@@ -509,77 +560,35 @@ function RacksResultsContent({
               <IconPlus size={14} stroke={1.75} />
               Create Rack
             </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  disabled={!selectedSiteId}
-                  aria-label="Site actions"
-                >
-                  <IconDots size={16} stroke={1.75} />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={openEditSite}>
-                  <IconPencil size={13} stroke={1.75} />
-                  Edit site
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  onSelect={(event) => {
-                    event.preventDefault()
-                    setDeleteSiteOpen(true)
-                  }}
-                >
-                  <IconTrash size={13} stroke={1.75} />
-                  Delete site
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         )}
       </div>
 
-      <Card className="border-border bg-card shadow-sm">
-        <CardHeader className="pb-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle className="font-serif text-base font-semibold text-foreground">
-              {selectedSite?.name ?? 'Selected Site'}
-            </CardTitle>
-            <Badge
-              variant="outline"
-              className="border-border bg-muted/50 font-mono text-xs font-normal text-muted-foreground"
-            >
-              {rackList.length} rack{rackList.length === 1 ? '' : 's'}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="grid gap-2 text-sm sm:grid-cols-2">
-          <div>
-            <span className="text-muted-foreground">Address: </span>
-            {selectedSite?.address || '—'}
-          </div>
-          <div>
-            <span className="text-muted-foreground">Coordinates: </span>
-            {selectedSite?.latitude != null && selectedSite?.longitude != null
-              ? `${selectedSite.latitude}, ${selectedSite.longitude}`
-              : '—'}
-          </div>
-        </CardContent>
-      </Card>
+      <p className="text-xs text-subtle">{siteMeta}</p>
 
       {rackList.length === 0 ? (
-        <div className="rounded-lg border border-border p-6 text-sm text-muted-foreground">
-          No racks for this site.
+        <div className="rounded-2xl border border-dashed border-border px-6 py-14 text-center">
+          <p className="text-sm text-foreground">No racks at this site yet</p>
+          <p className="mt-1 text-xs text-subtle">
+            {isAdmin
+              ? 'Create a rack to start placing devices.'
+              : 'Racks appear here once an admin creates them.'}
+          </p>
+        </div>
+      ) : visibleRacks.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border px-6 py-14 text-center">
+          <p className="text-sm text-foreground">No racks or devices match “{rackQuery}”</p>
+          <p className="mt-1 text-xs text-subtle">
+            Search by rack name, or by a device name or serial at this site.
+          </p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {rackList.map((rack) => (
+          {visibleRacks.map((rack) => (
             <RackVisualization
               key={rack.id}
               rack={rack}
+              highlightedDeviceIds={matchedDeviceIds}
               onDropDevice={handleDropDevice}
               allDevices={deviceCatalog}
               onUnassignDevice={handleUnassignDevice}

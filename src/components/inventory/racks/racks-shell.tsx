@@ -66,13 +66,20 @@ export function RacksShell({ paramsPromise }: { paramsPromise: Promise<RacksPara
   const resultsPromise = loadResults(paramsPromise, basePromise)
 
   return (
-    <>
-      <div className="px-8 pt-6">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Racks</h1>
+    <div className="min-h-full bg-background">
+      <div className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">
+        <div className="flex h-16 items-center px-4 md:px-8">
+          <div>
+            <h1 className="font-serif text-[18px] font-semibold text-foreground">Racks</h1>
+            <p className="mt-0.5 text-xs text-subtle">
+              Rack elevations and device placement by site
+            </p>
+          </div>
+        </div>
       </div>
       <Suspense fallback={<RacksResultsSkeleton />}>
         <RacksResults dataPromise={resultsPromise} />
       </Suspense>
-    </>
+    </div>
   )
 }

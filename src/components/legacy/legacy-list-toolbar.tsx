@@ -1,14 +1,8 @@
 'use client'
 
 import type { FormEvent, ReactNode } from 'react'
-import { IconFilter2, IconSearch } from '@tabler/icons-react'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { IconSearch } from '@tabler/icons-react'
+import { FilterMenu } from '@/components/filter-menu'
 import { SEARCH_INPUT_CLS } from '@/lib/ui-classes'
 
 /** The list toolbar every legacy page shares: a debounced search field and a
@@ -60,35 +54,14 @@ export function LegacyListToolbar({
         />
       </form>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            title={filterLabel}
-            aria-label={filterLabel}
-            disabled={pending}
-            className={[
-              'relative flex size-9 shrink-0 items-center justify-center rounded-lg border transition-colors outline-none',
-              'focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-40',
-              activeFilterCount > 0
-                ? 'border-primary bg-primary/8 text-foreground'
-                : 'border-border bg-muted text-muted-foreground hover:text-foreground',
-            ].join(' ')}
-          >
-            <IconFilter2 size={15} stroke={1.75} />
-            {activeFilterCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] leading-4 font-semibold text-primary-foreground shadow-sm">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className={menuWidth} align="start">
-          <DropdownMenuLabel>Filters</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          {children}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <FilterMenu
+        label={filterLabel}
+        activeCount={activeFilterCount}
+        disabled={pending}
+        menuWidth={menuWidth}
+      >
+        {children}
+      </FilterMenu>
     </section>
   )
 }
