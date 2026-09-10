@@ -1,3 +1,4 @@
+import { invalidateInventoryReads } from '@/lib/inventory/mutation'
 import 'server-only'
 
 import { revalidateTag } from 'next/cache'
@@ -154,6 +155,7 @@ const apicHostMutation = createApicHostMutation({
   deleteHost: async (id) => {
     const existing = await prisma.apicHost.findUnique({ where: { id } })
     const result = await prisma.apicHost.deleteMany({ where: { id } })
+    if (result.count) invalidateInventoryReads()
     return result.count === 0 ? null : existing
   },
   recordAudit,

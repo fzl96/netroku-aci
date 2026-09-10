@@ -36,10 +36,12 @@ const revalidateCalls: Array<{ tag: string; options: unknown }> = []
 
 function transaction(callback: (tx: unknown) => unknown) {
   return callback({
+    $queryRaw: async () => [],
     site: { findMany: siteFindMany, create: async () => ({ id: 'site1', name: 'HQ' }) },
     rack: { findMany: rackFindMany, create: async () => ({ id: 'rack1' }) },
     deviceStack: { findMany: deviceStackFindMany, create: async () => ({ id: 'stack1' }) },
     device: {
+      findMany: deviceFindMany,
       findUnique: deviceFindUnique,
       create: deviceCreate,
       update: async () => ({}),

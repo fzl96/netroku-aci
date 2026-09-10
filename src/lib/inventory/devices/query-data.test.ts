@@ -50,6 +50,7 @@ const recordAudit = mock(async () => {})
 let placementCollides = false
 function transaction(callback: (tx: unknown) => unknown) {
   return callback({
+    $queryRaw: async () => [],
     device: {
       findFirst: async () => null,
       findUnique: placementCollides ? async () => ({ heightU: 2 }) : deviceFindUnique,

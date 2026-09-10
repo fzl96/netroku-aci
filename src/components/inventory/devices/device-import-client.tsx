@@ -254,7 +254,9 @@ export function DeviceImportClient() {
               </div>
               <p className="text-xs leading-relaxed text-subtle">
                 Rows with matching serial numbers in the database will update the existing device
-                record rather than duplicate it.
+                record rather than duplicate it. Blank or omitted update fields stay unchanged.
+                Discovery-owned technical changes are rejected; use the device form to clear
+                optional manual fields. New assets require an explicit height.
               </p>
             </div>
 

@@ -1,3 +1,6 @@
+import type { NodeSnapshot, Prisma } from '@prisma/client'
+import { acquireNodeLease, renewNodeLease, releaseNodeLease, verifyNodeLease } from './node-lease'
+import { enqueueNodeChanges } from '@/lib/inventory/sources/outbox'
 import { prisma } from '@/lib/prisma'
 import { apicFetch, apicLogin } from './client'
 import { isNodeOnline } from './node-status'
@@ -248,30 +251,51 @@ export interface ResyncNodesResult {
 export async function resyncNodes(args: ResyncNodesArgs): Promise<ResyncNodesResult> {
   const { apicHostId, host, username, password } = args
 
-  const { nodes, components } = await fetchNodesFromApic(host, username, password)
+  const token = await acquireNodeLease(apicHostId)
+  const timer = setInterval(() => {
+    void renewNodeLease(apicHostId, token).catch((error) =>
+      console.error('[node-lease] renewal failed', error),
+    )
+  }, 30000)
+  try {
+    const { nodes, components } = await fetchNodesFromApic(host, username, password)
 
-  const nodeMap = new Map<string, NodeRow>()
-  for (const n of nodes) if (n.dn) nodeMap.set(n.dn, n)
-  const uniqueNodes = Array.from(nodeMap.values())
+    const nodeMap = new Map<string, NodeRow>()
+    for (const n of nodes) if (n.dn) nodeMap.set(n.dn, n)
+    const uniqueNodes = Array.from(nodeMap.values())
 
-  const compMap = new Map<string, ComponentRow>()
-  for (const c of components) if (c.dn) compMap.set(c.dn, c)
-  const uniqueComponents = Array.from(compMap.values())
+    const compMap = new Map<string, ComponentRow>()
+    for (const c of components) if (c.dn) compMap.set(c.dn, c)
+    const uniqueComponents = Array.from(compMap.values())
 
-  const now = new Date()
+    const now = new Date()
 
-  const summary = await executeNodeResyncWrites(
-    prisma,
-    apicHostId,
-    uniqueNodes,
-    uniqueComponents,
-    now,
-  )
+    let previous: NodeSnapshot[] = []
+    const summary = await executeNodeResyncWrites(
+      prisma,
+      apicHostId,
+      uniqueNodes,
+      uniqueComponents,
+      now,
+      {
+        before: async (tx) => {
+          await verifyNodeLease(tx, apicHostId, token)
+          previous = await tx.nodeSnapshot.findMany({ where: { apicHostId } })
+        },
+        after: async (tx) => {
+          await enqueueNodeChanges(tx, previous, apicHostId)
+        },
+      },
+    )
 
-  return {
-    syncedNodes: uniqueNodes.length,
-    syncedComponents: uniqueComponents.length,
-    nodesOnline: summary.nodesOnline,
+    return {
+      syncedNodes: uniqueNodes.length,
+      syncedComponents: uniqueComponents.length,
+      nodesOnline: summary.nodesOnline,
+    }
+  } finally {
+    clearInterval(timer)
+    await releaseNodeLease(apicHostId, token)
   }
 }
 
@@ -281,9 +305,14 @@ export async function executeNodeResyncWrites(
   uniqueNodes: NodeRow[],
   uniqueComponents: ComponentRow[],
   now: Date,
+  hooks?: {
+    before: (tx: Prisma.TransactionClient) => Promise<void>
+    after: (tx: Prisma.TransactionClient) => Promise<void>
+  },
 ): Promise<NodeSummary> {
   return db.$transaction(
     async (tx) => {
+      await hooks?.before(tx as Prisma.TransactionClient)
       for (let i = 0; i < uniqueNodes.length; i += NODES_CHUNK_SIZE) {
         const chunk = uniqueNodes.slice(i, i + NODES_CHUNK_SIZE)
         await Promise.all(
@@ -388,6 +417,7 @@ export async function executeNodeResyncWrites(
         data: { lastNodeSyncAt: now },
       })
 
+      await hooks?.after(tx as Prisma.TransactionClient)
       return summary
     },
     { timeout: NODES_TRANSACTION_TIMEOUT_MS },

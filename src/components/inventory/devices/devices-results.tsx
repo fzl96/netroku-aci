@@ -12,6 +12,7 @@ import {
   IconTrash,
   IconSearch,
   IconFileSpreadsheet,
+  IconDeviceDesktopSearch,
 } from '@tabler/icons-react'
 import { DeviceStatus } from '@prisma/client'
 
@@ -51,6 +52,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import Link from 'next/link'
 import { DENSE_TABLE_HEAD_CLS, SEARCH_INPUT_CLS, TABLE_SCROLL_CLS } from '@/lib/ui-classes'
 import { DevicesRegionError } from './devices-region-error'
@@ -202,6 +204,7 @@ function DevicesResultsContent({
       status: device.status,
       vendor: device.vendor,
       model: device.model,
+      version: device.version ?? null,
       heightU: device.heightU,
       deviceStackName: device.deviceStack?.name ?? null,
       stackRole: device.stackRole,
@@ -298,7 +301,7 @@ function DevicesResultsContent({
   return (
     <>
       <div className="space-y-4 px-8 py-6">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <form onSubmit={submitSearch} className="relative max-w-xs flex-1">
             <IconSearch
               size={13}
@@ -313,7 +316,21 @@ function DevicesResultsContent({
             />
           </form>
           {isAdmin && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm" asChild className="gap-1.5 text-xs">
+                    <Link href="/inventory/discovered">
+                      <IconDeviceDesktopSearch className="h-3.5 w-3.5" />
+                      Import discovered
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Add devices discovered by ACI or Legacy, or link them to existing inventory. Your
+                  asset tags and rack details are preserved.
+                </TooltipContent>
+              </Tooltip>
               <Button variant="outline" size="sm" asChild className="gap-1.5 text-xs">
                 <Link href="/inventory/devices/import">
                   <IconFileSpreadsheet className="h-3.5 w-3.5" />
@@ -532,6 +549,7 @@ function DevicesResultsContent({
           <div className="flex-1 overflow-y-auto px-6 py-5">
             <DeviceForm
               form={editForm}
+              sourceOwned={Boolean(editingDevice?.source)}
               onSubmit={handleUpdate}
               formId="edit-device-form"
               existingStacks={effectiveStacks}

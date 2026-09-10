@@ -1,4 +1,5 @@
 import 'server-only'
+import { NodeResyncBusyError } from '@/lib/apic/node-lease'
 
 import { revalidateTag } from 'next/cache'
 import { recordAudit } from '@/lib/audit'
@@ -8,7 +9,7 @@ import { prisma } from '@/lib/prisma'
 
 export type NodeResyncResult =
   | { ok: true; syncedNodes: number; syncedComponents: number; nodesOnline: number }
-  | { ok: false; code: 'unauthorized' | 'host-not-found' | 'sync-failed'; error: string }
+  | { ok: false; code: 'unauthorized' | 'host-not-found' | 'sync-failed' | 'busy'; error: string }
 export type ScheduledNodeResyncInput = {
   apicHostId: string
   hostName: string
@@ -112,6 +113,8 @@ export function createNodeMutation(dependencies: NodeMutationDependencies) {
       }
     } catch (error) {
       if (!(error instanceof NodeSyncFailure)) throw error
+      if (error.reason instanceof NodeResyncBusyError)
+        return { ok: false, code: 'busy', error: error.reason.message }
       return { ok: false, code: 'sync-failed', error: 'Failed to resync nodes' }
     }
   }

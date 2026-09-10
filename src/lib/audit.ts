@@ -37,6 +37,10 @@ export type AuditAction =
   | 'device.unassign'
   | 'device.resize'
   | 'device.import'
+  | 'inventory.link'
+  | 'inventory.unlink'
+  | 'inventory.relink'
+  | 'inventory.reconcile'
 
 export type AuditStatus = 'success' | 'partial' | 'failure'
 

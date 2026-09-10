@@ -1,3 +1,7 @@
+import type { Prisma } from '@prisma/client'
+import { lockInventory, assertStackCanBecomeEmpty } from '@/lib/inventory/sources/locking'
+import { assertOwnedFields, serialKey } from '@/lib/inventory/sources/identity'
+import { deviceSchema } from '@/lib/schemas/device'
 import 'server-only'
 
 import { DeviceStatus, StackRole } from '@prisma/client'
@@ -53,13 +57,14 @@ export type ImportExecutionResult = {
 export async function previewDeviceImport(
   rows: ParsedImportRow[],
   malformedRows: MalformedImportRow[] = [],
+  db: Pick<Prisma.TransactionClient, 'site' | 'rack' | 'device' | 'deviceStack'> = prisma,
 ): Promise<ValidationResultData> {
   await requireAdmin()
 
   // 1. Fetch DB entities for cross-referencing
   const [existingSites, existingRacks, existingDevices, existingStacks] = await Promise.all([
-    prisma.site.findMany({ select: { id: true, name: true } }),
-    prisma.rack.findMany({
+    db.site.findMany({ select: { id: true, name: true } }),
+    db.rack.findMany({
       select: {
         id: true,
         name: true,
@@ -71,11 +76,18 @@ export async function previewDeviceImport(
         },
       },
     }),
-    prisma.device.findMany({
+    db.device.findMany({
       select: {
         id: true,
         name: true,
         serialNumber: true,
+        model: true,
+        vendor: true,
+        version: true,
+        status: true,
+        source: true,
+        rack: { include: { site: true } },
+        deviceStack: true,
         assetTag: true,
         managementIp: true,
         rackId: true,
@@ -86,7 +98,7 @@ export async function previewDeviceImport(
         stackRole: true,
       },
     }),
-    prisma.deviceStack.findMany({
+    db.deviceStack.findMany({
       select: {
         id: true,
         name: true,
@@ -98,7 +110,7 @@ export async function previewDeviceImport(
   ])
 
   // Lookup maps
-  const deviceBySerial = new Map(existingDevices.map((d) => [d.serialNumber.toLowerCase(), d]))
+  const deviceBySerial = new Map(existingDevices.map((d) => [serialKey(d.serialNumber), d]))
   const deviceByAssetTag = new Map(
     existingDevices.filter((d) => d.assetTag).map((d) => [d.assetTag!.toLowerCase(), d]),
   )
@@ -131,19 +143,82 @@ export async function previewDeviceImport(
   }
   const rackPlacements = new Map<string, PlacedUnit[]>()
 
-  for (const row of rows) {
+  for (const inputRow of rows) {
+    const existingDev = deviceBySerial.get(serialKey(inputRow.serialNumber))
+    const row = { ...inputRow }
+    if (existingDev && row.providedFields) {
+      const defaults = {
+        hostname: existingDev.name,
+        serialNumber: existingDev.serialNumber,
+        version: existingDev.version,
+        assetTag: existingDev.assetTag,
+        managementIp: existingDev.managementIp,
+        status: existingDev.status,
+        vendor: existingDev.vendor,
+        model: existingDev.model,
+        heightU: existingDev.heightU,
+        site: existingDev.rack?.site.name ?? null,
+        rack: existingDev.rack?.name ?? null,
+        rackPosition: existingDev.rackPosition,
+        stackName: existingDev.deviceStack?.name ?? null,
+        stackRole: existingDev.stackRole,
+        switchId: existingDev.stackMember,
+      }
+      Object.assign(
+        row,
+        Object.fromEntries(
+          Object.entries(defaults).filter(([key]) => !row.providedFields!.includes(key)),
+        ),
+      )
+      row.serialNumber = existingDev.serialNumber
+    }
     const rowErrors: string[] = []
     const rowWarnings: string[] = []
+    if (!serialKey(row.serialNumber)) rowErrors.push('A valid serial number is required')
+    if (
+      existingDevices.filter((d) => serialKey(d.serialNumber) === serialKey(row.serialNumber))
+        .length > 1
+    )
+      rowErrors.push('Multiple assets have this normalized serial; resolve duplicates first')
+    const parsed = deviceSchema.safeParse({
+      name: row.hostname,
+      serialNumber: row.serialNumber,
+      vendor: row.vendor,
+      model: row.model,
+      version: row.version,
+      heightU: row.heightU,
+      assetTag: row.assetTag,
+      managementIp: row.managementIp,
+      status: row.status,
+      deviceStackName: row.stackName,
+      stackRole: row.stackRole,
+      stackMember: row.switchId,
+    })
+    if (!parsed.success) rowErrors.push(...parsed.error.issues.map((i) => i.message))
+    if (row.rackPosition !== null && !row.rack) rowErrors.push('Rack is required for placement')
+    if ((row.stackRole !== null || row.switchId !== null) && !row.stackName)
+      rowErrors.push('Stack name is required for member details')
+    if (existingDev) {
+      try {
+        assertOwnedFields(existingDev, {
+          name: row.hostname,
+          model: row.model,
+          version: row.version,
+        })
+      } catch (error) {
+        rowErrors.push(error instanceof Error ? error.message : 'Source-owned field conflict')
+      }
+    }
 
     // 1. Check intra-file serial duplicates
-    const serialKey = row.serialNumber.toLowerCase()
-    const firstSerialRow = seenSerials.get(serialKey)
+    const rowSerialKey = row.serialNumber.toLowerCase()
+    const firstSerialRow = seenSerials.get(rowSerialKey)
     if (firstSerialRow !== undefined) {
       rowErrors.push(
         `Duplicate serial number "${row.serialNumber}" within file (already defined at row ${firstSerialRow})`,
       )
     } else {
-      seenSerials.set(serialKey, row.rowIndex)
+      seenSerials.set(rowSerialKey, row.rowIndex)
     }
 
     // 2. Check intra-file asset tag duplicates
@@ -184,7 +259,6 @@ export async function previewDeviceImport(
     }
 
     // Check if serial matches existing device -> UPDATE, otherwise CREATE
-    const existingDev = deviceBySerial.get(row.serialNumber.toLowerCase())
     const action: 'CREATE' | 'UPDATE' = existingDev ? 'UPDATE' : 'CREATE'
     if (action === 'UPDATE') {
       rowWarnings.push(`Existing device "${existingDev!.name}" will be updated`)
@@ -425,6 +499,10 @@ export async function commitDeviceImport(rows: ParsedImportRow[]): Promise<Impor
 
   // 2. Perform transaction
   const result = await prisma.$transaction(async (tx) => {
+    await lockInventory(tx)
+    const fresh = await previewDeviceImport(rows, [], tx)
+    if (JSON.stringify(fresh.rowStates) !== JSON.stringify(validation.rowStates))
+      throw new Error('Inventory changed since validation. Preview the file again.')
     const siteMap = new Map<string, string>()
     const rackMap = new Map<string, string>()
     const stackMap = new Map<string, string>()
@@ -512,10 +590,11 @@ export async function commitDeviceImport(rows: ParsedImportRow[]): Promise<Impor
 
       const existing = await tx.device.findUnique({
         where: { serialNumber: row.serialNumber },
-        select: { id: true, deviceStackId: true, stackRole: true },
+        include: { source: true },
       })
 
       if (existing) {
+        assertOwnedFields(existing, { name: row.hostname, model: row.model, version: row.version })
         const prevStackId = existing.deviceStackId
 
         await tx.device.update({
@@ -527,6 +606,7 @@ export async function commitDeviceImport(rows: ParsedImportRow[]): Promise<Impor
             status: row.status,
             vendor: row.vendor,
             model: row.model,
+            version: row.version,
             heightU: row.heightU,
             rackId,
             rackPosition: row.rackPosition,
@@ -551,7 +631,10 @@ export async function commitDeviceImport(rows: ParsedImportRow[]): Promise<Impor
         // Cleanup orphan stack
         if (prevStackId && prevStackId !== deviceStackId) {
           const count = await tx.device.count({ where: { deviceStackId: prevStackId } })
-          if (count === 0) await tx.deviceStack.delete({ where: { id: prevStackId } })
+          if (count === 0) {
+            await assertStackCanBecomeEmpty(tx, prevStackId)
+            await tx.deviceStack.delete({ where: { id: prevStackId } })
+          }
         }
       } else {
         await tx.device.create({
@@ -563,6 +646,7 @@ export async function commitDeviceImport(rows: ParsedImportRow[]): Promise<Impor
             status: row.status,
             vendor: row.vendor,
             model: row.model,
+            version: row.version,
             heightU: row.heightU,
             rackId,
             rackPosition: row.rackPosition,

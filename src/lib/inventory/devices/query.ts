@@ -26,6 +26,16 @@ const DEVICE_SCALAR_SELECT = {
   stackRole: true,
   vendor: true,
   model: true,
+  version: true,
+  source: {
+    select: {
+      id: true,
+      sourceLabel: true,
+      conflictReason: true,
+      nodeSnapshotId: true,
+      legacyDeviceId: true,
+    },
+  },
   heightU: true,
   createdAt: true,
   updatedAt: true,
@@ -50,6 +60,14 @@ export type SafeDeviceStack = {
 }
 
 export type SafeDevice = {
+  version?: string | null
+  source?: {
+    id: string
+    sourceLabel: string
+    conflictReason: string | null
+    nodeSnapshotId: string | null
+    legacyDeviceId: string | null
+  } | null
   id: string
   name: string
   serialNumber: string
@@ -137,6 +155,16 @@ export function toSafe(device: RawDevice): SafeDevice {
     stackRole: device.stackRole,
     vendor: device.vendor,
     model: device.model,
+    version: device.version,
+    source: device.source
+      ? {
+          id: device.source.id,
+          sourceLabel: device.source.sourceLabel,
+          conflictReason: device.source.conflictReason,
+          nodeSnapshotId: device.source.nodeSnapshotId,
+          legacyDeviceId: device.source.legacyDeviceId,
+        }
+      : device.source,
     heightU: device.heightU,
     createdAt: device.createdAt,
     updatedAt: device.updatedAt,

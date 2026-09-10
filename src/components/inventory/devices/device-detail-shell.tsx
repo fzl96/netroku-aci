@@ -1,3 +1,4 @@
+import { SourcePanel } from '@/components/inventory/discovered/source-panel'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { IconServer } from '@tabler/icons-react'
@@ -27,6 +28,10 @@ export async function DeviceDetailShell({ idPromise }: { idPromise: Promise<stri
 
   return (
     <div className="space-y-6 px-8 py-6">
+      <SourcePanel deviceId={device.id} />
+      <p className="text-sm text-muted-foreground">
+        Accepted version: {device.version || 'Unknown'}
+      </p>
       <div className="flex items-center gap-4 rounded-xl border border-border p-6">
         <div className="flex size-16 items-center justify-center rounded-lg bg-muted">
           <IconServer size={28} stroke={1.5} className="text-muted-foreground" />

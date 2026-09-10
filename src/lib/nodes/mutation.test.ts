@@ -99,4 +99,22 @@ describe('node mutation boundary', () => {
       }),
     ).rejects.toThrow('session database unavailable')
   })
+  it('returns an actionable busy result for a manual resync racing an existing run', async () => {
+    const { NodeResyncBusyError } = await import('../apic/node-lease')
+    const deps = dependencies()
+    deps.resyncNodes.mockImplementation(async () => {
+      throw new NodeResyncBusyError()
+    })
+    const result = await createNodeMutation(deps).resyncNodeInventory({
+      apicHostId: 'h1',
+      username: 'admin',
+      password: 'pw',
+    })
+    expect(result).toEqual({
+      ok: false,
+      code: 'busy',
+      error: expect.stringContaining('already running'),
+    })
+    expect(deps.revalidateTag).not.toHaveBeenCalled()
+  })
 })

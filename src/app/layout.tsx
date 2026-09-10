@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { Inter, Lora } from 'next/font/google'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { Toaster } from '@/components/ui/sonner'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import './globals.css'
 
 const inter = Inter({ variable: '--font-inter', subsets: ['latin'] })
@@ -33,7 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="h-full font-sans antialiased">
         <ThemeProvider>
-          {children}
+          <TooltipProvider>{children}</TooltipProvider>
           <Toaster />
         </ThemeProvider>
       </body>

@@ -31,11 +31,13 @@ export function DeviceForm({
   onSubmit,
   formId,
   existingStacks = [],
+  sourceOwned = false,
 }: {
   form: ReturnType<typeof useForm<DeviceFormValues>>
   onSubmit: (data: DeviceFormValues) => void
   formId: string
   existingStacks?: SafeDeviceStack[]
+  sourceOwned?: boolean
 }) {
   const currentStackName = form.watch('deviceStackName')
   const stackSelectValue = resolveStackSelectValue(currentStackName, existingStacks)
@@ -75,6 +77,30 @@ export function DeviceForm({
   return (
     <Form {...form}>
       <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {sourceOwned && (
+          <p className="text-xs text-muted-foreground">
+            Hostname, serial, model, and version are maintained by discovery. Asset details remain
+            editable.
+          </p>
+        )}
+        <FormField
+          control={form.control}
+          name="version"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Version</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  value={field.value ?? ''}
+                  readOnly={sourceOwned}
+                  onChange={(e) => field.onChange(e.target.value || null)}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="name"
@@ -82,7 +108,7 @@ export function DeviceForm({
             <FormItem>
               <FormLabel className="text-xs font-medium text-foreground">Hostname</FormLabel>
               <FormControl>
-                <Input autoFocus className={INPUT_OVERRIDE_CLS} {...field} />
+                <Input readOnly={sourceOwned} autoFocus className={INPUT_OVERRIDE_CLS} {...field} />
               </FormControl>
               <FormMessage className="text-xs" />
             </FormItem>
@@ -95,7 +121,11 @@ export function DeviceForm({
             <FormItem>
               <FormLabel className="text-xs font-medium text-foreground">Serial Number</FormLabel>
               <FormControl>
-                <Input className={`${INPUT_OVERRIDE_CLS} font-mono`} {...field} />
+                <Input
+                  readOnly={sourceOwned}
+                  className={`${INPUT_OVERRIDE_CLS} font-mono`}
+                  {...field}
+                />
               </FormControl>
               <FormMessage className="text-xs" />
             </FormItem>
@@ -182,7 +212,12 @@ export function DeviceForm({
             <FormItem>
               <FormLabel className="text-xs font-medium text-foreground">Model</FormLabel>
               <FormControl>
-                <Input className={INPUT_OVERRIDE_CLS} placeholder="e.g. Catalyst 9300" {...field} />
+                <Input
+                  readOnly={sourceOwned}
+                  className={INPUT_OVERRIDE_CLS}
+                  placeholder="e.g. Catalyst 9300"
+                  {...field}
+                />
               </FormControl>
               <FormMessage className="text-xs" />
             </FormItem>
