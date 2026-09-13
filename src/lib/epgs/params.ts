@@ -4,6 +4,7 @@ export type EpgView = 'epg' | 'port'
 export type EpgPageSize = (typeof EPG_PAGE_SIZES)[number] | 'all'
 export type RawEpgPageParam = string | string[] | undefined
 export type RawEpgPageParams = {
+  selected?: string | string[]
   apic?: RawEpgPageParam
   view?: RawEpgPageParam
   query?: RawEpgPageParam
@@ -15,6 +16,7 @@ export type RawEpgPageParams = {
 }
 
 export type EpgPageParams = {
+  selected?: string
   hostId: string
   view: EpgView
   query: string
@@ -26,6 +28,7 @@ export type EpgPageParams = {
 }
 
 export type EpgFilters = {
+  dn?: string
   query?: string
   tenant?: string[]
   ap?: string[]
@@ -69,7 +72,10 @@ export function parseEpgPageParams(input: RawEpgPageParams): EpgPageParams {
     hostId: first(input.apic),
     view,
     query: first(input.query),
-    page: page(first(input.page)),
+    ...(view === 'epg' && first(input.selected)
+      ? { selected: first(input.selected).slice(0, 1024) }
+      : {}),
+    page: first(input.selected) ? 1 : page(first(input.page)),
     pageSize: pageSize(first(input.pageSize)),
     tenants: list(input.tenant),
     appProfiles: list(input.ap),
@@ -79,6 +85,7 @@ export function parseEpgPageParams(input: RawEpgPageParams): EpgPageParams {
 
 export function buildEpgPageUrl(params: EpgPageParams): string {
   const search = new URLSearchParams()
+  if (params.selected && params.view === 'epg') search.set('selected', params.selected)
   if (params.hostId) search.set('apic', params.hostId)
   if (params.view !== 'epg') search.set('view', params.view)
   if (params.query.trim()) search.set('query', params.query.trim())
@@ -93,7 +100,11 @@ export function buildEpgPageUrl(params: EpgPageParams): string {
 
 export function hasActiveEpgFilters(filters: EpgFilters): boolean {
   return Boolean(
-    filters.query?.trim() || filters.tenant?.length || filters.ap?.length || filters.node?.length,
+    filters.dn ||
+    filters.query?.trim() ||
+    filters.tenant?.length ||
+    filters.ap?.length ||
+    filters.node?.length,
   )
 }
 

@@ -46,6 +46,7 @@ function endpointUrl(params: EndpointPageParams, overrides: UrlOverrides): strin
     hostId: overrides.apic ?? params.hostId,
     view,
     query: overrides.query ?? params.query,
+    mac: overrides.query !== undefined || overrides.apic !== undefined ? undefined : params.mac,
     page: overrides.page ?? params.page,
     pageSize: overrides.pageSize ?? params.pageSize,
     vlans: overrides.vlan ?? params.vlans,

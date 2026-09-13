@@ -1,5 +1,6 @@
 'use client'
 
+import { SearchSelection } from '@/components/global-search/search-selection'
 import type { FormEvent } from 'react'
 import { use, useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -149,6 +150,7 @@ function NodeResultsContent({
     <section
       className={`space-y-3 transition-opacity ${isPending ? 'pointer-events-none opacity-60' : ''}`}
     >
+      <SearchSelection found={results.rows.length > 0} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex w-full min-w-0 items-center gap-2 md:w-auto">
           <div className="relative flex-1 md:w-56 md:flex-none">
@@ -238,7 +240,17 @@ function NodeResultsContent({
                 <tr>
                   {(results.view === 'components'
                     ? ['Node', 'Type', 'Name', 'Status', 'Model', 'Serial']
-                    : ['Node', 'Name', 'Serial', 'Model', 'Version', 'State', 'Uptime', 'PSU', 'Fan']
+                    : [
+                        'Node',
+                        'Name',
+                        'Serial',
+                        'Model',
+                        'Version',
+                        'State',
+                        'Uptime',
+                        'PSU',
+                        'Fan',
+                      ]
                   ).map((label) => (
                     <th key={label} className={DENSE_TABLE_HEAD_CLS}>
                       {label}
@@ -251,7 +263,8 @@ function NodeResultsContent({
                   ? results.rows.map((row, index) => (
                       <tr
                         key={row.id}
-                        className="group animate-fade-up border-b border-border-faint last:border-0 hover:bg-muted"
+                        data-search-selected={params.selected === row.id || undefined}
+                        className="group animate-fade-up border-b border-border-faint last:border-0 hover:bg-muted data-[search-selected=true]:bg-primary/10"
                         style={{ animationDelay: `${Math.min(index * 12, 200)}ms` }}
                       >
                         <td className="border-l-2 border-l-transparent px-4 py-2.5 font-mono text-foreground group-hover:border-l-primary">
@@ -271,7 +284,8 @@ function NodeResultsContent({
                   : results.rows.map((row, index) => (
                       <tr
                         key={row.id}
-                        className="group animate-fade-up border-b border-border-faint last:border-0 hover:bg-muted"
+                        data-search-selected={params.selected === row.id || undefined}
+                        className="group animate-fade-up border-b border-border-faint last:border-0 hover:bg-muted data-[search-selected=true]:bg-primary/10"
                         style={{ animationDelay: `${Math.min(index * 12, 200)}ms` }}
                       >
                         <td className="border-l-2 border-l-transparent px-4 py-2.5 font-mono text-foreground group-hover:border-l-primary">
@@ -313,7 +327,10 @@ function NodeResultsContent({
           <div className="rounded-2xl border border-border bg-card">{empty}</div>
         ) : results.view === 'components' ? (
           results.rows.map((row) => (
-            <DataCard key={row.id}>
+            <DataCard
+              key={row.id}
+              className={params.selected === row.id ? 'ring-2 ring-primary/40' : undefined}
+            >
               <DataCardHeader trailing={<ComponentStatusBadge row={row} />}>
                 <DataCardTitle className="font-mono">
                   {row.name || `Node ${row.nodeId}`}
@@ -332,7 +349,10 @@ function NodeResultsContent({
           ))
         ) : (
           results.rows.map((row) => (
-            <DataCard key={row.id}>
+            <DataCard
+              key={row.id}
+              className={params.selected === row.id ? 'ring-2 ring-primary/40' : undefined}
+            >
               <DataCardHeader trailing={<StateBadge row={row} />}>
                 <DataCardTitle className="font-mono">
                   {row.name || `Node ${row.nodeId}`}

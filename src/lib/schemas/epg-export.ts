@@ -7,6 +7,7 @@ export const epgExportSchema = z.object({
   filters: z
     .object({
       query: z.string().optional(),
+      dn: z.string().trim().max(1024).optional(),
       tenant: z.array(z.string()).optional(),
       ap: z.array(z.string()).optional(),
       node: z.array(z.string()).optional(),

@@ -1,5 +1,26 @@
 # Netroku ACI codebase context
 
+## Language: application search
+
+**Global search**:
+The application-wide search for Netroku pages, records and documentation. Selecting a result navigates to its destination; it does not execute an operational command.
+_Avoid_: Command launcher
+
+**Page result**:
+A global search match for a Netroku application destination, such as an endpoint list or inventory page.
+
+**Record result**:
+A global search match for an individual Netroku record or an endpoint's placements grouped within one source.
+
+**Documentation result**:
+A global search match for a Netroku documentation article, shown separately from application pages and records.
+
+**Endpoint search group**:
+An endpoint's matching placements sharing a MAC address within one APIC for ACI or one device for Legacy. The group represents its current or most recent matching placement and indicates additional matches.
+
+**Historical search coverage**:
+Retained ACI and Legacy endpoint placements included by the global search history option. Retired inventory devices remain current inventory records and are independent of this option.
+
 ## TL;DR
 
 Netroku ACI is a Next.js 16 application for Cisco Application Centric Infrastructure (ACI) monitoring, bulk configuration workflows, scheduled synchronization, legacy network monitoring, and physical inventory.

@@ -53,3 +53,17 @@ describe('buildEndpointWhere', () => {
     })
   })
 })
+
+it('constrains search navigation to the exact MAC across collector spellings', () => {
+  expect(buildEndpointWhere('host-1', { mac: 'AABB.CCDD.EEFF', status: ['active'] })).toEqual({
+    apicHostId: 'host-1',
+    isActive: true,
+    AND: [
+      {
+        OR: ['aabbccddeeff', 'aa:bb:cc:dd:ee:ff', 'aa-bb-cc-dd-ee-ff', 'aabb.ccdd.eeff'].map(
+          (mac) => ({ mac: { equals: mac, mode: 'insensitive' } }),
+        ),
+      },
+    ],
+  })
+})

@@ -7,6 +7,7 @@ import {
 
 export type RawLegacyDeviceParam = string | string[] | undefined
 export type RawLegacyDevicePageParams = {
+  selected?: string | string[]
   query?: RawLegacyDeviceParam
   site?: RawLegacyDeviceParam
   deviceType?: RawLegacyDeviceParam
@@ -15,6 +16,7 @@ export type RawLegacyDevicePageParams = {
 }
 
 export type LegacyDevicePageParams = {
+  selected?: string
   query: string
   sites: string[]
   deviceTypes: string[]
@@ -31,15 +33,17 @@ export function parseLegacyDevicePageParams(
 ): LegacyDevicePageParams {
   return {
     query: first(input.query),
+    ...(first(input.selected) ? { selected: first(input.selected).slice(0, 1024) } : {}),
     sites: parseLegacyList(input.site),
     deviceTypes: parseLegacyList(input.deviceType),
-    page: parseLegacyPage(first(input.page)),
+    page: first(input.selected) ? 1 : parseLegacyPage(first(input.page)),
     pageSize: parseLegacyPageSize(first(input.pageSize)),
   }
 }
 
 export function buildLegacyDevicePageUrl(params: LegacyDevicePageParams): string {
   const search = new URLSearchParams()
+  if (params.selected) search.set('selected', params.selected)
   if (params.query) search.set('query', params.query)
   if (params.sites.length) search.set('site', params.sites.join(','))
   if (params.deviceTypes.length) search.set('deviceType', params.deviceTypes.join(','))

@@ -196,11 +196,14 @@ export async function getLegacyDeviceResults(
   return readDeviceData(() =>
     unstable_cache(
       async (): Promise<LegacyDeviceResults> => {
-        const where = buildLegacyDeviceWhere({
-          query: params.query,
-          sites: params.sites,
-          deviceTypes: params.deviceTypes,
-        })
+        const where = {
+          ...buildLegacyDeviceWhere({
+            query: params.query,
+            sites: params.sites,
+            deviceTypes: params.deviceTypes,
+          }),
+          ...(params.selected ? { id: params.selected } : {}),
+        }
         const [records, total] = await Promise.all([
           prisma.legacyDevice.findMany({
             where,
@@ -221,6 +224,7 @@ export async function getLegacyDeviceResults(
       [
         'legacy-devices',
         'results',
+        params.selected ?? '',
         params.query,
         params.sites.join(','),
         params.deviceTypes.join(','),

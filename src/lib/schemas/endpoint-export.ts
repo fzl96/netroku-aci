@@ -9,6 +9,7 @@ export const endpointExportSchema = z.object({
   filters: z
     .object({
       query: z.string().optional(),
+      mac: z.string().trim().max(64).optional(),
       vlan: z.array(z.string()).optional(),
       node: z.array(z.string()).optional(),
       iface: z.array(z.string()).optional(),

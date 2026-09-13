@@ -10,6 +10,7 @@ export const LEGACY_ENDPOINT_STATUSES: readonly LegacyEndpointStatus[] = ['activ
 
 export type RawLegacyEndpointParam = string | string[] | undefined
 export type RawLegacyEndpointPageParams = {
+  mac?: RawLegacyEndpointParam
   query?: RawLegacyEndpointParam
   site?: RawLegacyEndpointParam
   device?: RawLegacyEndpointParam
@@ -21,6 +22,7 @@ export type RawLegacyEndpointPageParams = {
 }
 
 export type LegacyEndpointPageParams = {
+  mac?: string
   query: string
   sites: string[]
   devices: string[]
@@ -50,6 +52,7 @@ export function parseLegacyEndpointPageParams(
 ): LegacyEndpointPageParams {
   return {
     query: first(input.query),
+    ...(first(input.mac) ? { mac: first(input.mac).slice(0, 64) } : {}),
     sites: parseLegacyList(input.site),
     devices: parseLegacyList(input.device),
     vlans: parseLegacyList(input.vlan),
@@ -67,6 +70,7 @@ function statusParam(statuses: LegacyEndpointStatus[]): string | null {
 
 export function buildLegacyEndpointPageUrl(params: LegacyEndpointPageParams): string {
   const search = new URLSearchParams()
+  if (params.mac) search.set('mac', params.mac)
   if (params.query) search.set('query', params.query)
   if (params.sites.length) search.set('site', params.sites.join(','))
   if (params.devices.length) search.set('device', params.devices.join(','))

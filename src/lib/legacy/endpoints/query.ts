@@ -202,6 +202,7 @@ export async function getLegacyEndpointResults(
       async (): Promise<LegacyEndpointResults> => {
         const where = buildLegacyEndpointWhere({
           query: params.query,
+          mac: params.mac,
           sites: params.sites,
           deviceIds: params.devices,
           vlans: params.vlans,
@@ -228,6 +229,7 @@ export async function getLegacyEndpointResults(
       [
         'legacy-endpoints',
         'results',
+        ...(params.mac ? [`mac:${params.mac}`] : []),
         params.query,
         params.sites.join(','),
         params.devices.join(','),

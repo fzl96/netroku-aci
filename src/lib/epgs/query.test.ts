@@ -54,3 +54,14 @@ describe('expandNodeOptions', () => {
     ])
   })
 })
+
+it('preserves exact search identity for filtered EPG and port exports', () => {
+  expect(buildEpgWhere('host-1', { dn: 'uni/tn-A/ap-B/epg-C' })).toMatchObject({
+    apicHostId: 'host-1',
+    dn: 'uni/tn-A/ap-B/epg-C',
+  })
+  expect(buildBindingWhere('host-1', { dn: 'uni/tn-A/ap-B/epg-C' })).toMatchObject({
+    apicHostId: 'host-1',
+    epg: { dn: 'uni/tn-A/ap-B/epg-C' },
+  })
+})

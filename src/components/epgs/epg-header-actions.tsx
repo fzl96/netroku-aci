@@ -81,6 +81,7 @@ export function EpgHeaderActions({
         filteredTotal={overview.filteredTotal}
         filters={{
           query: params.query,
+          dn: params.selected,
           tenant: params.tenants,
           ap: params.appProfiles,
           node: params.nodes,

@@ -1,5 +1,6 @@
 'use client'
 
+import { SearchSelection } from '@/components/global-search/search-selection'
 import * as React from 'react'
 import { use } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -449,10 +450,24 @@ function RacksResultsContent({
 
   const selectedSite = siteList.find((s) => s.id === selectedSiteId) ?? null
   const rackQuery = searchParams.get('q')?.trim() ?? ''
+  const selectedRack = searchParams.get('selectedRack')
+  const requestedSite = searchParams.get('selectedSite')
   const { racks: visibleRacks, matchedDeviceIds } = React.useMemo(
-    () => filterRacks(rackList, rackQuery),
-    [rackList, rackQuery],
+    () =>
+      filterRacks(
+        selectedRack ? rackList.filter((rack) => rack.id === selectedRack) : rackList,
+        rackQuery,
+      ),
+    [rackList, rackQuery, selectedRack],
   )
+
+  if (requestedSite && requestedSite !== selectedSiteId) {
+    return (
+      <div className="px-4 py-4 md:px-8 md:py-6">
+        <SearchSelection param="selectedSite" found={false} />
+      </div>
+    )
+  }
 
   if (siteList.length === 0) {
     return (
@@ -496,6 +511,8 @@ function RacksResultsContent({
 
   return (
     <div className="space-y-4 px-4 py-4 md:px-8 md:py-6">
+      <SearchSelection param="selectedRack" found={visibleRacks.length > 0} />
+      <SearchSelection param="selectedSite" found={requestedSite === selectedSiteId} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
           <div className="flex w-full items-center gap-1 sm:w-auto">
@@ -583,7 +600,13 @@ function RacksResultsContent({
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div
+          className={
+            selectedRack
+              ? 'grid gap-4 rounded-xl ring-2 ring-primary/40 md:grid-cols-2 xl:grid-cols-3'
+              : 'grid gap-4 md:grid-cols-2 xl:grid-cols-3'
+          }
+        >
           {visibleRacks.map((rack) => (
             <RackVisualization
               key={rack.id}

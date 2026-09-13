@@ -244,3 +244,17 @@ describe('node data interface', () => {
     expect(JSON.stringify(result)).not.toContain('secret')
   })
 })
+
+describe('global search selection', () => {
+  it('selects the exact node within its APIC and separates cached selections', async () => {
+    await query.getNodeResults({ ...base, selected: 'n1' })
+    const call = (
+      nodeFindMany.mock.calls as unknown as Array<[{ where: { id: string; apicHostId: string } }]>
+    ).at(-1)?.[0]
+    expect(call?.where.id).toBe('n1')
+    expect(call?.where.apicHostId).toBe('h1')
+    const firstKey = cacheCalls.at(-1)?.key
+    await query.getNodeResults({ ...base, selected: 'n2' })
+    expect(cacheCalls.at(-1)?.key).not.toEqual(firstKey)
+  })
+})

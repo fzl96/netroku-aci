@@ -205,6 +205,7 @@ function normalize(filters: EpgFilters = {}): Required<EpgFilters> {
     )
   return {
     query: filters.query?.trim() ?? '',
+    dn: filters.dn?.trim() ?? '',
     tenant: values(filters.tenant),
     ap: values(filters.ap),
     node: values(filters.node),
@@ -213,6 +214,7 @@ function normalize(filters: EpgFilters = {}): Required<EpgFilters> {
 
 function filterParts(filters: Required<EpgFilters>): string[] {
   return [
+    ...(filters.dn ? [`dn:${filters.dn}`] : []),
     filters.query,
     JSON.stringify(filters.tenant),
     JSON.stringify(filters.ap),
@@ -235,6 +237,7 @@ export function buildEpgWhere(
   const query = filters.query?.trim()
   return {
     apicHostId,
+    ...(filters.dn ? { dn: filters.dn } : {}),
     ...(filters.tenant?.length ? { tenant: { in: filters.tenant } } : {}),
     ...(filters.ap?.length ? { appProfile: { in: filters.ap } } : {}),
     ...(query
@@ -262,6 +265,7 @@ export function buildBindingWhere(
 ): Prisma.EpgPathBindingWhereInput {
   const query = filters.query?.trim()
   const epg = {
+    ...(filters.dn ? { dn: filters.dn } : {}),
     ...(filters.tenant?.length ? { tenant: { in: filters.tenant } } : {}),
     ...(filters.ap?.length ? { appProfile: { in: filters.ap } } : {}),
   }
@@ -288,7 +292,11 @@ export function countActiveEpgFilterGroups(filters: EpgFilters): number {
 }
 export function hasActiveEpgFilters(filters: EpgFilters): boolean {
   return Boolean(
-    filters.query?.trim() || filters.tenant?.length || filters.ap?.length || filters.node?.length,
+    filters.dn ||
+    filters.query?.trim() ||
+    filters.tenant?.length ||
+    filters.ap?.length ||
+    filters.node?.length,
   )
 }
 export function expandNodeOptions(values: string[]): string[] {
@@ -336,6 +344,7 @@ export async function getEpgOverview(
   await authorize()
   const filters = normalize({
     query: params.query,
+    dn: params.selected,
     tenant: params.tenants,
     ap: params.appProfiles,
     node: params.nodes,
@@ -393,6 +402,7 @@ export async function getEpgResults(params: EpgPageParams): Promise<EpgResultsDa
   await authorize()
   const filters = normalize({
     query: params.query,
+    dn: params.selected,
     tenant: params.tenants,
     ap: params.appProfiles,
     node: params.nodes,
@@ -418,7 +428,10 @@ export async function getEpgResults(params: EpgPageParams): Promise<EpgResultsDa
           pagination: page,
         }
       }
-      const where = buildEpgWhere(params.hostId, filters)
+      const where = {
+        ...buildEpgWhere(params.hostId, filters),
+        ...(params.selected ? { dn: params.selected } : {}),
+      }
       const total = await prisma.epgSnapshot.count({ where })
       const page = pagination(total, params.page, params.pageSize)
       const rows = await prisma.epgSnapshot.findMany({
@@ -434,6 +447,7 @@ export async function getEpgResults(params: EpgPageParams): Promise<EpgResultsDa
     [
       'epgs',
       'results',
+      params.selected ?? '',
       params.hostId,
       params.view,
       String(params.page),

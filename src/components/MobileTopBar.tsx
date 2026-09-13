@@ -1,5 +1,6 @@
 'use client'
 
+import { GlobalSearchTrigger } from '@/components/global-search/search-provider'
 import Image from 'next/image'
 import { IconMoon, IconSun } from '@tabler/icons-react'
 import { SidebarTrigger } from '@/components/ui/sidebar'
@@ -30,6 +31,7 @@ export function MobileTopBar() {
           Netroku {scope === 'aci' ? 'ACI' : 'Legacy'}
         </span>
       </div>
+      <GlobalSearchTrigger mobile />
       <button
         type="button"
         onClick={() => setTheme((theme) => nextBinaryTheme(theme))}
