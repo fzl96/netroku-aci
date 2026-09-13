@@ -43,8 +43,9 @@ export function EpgTable({
                 {results.rows.map((row, index) => (
                   <tr
                     key={row.id}
+                    data-search-selected={params.selected === row.dn || undefined}
                     onClick={() => onEpgSelect(row.id)}
-                    className="animate-fade-up cursor-pointer border-b border-border-faint hover:bg-muted"
+                    className="animate-fade-up cursor-pointer border-b border-border-faint hover:bg-muted data-[search-selected=true]:bg-primary/10"
                     style={{ animationDelay: `${Math.min(index * 20, 200)}ms` }}
                   >
                     <td className="border-l-2 border-l-transparent px-4 py-2.5 font-mono font-medium">
@@ -81,7 +82,7 @@ export function EpgTable({
                   <tr
                     key={row.id}
                     onClick={() => onPortSelect(row)}
-                    className="animate-fade-up cursor-pointer border-b border-border-faint hover:bg-muted"
+                    className="animate-fade-up cursor-pointer border-b border-border-faint hover:bg-muted data-[search-selected=true]:bg-primary/10"
                     style={{ animationDelay: `${Math.min(index * 20, 200)}ms` }}
                   >
                     <td className="px-4 py-2.5 font-medium">{row.node}</td>

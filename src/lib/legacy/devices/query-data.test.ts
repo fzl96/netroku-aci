@@ -146,6 +146,7 @@ describe('getLegacyDeviceResults', () => {
     expect(cacheCalls.at(-1)?.key).toEqual([
       'legacy-devices',
       'results',
+      '',
       'edge',
       'dc1,hq',
       'switch',
@@ -177,5 +178,17 @@ describe('getLegacyDeviceFilterOptions', () => {
       siteOptions: ['hq', 'dc1'],
       typeOptions: ['router', 'switch'],
     })
+  })
+})
+
+describe('global search selections', () => {
+  it('filters exact device IDs and separates their cache entries', async () => {
+    await query.getLegacyDeviceResults({ ...base, selected: 'device-1' })
+    expect((deviceFindMany.mock.calls.at(-1)?.[0] as { where: { id: string } }).where.id).toBe(
+      'device-1',
+    )
+    const firstKey = cacheCalls.at(-1)?.key
+    await query.getLegacyDeviceResults({ ...base, selected: 'device-2' })
+    expect(cacheCalls.at(-1)?.key).not.toEqual(firstKey)
   })
 })

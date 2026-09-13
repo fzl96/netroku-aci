@@ -1,5 +1,6 @@
 'use client'
 
+import { SearchSelection } from '@/components/global-search/search-selection'
 import { use, useState } from 'react'
 import type { EpgLoadState, EpgResultsPayload } from '@/lib/epgs/query'
 import type { EpgPortSummary } from '@/lib/epgs/sort'
@@ -29,6 +30,7 @@ export function EpgResults({
 
   return (
     <section className="space-y-3">
+      <SearchSelection found={results.rows.length > 0} />
       {results.rows.length === 0 ? (
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="px-4 py-14 text-center">

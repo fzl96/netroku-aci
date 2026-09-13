@@ -1,8 +1,10 @@
+import { macAddressVariants } from '@/lib/mac-address'
 import type { Prisma } from '@prisma/client'
 
 export type LegacyEndpointStatus = 'active' | 'historical'
 
 export interface LegacyEndpointFilters {
+  mac?: string
   query?: string
   deviceIds?: string[]
   sites?: string[]
@@ -15,6 +17,12 @@ export function buildLegacyEndpointWhere(
   filters: LegacyEndpointFilters,
 ): Prisma.LegacyEndpointWhereInput {
   const and: Prisma.LegacyEndpointWhereInput[] = []
+  if (filters.mac)
+    and.push({
+      OR: macAddressVariants(filters.mac).map((mac) => ({
+        mac: { equals: mac, mode: 'insensitive' },
+      })),
+    })
   if (filters.deviceIds?.length) and.push({ deviceId: { in: filters.deviceIds } })
   if (filters.sites?.length) and.push({ device: { site: { in: filters.sites } } })
   if (filters.vlans?.length) and.push({ vlan: { in: filters.vlans } })

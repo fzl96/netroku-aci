@@ -1,4 +1,5 @@
 import 'server-only'
+import { macAddressVariants } from '@/lib/mac-address'
 
 import type { Prisma } from '@prisma/client'
 import { unstable_cache } from 'next/cache'
@@ -156,6 +157,7 @@ function normalizedFilters(filters: EndpointFilters = {}): EndpointFilters {
 
   return {
     query: filters.query?.trim() ?? '',
+    ...(filters.mac ? { mac: filters.mac.trim() } : {}),
     vlan: normalize(filters.vlan),
     node: normalize(filters.node),
     iface: normalize(filters.iface),
@@ -165,6 +167,7 @@ function normalizedFilters(filters: EndpointFilters = {}): EndpointFilters {
 
 function filterCacheParts(filters: EndpointFilters): string[] {
   return [
+    ...(filters.mac ? [`mac:${filters.mac}`] : []),
     filters.query ?? '',
     JSON.stringify(filters.vlan ?? []),
     JSON.stringify(filters.node ?? []),
@@ -200,7 +203,22 @@ export function buildEndpointWhere(
   return {
     apicHostId,
     ...(filters.vlan?.length ? { vlan: { in: filters.vlan } } : {}),
-    ...(filters.node?.length ? { AND: [{ OR: filters.node.flatMap(nodeConditions) }] } : {}),
+    ...(filters.node?.length || filters.mac
+      ? {
+          AND: [
+            ...(filters.node?.length ? [{ OR: filters.node.flatMap(nodeConditions) }] : []),
+            ...(filters.mac
+              ? [
+                  {
+                    OR: macAddressVariants(filters.mac).map((mac) => ({
+                      mac: { equals: mac, mode: 'insensitive' as const },
+                    })),
+                  },
+                ]
+              : []),
+          ],
+        }
+      : {}),
     ...(filters.iface?.length ? { interface: { in: filters.iface } } : {}),
     ...(filters.status?.length === 1 ? { isActive: filters.status[0] === 'active' } : {}),
     ...(query
@@ -301,6 +319,7 @@ export async function getEndpointResults(params: EndpointPageParams): Promise<En
   await authorizeEndpointRead()
   const filters = normalizedFilters({
     query: params.query,
+    mac: params.mac,
     vlan: params.vlans,
     node: params.nodes,
     iface: params.view === 'endpoint' ? params.interfaces : [],
@@ -349,6 +368,7 @@ export async function getEndpointResults(params: EndpointPageParams): Promise<En
       'results',
       params.hostId,
       params.view,
+      ...(filters.mac ? [`mac:${filters.mac}`] : []),
       filters.query ?? '',
       String(params.page),
       String(params.pageSize),

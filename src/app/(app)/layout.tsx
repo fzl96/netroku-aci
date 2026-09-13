@@ -3,6 +3,7 @@ import { ApicHostReadError, getApicHosts } from '@/lib/apic-hosts/query'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppSidebar } from '@/components/AppSidebar'
+import { GlobalSearchProvider } from '@/components/global-search/search-provider'
 import { MobileTopBar } from '@/components/MobileTopBar'
 import { ApicHostsProvider } from '@/components/ApicHostsProvider'
 import { NavigationScopeProvider } from '@/components/NavigationScopeProvider'
@@ -31,11 +32,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <SidebarProvider>
         <ApicHostsProvider hosts={apicHosts}>
           <NavigationScopeProvider initialScope={initialScope}>
-            <AppSidebar role={role} />
-            <main className={APP_MAIN_CLS}>
-              <MobileTopBar />
-              {children}
-            </main>
+            <GlobalSearchProvider role={role}>
+              <AppSidebar role={role} />
+              <main className={APP_MAIN_CLS}>
+                <MobileTopBar />
+                {children}
+              </main>
+            </GlobalSearchProvider>
           </NavigationScopeProvider>
         </ApicHostsProvider>
       </SidebarProvider>

@@ -1,5 +1,6 @@
 'use client'
 
+import { SearchSelection } from '@/components/global-search/search-selection'
 import type { FormEvent } from 'react'
 import { use, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -188,6 +189,7 @@ function EndpointResultsContent({
     <section
       className={`space-y-3 transition-opacity ${isPending ? 'pointer-events-none opacity-60' : ''}`}
     >
+      <SearchSelection param="mac" found={results.rows.length > 0} />
       <div className="hidden overflow-hidden rounded-2xl border border-border bg-card shadow-sm md:block">
         {rows.length === 0 ? (
           <div className="px-4 py-14 text-center">

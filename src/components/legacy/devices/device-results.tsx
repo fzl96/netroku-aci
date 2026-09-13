@@ -1,5 +1,7 @@
 'use client'
 
+import { useSearchParams } from 'next/navigation'
+import { SearchSelection } from '@/components/global-search/search-selection'
 import { use, useState } from 'react'
 import { IconServer2 } from '@tabler/icons-react'
 import {
@@ -23,19 +25,24 @@ import { LegacyDeviceRegionError } from './device-region-error'
 function LegacyDeviceResultsContent({ results }: { results: LegacyDeviceResultsData }) {
   const [selected, setSelected] = useState<LegacyDeviceRow | null>(null)
   const { rows, page, pageSize, total } = results
+  const selectedId = useSearchParams().get('selected')
 
   if (rows.length === 0) {
     return (
-      <LegacyEmptyState
-        icon={<IconServer2 size={24} />}
-        title="No legacy devices found"
-        description="Run legacy_sync.py monitor, endpoint, or all to register devices, or clear the current filters."
-      />
+      <>
+        <SearchSelection found={false} />
+        <LegacyEmptyState
+          icon={<IconServer2 size={24} />}
+          title="No legacy devices found"
+          description="Run legacy_sync.py monitor, endpoint, or all to register devices, or clear the current filters."
+        />
+      </>
     )
   }
 
   return (
     <>
+      <SearchSelection found={rows.length > 0} />
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         <div className="hidden max-h-[calc(100vh-17rem)] overflow-auto md:block">
           <table className="w-full border-collapse text-xs">
@@ -59,8 +66,9 @@ function LegacyDeviceResultsContent({ results }: { results: LegacyDeviceResultsD
               {rows.map((row) => (
                 <tr
                   key={row.id}
+                  data-search-selected={selectedId === row.id || undefined}
                   onClick={() => setSelected(row)}
-                  className="cursor-pointer border-b border-border/70 hover:bg-muted/60"
+                  className="cursor-pointer border-b border-border/70 hover:bg-muted/60 data-[search-selected=true]:bg-primary/10"
                 >
                   <td className="px-4 py-3 font-semibold whitespace-nowrap text-foreground">
                     {row.hostname}
@@ -85,7 +93,11 @@ function LegacyDeviceResultsContent({ results }: { results: LegacyDeviceResultsD
         </div>
         <div className="space-y-2 p-3 md:hidden">
           {rows.map((row) => (
-            <DataCard key={row.id} onClick={() => setSelected(row)}>
+            <DataCard
+              key={row.id}
+              className={selectedId === row.id ? 'ring-2 ring-primary/40' : undefined}
+              onClick={() => setSelected(row)}
+            >
               <DataCardHeader trailing={<span className="text-[10px] text-faint">{row.site}</span>}>
                 <DataCardTitle>{row.hostname}</DataCardTitle>
               </DataCardHeader>

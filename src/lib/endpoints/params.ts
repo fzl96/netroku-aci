@@ -6,6 +6,7 @@ export type EndpointStatusFilter = 'active' | 'historical'
 export type RawEndpointPageParam = string | string[] | undefined
 
 export type RawEndpointPageParams = {
+  mac?: RawEndpointPageParam
   apic?: RawEndpointPageParam
   view?: RawEndpointPageParam
   query?: RawEndpointPageParam
@@ -18,6 +19,7 @@ export type RawEndpointPageParams = {
 }
 
 export type EndpointPageParams = {
+  mac?: string
   hostId: string
   view: EndpointView
   query: string
@@ -30,6 +32,7 @@ export type EndpointPageParams = {
 }
 
 export interface EndpointFilters {
+  mac?: string
   query?: string
   vlan?: string[]
   node?: string[]
@@ -85,6 +88,7 @@ export function parseEndpointPageParams(input: RawEndpointPageParams): EndpointP
     hostId: firstValue(input.apic),
     view,
     query: firstValue(input.query),
+    ...(firstValue(input.mac) ? { mac: firstValue(input.mac).slice(0, 64) } : {}),
     page: parsePositiveInteger(firstValue(input.page)),
     pageSize: parsePageSize(firstValue(input.pageSize)),
     vlans: listValues(input.vlan),
@@ -96,6 +100,7 @@ export function parseEndpointPageParams(input: RawEndpointPageParams): EndpointP
 
 export function buildEndpointPageUrl(params: EndpointPageParams): string {
   const search = new URLSearchParams()
+  if (params.mac) search.set('mac', params.mac)
   const query = params.query.trim()
 
   if (params.hostId) search.set('apic', params.hostId)
@@ -116,6 +121,7 @@ export function buildEndpointPageUrl(params: EndpointPageParams): string {
 
 export function hasActiveEndpointFilters(filters: EndpointFilters): boolean {
   return Boolean(
+    filters.mac ||
     filters.query?.trim() ||
     filters.vlan?.length ||
     filters.node?.length ||

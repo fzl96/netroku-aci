@@ -49,3 +49,23 @@ describe('legacy endpoint helpers', () => {
     expect(LEGACY_ENDPOINT_ORDER_BY).toEqual([{ lastSeenAt: 'desc' }, { id: 'asc' }])
   })
 })
+
+test('exact search MAC filters stay scoped to the selected device and lifecycle', () => {
+  expect(
+    buildLegacyEndpointWhere({
+      mac: 'AABB.CCDD.EEFF',
+      deviceIds: ['device-1'],
+      statuses: ['active'],
+    }),
+  ).toEqual({
+    AND: [
+      {
+        OR: ['aabbccddeeff', 'aa:bb:cc:dd:ee:ff', 'aa-bb-cc-dd-ee-ff', 'aabb.ccdd.eeff'].map(
+          (mac) => ({ mac: { equals: mac, mode: 'insensitive' } }),
+        ),
+      },
+      { deviceId: { in: ['device-1'] } },
+      { isActive: true },
+    ],
+  })
+})

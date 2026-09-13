@@ -261,7 +261,14 @@ function serializeComponent(row: StoredComponent): HardwareComponentRow {
 }
 
 function normalizedKey(params: NodePageParams): string[] {
-  return [params.hostId, params.view, params.query, params.role ?? '', params.componentType ?? '']
+  return [
+    params.selected ?? '',
+    params.hostId,
+    params.view,
+    params.query,
+    params.role ?? '',
+    params.componentType ?? '',
+  ]
 }
 
 export async function getNodeResults(params: NodePageParams): Promise<NodeResultsData> {
@@ -292,6 +299,7 @@ export async function getNodeResults(params: NodePageParams): Promise<NodeResult
           return { view: 'components', rows: sortComponentRows(rows.map(serializeComponent)) }
         }
         const where: Prisma.NodeSnapshotWhereInput = {
+          ...(params.selected ? { id: params.selected } : {}),
           apicHostId: params.hostId,
           present: true,
           ...(params.role ? { role: params.role } : {}),

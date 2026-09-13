@@ -8,6 +8,7 @@ export type NodeRole = (typeof NODE_ROLES)[number]
 export type NodeComponentType = (typeof NODE_COMPONENT_TYPES)[number]
 export type RawNodePageParam = string | string[] | undefined
 export type RawNodePageParams = {
+  selected?: string | string[]
   apic?: RawNodePageParam
   query?: RawNodePageParam
   view?: RawNodePageParam
@@ -18,6 +19,7 @@ export type RawNodePageParams = {
 }
 
 export type NodePageParams = {
+  selected?: string
   hostId: string
   query: string
   view: NodeView
@@ -50,6 +52,9 @@ export function parseNodePageParams(input: RawNodePageParams): NodePageParams {
   return {
     hostId: first(input.apic),
     query: first(input.query),
+    ...(view === 'nodes' && first(input.selected)
+      ? { selected: first(input.selected).slice(0, 1024) }
+      : {}),
     view,
     role:
       view === 'nodes' && (NODE_ROLES as readonly string[]).includes(role)
@@ -59,13 +64,14 @@ export function parseNodePageParams(input: RawNodePageParams): NodePageParams {
       view === 'components' && (NODE_COMPONENT_TYPES as readonly string[]).includes(componentType)
         ? (componentType as NodeComponentType)
         : null,
-    page: positivePage(first(input.page)),
+    page: first(input.selected) ? 1 : positivePage(first(input.page)),
     pageSize: pageSize(first(input.pageSize)),
   }
 }
 
 export function buildNodePageUrl(params: NodePageParams): string {
   const search = new URLSearchParams()
+  if (params.selected && params.view === 'nodes') search.set('selected', params.selected)
   if (params.hostId) search.set('apic', params.hostId)
   if (params.view !== 'nodes') search.set('view', params.view)
   if (params.query) search.set('query', params.query)

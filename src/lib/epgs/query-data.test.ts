@@ -285,3 +285,15 @@ describe('EPG data interface', () => {
     }
   })
 })
+
+describe('global search selection', () => {
+  it('uses the stable DN plus APIC, rather than a replaced snapshot ID', async () => {
+    await query.getEpgResults({ ...base, selected: 'uni/tn-A/ap-B/epg-C' })
+    const call = epgFindMany.mock.calls.at(-1)?.[0] as { where: { dn: string; apicHostId: string } }
+    expect(call.where.dn).toBe('uni/tn-A/ap-B/epg-C')
+    expect(call.where.apicHostId).toBe('h1')
+    const firstKey = cacheCalls.at(-1)?.key
+    await query.getEpgResults({ ...base, selected: 'uni/tn-A/ap-B/epg-D' })
+    expect(cacheCalls.at(-1)?.key).not.toEqual(firstKey)
+  })
+})
