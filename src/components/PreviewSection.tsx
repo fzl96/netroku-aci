@@ -19,6 +19,8 @@ type Feature =
   | 'epg-contract'
   | 'epg-consumer-contract'
   | 'epg-provider-contract'
+  | 'esg'
+  | 'esg-selector'
 
 export interface PreviewColumn<TRow> {
   header: string
@@ -74,6 +76,14 @@ const ENDPOINTS: Record<Feature, Partial<Record<Mode, string>>> = {
   },
   'epg-provider-contract': {
     rollback: '/api/apic/bridge-domains/epgs/provider/validate-rollback',
+  },
+  esg: {
+    deploy: '/api/apic/esgs/validate',
+    rollback: '/api/apic/esgs/validate-rollback',
+  },
+  'esg-selector': {
+    deploy: '/api/apic/esgs/selectors/validate',
+    rollback: '/api/apic/esgs/selectors/validate-rollback',
   },
 }
 
@@ -156,10 +166,12 @@ interface IssueRowProps {
   label: string
   result: ValidationResult
   skippedLabel: string
+  skippedStatus: RowStatus
 }
 
-function IssueRow({ label, result, skippedLabel }: IssueRowProps) {
+function IssueRow({ label, result, skippedLabel, skippedStatus }: IssueRowProps) {
   const isError = result.status === 'error'
+  const badge = isError ? 'Error' : result.status === skippedStatus ? skippedLabel : 'Warning'
   return (
     <div className="flex items-start gap-3 border-b border-border-faint py-2 last:border-0">
       <span
@@ -168,11 +180,12 @@ function IssueRow({ label, result, skippedLabel }: IssueRowProps) {
           isError ? 'bg-error-bg text-error' : 'bg-warning-bg text-warning',
         )}
       >
-        {isError ? 'Error' : skippedLabel}
+        {badge}
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate font-mono text-xs font-medium text-foreground">{label}</p>
         {result.message && <p className="mt-0.5 text-xs text-subtle">{result.message}</p>}
+        {result.warning && <p className="mt-0.5 text-xs text-warning">{result.warning}</p>}
       </div>
     </div>
   )
@@ -302,14 +315,22 @@ export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
     .map((r) => ({ row: r, result: statusMap.get(r.rowIndex) }))
     .filter(
       (x): x is { row: TRow; result: ValidationResult } =>
-        x.result?.status === 'error' || x.result?.status === cfg.skippedStatus,
+        x.result?.status === 'error' ||
+        x.result?.status === cfg.skippedStatus ||
+        Boolean(x.result?.warning),
     )
   const errorCount = issueRows.filter((x) => x.result.status === 'error').length
   const skippedCount = issueRows.filter((x) => x.result.status === cfg.skippedStatus).length
+  const warningCount = issueRows.filter(
+    (x) => x.result.status !== 'error' && x.result.status !== cfg.skippedStatus,
+  ).length
   const hasIssues = issueRows.length > 0
   const orderedIssueRows = [
     ...issueRows.filter((x) => x.result.status === 'error'),
     ...issueRows.filter((x) => x.result.status === cfg.skippedStatus),
+    ...issueRows.filter(
+      (x) => x.result.status !== 'error' && x.result.status !== cfg.skippedStatus,
+    ),
   ]
   const tablePagination = paginateReviewItems(rows, tablePage)
   const issuePagination = paginateReviewItems(orderedIssueRows, issuePage)
@@ -477,6 +498,8 @@ export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
                         {[
                           errorCount > 0 && `${errorCount} error${errorCount > 1 ? 's' : ''}`,
                           skippedCount > 0 && `${skippedCount} ${cfg.skippedLabel.toLowerCase()}`,
+                          warningCount > 0 &&
+                            `${warningCount} warning${warningCount > 1 ? 's' : ''}`,
                         ]
                           .filter(Boolean)
                           .join(' · ')}
@@ -496,6 +519,7 @@ export function PreviewSection<TRow extends { rowIndex: number } = ParsedRow>({
                             label={labelFn(row)}
                             result={result}
                             skippedLabel={cfg.skippedLabel}
+                            skippedStatus={cfg.skippedStatus}
                           />
                         ))}
                       </div>

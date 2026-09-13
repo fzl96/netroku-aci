@@ -24,6 +24,7 @@ export interface ValidationResult {
   rowIndex: number
   status: RowStatus
   message?: string // populated when status === 'error'
+  warning?: string // non-blocking note shown in review, e.g. objects that will be kept
 }
 
 export interface DeployResult {

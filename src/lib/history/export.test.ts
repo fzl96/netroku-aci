@@ -190,6 +190,55 @@ describe('buildHistoryPayloadCsvExport', () => {
   ])('does not export an unsupported or malformed history payload %#', (input) => {
     expect(buildHistoryPayloadCsvExport({ ...input, createdAt })).toBeNull()
   })
+
+  it('recreates ESG and ESG selector workflow columns', () => {
+    const esg = buildHistoryPayloadCsvExport({
+      action: 'deploy',
+      target: 'esgs @ 10.0.0.1',
+      createdAt,
+      payload: [
+        {
+          rowIndex: 1,
+          tenant: 'TenantA',
+          anp: 'APP',
+          esg: 'ESG-WEB',
+          vrf: 'VRF-PROD',
+          contract_tenant: 'TenantA',
+          consContracts: ['DNS', 'NTP'],
+          provContracts: ['WEB'],
+          esg_desc: 'Web tier',
+        },
+      ],
+    })
+    expect(esg).toEqual({
+      filename: 'esg-deploy-2026-07-15.csv',
+      csv:
+        'tenant,anp,esg,vrf,contract_tenant,cons_contract,prov_contract,esg_desc\r\n' +
+        'TenantA,APP,ESG-WEB,VRF-PROD,TenantA,"DNS,NTP",WEB,Web tier',
+    })
+
+    const selectors = buildHistoryPayloadCsvExport({
+      action: 'rollback',
+      target: 'esgs:selectors @ 10.0.0.1',
+      createdAt,
+      payload: [
+        {
+          rowIndex: 2,
+          tenant: 'TenantA',
+          anp: 'APP',
+          esg: 'ESG-WEB',
+          selector_type: 'ip',
+          selector_value: '10.1.1.0/24',
+        },
+      ],
+    })
+    expect(selectors).toEqual({
+      filename: 'esg-selectors-rollback-2026-07-15.csv',
+      csv:
+        'tenant,anp,esg,selector_type,selector_value,epg_anp,selector_desc\r\n' +
+        'TenantA,APP,ESG-WEB,ip,10.1.1.0/24,,',
+    })
+  })
 })
 
 describe('buildHistoryPayloadSummary', () => {

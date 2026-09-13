@@ -16,6 +16,8 @@ type Feature =
   | 'epg-contract'
   | 'epg-consumer-contract'
   | 'epg-provider-contract'
+  | 'esg'
+  | 'esg-selector'
 
 interface DeploySectionProps<TRow extends { rowIndex: number }> {
   rows: TRow[]
@@ -64,6 +66,14 @@ const ENDPOINTS: Record<Feature, Partial<Record<Mode, string>>> = {
   'epg-provider-contract': {
     rollback: '/api/apic/bridge-domains/epgs/provider/rollback',
   },
+  esg: {
+    deploy: '/api/apic/esgs/deploy',
+    rollback: '/api/apic/esgs/rollback',
+  },
+  'esg-selector': {
+    deploy: '/api/apic/esgs/selectors/deploy',
+    rollback: '/api/apic/esgs/selectors/rollback',
+  },
 }
 
 const DEFAULT_NOUN: Record<Feature, string> = {
@@ -77,6 +87,8 @@ const DEFAULT_NOUN: Record<Feature, string> = {
   'epg-contract': 'EPG',
   'epg-consumer-contract': 'contract relation',
   'epg-provider-contract': 'contract relation',
+  esg: 'ESG',
+  'esg-selector': 'selector',
 }
 
 const MODE_CONFIG: Record<

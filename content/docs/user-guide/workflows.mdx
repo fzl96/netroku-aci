@@ -16,13 +16,15 @@ Every workflow follows the same three-step model — **Upload → Review → Dep
 
 ## Available workflows
 
-| Workflow                     | What it manages                                  | Modes             |
-| ---------------------------- | ------------------------------------------------ | ----------------- |
-| **Bridge Domains → L2 Only** | Layer-2 bridge domains (BD + VRF)                | Deploy · Rollback |
-| **Bridge Domains → L3**      | Layer-3 bridge domains (BD, VRF, subnet, L3Out)  | Deploy · Rollback |
-| **EPG**                      | End Point Groups and their contract associations | Deploy · Rollback |
-| **Static Ports**             | Static VLAN/port bindings on EPGs                | Deploy · Rollback |
-| **Interface Selectors**      | Access port selectors and their IPG assignments  | Deploy · Rollback |
+| Workflow                     | What it manages                                   | Modes             |
+| ---------------------------- | ------------------------------------------------- | ----------------- |
+| **Bridge Domains → L2 Only** | Layer-2 bridge domains (BD + VRF)                 | Deploy · Rollback |
+| **Bridge Domains → L3**      | Layer-3 bridge domains (BD, VRF, subnet, L3Out)   | Deploy · Rollback |
+| **EPG**                      | End Point Groups and their contract associations  | Deploy · Rollback |
+| **ESG**                      | Endpoint Security Groups and their contracts      | Deploy · Rollback |
+| **ESG → Selectors**          | EPG and IP selectors that place endpoints in ESGs | Add · Rollback    |
+| **Static Ports**             | Static VLAN/port bindings on EPGs                 | Deploy · Rollback |
+| **Interface Selectors**      | Access port selectors and their IPG assignments   | Deploy · Rollback |
 
 Each workflow has a **Deploy** page (create/add objects) and a **Rollback** page (remove the same objects). They share an identical interface; only the direction of the change differs.
 
@@ -190,6 +192,48 @@ Optional: `bd_tenant`, `contract_tenant`, `phys_domain`, `cons_contract`, `prov_
 | `cons_contract` / `prov_contract` | Consumed / provided contracts — multiple may be comma-separated                                   |
 | `epg_desc`                        | Optional description                                                                              |
 
+### ESG
+
+Creates Endpoint Security Groups (APIC 5.0 or later) and, optionally, attaches contracts. Use **one row per ESG**; list multiple contracts comma-separated. Rollback uses the same file.
+
+Required columns:
+
+```
+tenant, anp, esg, vrf
+```
+
+Optional: `contract_tenant`, `cons_contract`, `prov_contract`, `esg_desc`.
+
+| Column                            | Notes                                                                      |
+| --------------------------------- | -------------------------------------------------------------------------- |
+| `tenant`                          | Tenant that owns the ESG                                                   |
+| `anp`                             | Application profile (the column may also be named `ap`)                    |
+| `esg`                             | ESG name                                                                   |
+| `vrf`                             | VRF the ESG is scoped to. It cannot change after the ESG is created        |
+| `contract_tenant`                 | Tenant the contracts live in — defaults to `tenant`; `common` is supported |
+| `cons_contract` / `prov_contract` | Consumed / provided contracts — multiple may be comma-separated            |
+| `esg_desc`                        | Optional description                                                       |
+
+### ESG Selectors
+
+Adds selectors to ESGs that already exist, or removes them. Use one row per selector. Rollback uses the same file.
+
+Required columns:
+
+```
+tenant, anp, esg, selector_type, selector_value
+```
+
+Optional: `epg_anp`, `selector_desc`.
+
+| Column                 | Notes                                                                                              |
+| ---------------------- | -------------------------------------------------------------------------------------------------- |
+| `tenant`, `anp`, `esg` | The ESG to change (`anp` may also be named `ap`)                                                   |
+| `selector_type`        | `epg` or `ip`                                                                                      |
+| `selector_value`       | For `epg`: an EPG name in the same tenant. For `ip`: an IPv4 address or CIDR such as `10.1.1.0/24` |
+| `epg_anp`              | Application profile of the selected EPG — defaults to `anp`. Only valid for `epg` selectors        |
+| `selector_desc`        | Optional description                                                                               |
+
 <Callout type="info">
   The exact required/optional columns are always shown on the upload card of each workflow, so you
   can confirm them without leaving the page.
@@ -291,6 +335,32 @@ The EPG workflow is the most involved because one row can touch a tenant, applic
 - If the row lists no contracts, the **entire EPG** is deleted (`fvAEPg` with `status: "deleted"`).
 
 Validation confirms the EPG (and, for contract rollbacks, the specific relations) actually exist before anything is removed.
+
+### ESG
+
+**Validation** (per row, in order):
+
+1. **Tenant**, **application profile**, and **VRF** (`ctx-<vrf>` in the tenant) exist.
+2. **Each contract** exists in its effective tenant, with the same `common` ambiguity guard as EPG.
+3. **ESG state** — absent → `deploy`. Present in a **different VRF** → `error`. Otherwise `exists` if the description and contracts already match, else `deploy`.
+4. Contracts attached on APIC but **not listed in the CSV are kept**, and review shows a _Warning_ listing them.
+
+**Push** — `POST` an `fvESg` with a child `fvRsScope` for the VRF, then an `fvRsCons` or `fvRsProv` for each contract. Per-contract errors are collected on the row.
+
+**Rollback** — validation requires the ESG to exist, match the VRF, and have every contract listed in the CSV. An ESG that **still has selectors** is an `error`; run **ESG → Selectors → Rollback** first. The push posts the `fvESg` with `status: "deleted"`, which also removes its contracts.
+
+### ESG Selectors
+
+**Validation** for adding (per row):
+
+1. The **ESG exists**. Its VRF is read from APIC.
+2. A selector already on the ESG → `exists`.
+3. **EPG selectors** — the EPG exists, and its VRF (EPG → bridge domain → VRF) matches the ESG's VRF. The EPG must not already be selected by a **different ESG**, because an EPG can belong to only one ESG.
+4. **IP selectors** — no **different ESG in the same VRF** may already select the same address.
+
+**Push** — `POST` an `fvEPgSelector` (`matchEpgDn`) or `fvEPSelector` (`matchExpression: ip=='<value>'`) under the ESG.
+
+**Rollback** — a selector not found on the ESG is _Not found_. The push posts the selector with `status: "deleted"`; the ESG itself is left in place.
 
 ## Tips
 
