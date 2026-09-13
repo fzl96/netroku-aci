@@ -17,6 +17,7 @@ import {
   IconHeartbeat,
   IconClockPlay,
   IconBoxSeam,
+  IconShieldLock,
 } from '@tabler/icons-react'
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
@@ -144,6 +145,23 @@ export const ACI_NAV: NavSection[] = [
         children: [
           { href: '/bridge-domains/epgs/deploy', label: 'Deploy' },
           { href: '/bridge-domains/epgs/rollback', label: 'Rollback' },
+        ],
+      },
+      {
+        href: '/esgs',
+        label: 'ESG',
+        icon: <IconShieldLock size={15} stroke={1.75} />,
+        children: [
+          { href: '/esgs/deploy', label: 'Deploy' },
+          { href: '/esgs/rollback', label: 'Rollback' },
+          {
+            href: '/esgs/selectors',
+            label: 'Selectors',
+            children: [
+              { href: '/esgs/selectors/deploy', label: 'Add' },
+              { href: '/esgs/selectors/rollback', label: 'Rollback' },
+            ],
+          },
         ],
       },
       {

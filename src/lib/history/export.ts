@@ -23,7 +23,7 @@ export type HistoryPayloadCsvExport = {
 export type HistoryPayloadSummary = {
   rowCount: number
   uniqueCount: number
-  objectLabel: 'EPG' | 'bridge domain' | 'interface selector'
+  objectLabel: 'EPG' | 'bridge domain' | 'interface selector' | 'ESG' | 'ESG selector'
 }
 
 const columns = (...headers: string[]): ExportColumn[] => headers.map((header) => ({ header }))
@@ -117,6 +117,31 @@ const WORKFLOWS: Record<string, WorkflowConfig> = {
       'contract_tenant',
       'contract',
       'epg_desc',
+    ),
+  },
+  esgs: {
+    filename: 'esg',
+    identity: identity('tenant', 'anp', 'esg'),
+    objectLabel: 'ESG',
+    columns: [
+      ...columns('tenant', 'anp', 'esg', 'vrf_tenant', 'vrf', 'contract_tenant'),
+      { header: 'cons_contract', value: (row) => joinList(row.consContracts) },
+      { header: 'prov_contract', value: (row) => joinList(row.provContracts) },
+      ...columns('esg_desc'),
+    ],
+  },
+  'esgs:selectors': {
+    filename: 'esg-selectors',
+    identity: identity('tenant', 'anp', 'esg', 'selector_type', 'selector_value', 'epg_anp'),
+    objectLabel: 'ESG selector',
+    columns: columns(
+      'tenant',
+      'anp',
+      'esg',
+      'selector_type',
+      'selector_value',
+      'epg_anp',
+      'selector_desc',
     ),
   },
 }
