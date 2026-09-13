@@ -26,6 +26,7 @@ import {
   esgVrf,
   extraContracts,
   formatContracts,
+  formatVrf,
   hasContract,
   hasSelector,
   parentEsgDn,
@@ -41,6 +42,7 @@ import {
 } from './state'
 import {
   effectiveContractTenant,
+  effectiveVrfTenant,
   type EsgDeployResult,
   type EsgRef,
   type EsgValidationResult,
@@ -155,11 +157,44 @@ async function validateContract(
     if (local.exists) {
       return errorResult(
         row.rowIndex,
-        `Contract ${contract} exists in both ${row.tenant} and common; remove contract_tenant or rename one contract to avoid ambiguous APIC binding`,
+        `Contract ${contract} exists in both ${row.tenant} and common; set contract_tenant to ${row.tenant} or rename one contract to avoid ambiguous APIC binding`,
       )
     }
   }
   return null
+}
+
+async function validateVrf(
+  reader: ApicReader,
+  row: ParsedEsgRow,
+): Promise<EsgValidationResult | null> {
+  const vrfTenant = effectiveVrfTenant(row)
+  const missing = await checkParent(
+    reader,
+    row,
+    buildVrfPath(vrfTenant, row.vrf),
+    'VRF',
+    `${vrfTenant}/${row.vrf}`,
+  )
+  if (missing) return missing
+
+  // APIC resolves the VRF name in the ESG's tenant before common, so a local VRF
+  // with the same name would silently win over the common one.
+  if (vrfTenant === 'common' && row.tenant !== 'common') {
+    const local = await moExists(reader, buildVrfPath(row.tenant, row.vrf))
+    if (local.error) return errorResult(row.rowIndex, `VRF ambiguity check failed: ${local.error}`)
+    if (local.exists) {
+      return errorResult(
+        row.rowIndex,
+        `VRF ${row.vrf} exists in both ${row.tenant} and common; set vrf_tenant to ${row.tenant} or rename one VRF to avoid ambiguous APIC binding`,
+      )
+    }
+  }
+  return null
+}
+
+function expectedVrf(row: ParsedEsgRow): VrfRef {
+  return { name: row.vrf, tenant: effectiveVrfTenant(row) }
 }
 
 // ─── ESG deploy ───────────────────────────────────────────────────────────────
@@ -181,13 +216,7 @@ export async function validateEsgDeployRows(
           'ANP',
           `${row.tenant}/${row.anp}`,
         )) ??
-        (await checkParent(
-          reader,
-          row,
-          buildVrfPath(row.tenant, row.vrf),
-          'VRF',
-          `${row.tenant}/${row.vrf}`,
-        ))
+        (await validateVrf(reader, row))
       if (parentError) return parentError
 
       const contracts = Array.from(new Set([...row.consContracts, ...row.provContracts]))
@@ -200,7 +229,7 @@ export async function validateEsgDeployRows(
       if ('error' in state) return errorResult(row.rowIndex, state.error)
       if (!state.exists) return { rowIndex: row.rowIndex, status: 'deploy' }
 
-      const vrfError = validateEsgVrf(esgLabel(row), row.vrf, state.children)
+      const vrfError = validateEsgVrf(esgLabel(row), expectedVrf(row), state.children)
       if (vrfError) return errorResult(row.rowIndex, vrfError)
 
       const contractTenant = effectiveContractTenant(row)
@@ -284,7 +313,7 @@ export async function validateEsgRollbackRows(
       if ('error' in state) return errorResult(row.rowIndex, state.error)
       if (!state.exists) return { rowIndex: row.rowIndex, status: 'missing' }
 
-      const vrfError = validateEsgVrf(esgLabel(row), row.vrf, state.children)
+      const vrfError = validateEsgVrf(esgLabel(row), expectedVrf(row), state.children)
       if (vrfError) return errorResult(row.rowIndex, vrfError)
 
       const contractTenant = effectiveContractTenant(row)
@@ -369,7 +398,7 @@ async function readEpgVrf(
   if ('error' in bdChildren) return bdChildren
   const vrf = vrfFromRelation(bdChildren.items.find((item) => item.fvRsCtx)?.fvRsCtx?.attributes)
   if (!vrf) return { error: `Bridge domain ${bdTenant}/${bdName} has no VRF` }
-  return { vrf: { name: vrf.name, tenant: vrf.tenant ?? bdTenant } }
+  return { vrf }
 }
 
 async function findOtherEsgSelectingEpg(
@@ -443,7 +472,7 @@ export async function validateEsgSelectorDeployRows(
 
       const scope = esgVrf(state.children)
       if (!scope) return errorResult(row.rowIndex, `ESG ${esgLabel(row)} has no VRF`)
-      const vrf: VrfRef = { name: scope.name, tenant: scope.tenant ?? row.tenant }
+      const vrf: VrfRef = scope
 
       if (hasSelector(state.children, row)) return { rowIndex: row.rowIndex, status: 'exists' }
 
@@ -453,7 +482,7 @@ export async function validateEsgSelectorDeployRows(
         if (!sameVrf(vrf, epgVrf.vrf)) {
           return errorResult(
             row.rowIndex,
-            `EPG ${row.selector_value} is in VRF ${epgVrf.vrf.tenant}/${epgVrf.vrf.name}, but ESG ${esgLabel(row)} is in VRF ${vrf.tenant}/${vrf.name}`,
+            `EPG ${row.selector_value} is in VRF ${formatVrf(epgVrf.vrf)}, but ESG ${esgLabel(row)} is in VRF ${formatVrf(vrf)}`,
           )
         }
         const other = await findOtherEsgSelectingEpg(reader, row)

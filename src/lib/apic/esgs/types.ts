@@ -12,6 +12,9 @@ export interface EsgRef {
 
 export interface EsgRow extends EsgRef {
   vrf: string
+  /** Tenant that owns the VRF. Empty means common. */
+  vrf_tenant?: string
+  /** Tenant that owns the contracts. Empty means common. */
   contract_tenant?: string
   consContracts: string[]
   provContracts: string[]
@@ -35,7 +38,11 @@ export interface ParsedEsgSelectorRow extends EsgSelectorRow {
 }
 
 export function effectiveContractTenant(row: Pick<EsgRow, 'tenant' | 'contract_tenant'>): string {
-  return row.contract_tenant?.trim() || row.tenant
+  return row.contract_tenant?.trim() || 'common'
+}
+
+export function effectiveVrfTenant(row: Pick<EsgRow, 'vrf_tenant'>): string {
+  return row.vrf_tenant?.trim() || 'common'
 }
 
 export function effectiveEpgAnp(row: Pick<EsgSelectorRow, 'anp' | 'epg_anp'>): string {

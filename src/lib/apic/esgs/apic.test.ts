@@ -32,6 +32,7 @@ const esgRow: ParsedEsgRow = {
   anp: 'APP',
   esg: 'ESG-WEB',
   vrf: 'VRF-PROD',
+  vrf_tenant: 'TenantA',
   contract_tenant: 'TenantA',
   consContracts: ['DNS'],
   provContracts: [],
@@ -91,7 +92,46 @@ describe('validateEsgDeployRows', () => {
       reader,
     )
     expect(result.status).toBe('error')
-    expect(result.message).toContain('exists with VRF VRF-PROD, not VRF-DEV')
+    expect(result.message).toContain('exists with VRF TenantA/VRF-PROD, not TenantA/VRF-DEV')
+  })
+
+  it('looks up the VRF in common when vrf_tenant is empty', async () => {
+    const row = { ...esgRow, vrf_tenant: undefined }
+    const reader = fakeReader({
+      '/api/node/mo/uni/tn-TenantA/ctx-VRF-PROD.json': 404,
+      [buildEsgPath(row)]: 404,
+    })
+    const [result] = await validateEsgDeployRows([row], 'apic.local', 'token', reader)
+    expect(result).toEqual({ rowIndex: 1, status: 'deploy' })
+
+    const missing = fakeReader({ '/api/node/mo/uni/tn-common/ctx-VRF-PROD.json': [] })
+    const [notFound] = await validateEsgDeployRows([row], 'apic.local', 'token', missing)
+    expect(notFound.message).toBe('VRF not found: common/VRF-PROD')
+  })
+
+  it('looks up contracts in common when contract_tenant is empty', async () => {
+    const row = { ...esgRow, contract_tenant: undefined }
+    const reader = fakeReader({
+      '/api/node/mo/uni/tn-TenantA/brc-DNS.json': [],
+      '/api/node/mo/uni/tn-common/brc-DNS.json': [{}],
+      [buildEsgPath(row)]: 404,
+    })
+    const [result] = await validateEsgDeployRows([row], 'apic.local', 'token', reader)
+    expect(result).toEqual({ rowIndex: 1, status: 'deploy' })
+
+    const shadowed = fakeReader({ [buildEsgPath(row)]: 404 })
+    const [ambiguous] = await validateEsgDeployRows([row], 'apic.local', 'token', shadowed)
+    expect(ambiguous.message).toBe(
+      'Contract DNS exists in both TenantA and common; set contract_tenant to TenantA or rename one contract to avoid ambiguous APIC binding',
+    )
+  })
+
+  it('rejects a common VRF that is shadowed by a tenant VRF of the same name', async () => {
+    const row = { ...esgRow, vrf_tenant: 'common' }
+    const reader = fakeReader({ [buildEsgPath(row)]: 404 })
+    const [result] = await validateEsgDeployRows([row], 'apic.local', 'token', reader)
+    expect(result.status).toBe('error')
+    expect(result.message).toContain('VRF VRF-PROD exists in both TenantA and common')
   })
 
   it('reports a missing contract', async () => {
@@ -226,7 +266,7 @@ describe('validateEsgSelectorDeployRows', () => {
     )
     const [result] = await validateEsgSelectorDeployRows([epgRow], 'apic.local', 'token', reader)
     expect(result.message).toBe(
-      'EPG WEB is in VRF TenantA/VRF-DEV, but ESG TenantA/APP/ESG-WEB is in VRF TenantA/VRF-PROD',
+      'EPG WEB is in VRF VRF-DEV, but ESG TenantA/APP/ESG-WEB is in VRF TenantA/VRF-PROD',
     )
   })
 

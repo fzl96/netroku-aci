@@ -124,7 +124,7 @@ const WORKFLOWS: Record<string, WorkflowConfig> = {
     identity: identity('tenant', 'anp', 'esg'),
     objectLabel: 'ESG',
     columns: [
-      ...columns('tenant', 'anp', 'esg', 'vrf', 'contract_tenant'),
+      ...columns('tenant', 'anp', 'esg', 'vrf_tenant', 'vrf', 'contract_tenant'),
       { header: 'cons_contract', value: (row) => joinList(row.consContracts) },
       { header: 'prov_contract', value: (row) => joinList(row.provContracts) },
       ...columns('esg_desc'),

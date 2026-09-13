@@ -34,9 +34,13 @@ const row: ParsedEsgSelectorRow = {
 describe('ESG state helpers', () => {
   it('reads the VRF from the scope relation', () => {
     expect(esgVrf(children)).toEqual({ name: 'VRF-PROD', tenant: 'TenantA' })
-    expect(validateEsgVrf('TenantA/APP/ESG-WEB', 'VRF-PROD', children)).toBeNull()
-    expect(validateEsgVrf('TenantA/APP/ESG-WEB', 'VRF-DEV', children)).toBe(
-      'ESG TenantA/APP/ESG-WEB exists with VRF VRF-PROD, not VRF-DEV',
+    const label = 'TenantA/APP/ESG-WEB'
+    expect(validateEsgVrf(label, { name: 'VRF-PROD', tenant: 'TenantA' }, children)).toBeNull()
+    expect(validateEsgVrf(label, { name: 'VRF-DEV', tenant: 'TenantA' }, children)).toBe(
+      'ESG TenantA/APP/ESG-WEB exists with VRF TenantA/VRF-PROD, not TenantA/VRF-DEV',
+    )
+    expect(validateEsgVrf(label, { name: 'VRF-PROD', tenant: 'common' }, children)).toBe(
+      'ESG TenantA/APP/ESG-WEB exists with VRF TenantA/VRF-PROD, not common/VRF-PROD',
     )
   })
 

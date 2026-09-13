@@ -29,7 +29,8 @@ describe('validateEsgCsv', () => {
         anp: 'APP',
         esg: 'ESG-WEB',
         vrf: 'VRF-PROD',
-        contract_tenant: 'TenantA',
+        vrf_tenant: 'common',
+        contract_tenant: 'common',
         consContracts: ['DNS', 'NTP'],
         provContracts: ['WEB'],
         esg_desc: 'Web tier',
@@ -54,21 +55,44 @@ describe('validateEsgCsv', () => {
     expect(errors[0].message).toBe('Missing required columns: vrf, anp (or ap)')
   })
 
-  it('normalizes common contract tenant and rejects other tenants', () => {
+  it('defaults contract_tenant to common and accepts the row tenant', () => {
     const { rows, errors } = validateEsgCsv(
       [
-        { tenant: 'TenantA', anp: 'APP', esg: 'E1', vrf: 'V', contract_tenant: 'COMMON' },
-        { tenant: 'TenantA', anp: 'APP', esg: 'E2', vrf: 'V', contract_tenant: 'TenantB' },
+        { tenant: 'TenantA', anp: 'APP', esg: 'E1', vrf: 'V' },
+        { tenant: 'TenantA', anp: 'APP', esg: 'E2', vrf: 'V', contract_tenant: 'COMMON' },
+        { tenant: 'TenantA', anp: 'APP', esg: 'E3', vrf: 'V', contract_tenant: 'TenantA' },
+        { tenant: 'TenantA', anp: 'APP', esg: 'E4', vrf: 'V', contract_tenant: 'TenantB' },
       ],
       [...esgHeaders, 'contract_tenant'],
     )
 
-    expect(rows.map((r) => r.contract_tenant)).toEqual(['common'])
+    expect(rows.map((r) => r.contract_tenant)).toEqual(['common', 'common', 'TenantA'])
     expect(errors).toEqual([
       {
-        rowIndex: 2,
+        rowIndex: 4,
         field: 'contract_tenant',
-        message: 'contract_tenant must be empty, match tenant, or be common',
+        message: 'contract_tenant must be empty, common, or match tenant',
+      },
+    ])
+  })
+
+  it('defaults vrf_tenant to common and accepts the row tenant', () => {
+    const { rows, errors } = validateEsgCsv(
+      [
+        { tenant: 'TenantA', anp: 'APP', esg: 'E1', vrf: 'V' },
+        { tenant: 'TenantA', anp: 'APP', esg: 'E2', vrf: 'V', vrf_tenant: 'Common' },
+        { tenant: 'TenantA', anp: 'APP', esg: 'E3', vrf: 'V', vrf_tenant: 'TenantA' },
+        { tenant: 'TenantA', anp: 'APP', esg: 'E4', vrf: 'V', vrf_tenant: 'TenantB' },
+      ],
+      [...esgHeaders, 'vrf_tenant'],
+    )
+
+    expect(rows.map((r) => r.vrf_tenant)).toEqual(['common', 'common', 'TenantA'])
+    expect(errors).toEqual([
+      {
+        rowIndex: 4,
+        field: 'vrf_tenant',
+        message: 'vrf_tenant must be empty, common, or match tenant',
       },
     ])
   })

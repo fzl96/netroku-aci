@@ -202,17 +202,18 @@ Required columns:
 tenant, anp, esg, vrf
 ```
 
-Optional: `contract_tenant`, `cons_contract`, `prov_contract`, `esg_desc`.
+Optional: `vrf_tenant`, `contract_tenant`, `cons_contract`, `prov_contract`, `esg_desc`.
 
-| Column                            | Notes                                                                      |
-| --------------------------------- | -------------------------------------------------------------------------- |
-| `tenant`                          | Tenant that owns the ESG                                                   |
-| `anp`                             | Application profile (the column may also be named `ap`)                    |
-| `esg`                             | ESG name                                                                   |
-| `vrf`                             | VRF the ESG is scoped to. It cannot change after the ESG is created        |
-| `contract_tenant`                 | Tenant the contracts live in — defaults to `tenant`; `common` is supported |
-| `cons_contract` / `prov_contract` | Consumed / provided contracts — multiple may be comma-separated            |
-| `esg_desc`                        | Optional description                                                       |
+| Column                            | Notes                                                                                   |
+| --------------------------------- | --------------------------------------------------------------------------------------- |
+| `tenant`                          | Tenant that owns the ESG                                                                |
+| `anp`                             | Application profile (the column may also be named `ap`)                                 |
+| `esg`                             | ESG name                                                                                |
+| `vrf`                             | VRF the ESG is scoped to. It cannot change after the ESG is created                     |
+| `vrf_tenant`                      | Tenant the VRF lives in — defaults to `common` when blank; may also match `tenant`      |
+| `contract_tenant`                 | Tenant the contracts live in — defaults to `common` when blank; may also match `tenant` |
+| `cons_contract` / `prov_contract` | Consumed / provided contracts — multiple may be comma-separated                         |
+| `esg_desc`                        | Optional description                                                                    |
 
 ### ESG Selectors
 
@@ -340,8 +341,8 @@ Validation confirms the EPG (and, for contract rollbacks, the specific relations
 
 **Validation** (per row, in order):
 
-1. **Tenant**, **application profile**, and **VRF** (`ctx-<vrf>` in the tenant) exist.
-2. **Each contract** exists in its effective tenant, with the same `common` ambiguity guard as EPG.
+1. **Tenant** and **application profile** exist, and the **VRF** exists in its effective tenant (`vrf_tenant`, defaulting to `common`). If the VRF is looked up in `common` but a VRF of the same name also exists in the row's tenant, Netroku returns `error`, because APIC would bind the local one.
+2. **Each contract** exists in its effective tenant (`contract_tenant`, defaulting to `common`), with the same ambiguity guard as the VRF.
 3. **ESG state** — absent → `deploy`. Present in a **different VRF** → `error`. Otherwise `exists` if the description and contracts already match, else `deploy`.
 4. Contracts attached on APIC but **not listed in the CSV are kept**, and review shows a _Warning_ listing them.
 

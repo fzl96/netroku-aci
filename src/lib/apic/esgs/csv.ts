@@ -14,7 +14,7 @@ const SAFE_DN_SEGMENT_RE = /^[^\s/[\]](?:[^/[\]]*[^\s/[\]])?$/
 const SELECTOR_TYPES: readonly EsgSelectorType[] = ['epg', 'ip']
 
 export const ESG_REQUIRED_COLUMNS_HELP =
-  'Required columns: tenant, anp, esg, vrf. Optional: esg_desc, contract_tenant, cons_contract, prov_contract. The anp column may also be named ap. Empty contract_tenant uses tenant; common supports shared lookup. Multiple contracts may be comma-separated. Use one row per ESG.'
+  'Required columns: tenant, anp, esg, vrf. Optional: vrf_tenant, esg_desc, contract_tenant, cons_contract, prov_contract. The anp column may also be named ap. Empty vrf_tenant and contract_tenant use common; either may also match tenant. Multiple contracts may be comma-separated. Use one row per ESG.'
 
 export const ESG_SELECTOR_REQUIRED_COLUMNS_HELP =
   'Required columns: tenant, anp, esg, selector_type, selector_value. Optional: epg_anp, selector_desc. The anp column may also be named ap. selector_type is epg or ip. For epg, selector_value is an EPG name in the same tenant, and epg_anp defaults to anp. For ip, selector_value is an IPv4 address or CIDR.'
@@ -87,26 +87,29 @@ function parseContractList(
   return contracts
 }
 
-function parseContractTenant(
+/**
+ * Tenant for a shared object (VRF or contracts). Empty means common. The only other
+ * accepted value is the row's own tenant.
+ */
+function parseSharedTenant(
+  field: 'vrf_tenant' | 'contract_tenant',
   raw: string | undefined,
   tenant: string,
   rowIndex: number,
   errors: CsvValidationError[],
 ): string {
-  const contractTenant = raw?.trim() ?? ''
-  if (!contractTenant) return tenant
+  const value = raw?.trim() ?? ''
+  if (!value || value.toLowerCase() === 'common') return 'common'
 
-  validateSegment(errors, rowIndex, 'contract_tenant', contractTenant)
-
-  if (contractTenant === tenant) return tenant
-  if (contractTenant.toLowerCase() === 'common') return 'common'
+  validateSegment(errors, rowIndex, field, value)
+  if (value === tenant) return tenant
 
   errors.push({
     rowIndex,
-    field: 'contract_tenant',
-    message: 'contract_tenant must be empty, match tenant, or be common',
+    field,
+    message: `${field} must be empty, common, or match tenant`,
   })
-  return contractTenant
+  return value
 }
 
 export function validateEsgCsv(
@@ -133,7 +136,14 @@ export function validateEsgCsv(
     validateSegment(rowErrors, rowIndex, 'anp', anp)
     validateSegment(rowErrors, rowIndex, 'esg', esg)
     validateSegment(rowErrors, rowIndex, 'vrf', vrf)
-    const contract_tenant = parseContractTenant(raw.contract_tenant, tenant, rowIndex, rowErrors)
+    const vrf_tenant = parseSharedTenant('vrf_tenant', raw.vrf_tenant, tenant, rowIndex, rowErrors)
+    const contract_tenant = parseSharedTenant(
+      'contract_tenant',
+      raw.contract_tenant,
+      tenant,
+      rowIndex,
+      rowErrors,
+    )
     const consContracts = parseContractList(raw.cons_contract, 'cons_contract', rowIndex, rowErrors)
     const provContracts = parseContractList(raw.prov_contract, 'prov_contract', rowIndex, rowErrors)
 
@@ -148,6 +158,7 @@ export function validateEsgCsv(
       anp,
       esg,
       vrf,
+      vrf_tenant,
       contract_tenant,
       consContracts,
       provContracts,

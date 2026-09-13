@@ -203,6 +203,7 @@ describe('buildHistoryPayloadCsvExport', () => {
           anp: 'APP',
           esg: 'ESG-WEB',
           vrf: 'VRF-PROD',
+          vrf_tenant: 'common',
           contract_tenant: 'TenantA',
           consContracts: ['DNS', 'NTP'],
           provContracts: ['WEB'],
@@ -213,8 +214,8 @@ describe('buildHistoryPayloadCsvExport', () => {
     expect(esg).toEqual({
       filename: 'esg-deploy-2026-07-15.csv',
       csv:
-        'tenant,anp,esg,vrf,contract_tenant,cons_contract,prov_contract,esg_desc\r\n' +
-        'TenantA,APP,ESG-WEB,VRF-PROD,TenantA,"DNS,NTP",WEB,Web tier',
+        'tenant,anp,esg,vrf_tenant,vrf,contract_tenant,cons_contract,prov_contract,esg_desc\r\n' +
+        'TenantA,APP,ESG-WEB,common,VRF-PROD,TenantA,"DNS,NTP",WEB,Web tier',
     })
 
     const selectors = buildHistoryPayloadCsvExport({

@@ -5,7 +5,11 @@ import { DeploySection } from '@/components/DeploySection'
 import { PreviewSection, type PreviewColumn } from '@/components/PreviewSection'
 import { UploadSection } from '@/components/UploadSection'
 import { ESG_REQUIRED_COLUMNS_HELP, validateEsgCsv } from '@/lib/apic/esgs/csv'
-import { effectiveContractTenant, type ParsedEsgRow } from '@/lib/apic/esgs/types'
+import {
+  effectiveContractTenant,
+  effectiveVrfTenant,
+  type ParsedEsgRow,
+} from '@/lib/apic/esgs/types'
 
 type Mode = 'deploy' | 'rollback'
 
@@ -18,6 +22,11 @@ const ESG_COLUMNS: PreviewColumn<ParsedEsgRow>[] = [
   { header: 'Tenant', cell: (r) => r.tenant, className: 'text-foreground' },
   { header: 'ANP', cell: (r) => r.anp, className: 'font-mono text-foreground' },
   { header: 'ESG', cell: (r) => r.esg, className: 'font-mono text-foreground' },
+  {
+    header: 'VRF Tenant',
+    cell: (r) => effectiveVrfTenant(r),
+    className: 'font-mono text-foreground',
+  },
   { header: 'VRF', cell: (r) => r.vrf, className: 'font-mono text-foreground' },
   {
     header: 'Contract Tenant',

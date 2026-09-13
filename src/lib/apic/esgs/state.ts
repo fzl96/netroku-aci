@@ -148,14 +148,18 @@ export function parentEsgDn(selectorDn: string | undefined): string | undefined 
   return selectorDn?.match(/^(uni\/tn-[^/]+\/ap-[^/]+\/esg-[^/]+)\//)?.[1]
 }
 
+export function formatVrf(vrf: VrfRef): string {
+  return vrf.tenant ? `${vrf.tenant}/${vrf.name}` : vrf.name
+}
+
 export function validateEsgVrf(
   label: string,
-  expectedVrf: string,
+  expected: VrfRef,
   children: EsgChild[],
 ): string | null {
   const existing = esgVrf(children)
-  if (existing && existing.name !== expectedVrf) {
-    return `ESG ${label} exists with VRF ${existing.name}, not ${expectedVrf}`
+  if (existing && !sameVrf(existing, expected)) {
+    return `ESG ${label} exists with VRF ${formatVrf(existing)}, not ${formatVrf(expected)}`
   }
   return null
 }
