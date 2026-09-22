@@ -4,14 +4,15 @@ services:
       context: .
       target: migration
     restart: 'no'
-    env_file:
-      - .env
+
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://netroku:netroku@db:5432/netroku?schema=public
+      DATABASE_URL: ${DATABASE_URL}
+
     depends_on:
       db:
         condition: service_healthy
+
     command: bunx prisma@6 migrate deploy
 
   app:
@@ -19,17 +20,19 @@ services:
     build:
       context: .
       target: runner
+
     ports:
       - '3000:3000'
-    env_file:
-      - .env
+
     environment:
       NODE_ENV: production
       HOSTNAME: 0.0.0.0
-      DATABASE_URL: postgresql://netroku:netroku@db:5432/netroku?schema=public
+      DATABASE_URL: ${DATABASE_URL}
+
     depends_on:
       migrate:
         condition: service_completed_successfully
+
     healthcheck:
       test:
         [
@@ -47,14 +50,12 @@ services:
     build:
       context: .
       dockerfile: scheduler.Dockerfile
+
     restart: unless-stopped
 
     depends_on:
       app:
         condition: service_healthy
-
-    env_file:
-      - .env
 
     environment:
       TICK_URL: http://app:3000/api/cron/tick
@@ -62,16 +63,18 @@ services:
 
   db:
     image: postgres:17
-    container_name: netroku-postgres
     restart: unless-stopped
+
     environment:
-      POSTGRES_USER: netroku
-      POSTGRES_PASSWORD: netroku
-      POSTGRES_DB: netroku
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
     volumes:
       - netroku-pgdata:/var/lib/postgresql/data
+
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U netroku -d netroku']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
       interval: 5s
       timeout: 5s
       retries: 10
