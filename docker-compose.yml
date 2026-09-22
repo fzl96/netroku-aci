@@ -44,24 +44,24 @@ services:
       start_period: 15s
 
   scheduler:
-    image: curlimages/curl:8.11.0
+    build:
+      context: .
+      dockerfile: scheduler.Dockerfile
     restart: unless-stopped
+
     depends_on:
       app:
         condition: service_healthy
+
     env_file:
       - .env
+
     environment:
       TICK_URL: http://app:3000/api/cron/tick
       TICK_INTERVAL_SECONDS: 60
-    volumes:
-      - ./scheduler/tick.sh:/tick.sh:ro
-    entrypoint: ['/bin/sh', '/tick.sh']
 
   db:
     image: postgres:17
-    ports:
-      - '5432:5432'
     container_name: netroku-postgres
     restart: unless-stopped
     environment:
