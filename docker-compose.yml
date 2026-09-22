@@ -22,7 +22,7 @@ services:
       target: runner
 
     ports:
-      - '3000:3000'
+      - '3001:3000'
 
     environment:
       NODE_ENV: production
