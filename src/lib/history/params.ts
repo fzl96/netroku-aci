@@ -18,6 +18,7 @@ export const HISTORY_ACTION_LABELS: Record<AuditAction, string> = {
   'ingest.legacy.health': 'Ingest legacy health',
   'ingest.legacy.interfaces': 'Ingest legacy interfaces',
   'ingest.legacy.endpoints': 'Ingest legacy endpoints',
+  'ingest.legacy.config': 'Ingest legacy configuration',
   'user.create': 'User created',
   'user.delete': 'User deleted',
   'resync.schedule.run': 'Ran scheduled resync',

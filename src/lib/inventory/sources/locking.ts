@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client'
 
-/** All inventory asset/source writers share this transaction lock. Ingestion never takes it.
+/** All inventory asset/source writers share this transaction lock. Telemetry ingestion
+ * does not take it; config ingestion does because it writes an inventory-owned snapshot.
  * A single lock also orders multi-device CSV/stack edits without lock inversions.
  * Take source row locks before this lock when adopting; workers do not lock sources.
  */

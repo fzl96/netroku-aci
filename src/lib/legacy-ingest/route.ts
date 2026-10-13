@@ -3,7 +3,11 @@ import type { AuditAction } from '@/lib/audit'
 import { recordLegacyRunAudit } from './run-audit'
 import { invalidateLegacyDeviceReads } from '@/lib/legacy/devices/mutation'
 import { isLegacyIngestAuthorized } from './auth'
-import { IdempotencyConflictError, type LegacyIngestResult } from './common'
+import {
+  ConfigIngestConflictError,
+  IdempotencyConflictError,
+  type LegacyIngestResult,
+} from './common'
 
 interface RoutePayload {
   run_id: string
@@ -22,7 +26,7 @@ function collectionTooLarge(error: z.ZodError): boolean {
   return error.issues.some(
     (issue) =>
       issue.code === 'too_big' &&
-      ['logs', 'interfaces', 'endpoints'].includes(String(issue.path[0])),
+      ['logs', 'interfaces', 'endpoints', 'configuration'].includes(String(issue.path[0])),
   )
 }
 
@@ -77,9 +81,12 @@ export async function handleLegacyIngestRequest<T extends RoutePayload>(
       runId: parsed.data.run_id,
       device: parsed.data.device,
       action,
-      error: error instanceof IdempotencyConflictError ? error.message : 'Legacy ingestion failed',
+      error:
+        error instanceof IdempotencyConflictError || error instanceof ConfigIngestConflictError
+          ? error.message
+          : 'Legacy ingestion failed',
     })
-    if (error instanceof IdempotencyConflictError) {
+    if (error instanceof IdempotencyConflictError || error instanceof ConfigIngestConflictError) {
       return Response.json({ error: error.message }, { status: 409 })
     }
     return Response.json({ error: 'Legacy ingestion failed' }, { status: 500 })

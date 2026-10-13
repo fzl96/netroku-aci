@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { parseRunningConfig } from '@/lib/inventory/compliance/parser'
 
 const nonEmpty = z.string().trim().min(1)
 const optionalMetadata = z.string().trim().min(1).optional()
@@ -84,5 +85,25 @@ export const legacyEndpointPayloadSchema = z.strictObject({
 export type LegacyHealthPayload = z.infer<typeof legacyHealthPayloadSchema>
 export type LegacyInterfacePayload = z.infer<typeof legacyInterfacePayloadSchema>
 export type LegacyEndpointPayload = z.infer<typeof legacyEndpointPayloadSchema>
+export const legacyConfigPayloadSchema = z.strictObject({
+  ...envelopeShape,
+  configuration: z
+    .strictObject({
+      platform: z.enum(['iosxe', 'nxos']),
+      raw_config: z.string().min(1).max(2_000_000),
+    })
+    .superRefine((config, context) => {
+      const parsed = parseRunningConfig(config.raw_config, config.platform)
+      // Service-specific unsupported addresses can be saved and shown as Unknown.
+      // Failed/empty/paginated captures must not replace a previously good snapshot.
+      if (parsed.ntp.reason && parsed.ntp.reason === parsed.tacacs.reason) {
+        context.addIssue({
+          code: 'custom',
+          message: 'A complete running configuration is required',
+        })
+      }
+    }),
+})
+export type LegacyConfigPayload = z.infer<typeof legacyConfigPayloadSchema>
 export type LegacyIngestPayload =
-  LegacyHealthPayload | LegacyInterfacePayload | LegacyEndpointPayload
+  LegacyHealthPayload | LegacyInterfacePayload | LegacyEndpointPayload | LegacyConfigPayload

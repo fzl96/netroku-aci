@@ -60,6 +60,9 @@ export class IdempotencyConflictError extends Error {
   }
 }
 
+/** Safe, actionable rejection messages for configuration ownership/snapshot conflicts. */
+export class ConfigIngestConflictError extends Error {}
+
 export function normalizeLegacyKey(value: string): string {
   return value.normalize('NFC').trim().toLocaleLowerCase('en-US')
 }

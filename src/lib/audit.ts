@@ -20,6 +20,7 @@ export type AuditAction =
   | 'ingest.legacy.health'
   | 'ingest.legacy.interfaces'
   | 'ingest.legacy.endpoints'
+  | 'ingest.legacy.config'
   | 'user.create'
   | 'user.delete'
   | 'resync.schedule.run'

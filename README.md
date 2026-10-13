@@ -132,7 +132,7 @@ The app never bundles APIC credentials. After signing in:
 
 ## Legacy Device Ingestion
 
-Legacy IOS/NX-OS data is collected outside the Next.js application by the standalone `legacy_sync.py` file in the companion `netroku-cli` checkout. The web application never stores device credentials and never opens SSH sessions to network devices.
+Legacy IOS/NX-OS data is collected outside the Next.js application by the standalone `legacy_sync.py` file in the companion `netroku-cli` checkout. The web application does not store the collector's SSH login credentials or open SSH sessions to network devices. Saved raw running configurations can contain device-defined credentials and keys; those remain on the backend.
 
 ### Server configuration
 
@@ -159,9 +159,12 @@ The version-1 machine endpoints are:
 POST /api/ingest/legacy/health
 POST /api/ingest/legacy/interfaces
 POST /api/ingest/legacy/endpoints
+POST /api/ingest/legacy/config
 ```
 
 Every request represents one complete feature snapshot for one device and must send `Authorization: Bearer <LEGACY_INGEST_TOKEN>`. Requests are idempotent by run ID, device, and feature. Incomplete collections are not submitted and therefore cannot clear stored state.
+
+`monitor` and `all` also collect and push raw running configs automatically. Config payloads contain `configuration: { platform: "iosxe" | "nxos", raw_config: "..." }` plus the same envelope/device identity, with a maximum raw length of 2,000,000 characters. Link the legacy discovery to its inventory device or whole stack through **Inventory → Discovered devices** before pushing configs. The API returns 409 for missing/conflicting links or conflicting same-time snapshots. Older snapshots are acknowledged without replacing the latest config. See [Inventory configuration compliance](docs/inventory-compliance.md).
 
 ### Collector configuration
 
@@ -515,8 +518,9 @@ Tests cover path construction, CSV validation, and the parallel runner.
 
 Inventory → Devices → **Check compliance status** opens a report of NTP and
 TACACS compliance, with one row per standalone device or stack. Admins define
-global IPv4 lists through **Edit parameters**. Configuration collection will be
-connected later; enabled checks show Unknown until a saved config exists.
+global IPv4 lists through **Edit parameters**. The companion `legacy_sync.py`
+pushes configs during `monitor` and `all` runs for linked inventory devices/stacks;
+enabled checks show Unknown until a saved config exists.
 See [Inventory configuration compliance](docs/inventory-compliance.md) for the
 migration, database contract, supported syntax, and status rules.
 
