@@ -299,40 +299,47 @@ function DevicesResultsContent({
               />
             </FilterMenu>
           </section>
-          {isAdmin && (
-            <div className="flex flex-wrap items-center gap-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" asChild className="gap-1.5 text-xs">
-                    <Link href="/inventory/discovered">
-                      <IconDeviceDesktopSearch className="h-3.5 w-3.5" />
-                      Import discovered
-                    </Link>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  Add devices discovered by ACI or Legacy, or link them to existing inventory. Your
-                  asset tags and rack details are preserved.
-                </TooltipContent>
-              </Tooltip>
-              <Button variant="outline" size="sm" asChild className="gap-1.5 text-xs">
-                <Link href="/inventory/devices/import">
-                  <IconFileSpreadsheet className="h-3.5 w-3.5" />
-                  Import CSV
-                </Link>
-              </Button>
-              <button
-                onClick={() => {
-                  createForm.reset(emptyDefaults)
-                  setCreateOpen(true)
-                }}
-                className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-              >
-                <IconPlus size={11} stroke={1.75} />
-                Add Device
-              </button>
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/inventory/compliance" prefetch={false}>
+                Check compliance status
+              </Link>
+            </Button>
+            {isAdmin && (
+              <div className="flex flex-wrap items-center gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="sm" asChild className="gap-1.5 text-xs">
+                      <Link href="/inventory/discovered">
+                        <IconDeviceDesktopSearch className="h-3.5 w-3.5" />
+                        Import discovered
+                      </Link>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Add devices discovered by ACI or Legacy, or link them to existing inventory.
+                    Your asset tags and rack details are preserved.
+                  </TooltipContent>
+                </Tooltip>
+                <Button variant="outline" size="sm" asChild className="gap-1.5 text-xs">
+                  <Link href="/inventory/devices/import">
+                    <IconFileSpreadsheet className="h-3.5 w-3.5" />
+                    Import CSV
+                  </Link>
+                </Button>
+                <button
+                  onClick={() => {
+                    createForm.reset(emptyDefaults)
+                    setCreateOpen(true)
+                  }}
+                  className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+                >
+                  <IconPlus size={11} stroke={1.75} />
+                  Add Device
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">

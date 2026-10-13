@@ -42,6 +42,7 @@ export type AuditAction =
   | 'inventory.unlink'
   | 'inventory.relink'
   | 'inventory.reconcile'
+  | 'compliance.policy.update'
 
 export type AuditStatus = 'success' | 'partial' | 'failure'
 

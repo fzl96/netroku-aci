@@ -139,6 +139,7 @@ model Rack {
 }
 
 model DeviceStack {
+  config               InventoryConfig?
   observedHostname     String?
   observedVersion      String?
   observedManagementIp String?
@@ -151,6 +152,7 @@ model DeviceStack {
 }
 
 model Device {
+  config       InventoryConfig?
   version      String?
   source       InventorySource?
   id           String           @id @default(cuid())
@@ -181,6 +183,41 @@ model Device {
 
   @@index([managementIp])
   @@map("device")
+}
+
+enum InventoryConfigPlatform {
+  iosxe
+  nxos
+}
+
+enum ComplianceService {
+  ntp
+  tacacs
+}
+
+// Exactly one inventory owner is enforced by the migration's CHECK constraint.
+// This is the latest collection, not configuration history or discovery metadata.
+model InventoryConfig {
+  id            String                  @id @default(cuid())
+  deviceId      String?                 @unique
+  device        Device?                 @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  deviceStackId String?                 @unique
+  deviceStack   DeviceStack?            @relation(fields: [deviceStackId], references: [id], onDelete: Cascade)
+  rawConfig     String
+  platform      InventoryConfigPlatform
+  collectedAt   DateTime
+  updatedAt     DateTime                @updatedAt
+
+  @@map("inventory_config")
+}
+
+model CompliancePolicy {
+  service     ComplianceService @id
+  enabled     Boolean           @default(false)
+  expectedIps String[]          @default([])
+  updatedAt   DateTime          @updatedAt
+
+  @@map("compliance_policy")
 }
 
 model ApicHost {

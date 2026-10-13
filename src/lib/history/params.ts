@@ -40,6 +40,7 @@ export const HISTORY_ACTION_LABELS: Record<AuditAction, string> = {
   'inventory.unlink': 'Inventory source unlinked',
   'inventory.relink': 'Inventory source relinked',
   'inventory.reconcile': 'Inventory discovery applied',
+  'compliance.policy.update': 'Compliance parameters updated',
 }
 
 export const HISTORY_ACTIONS = Object.keys(HISTORY_ACTION_LABELS) as AuditAction[]

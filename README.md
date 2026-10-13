@@ -511,6 +511,15 @@ Tests cover path construction, CSV validation, and the parallel runner.
 
 ## CI
 
+### Inventory configuration compliance
+
+Inventory → Devices → **Check compliance status** opens a report of NTP and
+TACACS compliance, with one row per standalone device or stack. Admins define
+global IPv4 lists through **Edit parameters**. Configuration collection will be
+connected later; enabled checks show Unknown until a saved config exists.
+See [Inventory configuration compliance](docs/inventory-compliance.md) for the
+migration, database contract, supported syntax, and status rules.
+
 ### Inventory discovery integration
 
 Inventory → **Discovered devices** supports individual and bulk adoption, linking
