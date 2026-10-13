@@ -49,9 +49,6 @@ class EpgSyncFailure extends Error {
     super('EPG sync failed')
   }
 }
-function message(error: unknown): string {
-  return error instanceof Error ? error.message : 'Failed to resync EPGs'
-}
 
 export function createEpgMutation(dependencies: EpgMutationDependencies) {
   function invalidateEpgReads(hostId: string) {
@@ -77,27 +74,18 @@ export function createEpgMutation(dependencies: EpgMutationDependencies) {
         password: input.password,
       })
     } catch (error) {
-      if (actor.kind === 'scheduler') {
-        await audit({
-          userId: null,
-          userName: 'scheduler',
-          action: 'resync.epgs',
-          target,
-          status: 'failure',
-          detail: message(error),
-        })
-        throw error
-      }
+      if (actor.kind === 'scheduler') throw error
       throw new EpgSyncFailure(error)
     }
-    await audit({
-      userId: actor.kind === 'user' ? actor.id : null,
-      userName: actor.kind === 'user' ? actor.userName : 'scheduler',
-      action: 'resync.epgs',
-      target,
-      ...(actor.kind === 'scheduler' ? { status: 'success' as const } : {}),
-      detail: `synced ${result.syncedEpgs} EPGs (${result.syncedBindings} bindings)`,
-    })
+    if (actor.kind === 'user') {
+      await audit({
+        userId: actor.id,
+        userName: actor.userName,
+        action: 'resync.epgs',
+        target,
+        detail: `synced ${result.syncedEpgs} EPGs (${result.syncedBindings} bindings)`,
+      })
+    }
     invalidateEpgReads(input.apicHostId)
     return result
   }

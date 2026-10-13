@@ -33,9 +33,8 @@ function errorMessage(err: unknown, fallback: string): string {
 }
 
 /**
- * Resync all four datasets for a single host. Each purpose module owns its own
- * `scheduler` audit entry and cache invalidation, so this runner only sequences
- * them and collects per-dataset outcomes.
+ * Resync all four datasets for a single host. Each purpose module owns cache invalidation.
+ * This runner collects per-dataset outcomes; cron routes record one site audit.
  * Never throws: every dataset failure is captured in the returned HostResult.
  */
 export async function resyncHost(

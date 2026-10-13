@@ -2,6 +2,7 @@ import { describe, expect, it, mock } from 'bun:test'
 import { z } from 'zod'
 import { legacyInterfacePayloadSchema } from '@/lib/schemas/legacy-ingest'
 import { IdempotencyConflictError, type LegacyIngestResult } from './common'
+import type { LegacyRunAuditInput } from './run-audit'
 
 // `./route` reaches @/lib/audit, which is server-only, and its default cache
 // invalidation calls revalidateTag outside any request scope. Mock both here
@@ -64,6 +65,68 @@ const deps = {
 }
 
 describe('handleLegacyIngestRequest', () => {
+  it('passes run identity, device, feature, and receipt counts to the grouped audit', async () => {
+    const audits: LegacyRunAuditInput[] = []
+    const audit = async (input: LegacyRunAuditInput) => {
+      audits.push(input)
+    }
+    await handleLegacyIngestRequest(
+      request(valid),
+      schema,
+      async () => created,
+      'ingest.legacy.health',
+      { ...deps, audit },
+    )
+    await handleLegacyIngestRequest(
+      request(valid),
+      schema,
+      async () => ({ ...created, duplicate: true }),
+      'ingest.legacy.health',
+      { ...deps, audit },
+    )
+    expect(audits).toEqual([
+      {
+        runId: valid.run_id,
+        device: valid.device,
+        action: 'ingest.legacy.health',
+        result: created,
+      },
+      {
+        runId: valid.run_id,
+        device: valid.device,
+        action: 'ingest.legacy.health',
+        result: { ...created, duplicate: true },
+      },
+    ])
+  })
+
+  it('retains a failed device result without exposing internal errors', async () => {
+    const audits: LegacyRunAuditInput[] = []
+    const response = await handleLegacyIngestRequest(
+      request(valid),
+      schema,
+      async () => {
+        throw new Error('database password leaked')
+      },
+      'ingest.legacy.health',
+      {
+        ...deps,
+        audit: async (input) => {
+          audits.push(input)
+        },
+      },
+    )
+    expect(response.status).toBe(500)
+    expect(audits).toEqual([
+      {
+        runId: valid.run_id,
+        device: valid.device,
+        action: 'ingest.legacy.health',
+        error: 'Legacy ingestion failed',
+      },
+    ])
+  })
+
   it('rejects missing server configuration and invalid authorization', async () => {
     const unconfigured = await handleLegacyIngestRequest(
       request(valid),

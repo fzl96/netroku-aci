@@ -41,18 +41,16 @@ describe('node mutation boundary', () => {
       throw new Error('audit down')
     })
     await expect(
-      createNodeMutation(deps).resyncNodeInventoryForScheduler({
+      createNodeMutation(deps).resyncNodeInventory({
         apicHostId: 'h1',
-        hostName: 'Fabric',
-        host: 'apic.local',
         username: 'u',
         password: 'p',
       }),
-    ).resolves.toEqual({ syncedNodes: 3, syncedComponents: 5, nodesOnline: 3 })
+    ).resolves.toEqual({ ok: true, syncedNodes: 3, syncedComponents: 5, nodesOnline: 3 })
     expect(deps.revalidateTag).toHaveBeenCalledTimes(2)
   })
 
-  it('audits scheduler failures once and rethrows them without invalidation', async () => {
+  it('rethrows scheduler failures without auditing or invalidation', async () => {
     const deps = dependencies()
     deps.resyncNodes.mockImplementation(async () => {
       throw new Error('offline')
@@ -66,10 +64,7 @@ describe('node mutation boundary', () => {
         password: 'p',
       }),
     ).rejects.toThrow('offline')
-    expect(deps.recordAudit).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'failure', detail: 'offline' }),
-    )
-    expect(deps.recordAudit).toHaveBeenCalledTimes(1)
+    expect(deps.recordAudit).not.toHaveBeenCalled()
     expect(deps.revalidateTag).not.toHaveBeenCalled()
   })
 

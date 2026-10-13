@@ -1,3 +1,5 @@
+import { recordAudit } from '@/lib/audit'
+import { buildScheduledResyncAudit } from '@/lib/apic/resync-audit'
 import { prisma } from '@/lib/prisma'
 import { resyncHost } from '@/lib/apic/resync-host'
 import { isAuthorized, summarizeResults, type HostResult } from '@/lib/apic/cron-resync'
@@ -50,15 +52,17 @@ export async function POST(request: Request) {
       continue
     }
 
-    results.push(
-      await resyncHost({
-        apicHostId,
-        hostName: apicHost.name,
-        host: apicHost.host,
-        username: username.trim(),
-        password,
-      }),
+    const result = await resyncHost({
+      apicHostId,
+      hostName: apicHost.name,
+      host: apicHost.host,
+      username: username.trim(),
+      password,
+    })
+    await recordAudit(
+      buildScheduledResyncAudit({ hostName: apicHost.name, host: apicHost.host }, result),
     )
+    results.push(result)
   }
 
   return Response.json({ status: summarizeResults(results), results })

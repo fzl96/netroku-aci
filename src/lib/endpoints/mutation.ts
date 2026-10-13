@@ -59,10 +59,6 @@ class EndpointInventorySyncFailure extends Error {
   }
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Failed to resync endpoints'
-}
-
 /** Deep, injectable implementation; production exports below use server-only dependencies. */
 export function createEndpointMutation(dependencies: EndpointMutationDependencies) {
   function invalidateEndpointReads(apicHostId: string): void {
@@ -88,28 +84,19 @@ export function createEndpointMutation(dependencies: EndpointMutationDependencie
     try {
       result = await dependencies.resyncEndpoints({ apicHostId, host, username, password })
     } catch (error) {
-      if (actor.kind === 'scheduler') {
-        await audit({
-          userId: null,
-          userName: 'scheduler',
-          action: 'resync.endpoints',
-          target,
-          status: 'failure',
-          detail: errorMessage(error),
-        })
-        throw error
-      }
+      if (actor.kind === 'scheduler') throw error
       throw new EndpointInventorySyncFailure(error)
     }
 
-    await audit({
-      userId: actor.kind === 'user' ? actor.id : null,
-      userName: actor.kind === 'user' ? actor.userName : 'scheduler',
-      action: 'resync.endpoints',
-      target,
-      ...(actor.kind === 'scheduler' ? { status: 'success' as const } : {}),
-      detail: `synced ${result.synced} (total ${result.total})`,
-    })
+    if (actor.kind === 'user') {
+      await audit({
+        userId: actor.id,
+        userName: actor.userName,
+        action: 'resync.endpoints',
+        target,
+        detail: `synced ${result.synced} (total ${result.total})`,
+      })
+    }
     invalidateEndpointReads(apicHostId)
     return result
   }

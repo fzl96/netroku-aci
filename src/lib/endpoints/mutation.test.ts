@@ -195,7 +195,7 @@ describe('resyncEndpointInventory', () => {
 })
 
 describe('trusted scheduled resync', () => {
-  it('uses the shared executor without interactive auth and records the scheduler actor', async () => {
+  it('uses the shared executor without interactive auth and leaves auditing to the site runner', async () => {
     await expect(
       resyncEndpointInventoryForScheduler({
         apicHostId: 'host-1',
@@ -208,18 +208,11 @@ describe('trusted scheduled resync', () => {
 
     expect(requireSession).not.toHaveBeenCalled()
     expect(findFirst).not.toHaveBeenCalled()
-    expect(recordAudit).toHaveBeenCalledWith({
-      userId: null,
-      userName: 'scheduler',
-      action: 'resync.endpoints',
-      target: 'APIC One (192.0.2.1)',
-      status: 'success',
-      detail: 'synced 4 (total 9)',
-    })
+    expect(recordAudit).not.toHaveBeenCalled()
     expect(revalidateTag).toHaveBeenCalledTimes(2)
   })
 
-  it('audits scheduler failures, skips invalidation, and rethrows', async () => {
+  it('leaves failure auditing to the site runner, skips invalidation, and rethrows', async () => {
     resyncError = new Error('APIC unavailable')
 
     await expect(
@@ -232,14 +225,7 @@ describe('trusted scheduled resync', () => {
       }),
     ).rejects.toThrow('APIC unavailable')
 
-    expect(recordAudit).toHaveBeenCalledWith({
-      userId: null,
-      userName: 'scheduler',
-      action: 'resync.endpoints',
-      target: 'APIC One (192.0.2.1)',
-      status: 'failure',
-      detail: 'APIC unavailable',
-    })
+    expect(recordAudit).not.toHaveBeenCalled()
     expect(revalidateTag).not.toHaveBeenCalled()
   })
 })

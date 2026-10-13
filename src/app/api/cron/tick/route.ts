@@ -4,6 +4,8 @@ import { decrypt } from '@/lib/crypto'
 import { isAuthorized, summarizeResults } from '@/lib/apic/cron-resync'
 import { claimNextDueSchedule, finalizeSchedule } from '@/lib/apic/schedule-claim'
 import { resyncHost } from '@/lib/apic/resync-host'
+import { buildScheduledResyncAudit } from '@/lib/apic/resync-audit'
+import type { HostResult } from '@/lib/apic/cron-resync'
 
 /** Safety valve: never work through more than this many schedules in one tick. */
 const MAX_PER_TICK = 20
@@ -33,6 +35,8 @@ export async function POST(request: Request) {
 
     let status: 'success' | 'partial' | 'failure' = 'failure'
     let detail = ''
+    let hostResult: HostResult = { apicHostId: claimed.apicHostId, host: claimed.hostName }
+    let finalizationError: string | undefined
 
     try {
       // A single undecryptable row must not stop the other hosts.
@@ -43,18 +47,11 @@ export async function POST(request: Request) {
         password = decrypt(claimed.encPassword)
       } catch {
         detail = 'Credential decryption failed — re-enter the credentials for this host'
-        await recordAudit({
-          userId: null,
-          userName: 'scheduler',
-          action: 'resync.schedule.run',
-          target: `${claimed.hostName} (${claimed.host})`,
-          status: 'failure',
-          detail,
-        })
+        hostResult.error = detail
         continue
       }
 
-      const hostResult = await resyncHost({
+      hostResult = await resyncHost({
         apicHostId: claimed.apicHostId,
         hostName: claimed.hostName,
         host: claimed.host,
@@ -65,6 +62,7 @@ export async function POST(request: Request) {
       detail = describeResult(hostResult)
     } catch (err) {
       detail = err instanceof Error ? err.message : 'Scheduled resync failed'
+      hostResult.error = detail
     } finally {
       // A vanished row (host deleted mid-run → ON DELETE CASCADE) must not abort the whole tick.
       try {
@@ -75,16 +73,10 @@ export async function POST(request: Request) {
         })
       } catch (err) {
         console.error('[tick] failed to finalize schedule', claimed.id, err)
-        // recordAudit swallows its own errors, so this cannot make the catch throw.
-        await recordAudit({
-          userId: null,
-          userName: 'scheduler',
-          action: 'resync.schedule.run',
-          target: `${claimed.hostName} (${claimed.host})`,
-          status: 'failure',
-          detail: 'Failed to finalize schedule — the claim will be released after the stale window',
-        })
+        finalizationError =
+          'Failed to finalize schedule — the claim will be released after the stale window'
       }
+      await recordAudit(buildScheduledResyncAudit(claimed, hostResult, finalizationError))
     }
 
     results.push({ apicHostId: claimed.apicHostId, host: claimed.hostName, status })

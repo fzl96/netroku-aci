@@ -35,18 +35,16 @@ describe('EPG mutation boundary', () => {
     deps.recordAudit.mockImplementation(async () => {
       throw new Error('audit down')
     })
-    const result = await createEpgMutation(deps).resyncEpgInventoryForScheduler({
+    const result = await createEpgMutation(deps).resyncEpgInventory({
       apicHostId: 'h1',
-      hostName: 'Fabric',
-      host: 'apic.local',
       username: 'u',
       password: 'p',
     })
-    expect(result).toEqual({ syncedEpgs: 3, syncedBindings: 5 })
+    expect(result).toEqual({ ok: true, syncedEpgs: 3, syncedBindings: 5 })
     expect(deps.revalidateTag).toHaveBeenCalledTimes(2)
   })
 
-  it('audits scheduler failure and rethrows it', async () => {
+  it('rethrows scheduler failure without a dataset audit', async () => {
     const deps = dependencies()
     deps.resyncEpgs.mockImplementation(async () => {
       throw new Error('offline')
@@ -60,9 +58,7 @@ describe('EPG mutation boundary', () => {
         password: 'p',
       }),
     ).rejects.toThrow('offline')
-    expect(deps.recordAudit).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'failure', detail: 'offline' }),
-    )
+    expect(deps.recordAudit).not.toHaveBeenCalled()
     expect(deps.revalidateTag).not.toHaveBeenCalled()
   })
 

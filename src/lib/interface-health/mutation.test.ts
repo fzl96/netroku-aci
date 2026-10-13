@@ -137,27 +137,18 @@ describe('resyncInterfaceInventoryForScheduler', () => {
     password: 'secret',
   }
 
-  it('audits a successful scheduled run and invalidates the host reads', async () => {
+  it('invalidates successful scheduled reads without a dataset audit', async () => {
     const { mutation, audits, tags } = setup()
 
     expect(await mutation.resyncInterfaceInventoryForScheduler(scheduled)).toEqual({
       synced: 12,
       total: 40,
     })
-    expect(audits).toEqual([
-      {
-        userId: null,
-        userName: 'scheduler',
-        action: 'resync.interfaces',
-        target: 'Fabric (apic.local)',
-        status: 'success',
-        detail: 'synced 12 (total 40)',
-      },
-    ])
+    expect(audits).toEqual([])
     expect(tags).toEqual(['interfaces:all', 'interfaces:host:h1'])
   })
 
-  it('audits a failed scheduled run and rethrows for the host runner', async () => {
+  it('rethrows failed scheduled runs without a dataset audit', async () => {
     const { mutation, audits, tags } = setup({
       resync: async () => {
         throw new Error('APIC unreachable')
@@ -167,16 +158,7 @@ describe('resyncInterfaceInventoryForScheduler', () => {
     await expect(mutation.resyncInterfaceInventoryForScheduler(scheduled)).rejects.toThrow(
       'APIC unreachable',
     )
-    expect(audits).toEqual([
-      {
-        userId: null,
-        userName: 'scheduler',
-        action: 'resync.interfaces',
-        target: 'Fabric (apic.local)',
-        status: 'failure',
-        detail: 'APIC unreachable',
-      },
-    ])
+    expect(audits).toEqual([])
     expect(tags).toEqual([])
   })
 })

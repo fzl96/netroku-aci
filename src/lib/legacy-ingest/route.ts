@@ -1,5 +1,6 @@
 import type { z } from 'zod'
-import { recordAudit, type AuditAction } from '@/lib/audit'
+import type { AuditAction } from '@/lib/audit'
+import { recordLegacyRunAudit } from './run-audit'
 import { invalidateLegacyDeviceReads } from '@/lib/legacy/devices/mutation'
 import { isLegacyIngestAuthorized } from './auth'
 import { IdempotencyConflictError, type LegacyIngestResult } from './common'
@@ -11,7 +12,7 @@ interface RoutePayload {
 
 interface RouteDependencies {
   token?: string
-  audit?: typeof recordAudit
+  audit?: typeof recordLegacyRunAudit
   /** Expires the purpose caches this payload invalidates. Defaults to the
    *  device reads that every legacy feature payload touches. */
   invalidateReads?: () => void
@@ -64,16 +65,20 @@ export async function handleLegacyIngestRequest<T extends RoutePayload>(
     } catch (error) {
       console.error('[legacy-ingest] failed to expire cached reads', error)
     }
-    const audit = dependencies.audit ?? recordAudit
-    await audit({
-      userId: null,
-      userName: 'legacy-collector',
+    await (dependencies.audit ?? recordLegacyRunAudit)({
+      runId: parsed.data.run_id,
+      device: parsed.data.device,
       action,
-      target: `${parsed.data.device.site}/${parsed.data.device.hostname}`,
-      detail: `run ${parsed.data.run_id}: inserted ${result.counts.inserted}, updated ${result.counts.updated}, cleared ${result.counts.cleared}, samples ${result.counts.samples}`,
+      result,
     })
     return Response.json(result, { status: result.duplicate ? 200 : 201 })
   } catch (error) {
+    await (dependencies.audit ?? recordLegacyRunAudit)({
+      runId: parsed.data.run_id,
+      device: parsed.data.device,
+      action,
+      error: error instanceof IdempotencyConflictError ? error.message : 'Legacy ingestion failed',
+    })
     if (error instanceof IdempotencyConflictError) {
       return Response.json({ error: error.message }, { status: 409 })
     }

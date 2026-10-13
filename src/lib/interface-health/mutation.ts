@@ -35,9 +35,6 @@ class InterfaceSyncFailure extends Error {
     super('Interface sync failed')
   }
 }
-function message(error: unknown): string {
-  return error instanceof Error ? error.message : 'Failed to resync interfaces'
-}
 
 export function createInterfaceMutation(dependencies: InterfaceMutationDependencies) {
   function invalidateInterfaceReads(hostId: string) {
@@ -62,27 +59,18 @@ export function createInterfaceMutation(dependencies: InterfaceMutationDependenc
         password: input.password,
       })
     } catch (error) {
-      if (input.actor.kind === 'scheduler') {
-        await audit({
-          userId: null,
-          userName: 'scheduler',
-          action: 'resync.interfaces',
-          target,
-          status: 'failure',
-          detail: message(error),
-        })
-        throw error
-      }
+      if (input.actor.kind === 'scheduler') throw error
       throw new InterfaceSyncFailure(error)
     }
-    await audit({
-      userId: input.actor.kind === 'user' ? input.actor.id : null,
-      userName: input.actor.kind === 'user' ? input.actor.userName : 'scheduler',
-      action: 'resync.interfaces',
-      target,
-      ...(input.actor.kind === 'scheduler' ? { status: 'success' as const } : {}),
-      detail: `synced ${result.synced} (total ${result.total})`,
-    })
+    if (input.actor.kind === 'user') {
+      await audit({
+        userId: input.actor.id,
+        userName: input.actor.userName,
+        action: 'resync.interfaces',
+        target,
+        detail: `synced ${result.synced} (total ${result.total})`,
+      })
+    }
     invalidateInterfaceReads(input.apicHostId)
     return result
   }

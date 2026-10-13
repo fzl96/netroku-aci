@@ -17,6 +17,7 @@ import {
   buildHistoryPayloadSummary,
   formatHistoryPayloadSummary,
 } from '@/lib/history/export'
+import { readResyncGroup } from '@/lib/history/resync-group'
 import { HistoryRegionError } from './history-region-error'
 
 const STATUS_STYLES: Record<AuditStatus, string> = {
@@ -125,6 +126,7 @@ function HistoryResultsContent({
                 </tr>
               ) : (
                 logs.map((log, index) => {
+                  const resyncGroup = readResyncGroup(log.payload)
                   const hasPayload = log.payload != null
                   const isOpen = expanded.has(log.id)
                   const when = new Date(log.createdAt)
@@ -193,7 +195,7 @@ function HistoryResultsContent({
                                   stroke={2}
                                   className={`transition-transform duration-150 ${isOpen ? 'rotate-90' : ''}`}
                                 />
-                                payload
+                                {resyncGroup ? 'details' : 'payload'}
                               </button>
                             )}
                           </div>
@@ -230,9 +232,54 @@ function HistoryResultsContent({
                                 </button>
                               </div>
                             )}
-                            <pre className="max-h-80 overflow-auto rounded-lg border border-border bg-background p-3 text-[11px] leading-relaxed text-foreground">
-                              {JSON.stringify(log.payload, null, 2)}
-                            </pre>
+                            {resyncGroup ? (
+                              <div className="max-h-80 overflow-auto rounded-lg border border-border bg-background">
+                                {resyncGroup.runId && (
+                                  <p className="border-b border-border px-3 py-2 text-[11px] text-faint">
+                                    Run {resyncGroup.runId} · received results
+                                  </p>
+                                )}
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr>
+                                      {['Target', 'Action', 'Status', 'Detail'].map((header) => (
+                                        <th key={header} className={DENSE_TABLE_HEAD_CLS}>
+                                          {header}
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {resyncGroup.entries.map((entry) => (
+                                      <tr
+                                        key={entry.id}
+                                        className="border-b border-border-faint last:border-0"
+                                      >
+                                        <td className="px-3 py-2 text-subtle">
+                                          {entry.target}
+                                          {entry.receivedAt && (
+                                            <div className="text-[10px] text-faint tabular-nums">
+                                              {new Date(entry.receivedAt).toLocaleString()}
+                                            </div>
+                                          )}
+                                        </td>
+                                        <td className="px-3 py-2 text-subtle">
+                                          {actionLabel(entry.action)}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                          <StatusBadge status={entry.status} />
+                                        </td>
+                                        <td className="px-3 py-2 text-subtle">{entry.detail}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : (
+                              <pre className="max-h-80 overflow-auto rounded-lg border border-border bg-background p-3 text-[11px] leading-relaxed text-foreground">
+                                {JSON.stringify(log.payload, null, 2)}
+                              </pre>
+                            )}
                           </td>
                         </tr>
                       )}

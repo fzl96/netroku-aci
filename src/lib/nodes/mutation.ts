@@ -36,9 +36,6 @@ class NodeSyncFailure extends Error {
     super('Node sync failed')
   }
 }
-function message(error: unknown): string {
-  return error instanceof Error ? error.message : 'Failed to resync nodes'
-}
 
 export function createNodeMutation(dependencies: NodeMutationDependencies) {
   function invalidateNodeReads(hostId: string) {
@@ -63,27 +60,18 @@ export function createNodeMutation(dependencies: NodeMutationDependencies) {
         password: input.password,
       })
     } catch (error) {
-      if (input.actor.kind === 'scheduler') {
-        await audit({
-          userId: null,
-          userName: 'scheduler',
-          action: 'resync.nodes',
-          target,
-          status: 'failure',
-          detail: message(error),
-        })
-        throw error
-      }
+      if (input.actor.kind === 'scheduler') throw error
       throw new NodeSyncFailure(error)
     }
-    await audit({
-      userId: input.actor.kind === 'user' ? input.actor.id : null,
-      userName: input.actor.kind === 'user' ? input.actor.userName : 'scheduler',
-      action: 'resync.nodes',
-      target,
-      ...(input.actor.kind === 'scheduler' ? { status: 'success' as const } : {}),
-      detail: `synced ${result.syncedNodes} nodes, ${result.syncedComponents} components`,
-    })
+    if (input.actor.kind === 'user') {
+      await audit({
+        userId: input.actor.id,
+        userName: input.actor.userName,
+        action: 'resync.nodes',
+        target,
+        detail: `synced ${result.syncedNodes} nodes, ${result.syncedComponents} components`,
+      })
+    }
     invalidateNodeReads(input.apicHostId)
     return result
   }
