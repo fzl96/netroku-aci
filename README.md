@@ -132,7 +132,7 @@ The app never bundles APIC credentials. After signing in:
 
 ## Legacy Device Ingestion
 
-Legacy IOS/NX-OS data is collected outside the Next.js application by the standalone `legacy_sync.py` file in the companion `netroku-cli` checkout. The web application does not store the collector's SSH login credentials or open SSH sessions to network devices. Saved raw running configurations can contain device-defined credentials and keys; those remain on the backend.
+Legacy IOS/NX-OS data is collected outside the Next.js application by the standalone `legacy_sync.py` file in the companion `cli-2` checkout. The web application does not store the collector's SSH login credentials or open SSH sessions to network devices. Saved raw running configurations can contain device-defined credentials and keys; those remain on the backend.
 
 ### Server configuration
 
@@ -168,7 +168,7 @@ Every request represents one complete feature snapshot for one device and must s
 
 ### Collector configuration
 
-On the host containing `netroku-cli`, export the application base URL and the same token under the collector-specific name:
+On the host containing `cli-2`, export the application base URL and the same token under the collector-specific name:
 
 ```bash
 export NETROKU_BASE_URL="https://netroku.example.com"
