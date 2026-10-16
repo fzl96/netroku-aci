@@ -107,6 +107,7 @@ export async function createDeviceRecord(data: DeviceFormValues): Promise<SafeDe
           select: {
             id: true,
             name: true,
+            source: { select: { kind: true } },
             devices: {
               select: { id: true, name: true, stackMember: true, stackRole: true },
               orderBy: [{ stackRole: 'asc' }, { stackMember: 'asc' }],
@@ -255,6 +256,7 @@ export async function updateDeviceRecord(
           select: {
             id: true,
             name: true,
+            source: { select: { kind: true } },
             devices: {
               select: { id: true, name: true, stackMember: true, stackRole: true },
               orderBy: [{ stackRole: 'asc' }, { stackMember: 'asc' }],

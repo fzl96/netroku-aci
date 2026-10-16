@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 import type { DeviceListParams } from './params'
+import type { Prisma } from '@prisma/client'
+import * as XLSX from 'xlsx'
+import { buildDeviceWhere } from './params'
 
 class AuthenticationRequiredError extends Error {}
 let authenticationError: unknown = null
@@ -34,11 +37,12 @@ const storedDevice = {
 }
 
 let findManyError: unknown = null
-const listCalls: Array<{ select?: { rack?: unknown } }> = []
-const deviceFindMany = mock(async (args?: { select?: { rack?: unknown } }) => {
+let storedDevices = [storedDevice]
+const listCalls: Prisma.DeviceFindManyArgs[] = []
+const deviceFindMany = mock(async (args?: Prisma.DeviceFindManyArgs) => {
   if (findManyError) throw findManyError
   if (args) listCalls.push(args)
-  return [storedDevice]
+  return storedDevices
 })
 const deviceCount = mock(async () => 1)
 const deviceFindUnique = mock(async () => storedDevice)
@@ -77,11 +81,7 @@ mock.module('@/lib/audit', () => ({ recordAudit }))
 mock.module('@/lib/prisma', () => ({
   prisma: {
     device: {
-      findMany: (args: { skip?: number; select?: { rack?: unknown } }) => {
-        // Both the paged list and the flat catalog select now use `select`;
-        // only the paged list passes skip/take, so key off that instead.
-        return args.skip === undefined ? Promise.resolve([storedDevice]) : deviceFindMany(args)
-      },
+      findMany: deviceFindMany,
       count: deviceCount,
       findUnique: deviceFindUnique,
       findUniqueOrThrow: deviceFindUniqueOrThrow,
@@ -107,12 +107,15 @@ mock.module('next/cache', () => ({
 const query = await import('./query')
 const mutation = await import('./mutation')
 const { InventoryReadError } = await import('@/lib/inventory/errors')
+const { POST: exportDevices } = await import('@/app/api/inventory/devices/export/route')
 
-const base: DeviceListParams = { query: '', sites: [], page: 1 }
+const base: DeviceListParams = { query: '', sites: [], sources: [], page: 1 }
 
 beforeEach(() => {
   authenticationError = null
   findManyError = null
+  storedDevices = [storedDevice]
+  listCalls.length = 0
   placementCollides = false
   cacheCalls.length = 0
   revalidateCalls.length = 0
@@ -149,9 +152,128 @@ describe('getDevices', () => {
   })
 
   it('keys the cache by the query, site filter and page', async () => {
-    await query.getDevices({ query: 'sw', sites: ['s1', 's2'], page: 2 })
-    expect(cacheCalls.at(-1)?.key).toEqual(['inventory', 'devices', 'list', 'sw', 's1,s2', '2'])
+    await query.getDevices({ query: 'sw', sites: ['s1', 's2'], sources: [], page: 2 })
+    expect(cacheCalls.at(-1)?.key).toEqual(['inventory', 'devices', 'list', 'sw', 's1,s2', '', '2'])
     expect(cacheCalls.at(-1)?.options).toEqual({ tags: ['inventory:all'], revalidate: 28_800 })
+  })
+
+  it('selects source kinds for physical devices and their stacks', async () => {
+    await query.getDevices(base)
+    expect(listCalls.at(-1)?.select?.source).toMatchObject({ select: { kind: true } })
+    expect(listCalls.at(-1)?.select?.deviceStack).toMatchObject({
+      select: { source: { select: { kind: true } } },
+    })
+  })
+
+  it('keeps source filters in separate cache entries', async () => {
+    await query.getDevices({ ...base, sources: ['ACI'] })
+    const aciKey = cacheCalls.at(-1)?.key
+    await query.getDevices({ ...base, sources: ['LEGACY'] })
+    expect(cacheCalls.at(-1)?.key).not.toEqual(aciKey)
+  })
+
+  it('provides separate matching and inventory totals for the export choices', async () => {
+    deviceCount.mockResolvedValueOnce(3).mockResolvedValueOnce(25)
+    const page = await query.getDevices({ ...base, sources: ['ACI'] })
+    expect(page.total).toBe(3)
+    expect(page.allTotal).toBe(25)
+  })
+
+  it('reuses the list total for the whole inventory when there are no filters', async () => {
+    const calls = deviceCount.mock.calls.length
+    const page = await query.getDevices(base)
+    expect(page.allTotal).toBe(page.total)
+    expect(deviceCount.mock.calls.length - calls).toBe(1)
+  })
+
+  it('preserves a disconnected device source and a stack source in safe rows', () => {
+    const source = {
+      id: 'source1',
+      kind: 'ACI' as const,
+      sourceLabel: 'Retained ACI source',
+      conflictReason: null,
+      nodeSnapshotId: null,
+      legacyDeviceId: null,
+    }
+    const device = { ...storedDevice, status: 'ACTIVE' as const, source }
+    expect(query.toSafeWithRack(device).source).toEqual(source)
+    expect(
+      query.toSafeWithRack({
+        ...device,
+        source: null,
+        deviceStack: { id: 'stack1', name: 'Core', source: { kind: 'LEGACY' } },
+      }).deviceStack?.source,
+    ).toEqual({ kind: 'LEGACY' })
+  })
+})
+
+describe('device exports', () => {
+  function request(body: unknown) {
+    return new Request('http://localhost/api/inventory/devices/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
+  it('exports all matching rows without pagination and reuses search, site and source filters', async () => {
+    storedDevices = Array.from({ length: 25 }, (_, index) => ({ ...storedDevice, id: `d${index}` }))
+    const filters = { query: 'core', sites: ['s1'], sources: ['LEGACY' as const] }
+    const rows = await query.getDeviceExportData({ scope: 'filtered', filters })
+    expect(rows).toHaveLength(25)
+    expect(listCalls.at(-1)?.where).toEqual(buildDeviceWhere({ ...filters, page: 1 }))
+    expect(listCalls.at(-1)?.skip).toBeUndefined()
+    expect(listCalls.at(-1)?.take).toBeUndefined()
+  })
+
+  it('ignores supplied filters for all-device downloads and returns a readable single-sheet XLSX', async () => {
+    storedDevices = Array.from({ length: 25 }, (_, index) => ({
+      ...storedDevice,
+      id: `d${index}`,
+      serialNumber: `SN${index}`,
+    }))
+    const response = await exportDevices(
+      request({
+        scope: 'all',
+        filters: { query: 'no-match', sites: ['elsewhere'], sources: ['ACI'] },
+      }),
+    )
+    expect(response.status).toBe(200)
+    expect(listCalls.at(-1)?.where).toEqual({})
+    expect(response.headers.get('Content-Type')).toBe(
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    expect(response.headers.get('Content-Disposition')).toMatch(
+      /attachment; filename="inventory-devices-all-.*\.xlsx"/,
+    )
+    const workbook = XLSX.read(await response.arrayBuffer(), { type: 'array' })
+    expect(workbook.SheetNames).toEqual(['Devices'])
+    expect(XLSX.utils.sheet_to_json(workbook.Sheets.Devices)).toHaveLength(25)
+  })
+
+  it('does not query inventory or download data without a session', async () => {
+    authenticationError = new AuthenticationRequiredError('nope')
+    await expect(query.getDeviceExportData({ scope: 'all' })).rejects.toBeInstanceOf(
+      InventoryReadError,
+    )
+    const response = await exportDevices(request({ scope: 'all' }))
+    expect(response.status).toBe(401)
+    expect(listCalls).toHaveLength(0)
+  })
+
+  it('reports empty exports and rejects invalid filters', async () => {
+    storedDevices = []
+    const empty = await exportDevices(request({ scope: 'all' }))
+    expect(empty.status).toBe(422)
+    listCalls.length = 0
+    const invalid = await exportDevices(
+      request({
+        scope: 'filtered',
+        filters: { query: '', sites: [], sources: ['OTHER'] },
+      }),
+    )
+    expect(invalid.status).toBe(400)
+    expect(listCalls).toHaveLength(0)
   })
 })
 

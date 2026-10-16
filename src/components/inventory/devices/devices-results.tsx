@@ -28,6 +28,11 @@ import {
   type DeviceUpdateFormValues,
 } from '@/lib/schemas/device'
 import { buildDeviceListUrl } from '@/lib/inventory/devices/params'
+import {
+  DEVICE_SOURCE_OPTIONS,
+  deviceSourceKind,
+  type DeviceSourceFilter,
+} from '@/lib/inventory/devices/source'
 import { DeviceForm } from '@/components/inventory/device-form'
 import { SearchBar } from '@/components/search-bar'
 import { FilterMenu } from '@/components/filter-menu'
@@ -58,24 +63,30 @@ import Link from 'next/link'
 import { DENSE_TABLE_HEAD_CLS, TABLE_SCROLL_CLS } from '@/lib/ui-classes'
 import { DevicesRegionError } from './devices-region-error'
 import { DeviceStatusBadge } from './device-status-badge'
+import { DeviceSourceBadge } from './device-source-badge'
+import { ExportDevicesDialog } from './export-devices-dialog'
 
 function DevicesResultsContent({
   initialDevices,
   existingStacks = [],
   sites,
   total,
+  allTotal,
   page,
   query,
   siteFilter,
+  sourceFilter,
   role,
 }: {
   initialDevices: SafeDeviceWithRack[]
   existingStacks?: SafeDeviceStack[]
   sites: Array<{ id: string; name: string }>
   total: number
+  allTotal: number
   page: number
   query: string
   siteFilter: string[]
+  sourceFilter: DeviceSourceFilter[]
   role: 'admin' | 'member'
 }) {
   const router = useRouter()
@@ -205,24 +216,42 @@ function DevicesResultsContent({
 
   function applySiteFilter(nextSites: string[]) {
     startNavigation(() => {
-      router.replace(buildDeviceListUrl({ query, sites: nextSites, page: 1 }), { scroll: false })
+      router.replace(
+        buildDeviceListUrl({ query, sites: nextSites, sources: sourceFilter, page: 1 }),
+        { scroll: false },
+      )
+    })
+  }
+
+  function applySourceFilter(nextSources: string[]) {
+    const sources = DEVICE_SOURCE_OPTIONS.filter((option) =>
+      nextSources.includes(option.value),
+    ).map((option) => option.value)
+    startNavigation(() => {
+      router.replace(buildDeviceListUrl({ query, sites: siteFilter, sources, page: 1 }), {
+        scroll: false,
+      })
     })
   }
 
   function goToPage(nextPage: number) {
     startNavigation(() => {
-      router.replace(buildDeviceListUrl({ query, sites: siteFilter, page: nextPage }))
+      router.replace(
+        buildDeviceListUrl({ query, sites: siteFilter, sources: sourceFilter, page: nextPage }),
+      )
     })
   }
 
-  const isFiltered = Boolean(query || siteFilter.length)
+  const isFiltered = Boolean(query || siteFilter.length || sourceFilter.length)
 
   async function handleCreate(data: DeviceFormValues) {
     setIsMutating(true)
     const result = await createDevice(data)
     setIsMutating(false)
     if (result.success) {
-      setDevices((prev) => [result.data, ...prev])
+      if (!sourceFilter.length || sourceFilter.includes(deviceSourceKind(result.data))) {
+        setDevices((prev) => [result.data, ...prev])
+      }
       if (result.data.deviceStack && !stacks.some((s) => s.id === result.data.deviceStack?.id)) {
         setStacks((prev) =>
           [...prev, result.data.deviceStack!].sort((a, b) => a.name.localeCompare(b.name)),
@@ -242,7 +271,11 @@ function DevicesResultsContent({
     const result = await updateDevice(editingDevice.id, data)
     setIsMutating(false)
     if (result.success) {
-      setDevices((prev) => prev.map((d) => (d.id === editingDevice.id ? result.data : d)))
+      setDevices((prev) =>
+        prev
+          .map((d) => (d.id === editingDevice.id ? result.data : d))
+          .filter((d) => !sourceFilter.length || sourceFilter.includes(deviceSourceKind(d))),
+      )
       if (result.data.deviceStack && !stacks.some((s) => s.id === result.data.deviceStack?.id)) {
         setStacks((prev) =>
           [...prev, result.data.deviceStack!].sort((a, b) => a.name.localeCompare(b.name)),
@@ -286,9 +319,16 @@ function DevicesResultsContent({
             />
             <FilterMenu
               label="Filter devices"
-              activeCount={siteFilter.length > 0 ? 1 : 0}
+              activeCount={Number(siteFilter.length > 0) + Number(sourceFilter.length > 0)}
               disabled={isNavigationPending}
             >
+              <FilterSubmenu
+                label="Source"
+                value={sourceFilter}
+                options={DEVICE_SOURCE_OPTIONS}
+                onChange={applySourceFilter}
+                disabled={isNavigationPending}
+              />
               <FilterSubmenu
                 label="Site"
                 value={siteFilter}
@@ -300,6 +340,12 @@ function DevicesResultsContent({
             </FilterMenu>
           </section>
           <div className="flex flex-wrap items-center gap-2">
+            <ExportDevicesDialog
+              allTotal={allTotal}
+              filteredTotal={total}
+              filters={{ query, sites: siteFilter, sources: sourceFilter }}
+              disabled={isNavigationPending || isMutating}
+            />
             <Button variant="outline" size="sm" asChild>
               <Link href="/inventory/compliance" prefetch={false}>
                 Check compliance status
@@ -349,6 +395,7 @@ function DevicesResultsContent({
                 <tr>
                   {[
                     'Name',
+                    'Source',
                     'Serial',
                     'Management IP',
                     'Status',
@@ -367,13 +414,13 @@ function DevicesResultsContent({
               <tbody>
                 {devices.length === 0 ? (
                   <tr>
-                    <td colSpan={isAdmin ? 9 : 8} className="px-4 py-14 text-center">
+                    <td colSpan={isAdmin ? 10 : 9} className="px-4 py-14 text-center">
                       <p className="text-sm text-foreground">
                         {isFiltered ? 'No devices match this search or filter' : 'No devices yet'}
                       </p>
                       <p className="mt-1 text-xs text-subtle">
                         {isFiltered
-                          ? 'Try another name, serial or IP, or clear the site filter.'
+                          ? 'Try another name, serial or IP, or clear the source and site filters.'
                           : isAdmin
                             ? 'Add a device, import a CSV, or import hardware found by discovery.'
                             : 'Devices appear here once an admin adds them.'}
@@ -393,6 +440,9 @@ function DevicesResultsContent({
                         >
                           {device.name}
                         </Link>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <DeviceSourceBadge device={device} />
                       </td>
                       <td className="px-4 py-2.5 whitespace-nowrap">
                         <span className="font-mono text-muted-foreground">
@@ -628,9 +678,11 @@ export function DevicesResults({
       existingStacks={stacks}
       sites={sites}
       total={page.total}
+      allTotal={page.allTotal}
       page={page.page}
       query={params.query}
       siteFilter={params.sites}
+      sourceFilter={params.sources}
       role={role}
     />
   )

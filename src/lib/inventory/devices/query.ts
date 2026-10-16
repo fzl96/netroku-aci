@@ -1,12 +1,18 @@
 import 'server-only'
 
 import { cache } from 'react'
-import type { DeviceStatus, Prisma, StackRole } from '@prisma/client'
+import type { DeviceStatus, InventorySourceKind, Prisma, StackRole } from '@prisma/client'
 import { unstable_cache } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { authorizeInventoryRead, readInventoryData } from '@/lib/inventory/authorize'
 import { INVENTORY_CACHE_SECONDS, INVENTORY_TAG } from '@/lib/inventory/cache'
-import { buildDeviceWhere, deviceListWindow, type DeviceListParams } from './params'
+import {
+  buildDeviceWhere,
+  deviceListWindow,
+  hasActiveDeviceFilters,
+  type DeviceListParams,
+} from './params'
+import type { DeviceExportRequest } from '@/lib/schemas/device-export'
 
 // Device's rack/deviceStack relations carry fields (address, coordinates,
 // heightU, timestamps…) this purpose never shows. `include` would fetch —
@@ -30,6 +36,7 @@ const DEVICE_SCALAR_SELECT = {
   source: {
     select: {
       id: true,
+      kind: true,
       sourceLabel: true,
       conflictReason: true,
       nodeSnapshotId: true,
@@ -47,9 +54,18 @@ const RACK_WITH_SITE_SELECT = {
   site: { select: { id: true, name: true } },
 } satisfies Prisma.RackSelect
 
+const DEVICE_LIST_SELECT = {
+  ...DEVICE_SCALAR_SELECT,
+  rack: { select: RACK_WITH_SITE_SELECT },
+  deviceStack: {
+    select: { id: true, name: true, source: { select: { kind: true } } },
+  },
+} satisfies Prisma.DeviceSelect
+
 export type SafeDeviceStack = {
   id: string
   name: string
+  source?: { kind: InventorySourceKind } | null
   memberCount?: number
   members?: Array<{
     id: string
@@ -63,6 +79,7 @@ export type SafeDevice = {
   version?: string | null
   source?: {
     id: string
+    kind: InventorySourceKind
     sourceLabel: string
     conflictReason: string | null
     nodeSnapshotId: string | null
@@ -126,6 +143,7 @@ export type DeviceCatalogEntry = {
 export type DeviceListPage = {
   devices: SafeDeviceWithRack[]
   total: number
+  allTotal: number
   page: number
   pageSize: number
 }
@@ -161,6 +179,7 @@ export function toSafe(device: RawDevice): SafeDevice {
     source: device.source
       ? {
           id: device.source.id,
+          kind: device.source.kind,
           sourceLabel: device.source.sourceLabel,
           conflictReason: device.source.conflictReason,
           nodeSnapshotId: device.source.nodeSnapshotId,
@@ -179,6 +198,7 @@ export function toSafeWithRack(
     deviceStack: {
       id: string
       name: string
+      source?: { kind: InventorySourceKind } | null
       devices?: Array<{
         id: string
         name: string
@@ -195,6 +215,7 @@ export function toSafeWithRack(
       ? {
           id: device.deviceStack.id,
           name: device.deviceStack.name,
+          source: device.deviceStack.source,
           memberCount: device.deviceStack.devices?.length,
           members: device.deviceStack.devices,
         }
@@ -210,30 +231,54 @@ export async function getDevices(params: DeviceListParams): Promise<DeviceListPa
     unstable_cache(
       async () => {
         const where = buildDeviceWhere(params)
-        const total = await prisma.device.count({ where })
+        const totalPromise = prisma.device.count({ where })
+        const [total, allTotal] = await Promise.all([
+          totalPromise,
+          hasActiveDeviceFilters(params) ? prisma.device.count() : totalPromise,
+        ])
         const window = deviceListWindow(params.page, total)
         const devices = await prisma.device.findMany({
           where,
           orderBy: { name: 'asc' },
           skip: window.skip,
           take: window.take,
-          select: {
-            ...DEVICE_SCALAR_SELECT,
-            rack: { select: RACK_WITH_SITE_SELECT },
-            deviceStack: { select: { id: true, name: true } },
-          },
+          select: DEVICE_LIST_SELECT,
         })
         return {
           devices: devices.map(toSafeWithRack),
           total,
+          allTotal,
           page: window.page,
           pageSize: window.take,
         }
       },
-      ['inventory', 'devices', 'list', params.query, params.sites.join(','), String(params.page)],
+      [
+        'inventory',
+        'devices',
+        'list',
+        params.query,
+        params.sites.join(','),
+        params.sources.join(','),
+        String(params.page),
+      ],
       cacheOptions,
     )(),
   )
+}
+
+/** Exports use the same predicates and columns as the list, across every page. */
+export async function getDeviceExportData(
+  selection: DeviceExportRequest,
+): Promise<SafeDeviceWithRack[]> {
+  await authorizeInventoryRead()
+  return readInventoryData(async () => {
+    const devices = await prisma.device.findMany({
+      where: selection.scope === 'all' ? {} : buildDeviceWhere({ ...selection.filters, page: 1 }),
+      select: DEVICE_LIST_SELECT,
+      orderBy: { name: 'asc' },
+    })
+    return devices.map(toSafeWithRack)
+  })
 }
 
 /** Wrapped in React `cache()` so a detail page's `generateMetadata` and its
