@@ -22,9 +22,14 @@ export function parseRunningConfig(rawConfig: string, platform: string): ParsedC
     }
     const banner = line
       .trim()
-      .match(/^banner\s+(?:motd|login|exec|incoming|slip-ppp|prompt-timeout)\s+(\^.|\S)(.*)$/i)
+      .match(/^banner\s+(?:motd|login|exec|incoming|slip-ppp|prompt-timeout)\s+(\S.*)$/i)
     if (banner) {
-      if (!banner[2].includes(banner[1])) delimiter = banner[1]
+      // NX-OS uses the first character; in "^CCC", CCC is banner text.
+      // IOS-XE can display a control-character delimiter as two characters (^C).
+      const controlDelimiter =
+        platform === 'iosxe' && banner[1].startsWith('^') && banner[1].length > 1
+      const marker = banner[1].slice(0, controlDelimiter ? 2 : 1)
+      if (!banner[1].slice(marker.length).includes(marker)) delimiter = marker
       continue
     }
     lines.push(line)

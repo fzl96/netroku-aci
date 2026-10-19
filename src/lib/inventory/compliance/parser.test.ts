@@ -99,6 +99,31 @@ describe('running-config parsing and exact compliance', () => {
     ).toBe('unknown')
   })
 
+  it('uses the first character as the NX-OS banner delimiter even when text starts with C', () => {
+    const services = 'ntp server 192.0.2.10\naaa group server tacacs+ ISE\n server 192.0.2.20\n!'
+    const expected = {
+      ntp: { ips: ['192.0.2.10'], reason: null },
+      tacacs: { ips: ['192.0.2.20'], reason: null },
+    }
+    for (const banner of [
+      'banner motd ^CCC\nntp server 192.0.2.90\ntacacs-server host 192.0.2.91\n% Invalid input\n^',
+      'banner motd ^CCC^',
+      'banner motd ^\nAuthorized users only\n^',
+    ]) {
+      expect(parseRunningConfig(`hostname switch\n${banner}\n${services}`, 'nxos')).toEqual(
+        expected,
+      )
+    }
+    for (const banner of [
+      'banner motd ^CCC\nUnfinished',
+      'banner motd ^CCC\nntp server 192.0.2.90\n',
+    ]) {
+      expect(parseRunningConfig(`hostname switch\n${banner}`, 'nxos').ntp.reason).toBe(
+        'Saved configuration contains an incomplete banner',
+      )
+    }
+  })
+
   it('reports an absent service in a readable config as noncompliant', () => {
     const result = evaluateCompliance(
       {

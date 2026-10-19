@@ -159,6 +159,32 @@ function request(body: unknown, token = 'collector-token') {
 }
 
 describe('configuration payload and route', () => {
+  it('accepts and stores NX-OS configs whose caret-delimited banner starts with CCC', async () => {
+    const ctx = context()
+    const rawConfig =
+      'hostname SW1\nbanner motd ^CCC\nAuthorized users only\n^\nntp server 192.0.2.10\n'
+    const response = await handleLegacyIngestRequest(
+      request({
+        ...payload,
+        device: { ...payload.device, device_type: 'cisco_nxos' },
+        configuration: { platform: 'nxos', raw_config: rawConfig },
+      }),
+      legacyConfigPayloadSchema,
+      async (parsed) => ({
+        receipt_id: ctx.receiptId,
+        duplicate: false,
+        device_id: ctx.deviceId,
+        counts: await applyLegacyConfig(ctx, parsed),
+      }),
+      'ingest.legacy.config',
+      { token: 'collector-token', audit: async () => {}, invalidateReads: () => {} },
+    )
+    expect(response.status).toBe(201)
+    expect(ctx.writes).toMatchObject([
+      { create: { rawConfig, platform: 'nxos' }, update: { rawConfig, platform: 'nxos' } },
+    ])
+  })
+
   it('returns an actionable validation reason without exposing configuration values', async () => {
     let writes = 0
     const rawConfig = 'hostname switch\nbanner motd #\nCONFIG_SECRET'
