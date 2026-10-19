@@ -99,7 +99,7 @@ export const legacyConfigPayloadSchema = z.strictObject({
       if (parsed.ntp.reason && parsed.ntp.reason === parsed.tacacs.reason) {
         context.addIssue({
           code: 'custom',
-          message: 'A complete running configuration is required',
+          message: parsed.ntp.reason,
         })
       }
     }),

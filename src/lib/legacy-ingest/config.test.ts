@@ -159,6 +159,59 @@ function request(body: unknown, token = 'collector-token') {
 }
 
 describe('configuration payload and route', () => {
+  it('returns an actionable validation reason without exposing configuration values', async () => {
+    let writes = 0
+    const rawConfig = 'hostname switch\nbanner motd #\nCONFIG_SECRET'
+    const response = await handleLegacyIngestRequest(
+      request({
+        ...payload,
+        configuration: { platform: 'nxos', raw_config: rawConfig },
+      }),
+      legacyConfigPayloadSchema,
+      async () => {
+        writes++
+        throw new Error('Invalid configurations must not reach ingestion')
+      },
+      'ingest.legacy.config',
+      { token: 'collector-token', audit: async () => {}, invalidateReads: () => {} },
+    )
+    expect(response.status).toBe(422)
+    const body = await response.text()
+    expect(body).toContain('Saved configuration contains an incomplete banner')
+    expect(body).not.toContain('CONFIG_SECRET')
+    expect(writes).toBe(0)
+  })
+
+  it('identifies invalid fields without echoing submitted values or unknown keys', async () => {
+    const cases = [
+      {
+        body: {
+          ...payload,
+          configuration: { platform: 'CONFIG_SECRET', raw_config: 'hostname sw' },
+        },
+        field: 'configuration.platform',
+      },
+      { body: { ...payload, device: { ...payload.device, model: '' } }, field: 'device.model' },
+      { body: { ...payload, CONFIG_SECRET: 'CONFIG_SECRET' }, field: 'payload' },
+    ]
+    for (const { body, field } of cases) {
+      const ingest = async () => {
+        throw new Error('Invalid payloads must not reach ingestion')
+      }
+      const response = await handleLegacyIngestRequest(
+        request(body),
+        legacyConfigPayloadSchema,
+        ingest,
+        'ingest.legacy.config',
+        { token: 'collector-token', audit: async () => {}, invalidateReads: () => {} },
+      )
+      expect(response.status).toBe(422)
+      const text = await response.text()
+      expect(text).toContain(field)
+      expect(text).not.toContain('CONFIG_SECRET')
+    }
+  })
+
   it('accepts both platforms and IPv6/hostname service data for Unknown evaluation', () => {
     expect(legacyConfigPayloadSchema.safeParse(payload).success).toBe(true)
     expect(

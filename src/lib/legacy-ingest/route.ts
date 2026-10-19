@@ -30,6 +30,16 @@ function collectionTooLarge(error: z.ZodError): boolean {
   )
 }
 
+function invalidPayloadMessage(error: z.ZodError): string {
+  const issue = error.issues[0]
+  if (!issue) return 'Invalid payload'
+  const path = issue.path.join('.') || 'payload'
+  // Schema paths and codes contain no submitted values. Configuration's custom
+  // reason comes from our parser's fixed messages, never from raw config text.
+  const reason = issue.code === 'custom' && path === 'configuration' ? issue.message : issue.code
+  return `Invalid payload (${path}): ${reason}`
+}
+
 export async function handleLegacyIngestRequest<T extends RoutePayload>(
   request: Request,
   schema: z.ZodType<T>,
@@ -55,9 +65,10 @@ export async function handleLegacyIngestRequest<T extends RoutePayload>(
   }
   const parsed = schema.safeParse(body)
   if (!parsed.success) {
+    const tooLarge = collectionTooLarge(parsed.error)
     return Response.json(
-      { error: collectionTooLarge(parsed.error) ? 'Collection limit exceeded' : 'Invalid payload' },
-      { status: collectionTooLarge(parsed.error) ? 413 : 422 },
+      { error: tooLarge ? 'Collection limit exceeded' : invalidPayloadMessage(parsed.error) },
+      { status: tooLarge ? 413 : 422 },
     )
   }
 
