@@ -19,6 +19,9 @@ const hostFindMany = mock(async () => [
   },
 ])
 const endpointGroupBy = mock(async (args: { by: string[] }) => {
+  if (args.by.includes('vlan')) return [{ vlan: 'vlan-10' }, { vlan: '' }]
+  if (args.by.includes('node')) return [{ node: '101' }, { node: '' }]
+  if (args.by.includes('interface')) return [{ interface: 'eth1/1' }, { interface: '' }]
   if (args.by.includes('isActive')) {
     return [
       { apicHostId: 'host-1', isActive: true, _count: { _all: 7 } },
@@ -42,7 +45,7 @@ const interfaceGroupBy = mock(async () => [
   { adminSt: 'up', operSt: 'down', _count: { _all: 1 } },
   { adminSt: 'down', operSt: 'down', _count: { _all: 2 } },
 ])
-const interfaceSampleFindMany = mock(async () => [
+const latestSamples = [
   {
     interfaceId: 'interface-1',
     sampledAt: new Date('2026-06-15T12:00:00.000Z'),
@@ -53,7 +56,8 @@ const interfaceSampleFindMany = mock(async () => [
     dRxCrcErrors: BigInt(0),
     dRxAlignErrors: BigInt(0),
   },
-])
+]
+const interfaceSampleFindMany = mock(async () => [])
 const nodeFindMany = mock(async () => [
   { apicHostId: 'host-1', role: 'leaf', fabricSt: 'active', state: null, hidden: 'omit' },
   { apicHostId: 'host-1', role: 'spine', fabricSt: 'inactive', state: null, hidden: 'omit' },
@@ -64,7 +68,10 @@ const hardwareFindMany = mock(async () => [
   { apicHostId: 'host-1', type: 'fan', healthy: true, hidden: 'omit' },
 ])
 
+const queryRaw = mock(async () => latestSamples)
+
 const prisma = {
+  $queryRaw: queryRaw,
   apicHost: { findMany: hostFindMany },
   endpoint: { groupBy: endpointGroupBy, findMany: endpointFindMany },
   interfaceSnapshot: { groupBy: interfaceGroupBy },
@@ -109,6 +116,7 @@ beforeEach(() => {
     nodeFindMany,
     hardwareFindMany,
     unstableCache,
+    queryRaw,
   ])
     fn.mockClear()
 })
@@ -118,6 +126,8 @@ describe('dashboard query interface', () => {
     authenticationError = new AuthenticationRequiredError('missing')
     await expect(query.getDashboardHosts()).rejects.toBeInstanceOf(query.DashboardReadError)
     expect(hostFindMany).not.toHaveBeenCalled()
+    await expect(query.getDashboardInterfaces()).rejects.toBeInstanceOf(query.DashboardReadError)
+    expect(queryRaw).not.toHaveBeenCalled()
 
     authenticationError = new Error('session database unavailable')
     await expect(query.getDashboardEndpoints()).rejects.toThrow('session database unavailable')
@@ -163,6 +173,18 @@ describe('dashboard query interface', () => {
       noisy: 1,
     })
     expect(() => JSON.stringify(result)).not.toThrow()
+  })
+
+  it('keeps cold dashboard reads bounded by unique values and interfaces, not retained history', async () => {
+    await query.getDashboardEndpoints()
+    expect(endpointFindMany).not.toHaveBeenCalled()
+    expect(endpointGroupBy.mock.calls.map(([args]) => args.by)).toEqual(
+      expect.arrayContaining([['vlan'], ['node'], ['interface']]),
+    )
+
+    await query.getDashboardInterfaces()
+    expect(interfaceSampleFindMany).not.toHaveBeenCalled()
+    expect(queryRaw).toHaveBeenCalledTimes(1)
   })
 
   it('returns node, role, hardware, and host aggregates as safe numbers', async () => {

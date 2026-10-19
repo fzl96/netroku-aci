@@ -5,7 +5,8 @@ import { unstable_cache } from 'next/cache'
 import { AuthenticationRequiredError, requireSession } from '@/lib/auth'
 import { isNodeOnline } from '@/lib/apic/node-status'
 import { prisma } from '@/lib/prisma'
-import { summarizeInterfaces } from './summary'
+import { buildDashboardInterfaceSamplesQuery } from './interface-samples-query'
+import { summarizeInterfaces, type InterfaceSummarySample } from './summary'
 
 const DASHBOARD_CACHE_SECONDS = 8 * 60 * 60
 
@@ -142,9 +143,11 @@ export async function getDashboardEndpoints(): Promise<DashboardEndpointData> {
           by: ['apicHostId', 'isActive'],
           _count: { _all: true },
         }),
-        prisma.endpoint.findMany({ select: { vlan: true }, distinct: ['vlan'] }),
-        prisma.endpoint.findMany({ select: { node: true }, distinct: ['node'] }),
-        prisma.endpoint.findMany({ select: { interface: true }, distinct: ['interface'] }),
+        // Prisma findMany({ distinct }) deduplicates in memory after fetching
+        // every endpoint. Group in PostgreSQL so only unique values cross the wire.
+        prisma.endpoint.groupBy({ by: ['vlan'] }),
+        prisma.endpoint.groupBy({ by: ['node'] }),
+        prisma.endpoint.groupBy({ by: ['interface'] }),
         prisma.endpoint.groupBy({
           by: ['apicHostId'],
           _max: { lastSeenAt: true },
@@ -199,20 +202,7 @@ export async function getDashboardInterfaces(): Promise<DashboardInterfaceData> 
           by: ['adminSt', 'operSt'],
           _count: { _all: true },
         }),
-        prisma.interfaceSample.findMany({
-          distinct: ['interfaceId'],
-          orderBy: [{ interfaceId: 'asc' }, { sampledAt: 'desc' }],
-          select: {
-            interfaceId: true,
-            sampledAt: true,
-            dRxErrors: true,
-            dTxErrors: true,
-            dRxDiscards: true,
-            dTxDiscards: true,
-            dRxCrcErrors: true,
-            dRxAlignErrors: true,
-          },
-        }),
+        prisma.$queryRaw<InterfaceSummarySample[]>(buildDashboardInterfaceSamplesQuery()),
       ])
 
       return summarizeInterfaces(
