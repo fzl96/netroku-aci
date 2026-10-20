@@ -1,65 +1,72 @@
-import { describe, expect, it } from 'bun:test'
-import { executeBdResyncWrites, BdResyncInProgressError, type BdWriteClient } from './bd-resync'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test'
+import type { PGlite } from '@electric-sql/pglite'
+import { executeBdResyncWrites, BdResyncInProgressError } from './bd-resync'
+import { createInventoryTestDb, inventoryTestWriter } from '@/lib/test-fixtures/aci-inventory-db'
 import { bdFixture } from '../../../tests/fixtures/bd'
 
-function client(acquired = true, writeFails = false) {
-  const calls: Array<[string, unknown]> = []
-  const db = {
-    $transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
-      fn({
-        $queryRaw: async () => {
-          calls.push(['lock', null])
-          return [{ acquired }]
-        },
-        bdSnapshot: {
-          deleteMany: async (args: unknown) => calls.push(['delete', args]),
-          createMany: async (args: unknown) => {
-            calls.push(['create', args])
-            if (writeFails) throw new Error('write failed')
-          },
-        },
-        apicHost: { update: async (args: unknown) => calls.push(['timestamp', args]) },
-      }),
-  } as unknown as BdWriteClient
-  return { db, calls }
-}
-describe('BD snapshot replacement', () => {
-  it('locks before writes, scopes deletions to one host and stamps a successful empty snapshot', async () => {
-    const { db, calls } = client()
-    const now = new Date()
-    expect(await executeBdResyncWrites(db, 'h1', [], now)).toEqual({ syncedBds: 0 })
-    expect(calls).toEqual([
-      ['lock', null],
-      ['delete', { where: { apicHostId: 'h1' } }],
-      ['timestamp', { where: { id: 'h1' }, data: { lastBdSyncAt: now } }],
+let db: PGlite
+beforeAll(async () => {
+  db = await createInventoryTestDb()
+})
+afterAll(async () => {
+  await db.close()
+})
+beforeEach(async () => {
+  await db.exec(
+    'TRUNCATE bd_snapshot, epg_snapshot CASCADE; UPDATE apic_host SET "lastBdSyncAt" = NULL, "lastEpgSyncAt" = NULL',
+  )
+})
+const now = new Date('2026-10-20T00:00:00Z')
+describe('relational BD refresh', () => {
+  it('keeps stable BD IDs and EPG identities even before full EPG collection', async () => {
+    const row = bdFixture()
+    const writer = inventoryTestWriter(db)
+    expect(await executeBdResyncWrites(writer, 'h1', [row, row], now)).toEqual({ syncedBds: 1 })
+    const first = await db.query<{ id: string }>('SELECT id FROM bd_snapshot')
+    expect((await db.query('SELECT "epgId", tenant, dn FROM bd_epg_relation')).rows).toEqual([
+      { epgId: null, tenant: 'T1', dn: row.epgs[0].dn },
+    ])
+    await executeBdResyncWrites(writer, 'h1', [{ ...row, description: 'Updated' }], now)
+    expect((await db.query('SELECT id FROM bd_snapshot')).rows).toEqual(first.rows)
+    expect((await db.query('SELECT description FROM bd_snapshot')).rows).toEqual([
+      { description: 'Updated' },
     ])
   })
-  it('deduplicates BDs and persists relationship identities with their configuration', async () => {
-    const { db, calls } = client()
-    const row = bdFixture()
-    expect(await executeBdResyncWrites(db, 'h2', [row, row], new Date())).toEqual({ syncedBds: 1 })
-    expect(calls.find((c) => c[0] === 'create')?.[1]).toMatchObject({
-      data: [
-        {
-          apicHostId: 'h2',
-          dn: row.dn,
-          epgs: row.epgs,
-          epgCount: 1,
-          searchText: expect.stringContaining('10.0.0.1/24'),
-        },
-      ],
-    })
+  it('clears only the refreshed fabric and preserves its EPG snapshots on BD deletion', async () => {
+    const writer = inventoryTestWriter(db)
+    await executeBdResyncWrites(writer, 'h1', [bdFixture()], now)
+    await executeBdResyncWrites(writer, 'h2', [bdFixture()], now)
+    await executeBdResyncWrites(writer, 'h1', [], now)
+    expect((await db.query('SELECT "apicHostId" FROM bd_snapshot')).rows).toEqual([
+      { apicHostId: 'h2' },
+    ])
+    expect((await db.query('SELECT "apicHostId" FROM bd_epg_relation')).rows).toEqual([
+      { apicHostId: 'h2' },
+    ])
+    expect(
+      (await db.query('SELECT "lastBdSyncAt" FROM apic_host WHERE id = $1', ['h1'])).rows[0],
+    ).toEqual({ lastBdSyncAt: now })
   })
-  it('does not delete data when the host lock is busy or advance freshness after a failed write', async () => {
-    const busy = client(false)
-    await expect(executeBdResyncWrites(busy.db, 'h1', [], new Date())).rejects.toBeInstanceOf(
-      BdResyncInProgressError,
-    )
-    expect(busy.calls).toHaveLength(1)
-    const failed = client(true, true)
-    await expect(executeBdResyncWrites(failed.db, 'h1', [bdFixture()], new Date())).rejects.toThrow(
-      'write failed',
-    )
-    expect(failed.calls.some((c) => c[0] === 'timestamp')).toBe(false)
+  it('rejects busy hosts and rolls back configuration, membership and timestamps together on failure', async () => {
+    await expect(
+      executeBdResyncWrites(inventoryTestWriter(db, { busy: true }), 'h1', [bdFixture()], now),
+    ).rejects.toBeInstanceOf(BdResyncInProgressError)
+    const writer = inventoryTestWriter(db)
+    await executeBdResyncWrites(writer, 'h1', [bdFixture()], now)
+    await expect(
+      executeBdResyncWrites(
+        inventoryTestWriter(db, { failTimestamp: true }),
+        'h1',
+        [{ ...bdFixture(), description: 'Failed change', epgs: [] }],
+        new Date(),
+      ),
+    ).rejects.toThrow('Timestamp write failed')
+    expect((await db.query('SELECT description FROM bd_snapshot')).rows).toEqual([
+      { description: 'Web network' },
+    ])
+    expect((await db.query('SELECT dn FROM bd_epg_relation')).rows).toHaveLength(1)
+    expect(
+      (await db.query('SELECT "lastBdSyncAt" FROM apic_host WHERE id = $1', ['h1'])).rows[0],
+    ).toEqual({ lastBdSyncAt: now })
   })
 })

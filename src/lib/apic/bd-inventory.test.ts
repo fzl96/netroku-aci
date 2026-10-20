@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
-import { fetchBdClassPages, parseBdRows } from './bd-inventory'
+import { parseBdRows } from './bd-inventory'
+import { fetchApicClassPages } from './inventory-pages'
 
 const bd = (tenant: string, name = 'shared', children: unknown[] = []) => ({
   fvBD: {
@@ -86,7 +87,7 @@ describe('Bridge Domain inventory', () => {
 
   it('collects all APIC pages before returning a snapshot', async () => {
     const paths: string[] = []
-    const rows = await fetchBdClassPages('fvBD', 'fvSubnet', async (path) => {
+    const rows = await fetchApicClassPages('fvBD', 'fvSubnet', async (path) => {
       paths.push(path)
       return { totalCount: '2', imdata: [bd(paths.length === 1 ? 'T1' : 'T2')] }
     })
@@ -94,7 +95,7 @@ describe('Bridge Domain inventory', () => {
     expect(paths[0]).toContain('page=0')
     expect(paths[1]).toContain('page=1')
     expect(
-      await fetchBdClassPages('fvBD', '', async () => ({ totalCount: '0', imdata: [] })),
+      await fetchApicClassPages('fvBD', '', async () => ({ totalCount: '0', imdata: [] })),
     ).toEqual([])
   })
 
@@ -103,14 +104,14 @@ describe('Bridge Domain inventory', () => {
       { imdata: [{ error: { attributes: { code: '403' } } }] },
       { totalCount: '2', imdata: [] },
     ]) {
-      await expect(fetchBdClassPages('fvBD', '', async () => response)).rejects.toThrow()
+      await expect(fetchApicClassPages('fvBD', '', async () => response)).rejects.toThrow()
     }
     await expect(
-      fetchBdClassPages('fvBD', '', async () => ({ totalCount: '2', imdata: [bd('T1')] })),
+      fetchApicClassPages('fvBD', '', async () => ({ totalCount: '2', imdata: [bd('T1')] })),
     ).rejects.toThrow('duplicate')
     let page = 0
     await expect(
-      fetchBdClassPages('fvBD', '', async () => ({
+      fetchApicClassPages('fvBD', '', async () => ({
         totalCount: String(++page === 1 ? 2 : 3),
         imdata: [bd(String(page))],
       })),

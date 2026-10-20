@@ -27,6 +27,7 @@ const epgFindMany = mock(async (args: Record<string, unknown>) => {
       appProfile: 'App',
       description: '',
       bridgeDomain: 'BD',
+      bdRelation: null as { bd: { name: string } } | null,
       pcTag: '',
       preferredGroup: false,
       isolation: false,
@@ -122,6 +123,14 @@ beforeEach(() => {
 })
 
 describe('EPG data interface', () => {
+  it('reads the linked BD when available and retains the observed name for unlinked EPGs', async () => {
+    const rows = await epgFindMany({})
+    epgFindMany.mockResolvedValueOnce([{ ...rows[0], bdRelation: { bd: { name: 'Resolved BD' } } }])
+    const linked = await query.getEpgResults(base)
+    expect(linked.view === 'epg' && linked.rows[0].bridgeDomain).toBe('Resolved BD')
+    const unlinked = await query.getEpgResults(base)
+    expect(unlinked.view === 'epg' && unlinked.rows[0].bridgeDomain).toBe('BD')
+  })
   it('authorizes before host resolution and returns safe purpose-owned hosts', async () => {
     expect(await query.resolveEpgHost('h1')).toEqual({
       kind: 'selected',

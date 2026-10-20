@@ -54,6 +54,8 @@ export function createBdMutation(dependencies: BdMutationDependencies) {
   function invalidateBdReads(hostId: string) {
     dependencies.revalidateTag('bds:all', { expire: 0 })
     dependencies.revalidateTag(`bds:host:${hostId}`, { expire: 0 })
+    dependencies.revalidateTag('epgs:all', { expire: 0 })
+    dependencies.revalidateTag(`epgs:host:${hostId}`, { expire: 0 })
   }
   async function audit(input: AuditInput) {
     try {

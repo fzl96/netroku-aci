@@ -10,7 +10,8 @@ const authorize = mock(async () => {
 })
 const findMany = mock(async (args: unknown) => {
   void args
-  return [bdFixture()]
+  const { epgCount, ...row } = bdFixture()
+  return [{ ...row, _count: { epgs: epgCount } }]
 })
 const count = mock(async (args: unknown) => {
   void args
@@ -55,7 +56,18 @@ describe('BD inventory reads', () => {
       }),
     ).toEqual({
       apicHostId: 'h2',
-      searchText: { contains: '10.0.0', mode: 'insensitive' },
+      OR: [
+        { searchText: { contains: '10.0.0', mode: 'insensitive' } },
+        {
+          epgs: {
+            some: {
+              OR: ['name', 'tenant', 'appProfile', 'dn'].map((field) => ({
+                [field]: { contains: '10.0.0', mode: 'insensitive' },
+              })),
+            },
+          },
+        },
+      ],
       tenant: { in: ['common'] },
       vrf: { in: ['VRF'] },
       unicastRoute: false,

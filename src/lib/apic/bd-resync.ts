@@ -1,25 +1,23 @@
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { fetchBdInventoryFromApic } from './bd-inventory'
 import { bdSearchText, type BdInventoryRow } from '@/lib/bds/types'
+import {
+  acquireInventoryLock,
+  upsertInventoryRows,
+  pruneInventoryRows,
+  snapshotIds,
+  replaceBdEpgLinks,
+  type InventoryWriteClient,
+} from './inventory-relations'
 
-const BD_ADVISORY_LOCK_NAMESPACE = 20_261_020
 export class BdResyncInProgressError extends Error {
   constructor(hostId: string) {
-    super(`A Bridge Domain resync is already in progress for host ${hostId}`)
+    super(`A BD or EPG inventory refresh is already in progress for host ${hostId}`)
     this.name = 'BdResyncInProgressError'
   }
 }
-interface BdMutationClient {
-  bdSnapshot: Pick<typeof prisma.bdSnapshot, 'deleteMany' | 'createMany'>
-  apicHost: Pick<typeof prisma.apicHost, 'update'>
-  $queryRaw<T = unknown>(query: TemplateStringsArray, ...values: unknown[]): Promise<T>
-}
-export interface BdWriteClient {
-  $transaction<T>(
-    fn: (tx: BdMutationClient) => Promise<T>,
-    options?: { timeout?: number },
-  ): Promise<T>
-}
+export type BdWriteClient = InventoryWriteClient
 export async function executeBdResyncWrites(
   db: BdWriteClient,
   apicHostId: string,
@@ -28,23 +26,37 @@ export async function executeBdResyncWrites(
 ) {
   return db.$transaction(
     async (tx) => {
-      const lock = await tx.$queryRaw<Array<{ acquired: boolean }>>`
-      SELECT pg_try_advisory_xact_lock(${BD_ADVISORY_LOCK_NAMESPACE}::integer, hashtext(${apicHostId})) AS acquired
-    `
-      if (!lock[0]?.acquired) throw new BdResyncInProgressError(apicHostId)
+      if (!(await acquireInventoryLock(tx, apicHostId)))
+        throw new BdResyncInProgressError(apicHostId)
       const unique = [...new Map(rows.map((row) => [row.dn, row])).values()]
-      await tx.bdSnapshot.deleteMany({ where: { apicHostId } })
-      for (let start = 0; start < unique.length; start += 100) {
-        await tx.bdSnapshot.createMany({
-          data: unique.slice(start, start + 100).map((row) => ({
-            ...row,
-            apicHostId,
-            epgCount: row.epgs.length,
-            searchText: bdSearchText(row),
+      await upsertInventoryRows(
+        tx,
+        'bd_snapshot',
+        apicHostId,
+        unique.map((row) => ({ ...row, searchText: bdSearchText(row) })),
+      )
+      await pruneInventoryRows(
+        tx,
+        'bd_snapshot',
+        apicHostId,
+        unique.map((row) => row.dn),
+      )
+      const bdIds = await snapshotIds(tx, 'bd_snapshot', apicHostId)
+      const epgIds = await snapshotIds(tx, 'epg_snapshot', apicHostId)
+      await replaceBdEpgLinks(
+        tx,
+        apicHostId,
+        unique.flatMap((bd) =>
+          bd.epgs.map((epg) => ({
+            ...epg,
+            bdId: bdIds.get(bd.dn)!,
+            epgId: epgIds.get(epg.dn) ?? null,
           })),
-        })
-      }
-      await tx.apicHost.update({ where: { id: apicHostId }, data: { lastBdSyncAt: now } })
+        ),
+      )
+      await tx.$executeRaw(
+        Prisma.sql`UPDATE apic_host SET "lastBdSyncAt" = ${now}, "updatedAt" = CURRENT_TIMESTAMP WHERE id = ${apicHostId}`,
+      )
       return { syncedBds: unique.length }
     },
     { timeout: 120_000 },

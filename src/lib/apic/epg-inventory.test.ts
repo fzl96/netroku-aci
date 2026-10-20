@@ -61,7 +61,15 @@ describe('parseEpgRows', () => {
           pcEnfPref: 'enforced',
         },
         children: [
-          { fvRsBd: { attributes: { tnFvBDName: 'VLAN1411-BD' } } },
+          {
+            fvRsBd: {
+              attributes: {
+                tnFvBDName: 'VLAN1411-BD',
+                tDn: 'uni/tn-common/BD-VLAN1411-BD',
+                state: 'formed',
+              },
+            },
+          },
           { fvRsDomAtt: { attributes: { tDn: 'uni/phys-PHYS_DOM' } } },
           { fvRsProv: { attributes: { tnVzBrCPName: 'web-contract' } } },
           { fvRsCons: { attributes: { tnVzBrCPName: 'db-contract' } } },
@@ -111,6 +119,8 @@ describe('parseEpgRows', () => {
     expect(epg.name).toBe('VLAN1411_EPG')
     expect(epg.description).toBe('Server VLAN 1411')
     expect(epg.bridgeDomain).toBe('VLAN1411-BD')
+    expect(epg.bridgeDomainDn).toBe('uni/tn-common/BD-VLAN1411-BD')
+    expect(epg.bridgeDomainState).toBe('formed')
     expect(epg.pcTag).toBe('16386')
     expect(epg.preferredGroup).toBe(true)
     expect(epg.isolation).toBe(true)
@@ -138,6 +148,7 @@ describe('parseEpgRows', () => {
     expect(empty.isolation).toBe(false)
     expect(empty.bindings).toEqual([])
     expect(empty.bridgeDomain).toBe('')
+    expect(empty.bridgeDomainDn).toBe('')
   })
 
   it('skips non-fvAEPg items and EPGs with unparseable dns', () => {

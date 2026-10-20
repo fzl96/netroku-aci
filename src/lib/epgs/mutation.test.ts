@@ -28,6 +28,8 @@ describe('EPG mutation boundary', () => {
     ).toEqual({ ok: true, syncedEpgs: 3, syncedBindings: 5 })
     expect(deps.revalidateTag).toHaveBeenNthCalledWith(1, 'epgs:all', { expire: 0 })
     expect(deps.revalidateTag).toHaveBeenNthCalledWith(2, 'epgs:host:h1', { expire: 0 })
+    expect(deps.revalidateTag).toHaveBeenNthCalledWith(3, 'bds:all', { expire: 0 })
+    expect(deps.revalidateTag).toHaveBeenNthCalledWith(4, 'bds:host:h1', { expire: 0 })
   })
 
   it('does not let a failed audit skip invalidation', async () => {
@@ -41,7 +43,7 @@ describe('EPG mutation boundary', () => {
       password: 'p',
     })
     expect(result).toEqual({ ok: true, syncedEpgs: 3, syncedBindings: 5 })
-    expect(deps.revalidateTag).toHaveBeenCalledTimes(2)
+    expect(deps.revalidateTag).toHaveBeenCalledTimes(4)
   })
 
   it('rethrows scheduler failure without a dataset audit', async () => {

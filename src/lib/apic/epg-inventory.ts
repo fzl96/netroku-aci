@@ -1,4 +1,5 @@
 import { apicFetch, apicLogin } from './client'
+import { fetchApicClassPages } from './inventory-pages'
 
 export interface EpgBindingRow {
   dn: string
@@ -18,6 +19,8 @@ export interface EpgRow {
   appProfile: string
   description: string
   bridgeDomain: string
+  bridgeDomainDn?: string
+  bridgeDomainState?: string
   pcTag: string
   preferredGroup: boolean
   isolation: boolean
@@ -37,7 +40,7 @@ interface FvAEPgAttrs {
 }
 
 interface FvAEPgChild {
-  fvRsBd?: { attributes: { tnFvBDName?: string } }
+  fvRsBd?: { attributes: { tnFvBDName?: string; tDn?: string; state?: string } }
   fvRsDomAtt?: { attributes: { tDn?: string } }
   fvRsProv?: { attributes: { tnVzBrCPName?: string } }
   fvRsCons?: { attributes: { tnVzBrCPName?: string } }
@@ -125,6 +128,8 @@ export function parseEpgRows(imdata: unknown[]): EpgRow[] {
       appProfile: dnMatch[2],
       description: a.descr ?? '',
       bridgeDomain: '',
+      bridgeDomainDn: '',
+      bridgeDomainState: '',
       pcTag: a.pcTag ?? '',
       preferredGroup: a.prefGrMemb === 'include',
       isolation: a.pcEnfPref === 'enforced',
@@ -135,8 +140,12 @@ export function parseEpgRows(imdata: unknown[]): EpgRow[] {
     }
 
     for (const child of mo.children ?? []) {
-      const bd = child.fvRsBd?.attributes.tnFvBDName
-      if (bd) row.bridgeDomain = bd
+      const bd = child.fvRsBd?.attributes
+      if (bd) {
+        row.bridgeDomain = bd.tnFvBDName ?? ''
+        row.bridgeDomainDn = bd.tDn ?? ''
+        row.bridgeDomainState = bd.state ?? ''
+      }
 
       const domTDn = child.fvRsDomAtt?.attributes.tDn
       if (domTDn) row.domains.push(domainLabelFromTDn(domTDn))
@@ -169,23 +178,22 @@ export function parseEpgRows(imdata: unknown[]): EpgRow[] {
   return rows
 }
 
-async function apicGet(host: string, token: string, path: string): Promise<unknown[]> {
-  const res = await apicFetch(host, path, { token })
-  if (!res.ok) throw new Error(`APIC GET ${path} failed: ${res.status}`)
-  const data = (await res.json()) as { imdata?: unknown[] }
-  return data.imdata ?? []
-}
-
 export async function fetchEpgInventoryFromApic(
   host: string,
   username: string,
   plaintextPassword: string,
 ): Promise<EpgRow[]> {
   const token = await apicLogin(host, username, plaintextPassword)
-  const imdata = await apicGet(
-    host,
-    token,
-    '/api/node/class/fvAEPg.json?rsp-subtree=children&rsp-subtree-class=fvRsPathAtt,fvRsBd,fvRsDomAtt,fvRsProv,fvRsCons',
+  const imdata = await fetchApicClassPages(
+    'fvAEPg',
+    'fvRsPathAtt,fvRsBd,fvRsDomAtt,fvRsProv,fvRsCons',
+    async (path) => {
+      const response = await apicFetch(host, path, { token })
+      if (!response.ok) throw new Error(`APIC EPG inventory request failed: ${response.status}`)
+      return response.json()
+    },
   )
-  return parseEpgRows(imdata)
+  const rows = parseEpgRows(imdata)
+  if (rows.length !== imdata.length) throw new Error('Incomplete or malformed EPG inventory')
+  return rows
 }

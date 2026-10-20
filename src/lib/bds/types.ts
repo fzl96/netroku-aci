@@ -10,16 +10,8 @@ export const bdSubnetsSchema = z.array(
     ipDPLearning: z.string(),
   }),
 )
-export const bdEpgsSchema = z.array(
-  z.object({
-    dn: z.string(),
-    name: z.string(),
-    tenant: z.string(),
-    appProfile: z.string(),
-  }),
-)
 export type BdSubnet = z.infer<typeof bdSubnetsSchema>[number]
-export type BdEpg = z.infer<typeof bdEpgsSchema>[number]
+export type BdEpg = { dn: string; name: string; tenant: string; appProfile: string }
 export type BdInventoryRow = {
   dn: string
   name: string
@@ -50,6 +42,5 @@ export function bdSearchText(row: BdInventoryRow): string {
     row.vrfDn,
     ...row.subnets.map((s) => s.ip),
     ...row.l3Outs,
-    ...row.epgs.flatMap((e) => [e.name, e.tenant, e.appProfile]),
   ].join('\n')
 }

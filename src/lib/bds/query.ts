@@ -7,7 +7,7 @@ import { AuthenticationRequiredError, requireSession } from '@/lib/auth'
 import { getApicHosts, ApicHostReadError } from '@/lib/apic-hosts/query'
 import { prisma } from '@/lib/prisma'
 import type { BdFilters, BdPageParams } from './params'
-import { bdEpgsSchema, bdSubnetsSchema, type BdRow } from './types'
+import { bdSubnetsSchema, type BdRow } from './types'
 
 const BD_SELECT = {
   id: true,
@@ -27,12 +27,16 @@ const BD_SELECT = {
   multiDstPktAct: true,
   subnets: true,
   l3Outs: true,
-  epgs: true,
-  epgCount: true,
+  epgs: {
+    select: { dn: true, name: true, tenant: true, appProfile: true },
+    orderBy: { dn: 'asc' as const },
+  },
+  _count: { select: { epgs: true } },
 } satisfies Prisma.BdSnapshotSelect
 type StoredRow = Prisma.BdSnapshotGetPayload<{ select: typeof BD_SELECT }>
 function serialize(row: StoredRow): BdRow {
-  return { ...row, subnets: bdSubnetsSchema.parse(row.subnets), epgs: bdEpgsSchema.parse(row.epgs) }
+  const { _count, ...bd } = row
+  return { ...bd, subnets: bdSubnetsSchema.parse(row.subnets), epgCount: _count.epgs }
 }
 const cacheOptions = (hostId: string) => ({
   tags: ['bds:all', `bds:host:${hostId}`],
@@ -72,7 +76,20 @@ export function buildBdWhere(hostId: string, filters: BdFilters = {}): Prisma.Bd
   return {
     apicHostId: hostId,
     ...(filters.query?.trim()
-      ? { searchText: { contains: filters.query.trim(), mode: 'insensitive' } }
+      ? {
+          OR: [
+            { searchText: { contains: filters.query.trim(), mode: 'insensitive' } },
+            {
+              epgs: {
+                some: {
+                  OR: ['name', 'tenant', 'appProfile', 'dn'].map((field) => ({
+                    [field]: { contains: filters.query!.trim(), mode: 'insensitive' },
+                  })),
+                },
+              },
+            },
+          ],
+        }
       : {}),
     ...(filters.tenant?.length ? { tenant: { in: filters.tenant } } : {}),
     ...(filters.vrf?.length ? { vrf: { in: filters.vrf } } : {}),
@@ -113,7 +130,12 @@ export async function getBdOverview(params: BdPageParams): Promise<BdOverview> {
         },
       }
     },
-    ['bds', 'overview', params.hostId, JSON.stringify(buildBdWhere(params.hostId, params))],
+    [
+      'bds',
+      'relational-overview',
+      params.hostId,
+      JSON.stringify(buildBdWhere(params.hostId, params)),
+    ],
     cacheOptions(params.hostId),
   )()
 }
@@ -148,7 +170,7 @@ export async function getBdResults(params: BdPageParams): Promise<BdResultsData>
         pagination: { page, pageSize: params.pageSize, total, totalPages },
       }
     },
-    ['bds', 'results', JSON.stringify(params)],
+    ['bds', 'relational-results', JSON.stringify(params)],
     cacheOptions(params.hostId),
   )()
 }
@@ -178,7 +200,7 @@ export async function getBdExportData(input: {
           orderBy: [{ tenant: 'asc' }, { name: 'asc' }, { dn: 'asc' }],
         })
       ).map(serialize),
-    ['bds', 'export', JSON.stringify(where)],
+    ['bds', 'relational-export', JSON.stringify(where)],
     cacheOptions(input.hostId),
   )()
   return { kind: 'ready' as const, host, rows }

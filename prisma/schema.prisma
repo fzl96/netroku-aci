@@ -239,6 +239,7 @@ model ApicHost {
   nodeSamples         NodeStatusSample[]
   epgs                EpgSnapshot[]
   bridgeDomains       BdSnapshot[]
+  bdEpgRelations      BdEpgRelation[]
   schedule            ResyncSchedule?
 
   @@unique([host])
@@ -433,31 +434,52 @@ model NodeStatusSample {
 }
 
 model BdSnapshot {
-  id                    String   @id @default(cuid())
+  id                    String          @id @default(cuid())
   apicHostId            String
-  apicHost              ApicHost @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  apicHost              ApicHost        @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
   dn                    String
   name                  String
   tenant                String
-  description           String   @default("")
-  vrf                   String   @default("")
-  vrfDn                 String   @default("")
+  description           String          @default("")
+  vrf                   String          @default("")
+  vrfDn                 String          @default("")
   unicastRoute          Boolean?
   arpFlood              Boolean?
   ipLearning            Boolean?
   limitIpLearnToSubnets Boolean?
-  unkMacUcastAct        String   @default("")
-  unkMcastAct           String   @default("")
-  multiDstPktAct        String   @default("")
+  unkMacUcastAct        String          @default("")
+  unkMcastAct           String          @default("")
+  multiDstPktAct        String          @default("")
   subnets               Json
   l3Outs                String[]
-  epgs                  Json
-  epgCount              Int      @default(0)
+  epgs                  BdEpgRelation[]
   searchText            String
 
   @@unique([apicHostId, dn])
+  @@unique([apicHostId, id])
   @@index([apicHostId, tenant])
   @@map("bd_snapshot")
+}
+
+// Keeps APIC-discovered EPG identities even before their full snapshot is collected.
+// Composite foreign keys prevent linking snapshots from different APIC hosts.
+model BdEpgRelation {
+  id         String       @id @default(cuid())
+  apicHostId String
+  apicHost   ApicHost     @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  bdId       String
+  bd         BdSnapshot   @relation(fields: [apicHostId, bdId], references: [apicHostId, id], onDelete: Cascade)
+  epgId      String?
+  epg        EpgSnapshot? @relation(fields: [apicHostId, epgId], references: [apicHostId, id], onDelete: NoAction)
+  dn         String
+  name       String
+  tenant     String
+  appProfile String
+
+  @@unique([apicHostId, dn])
+  @@unique([apicHostId, epgId])
+  @@index([bdId])
+  @@map("bd_epg_relation")
 }
 
 model EpgSnapshot {
@@ -470,6 +492,9 @@ model EpgSnapshot {
   appProfile        String
   description       String           @default("")
   bridgeDomain      String           @default("")
+  bridgeDomainDn    String           @default("")
+  bridgeDomainState String           @default("")
+  bdRelation        BdEpgRelation?
   pcTag             String           @default("")
   preferredGroup    Boolean          @default(false)
   isolation         Boolean          @default(false)
@@ -479,6 +504,7 @@ model EpgSnapshot {
   bindings          EpgPathBinding[]
 
   @@unique([apicHostId, dn])
+  @@unique([apicHostId, id])
   @@index([apicHostId, tenant])
   @@map("epg_snapshot")
 }
