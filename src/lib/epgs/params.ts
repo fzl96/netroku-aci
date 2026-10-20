@@ -12,6 +12,7 @@ export type RawEpgPageParams = {
   pageSize?: RawEpgPageParam
   tenant?: RawEpgPageParam
   ap?: RawEpgPageParam
+  contract?: RawEpgPageParam
   node?: RawEpgPageParam
 }
 
@@ -24,6 +25,7 @@ export type EpgPageParams = {
   pageSize: EpgPageSize
   tenants: string[]
   appProfiles: string[]
+  contracts: string[]
   nodes: string[]
 }
 
@@ -32,6 +34,7 @@ export type EpgFilters = {
   query?: string
   tenant?: string[]
   ap?: string[]
+  contract?: string[]
   node?: string[]
 }
 
@@ -79,6 +82,7 @@ export function parseEpgPageParams(input: RawEpgPageParams): EpgPageParams {
     pageSize: pageSize(first(input.pageSize)),
     tenants: list(input.tenant),
     appProfiles: list(input.ap),
+    contracts: list(input.contract),
     nodes: view === 'port' ? list(input.node) : [],
   }
 }
@@ -93,6 +97,7 @@ export function buildEpgPageUrl(params: EpgPageParams): string {
   if (params.pageSize !== 50) search.set('pageSize', String(params.pageSize))
   if (params.tenants.length) search.set('tenant', params.tenants.join(','))
   if (params.appProfiles.length) search.set('ap', params.appProfiles.join(','))
+  if (params.contracts.length) search.set('contract', params.contracts.join(','))
   if (params.view === 'port' && params.nodes.length) search.set('node', params.nodes.join(','))
   const value = search.toString()
   return `/epgs${value ? `?${value}` : ''}`
@@ -104,10 +109,13 @@ export function hasActiveEpgFilters(filters: EpgFilters): boolean {
     filters.query?.trim() ||
     filters.tenant?.length ||
     filters.ap?.length ||
+    filters.contract?.length ||
     filters.node?.length,
   )
 }
 
 export function countActiveEpgFilterGroups(filters: EpgFilters): number {
-  return [filters.tenant, filters.ap, filters.node].filter((values) => values?.length).length
+  return [filters.tenant, filters.ap, filters.contract, filters.node].filter(
+    (values) => values?.length,
+  ).length
 }

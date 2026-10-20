@@ -21,6 +21,7 @@ const baseParams: EpgPageParams = {
   pageSize: 50,
   tenants: [],
   appProfiles: [],
+  contracts: [],
   nodes: [],
 }
 

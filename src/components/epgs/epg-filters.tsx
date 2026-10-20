@@ -35,10 +35,11 @@ export function EpgFilters({
   const active = countActiveEpgFilterGroups({
     tenant: params.tenants,
     ap: params.appProfiles,
+    contract: params.contracts,
     node: params.nodes,
   })
 
-  function filter(key: 'tenant' | 'ap' | 'node', value: string[]) {
+  function filter(key: 'tenant' | 'ap' | 'contract' | 'node', value: string[]) {
     const url = buildEpgUrl(params, { [key]: value, page: 1 })
     startTransition(() => router.replace(url, { scroll: false }))
   }
@@ -77,6 +78,14 @@ export function EpgFilters({
             value={params.appProfiles}
             options={overview.choices.appProfiles}
             onChange={(value) => filter('ap', value)}
+            disabled={isPending}
+            searchable
+          />
+          <FilterSubmenu
+            label="Contract"
+            value={params.contracts}
+            options={overview.choices.contracts}
+            onChange={(value) => filter('contract', value)}
             disabled={isPending}
             searchable
           />

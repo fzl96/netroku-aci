@@ -31,8 +31,8 @@ const epgFindMany = mock(async (args: Record<string, unknown>) => {
       preferredGroup: false,
       isolation: false,
       domains: [],
-      providedContracts: [],
-      consumedContracts: [],
+      providedContracts: ['Contract10', 'Contract2'],
+      consumedContracts: ['Contract2', 'Contract1', ''],
       internalSecret: 'omit-me',
       bindings: [
         {
@@ -105,6 +105,7 @@ const base = {
   pageSize: 50 as const,
   tenants: [],
   appProfiles: [],
+  contracts: [],
   nodes: [],
 }
 
@@ -167,6 +168,63 @@ describe('EPG data interface', () => {
     await query.getEpgResults({ ...base, tenants: ['a,b'] })
     await query.getEpgResults({ ...base, tenants: ['a', 'b'] })
     expect(cacheCalls.at(-2)?.key).not.toEqual(cacheCalls.at(-1)?.key)
+  })
+
+  it('offers distinct naturally sorted contract names from both roles for the selected host', async () => {
+    const result = await query.getEpgOverview('h1', { ...base, tenants: ['OtherTenant'] })
+    expect(result.choices.contracts).toEqual(['Contract1', 'Contract2', 'Contract10'])
+    expect(epgFindMany).toHaveBeenCalledWith({
+      where: { apicHostId: 'h1' },
+      select: { providedContracts: true, consumedContracts: true },
+    })
+  })
+
+  it('uses normalized contracts for overview counts, both views, exports and cache keys', async () => {
+    const params = { ...base, contracts: [' Contract2 ', 'Contract1', 'Contract2', ''] }
+    const expected = {
+      AND: [
+        {
+          OR: [
+            { providedContracts: { hasSome: ['Contract1', 'Contract2'] } },
+            { consumedContracts: { hasSome: ['Contract1', 'Contract2'] } },
+          ],
+        },
+      ],
+    }
+    await query.getEpgOverview('h1', params)
+    expect(epgCount).toHaveBeenLastCalledWith(
+      expect.objectContaining({ where: expect.objectContaining(expected) }),
+    )
+    await query.getEpgResults(params)
+    expect(epgFindMany.mock.calls.at(-1)?.[0]).toMatchObject({ where: expected })
+    await query.getEpgResults({ ...params, view: 'port' })
+    expect(bindingFindMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ epg: expect.objectContaining(expected) }),
+      }),
+    )
+    await query.getEpgExportData({
+      hostId: 'h1',
+      scope: 'filtered',
+      filters: { contract: params.contracts },
+    })
+    expect(epgFindMany.mock.calls.at(-1)?.[0]).toMatchObject({ where: expected })
+    expect(cacheCalls.every(({ key }) => key.includes('["Contract1","Contract2"]'))).toBe(true)
+
+    await query.getEpgResults({ ...base, contracts: ['Contract1', 'Contract2'] })
+    const canonicalKey = cacheCalls.at(-1)?.key
+    await query.getEpgResults(params)
+    expect(cacheCalls.at(-1)?.key).toEqual(canonicalKey)
+    await query.getEpgResults({ ...base, contracts: ['Contract1'] })
+    expect(cacheCalls.at(-1)?.key).not.toEqual(canonicalKey)
+
+    await query.getEpgExportData({
+      hostId: 'h1',
+      scope: 'all',
+      filters: { contract: ['Contract1'] },
+    })
+    expect(epgFindMany.mock.calls.at(-1)?.[0]).toMatchObject({ where: { apicHostId: 'h1' } })
+    expect(epgFindMany.mock.calls.at(-1)?.[0]).not.toHaveProperty('where.AND')
   })
 
   it('groups all matching bindings before port pagination', async () => {

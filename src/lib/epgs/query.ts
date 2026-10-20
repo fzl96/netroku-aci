@@ -10,6 +10,8 @@ import type { EpgExportRow } from './export'
 import type { EpgFilters, EpgPageParams, EpgPageSize } from './params'
 import { groupBindingsByPort, type EpgPortSummary } from './sort'
 
+export { countActiveEpgFilterGroups, hasActiveEpgFilters } from './params'
+
 const EPG_CACHE_SECONDS = 8 * 60 * 60
 const NATURAL_COLLATOR = new Intl.Collator('en', { numeric: true, sensitivity: 'base' })
 
@@ -100,7 +102,7 @@ export type EpgOverviewData = {
   hostTotal: number
   filteredTotal: number
   lastEpgSyncAt: string | null
-  choices: { tenants: string[]; appProfiles: string[]; nodes: string[] }
+  choices: { tenants: string[]; appProfiles: string[]; contracts: string[]; nodes: string[] }
 }
 export type EpgPagination = {
   page: number
@@ -208,6 +210,7 @@ function normalize(filters: EpgFilters = {}): Required<EpgFilters> {
     dn: filters.dn?.trim() ?? '',
     tenant: values(filters.tenant),
     ap: values(filters.ap),
+    contract: values(filters.contract),
     node: values(filters.node),
   }
 }
@@ -218,6 +221,7 @@ function filterParts(filters: Required<EpgFilters>): string[] {
     filters.query,
     JSON.stringify(filters.tenant),
     JSON.stringify(filters.ap),
+    JSON.stringify(filters.contract),
     JSON.stringify(filters.node),
   ]
 }
@@ -230,6 +234,21 @@ function nodeConditions(value: string): Prisma.EpgPathBindingWhereInput[] {
   ]
 }
 
+function contractWhere(contracts?: string[]): Prisma.EpgSnapshotWhereInput {
+  return contracts?.length
+    ? {
+        AND: [
+          {
+            OR: [
+              { providedContracts: { hasSome: contracts } },
+              { consumedContracts: { hasSome: contracts } },
+            ],
+          },
+        ],
+      }
+    : {}
+}
+
 export function buildEpgWhere(
   apicHostId: string,
   filters: EpgFilters,
@@ -240,6 +259,7 @@ export function buildEpgWhere(
     ...(filters.dn ? { dn: filters.dn } : {}),
     ...(filters.tenant?.length ? { tenant: { in: filters.tenant } } : {}),
     ...(filters.ap?.length ? { appProfile: { in: filters.ap } } : {}),
+    ...contractWhere(filters.contract),
     ...(query
       ? {
           OR: [
@@ -268,6 +288,7 @@ export function buildBindingWhere(
     ...(filters.dn ? { dn: filters.dn } : {}),
     ...(filters.tenant?.length ? { tenant: { in: filters.tenant } } : {}),
     ...(filters.ap?.length ? { appProfile: { in: filters.ap } } : {}),
+    ...contractWhere(filters.contract),
   }
   return {
     apicHostId,
@@ -287,18 +308,6 @@ export function buildBindingWhere(
   }
 }
 
-export function countActiveEpgFilterGroups(filters: EpgFilters): number {
-  return [filters.tenant, filters.ap, filters.node].filter((values) => values?.length).length
-}
-export function hasActiveEpgFilters(filters: EpgFilters): boolean {
-  return Boolean(
-    filters.dn ||
-    filters.query?.trim() ||
-    filters.tenant?.length ||
-    filters.ap?.length ||
-    filters.node?.length,
-  )
-}
 export function expandNodeOptions(values: string[]): string[] {
   return Array.from(new Set(values.flatMap((value) => value.split('-')).filter(Boolean))).sort(
     NATURAL_COLLATOR.compare,
@@ -347,6 +356,7 @@ export async function getEpgOverview(
     dn: params.selected,
     tenant: params.tenants,
     ap: params.appProfiles,
+    contract: params.contracts,
     node: params.nodes,
   })
   return unstable_cache(
@@ -356,28 +366,33 @@ export async function getEpgOverview(
         ...buildEpgWhere(hostId, filters),
         ...epgHasNodeBindingWhere(filters.node),
       }
-      const [host, tenantRows, apRows, nodeRows, hostTotal, filteredTotal] = await Promise.all([
-        prisma.apicHost.findFirst({ where: { id: hostId }, select: { lastEpgSyncAt: true } }),
-        prisma.epgSnapshot.findMany({
-          where: hostWhere,
-          select: { tenant: true },
-          distinct: ['tenant'],
-          orderBy: { tenant: 'asc' },
-        }),
-        prisma.epgSnapshot.findMany({
-          where: hostWhere,
-          select: { appProfile: true },
-          distinct: ['appProfile'],
-          orderBy: { appProfile: 'asc' },
-        }),
-        prisma.epgPathBinding.findMany({
-          where: hostWhere,
-          select: { node: true },
-          distinct: ['node'],
-        }),
-        prisma.epgSnapshot.count({ where: hostWhere }),
-        prisma.epgSnapshot.count({ where: filteredWhere }),
-      ])
+      const [host, tenantRows, apRows, contractRows, nodeRows, hostTotal, filteredTotal] =
+        await Promise.all([
+          prisma.apicHost.findFirst({ where: { id: hostId }, select: { lastEpgSyncAt: true } }),
+          prisma.epgSnapshot.findMany({
+            where: hostWhere,
+            select: { tenant: true },
+            distinct: ['tenant'],
+            orderBy: { tenant: 'asc' },
+          }),
+          prisma.epgSnapshot.findMany({
+            where: hostWhere,
+            select: { appProfile: true },
+            distinct: ['appProfile'],
+            orderBy: { appProfile: 'asc' },
+          }),
+          prisma.epgSnapshot.findMany({
+            where: hostWhere,
+            select: { providedContracts: true, consumedContracts: true },
+          }),
+          prisma.epgPathBinding.findMany({
+            where: hostWhere,
+            select: { node: true },
+            distinct: ['node'],
+          }),
+          prisma.epgSnapshot.count({ where: hostWhere }),
+          prisma.epgSnapshot.count({ where: filteredWhere }),
+        ])
       return {
         hostTotal,
         filteredTotal,
@@ -388,6 +403,13 @@ export async function getEpgOverview(
           ),
           appProfiles: Array.from(
             new Set(apRows.map((row) => row.appProfile).filter(Boolean)),
+          ).sort(NATURAL_COLLATOR.compare),
+          contracts: Array.from(
+            new Set(
+              contractRows
+                .flatMap((row) => [...row.providedContracts, ...row.consumedContracts])
+                .filter(Boolean),
+            ),
           ).sort(NATURAL_COLLATOR.compare),
           nodes: expandNodeOptions(nodeRows.map((row) => row.node).filter(Boolean)),
         },
@@ -405,6 +427,7 @@ export async function getEpgResults(params: EpgPageParams): Promise<EpgResultsDa
     dn: params.selected,
     tenant: params.tenants,
     ap: params.appProfiles,
+    contract: params.contracts,
     node: params.nodes,
   })
   return unstable_cache(

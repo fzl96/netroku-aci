@@ -23,7 +23,11 @@ export function EpgResults({
   const { params, results } = state.data
   const noun = results.view === 'epg' ? 'EPGs' : 'ports'
   const filtered = Boolean(
-    params.query || params.tenants.length || params.appProfiles.length || params.nodes.length,
+    params.query ||
+    params.tenants.length ||
+    params.appProfiles.length ||
+    params.contracts.length ||
+    params.nodes.length,
   )
   const selectedEpg =
     results.view === 'epg' ? (results.rows.find((row) => row.id === epgId) ?? null) : null

@@ -1,10 +1,9 @@
-import { describe, expect, it } from 'bun:test'
-import {
-  buildEpgWhere,
-  buildBindingWhere,
-  countActiveEpgFilterGroups,
-  expandNodeOptions,
-} from './query'
+import { describe, expect, it, mock } from 'bun:test'
+
+mock.module('server-only', () => ({}))
+
+const { buildEpgWhere, buildBindingWhere, countActiveEpgFilterGroups, expandNodeOptions } =
+  await import('./query')
 
 describe('buildEpgWhere', () => {
   it('scopes to host and maps filters', () => {
@@ -17,6 +16,30 @@ describe('buildEpgWhere', () => {
     expect(where.tenant).toEqual({ in: ['t1'] })
     expect(where.appProfile).toEqual({ in: ['ap1'] })
     expect(where.OR).toBeDefined()
+  })
+
+  it('matches any provided or consumed contract while retaining search and other filters', () => {
+    const where = buildEpgWhere('h1', {
+      contract: ['web', 'api'],
+      tenant: ['t1'],
+      ap: ['ap1'],
+      query: 'db',
+    })
+    expect(where).toMatchObject({
+      apicHostId: 'h1',
+      tenant: { in: ['t1'] },
+      appProfile: { in: ['ap1'] },
+      AND: [
+        {
+          OR: [
+            { providedContracts: { hasSome: ['web', 'api'] } },
+            { consumedContracts: { hasSome: ['web', 'api'] } },
+          ],
+        },
+      ],
+    })
+    expect(where.OR).toContainEqual({ name: { contains: 'db', mode: 'insensitive' } })
+    expect(buildEpgWhere('h1', { contract: [] })).toEqual({ apicHostId: 'h1' })
   })
 })
 
@@ -33,6 +56,28 @@ describe('buildBindingWhere', () => {
   it('applies tenant/ap through the epg relation', () => {
     const where = buildBindingWhere('h1', { tenant: ['t1'], ap: ['ap1'] })
     expect(where.epg).toEqual({ tenant: { in: ['t1'] }, appProfile: { in: ['ap1'] } })
+  })
+
+  it('restricts bindings to contract-matching EPGs alongside node and search filters', () => {
+    const where = buildBindingWhere('h1', {
+      contract: ['web', 'api'],
+      tenant: ['t1'],
+      node: ['101'],
+      query: 'Eth1/1',
+    })
+    expect(where.epg).toMatchObject({
+      tenant: { in: ['t1'] },
+      AND: [
+        {
+          OR: [
+            { providedContracts: { hasSome: ['web', 'api'] } },
+            { consumedContracts: { hasSome: ['web', 'api'] } },
+          ],
+        },
+      ],
+    })
+    expect(where.AND).toBeDefined()
+    expect(where.OR).toContainEqual({ port: { contains: 'Eth1/1', mode: 'insensitive' } })
   })
 })
 

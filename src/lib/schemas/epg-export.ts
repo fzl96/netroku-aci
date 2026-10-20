@@ -10,6 +10,7 @@ export const epgExportSchema = z.object({
       dn: z.string().trim().max(1024).optional(),
       tenant: z.array(z.string()).optional(),
       ap: z.array(z.string()).optional(),
+      contract: z.array(z.string()).optional(),
       node: z.array(z.string()).optional(),
     })
     .optional(),

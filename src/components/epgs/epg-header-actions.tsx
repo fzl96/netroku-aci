@@ -84,6 +84,7 @@ export function EpgHeaderActions({
           dn: params.selected,
           tenant: params.tenants,
           ap: params.appProfiles,
+          contract: params.contracts,
           node: params.nodes,
         }}
       />

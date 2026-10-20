@@ -13,6 +13,7 @@ export type EpgUrlOverrides = {
   pageSize?: EpgPageSize
   tenant?: string[]
   ap?: string[]
+  contract?: string[]
   node?: string[]
 }
 
@@ -26,6 +27,7 @@ export function buildEpgUrl(params: EpgPageParams, overrides: EpgUrlOverrides): 
     pageSize: overrides.pageSize ?? params.pageSize,
     tenants: overrides.tenant ?? params.tenants,
     appProfiles: overrides.ap ?? params.appProfiles,
+    contracts: overrides.contract ?? params.contracts,
     nodes: view === 'port' ? (overrides.node ?? params.nodes) : [],
   })
 }
