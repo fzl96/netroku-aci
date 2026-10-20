@@ -75,6 +75,7 @@ export const resolveBdHost = cache(async (requestedHostId: string): Promise<BdHo
 export function buildBdWhere(hostId: string, filters: BdFilters = {}): Prisma.BdSnapshotWhereInput {
   return {
     apicHostId: hostId,
+    ...(filters.selected ? { dn: filters.selected } : {}),
     ...(filters.query?.trim()
       ? {
           OR: [

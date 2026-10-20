@@ -90,7 +90,10 @@ async function BdBody({
 
   return (
     <Suspense fallback={<BdResultsSkeleton />}>
-      <BdResults key={context.params.hostId} dataPromise={resultsPromise} />
+      <BdResults
+        key={`${context.params.hostId}:${context.params.selected ?? ''}`}
+        dataPromise={resultsPromise}
+      />
     </Suspense>
   )
 }

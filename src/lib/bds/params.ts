@@ -5,6 +5,7 @@ export type BdPageSize = (typeof BD_PAGE_SIZES)[number] | 'all'
 type RawValue = string | string[] | undefined
 export type RawBdParams = Record<string, RawValue>
 export type BdFilters = {
+  selected?: string
   query?: string
   tenant?: string[]
   vrf?: string[]
@@ -28,11 +29,12 @@ export function parseBdPageParams(raw: RawBdParams): BdPageParams {
   const routing = first(raw.routing)
   return {
     hostId: first(raw.apic),
+    ...(first(raw.selected) ? { selected: first(raw.selected).slice(0, 1024) } : {}),
     query: first(raw.query),
     tenant: list(raw.tenant),
     vrf: list(raw.vrf),
     ...(routing === 'yes' || routing === 'no' ? { routing } : {}),
-    page: Number.isSafeInteger(page) && page > 0 ? page : 1,
+    page: !first(raw.selected) && Number.isSafeInteger(page) && page > 0 ? page : 1,
     pageSize:
       size === 'all'
         ? 'all'
@@ -44,6 +46,7 @@ export function parseBdPageParams(raw: RawBdParams): BdPageParams {
 export function buildBdPageUrl(params: BdPageParams): string {
   const search = new URLSearchParams()
   if (params.hostId) search.set('apic', params.hostId)
+  if (params.selected) search.set('selected', params.selected)
   if (params.query?.trim()) search.set('query', params.query.trim())
   if (params.tenant?.length) search.set('tenant', params.tenant.join(','))
   if (params.vrf?.length) search.set('vrf', params.vrf.join(','))
@@ -54,7 +57,11 @@ export function buildBdPageUrl(params: BdPageParams): string {
 }
 export function hasBdFilters(filters: BdFilters): boolean {
   return Boolean(
-    filters.query?.trim() || filters.tenant?.length || filters.vrf?.length || filters.routing,
+    filters.selected ||
+    filters.query?.trim() ||
+    filters.tenant?.length ||
+    filters.vrf?.length ||
+    filters.routing,
   )
 }
 export const bdExportSchema = z.object({
@@ -62,6 +69,7 @@ export const bdExportSchema = z.object({
   scope: z.enum(['all', 'filtered']),
   filters: z
     .object({
+      selected: z.string().trim().min(1).max(1024).optional(),
       query: z.string().optional(),
       tenant: z.array(z.string()).optional(),
       vrf: z.array(z.string()).optional(),

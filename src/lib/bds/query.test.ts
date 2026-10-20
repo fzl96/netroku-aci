@@ -46,6 +46,17 @@ beforeEach(() => {
 })
 
 describe('BD inventory reads', () => {
+  it('restricts a linked BD destination to its exact DN and APIC host', async () => {
+    const params = parseBdPageParams({ apic: 'h1', selected: 'uni/tn-common/BD-web' })
+    expect(query.buildBdWhere(params.hostId, params)).toEqual({
+      apicHostId: 'h1',
+      dn: 'uni/tn-common/BD-web',
+    })
+    await query.getBdResults(params)
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { apicHostId: 'h1', dn: 'uni/tn-common/BD-web' } }),
+    )
+  })
   it('keeps tenant and routing filters host scoped and searches subnet/EPG text', () => {
     expect(
       query.buildBdWhere('h2', {
@@ -85,7 +96,12 @@ describe('BD inventory reads', () => {
     expect(cacheTags).toContainEqual(['bds:all', 'bds:host:h1'])
   })
   it('exports all matching records independently of page size and honors all versus filtered scope', async () => {
-    const filters = { query: 'gateway', tenant: ['common'], routing: 'yes' as const }
+    const filters = {
+      query: 'gateway',
+      tenant: ['common'],
+      routing: 'yes' as const,
+      selected: 'uni/tn-common/BD-web',
+    }
     await query.getBdExportData({ hostId: 'h1', scope: 'filtered', filters })
     expect(findMany).toHaveBeenLastCalledWith(
       expect.objectContaining({ where: query.buildBdWhere('h1', filters) }),

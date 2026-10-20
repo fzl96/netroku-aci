@@ -6,6 +6,7 @@ import { cache } from 'react'
 import { AuthenticationRequiredError, requireSession } from '@/lib/auth'
 import { ApicHostReadError, getApicHosts } from '@/lib/apic-hosts/query'
 import { prisma } from '@/lib/prisma'
+import { bdSubnetsSchema } from '@/lib/bds/types'
 import type { EpgExportRow } from './export'
 import type { EpgFilters, EpgPageParams, EpgPageSize } from './params'
 import { groupBindingsByPort, type EpgPortSummary } from './sort'
@@ -38,7 +39,13 @@ const EPG_SELECT = {
   appProfile: true,
   description: true,
   bridgeDomain: true,
-  bdRelation: { select: { bd: { select: { name: true } } } },
+  bdRelation: {
+    select: {
+      bd: {
+        select: { dn: true, name: true, tenant: true, description: true, vrf: true, subnets: true },
+      },
+    },
+  },
   pcTag: true,
   preferredGroup: true,
   isolation: true,
@@ -71,6 +78,15 @@ export type EpgBindingRow = {
   mode: string
 }
 
+export type EpgBridgeDomainDetails = {
+  dn: string
+  name: string
+  tenant: string
+  description: string
+  vrf: string
+  subnets: string[]
+}
+
 export type EpgRow = {
   id: string
   apicHostId: string
@@ -80,6 +96,7 @@ export type EpgRow = {
   appProfile: string
   description: string
   bridgeDomain: string
+  bridgeDomainDetails?: EpgBridgeDomainDetails | null
   pcTag: string
   preferredGroup: boolean
   isolation: boolean
@@ -170,6 +187,7 @@ function serializeBinding(binding: StoredEpgBinding): EpgBindingRow {
 }
 
 function serializeEpg(row: StoredEpgRow): EpgRow {
+  const bd = row.bdRelation?.bd
   return {
     id: row.id,
     apicHostId: row.apicHostId,
@@ -178,7 +196,17 @@ function serializeEpg(row: StoredEpgRow): EpgRow {
     tenant: row.tenant,
     appProfile: row.appProfile,
     description: row.description,
-    bridgeDomain: row.bdRelation?.bd.name ?? row.bridgeDomain,
+    bridgeDomain: bd?.name ?? row.bridgeDomain,
+    bridgeDomainDetails: bd
+      ? {
+          dn: bd.dn,
+          name: bd.name,
+          tenant: bd.tenant,
+          description: bd.description,
+          vrf: bd.vrf,
+          subnets: bdSubnetsSchema.parse(bd.subnets).map((subnet) => subnet.ip),
+        }
+      : null,
     pcTag: row.pcTag,
     preferredGroup: row.preferredGroup,
     isolation: row.isolation,
@@ -470,7 +498,7 @@ export async function getEpgResults(params: EpgPageParams): Promise<EpgResultsDa
     },
     [
       'epgs',
-      'results',
+      'results-bd-preview',
       params.selected ?? '',
       params.hostId,
       params.view,

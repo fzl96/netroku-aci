@@ -15,19 +15,48 @@ export function BdResults({
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
-  const [selectedDn, setSelectedDn] = useState<string | null>(null)
+  const [selectedDn, setSelectedDn] = useState<string | null | undefined>()
   const state = use(dataPromise)
   if (state.kind === 'error') return <BdRegionError region="results" />
   if (state.kind !== 'ready') return null
   const { params, results } = state.data
   const { page, pageSize, total, totalPages } = results.pagination
-  const selected = results.rows.find((row) => row.dn === selectedDn) ?? null
+  const selected =
+    results.rows.find(
+      (row) => row.dn === (selectedDn === undefined ? params.selected : selectedDn),
+    ) ?? null
   const go = (change: { page?: number; pageSize?: BdPageSize }) =>
     startTransition(() =>
       router.replace(buildBdPageUrl({ ...params, page, ...change }), { scroll: false }),
     )
   return (
     <section className="space-y-3">
+      {params.selected && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs"
+        >
+          <span>
+            {results.rows.length
+              ? 'Showing the selected Bridge Domain.'
+              : 'This Bridge Domain is no longer available.'}
+          </span>
+          <button
+            type="button"
+            disabled={pending}
+            className="ml-auto rounded underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() =>
+              startTransition(() =>
+                router.replace(buildBdPageUrl({ ...params, selected: undefined, page: 1 }), {
+                  scroll: false,
+                }),
+              )
+            }
+          >
+            Show all Bridge Domains
+          </button>
+        </div>
+      )}
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         {results.rows.length === 0 ? (
           <div className="px-4 py-14 text-center">
@@ -60,8 +89,9 @@ export function BdResults({
                 {results.rows.map((bd, index) => (
                   <tr
                     key={bd.dn}
+                    data-search-selected={params.selected === bd.dn || undefined}
                     onClick={() => setSelectedDn(bd.dn)}
-                    className="animate-fade-up cursor-pointer border-b border-border-faint hover:bg-muted"
+                    className="animate-fade-up cursor-pointer border-b border-border-faint hover:bg-muted data-[search-selected=true]:bg-primary/10"
                     style={{ animationDelay: `${Math.min(index * 20, 200)}ms` }}
                   >
                     <td className="px-4 py-2.5 font-mono font-medium">

@@ -8,6 +8,7 @@ import type { EpgResultsData } from '@/lib/epgs/query'
 import type { EpgPortSummary } from '@/lib/epgs/sort'
 import { DENSE_TABLE_HEAD_CLS, TABLE_SCROLL_CLS } from '@/lib/ui-classes'
 import { buildEpgUrl } from './epg-url'
+import { EpgBdLink } from './epg-bd-link'
 
 const PAGE_SIZES: EpgPageSize[] = [10, 50, 100, 1000, 'all']
 
@@ -54,7 +55,11 @@ export function EpgTable({
                     <td className="px-4 py-2.5 text-muted-foreground">{row.tenant}</td>
                     <td className="px-4 py-2.5 font-mono text-subtle">{row.appProfile}</td>
                     <td className="px-4 py-2.5 font-mono text-muted-foreground">
-                      {row.bridgeDomain || '—'}
+                      <EpgBdLink
+                        hostId={row.apicHostId}
+                        name={row.bridgeDomain}
+                        details={row.bridgeDomainDetails}
+                      />
                     </td>
                     <td className="px-4 py-2.5 tabular-nums">{row.bindings.length}</td>
                     <td className="px-4 py-2.5 tabular-nums">

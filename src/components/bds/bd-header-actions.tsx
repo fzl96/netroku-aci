@@ -80,6 +80,7 @@ export function BdHeaderActions({
         hostTotal={overview.hostTotal}
         filteredTotal={overview.filteredTotal}
         filters={{
+          selected: params.selected,
           query: params.query,
           tenant: params.tenant,
           vrf: params.vrf,

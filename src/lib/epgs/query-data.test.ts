@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test'
 import * as React from 'react'
+import { bdFixture } from '../../../tests/fixtures/bd'
 
 class AuthenticationRequiredError extends Error {}
 let authenticationError: unknown = null
@@ -27,7 +28,7 @@ const epgFindMany = mock(async (args: Record<string, unknown>) => {
       appProfile: 'App',
       description: '',
       bridgeDomain: 'BD',
-      bdRelation: null as { bd: { name: string } } | null,
+      bdRelation: null as { bd: ReturnType<typeof bdFixture> } | null,
       pcTag: '',
       preferredGroup: false,
       isolation: false,
@@ -125,11 +126,22 @@ beforeEach(() => {
 describe('EPG data interface', () => {
   it('reads the linked BD when available and retains the observed name for unlinked EPGs', async () => {
     const rows = await epgFindMany({})
-    epgFindMany.mockResolvedValueOnce([{ ...rows[0], bdRelation: { bd: { name: 'Resolved BD' } } }])
+    epgFindMany.mockResolvedValueOnce([
+      { ...rows[0], bdRelation: { bd: bdFixture({ name: 'Resolved BD' }) } },
+    ])
     const linked = await query.getEpgResults(base)
     expect(linked.view === 'epg' && linked.rows[0].bridgeDomain).toBe('Resolved BD')
+    expect(linked.view === 'epg' && linked.rows[0].bridgeDomainDetails).toEqual({
+      dn: 'uni/tn-common/BD-web',
+      name: 'Resolved BD',
+      tenant: 'common',
+      description: 'Web network',
+      vrf: 'VRF',
+      subnets: ['10.0.0.1/24', '2001:db8::1/64'],
+    })
     const unlinked = await query.getEpgResults(base)
     expect(unlinked.view === 'epg' && unlinked.rows[0].bridgeDomain).toBe('BD')
+    expect(unlinked.view === 'epg' && unlinked.rows[0].bridgeDomainDetails).toBeNull()
   })
   it('authorizes before host resolution and returns safe purpose-owned hosts', async () => {
     expect(await query.resolveEpgHost('h1')).toEqual({
@@ -285,6 +297,7 @@ describe('EPG data interface', () => {
         'appProfile',
         'bindings',
         'bridgeDomain',
+        'bridgeDomainDetails',
         'consumedContracts',
         'description',
         'dn',
@@ -324,6 +337,7 @@ describe('EPG data interface', () => {
         'appProfile',
         'bindings',
         'bridgeDomain',
+        'bridgeDomainDetails',
         'consumedContracts',
         'description',
         'dn',
