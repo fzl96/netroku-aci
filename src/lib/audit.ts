@@ -16,6 +16,7 @@ export type AuditAction =
   | 'resync.health'
   | 'resync.nodes'
   | 'resync.epgs'
+  | 'resync.bds'
   | 'ingest.legacy.run'
   | 'ingest.legacy.health'
   | 'ingest.legacy.interfaces'

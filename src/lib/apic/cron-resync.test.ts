@@ -17,6 +17,10 @@ const resyncEpgInventoryForScheduler = mock(async (input: unknown) => {
   void input
   return { syncedEpgs: 2, syncedBindings: 6 }
 })
+const resyncBdInventoryForScheduler = mock(async (input: unknown) => {
+  void input
+  return { syncedBds: 4 }
+})
 
 mock.module('server-only', () => ({}))
 
@@ -27,9 +31,12 @@ const dependencies = {
   resyncInterfaceInventoryForScheduler,
   resyncNodeInventoryForScheduler,
   resyncEpgInventoryForScheduler,
+  resyncBdInventoryForScheduler,
 }
 
 beforeEach(() => {
+  resyncBdInventoryForScheduler.mockClear()
+  resyncBdInventoryForScheduler.mockImplementation(async () => ({ syncedBds: 4 }))
   resyncEndpointInventoryForScheduler.mockClear()
   resyncEndpointInventoryForScheduler.mockImplementation(async (input: unknown) => {
     void input
@@ -156,6 +163,7 @@ describe('resyncHost endpoint purpose boundary', () => {
       interfaces: { synced: 2, total: 2 },
       nodes: { synced: 1, total: 5 },
       epgs: { synced: 2, total: 8 },
+      bds: { synced: 4, total: 4 },
     })
 
     expect(resyncEndpointInventoryForScheduler).toHaveBeenCalledTimes(1)
@@ -181,6 +189,24 @@ describe('resyncHost endpoint purpose boundary', () => {
 
     expect(resyncEpgInventoryForScheduler).toHaveBeenCalledTimes(1)
     expect(resyncEpgInventoryForScheduler).toHaveBeenCalledWith(input)
+  })
+
+  it('runs BD collection after EPG failures and includes BD failures in the summary', async () => {
+    resyncEpgInventoryForScheduler.mockImplementation(async () => {
+      throw new Error('EPGs offline')
+    })
+    const result = await resyncHost(input, dependencies)
+    expect(result.bds).toEqual({ synced: 4, total: 4 })
+    expect(resyncBdInventoryForScheduler).toHaveBeenCalledWith(input)
+    resyncBdInventoryForScheduler.mockImplementation(async () => {
+      throw new Error('BDs offline')
+    })
+    const failed = await resyncHost(input, dependencies)
+    expect(failed.bds).toEqual({ error: 'BDs offline' })
+    expect(summarizeResults([failed])).toBe('partial')
+    expect(summarizeResults([{ apicHostId: 'h1', host: 'APIC', bds: { error: 'offline' } }])).toBe(
+      'failure',
+    )
   })
 
   it('enters interfaces through the trusted purpose mutation without a duplicate runner-level audit', async () => {

@@ -48,6 +48,11 @@ type MigratedPurpose = {
 // this guard to green before it is committed.
 const MIGRATED_PURPOSES: MigratedPurpose[] = [
   {
+    name: 'bds',
+    routes: [{ root: 'src/app/(app)/bds', allowedFiles: ['page.tsx'] }],
+    entryRoots: ['src/app/api/bds', 'src/components/bds'],
+  },
+  {
     name: 'endpoints',
     routes: [
       {

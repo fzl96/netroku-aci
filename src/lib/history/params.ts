@@ -14,6 +14,7 @@ export const HISTORY_ACTION_LABELS: Record<AuditAction, string> = {
   'resync.health': 'Resync health',
   'resync.nodes': 'Resync nodes',
   'resync.epgs': 'Resync EPGs',
+  'resync.bds': 'Resync Bridge Domains',
   'ingest.legacy.run': 'Resync legacy',
   'ingest.legacy.health': 'Ingest legacy health',
   'ingest.legacy.interfaces': 'Ingest legacy interfaces',

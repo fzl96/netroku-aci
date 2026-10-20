@@ -13,6 +13,17 @@ const result = {
 }
 
 describe('scheduled site history', () => {
+  it('includes BD refresh results and failures in the site audit', () => {
+    const audit = buildScheduledResyncAudit(host, { ...result, bds: { synced: 4, total: 4 } })
+    expect(readResyncGroup(audit.payload)?.entries.at(-1)).toMatchObject({
+      action: 'resync.bds',
+      detail: 'synced 4 Bridge Domains',
+      status: 'success',
+    })
+    expect(buildScheduledResyncAudit(host, { ...result, bds: { error: 'offline' } }).status).toBe(
+      'partial',
+    )
+  })
   it('combines datasets in one audit while preserving static binding and component counts', () => {
     const audit = buildScheduledResyncAudit(host, result)
     expect(audit).toMatchObject({

@@ -1,5 +1,6 @@
 import { resyncEndpointInventoryForScheduler } from '@/lib/endpoints/mutation'
 import { resyncEpgInventoryForScheduler } from '@/lib/epgs/mutation'
+import { resyncBdInventoryForScheduler } from '@/lib/bds/mutation'
 import { resyncNodeInventoryForScheduler } from '@/lib/nodes/mutation'
 import { resyncInterfaceInventoryForScheduler } from '@/lib/interface-health/mutation'
 import type { DatasetResult, HostResult } from '@/lib/apic/cron-resync'
@@ -19,6 +20,7 @@ export interface ResyncHostDependencies {
   resyncInterfaceInventoryForScheduler: typeof resyncInterfaceInventoryForScheduler
   resyncNodeInventoryForScheduler: typeof resyncNodeInventoryForScheduler
   resyncEpgInventoryForScheduler: typeof resyncEpgInventoryForScheduler
+  resyncBdInventoryForScheduler: typeof resyncBdInventoryForScheduler
 }
 
 const DEFAULT_DEPENDENCIES: ResyncHostDependencies = {
@@ -26,6 +28,7 @@ const DEFAULT_DEPENDENCIES: ResyncHostDependencies = {
   resyncInterfaceInventoryForScheduler,
   resyncNodeInventoryForScheduler,
   resyncEpgInventoryForScheduler,
+  resyncBdInventoryForScheduler,
 }
 
 function errorMessage(err: unknown, fallback: string): string {
@@ -33,7 +36,7 @@ function errorMessage(err: unknown, fallback: string): string {
 }
 
 /**
- * Resync all four datasets for a single host. Each purpose module owns cache invalidation.
+ * Resync all five datasets for a single host. Each purpose module owns cache invalidation.
  * This runner collects per-dataset outcomes; cron routes record one site audit.
  * Never throws: every dataset failure is captured in the returned HostResult.
  */
@@ -47,6 +50,7 @@ export async function resyncHost(
     resyncInterfaceInventoryForScheduler: resyncInterfaceInventory,
     resyncNodeInventoryForScheduler: resyncNodeInventory,
     resyncEpgInventoryForScheduler: resyncEpgInventory,
+    resyncBdInventoryForScheduler: resyncBdInventory,
   } = dependencies
   const creds = { apicHostId, host, username, password }
   const result: HostResult = { apicHostId, host: hostName }
@@ -91,5 +95,13 @@ export async function resyncHost(
     epgs = { error: errorMessage(err, 'Failed to resync EPGs') }
   }
   result.epgs = epgs
+
+  // Bridge Domain configuration & connected EPGs
+  try {
+    const r = await resyncBdInventory({ ...creds, hostName })
+    result.bds = { synced: r.syncedBds, total: r.syncedBds }
+  } catch (err) {
+    result.bds = { error: errorMessage(err, 'Failed to resync Bridge Domains') }
+  }
   return result
 }

@@ -93,6 +93,12 @@ export const ACI_NAV: NavSection[] = [
         apicParam: true,
       },
       {
+        href: '/bds',
+        label: 'Bridge Domains',
+        icon: <IconDatabase size={15} stroke={1.75} />,
+        apicParam: true,
+      },
+      {
         href: '/endpoints',
         label: 'Endpoints',
         icon: <IconDeviceDesktopSearch size={15} stroke={1.75} />,

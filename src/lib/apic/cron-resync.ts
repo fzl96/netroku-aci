@@ -9,6 +9,7 @@ export interface HostResult {
   interfaces?: DatasetResult
   nodes?: DatasetResult
   epgs?: DatasetResult
+  bds?: DatasetResult
   /** Set when the host entry failed before any dataset ran (bad input / host not found). */
   error?: string
 }
@@ -41,7 +42,7 @@ export function summarizeResults(results: HostResult[]): 'success' | 'partial' |
       units.push(false)
       continue
     }
-    for (const d of [r.endpoints, r.interfaces, r.nodes, r.epgs]) {
+    for (const d of [r.endpoints, r.interfaces, r.nodes, r.epgs, r.bds]) {
       const ok = datasetSucceeded(d)
       if (ok !== null) units.push(ok)
     }

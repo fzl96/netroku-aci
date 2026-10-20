@@ -10,7 +10,7 @@ export function buildScheduledResyncAudit(
 ): AuditInput {
   const target = `${host.hostName} (${host.host})`
   const entries: ResyncGroupEntry[] = []
-  for (const name of ['endpoints', 'interfaces', 'nodes', 'epgs'] as const) {
+  for (const name of ['endpoints', 'interfaces', 'nodes', 'epgs', 'bds'] as const) {
     const dataset = result[name]
     if (!dataset) continue
     let detail: string
@@ -19,6 +19,7 @@ export function buildScheduledResyncAudit(
       detail = `synced ${dataset.synced} EPGs, ${dataset.total - dataset.synced} static port bindings`
     else if (name === 'nodes')
       detail = `synced ${dataset.synced} nodes, ${dataset.total - dataset.synced} components`
+    else if (name === 'bds') detail = `synced ${dataset.synced} Bridge Domains`
     else detail = `synced ${dataset.synced} (total ${dataset.total})`
     entries.push({
       id: name,

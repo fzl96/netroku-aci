@@ -231,12 +231,14 @@ model ApicHost {
   lastInterfaceSyncAt DateTime?
   lastNodeSyncAt      DateTime?
   lastEpgSyncAt       DateTime?
+  lastBdSyncAt        DateTime?
   endpoints           Endpoint[]
   interfaces          InterfaceSnapshot[]
   nodes               NodeSnapshot[]
   hardware            HardwareComponent[]
   nodeSamples         NodeStatusSample[]
   epgs                EpgSnapshot[]
+  bridgeDomains       BdSnapshot[]
   schedule            ResyncSchedule?
 
   @@unique([host])
@@ -428,6 +430,34 @@ model NodeStatusSample {
 
   @@index([apicHostId, sampledAt])
   @@map("node_status_sample")
+}
+
+model BdSnapshot {
+  id                    String   @id @default(cuid())
+  apicHostId            String
+  apicHost              ApicHost @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  dn                    String
+  name                  String
+  tenant                String
+  description           String   @default("")
+  vrf                   String   @default("")
+  vrfDn                 String   @default("")
+  unicastRoute          Boolean?
+  arpFlood              Boolean?
+  ipLearning            Boolean?
+  limitIpLearnToSubnets Boolean?
+  unkMacUcastAct        String   @default("")
+  unkMcastAct           String   @default("")
+  multiDstPktAct        String   @default("")
+  subnets               Json
+  l3Outs                String[]
+  epgs                  Json
+  epgCount              Int      @default(0)
+  searchText            String
+
+  @@unique([apicHostId, dn])
+  @@index([apicHostId, tenant])
+  @@map("bd_snapshot")
 }
 
 model EpgSnapshot {
