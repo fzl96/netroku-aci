@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { RecordApicSelection } from '@/components/ApicSelectionProvider'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { IconChevronLeft } from '@tabler/icons-react'
@@ -200,10 +201,13 @@ export async function InterfaceDetailShell({
 
   return (
     <div className="min-h-full bg-background">
+      <RecordApicSelection hostId={details.apicHostId} />
       <header className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">
         <div className="flex flex-col gap-3 px-4 py-3 md:h-auto md:px-8 md:py-4">
           <Link
-            href={params.backUrl || '/interface-health'}
+            href={
+              params.backUrl || `/interface-health?apic=${encodeURIComponent(details.apicHostId)}`
+            }
             className="inline-flex w-fit items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             <IconChevronLeft size={13} stroke={1.75} />

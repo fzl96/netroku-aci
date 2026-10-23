@@ -17,6 +17,7 @@ export interface RawStatusHistorySample {
 
 export interface InterfaceStatusDetails {
   id: string
+  apicHostId: string
   node: string
   ifName: string
   dn: string

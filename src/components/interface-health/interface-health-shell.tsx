@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
-import { redirect } from 'next/navigation'
+import { ApicPageSelection } from '@/components/ApicPageSelection'
+import { ApicSelectionRedirect } from '@/components/ApicSelectionRedirect'
 import { IconServer } from '@tabler/icons-react'
 import type { InterfaceHealthPageParams } from '@/lib/interface-health/params'
 import {
@@ -38,7 +39,7 @@ type InterfacePageContext =
       params: InterfaceHealthPageParams
       resolution: Extract<InterfaceHostResolution, { kind: 'selected' }>
     }
-  | { kind: 'redirect'; location: string }
+  | { kind: 'redirect'; hostIds: string[] }
   | { kind: 'empty' }
   | { kind: 'unauthorized' }
 
@@ -49,7 +50,7 @@ async function resolvePageContext(
     const params = await paramsPromise
     const resolution = await resolveInterfaceHost(params.hostId)
     if (resolution.kind === 'redirect') {
-      return { kind: 'redirect', location: resolution.location }
+      return { kind: 'redirect', hostIds: resolution.hosts.map((host) => host.id) }
     }
     if (resolution.kind === 'empty') return { kind: 'empty' }
     return { kind: 'ready', params, resolution }
@@ -159,7 +160,7 @@ async function InterfaceControlsGate({
 }) {
   const context = await pagePromise
   if (context.kind === 'unauthorized') return <InterfaceRegionError region="filters" />
-  if (context.kind === 'redirect') redirect(context.location)
+  if (context.kind === 'redirect') return <ApicSelectionRedirect hostIds={context.hostIds} />
   if (context.kind === 'empty') return <NoInterfaceHost />
 
   return (
@@ -208,6 +209,9 @@ export function InterfaceHealthShell({
 
   return (
     <div className="min-h-full bg-background">
+      <Suspense fallback={null}>
+        <ApicPageSelection pagePromise={pagePromise} />
+      </Suspense>
       <header className="z-10 border-b border-border bg-background/90 backdrop-blur-sm md:sticky md:top-0">
         <div className="flex flex-col justify-between gap-3 px-4 py-3 md:h-16 md:flex-row md:items-center md:px-8 md:py-0">
           <div>

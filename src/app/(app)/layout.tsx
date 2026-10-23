@@ -6,6 +6,7 @@ import { AppSidebar } from '@/components/AppSidebar'
 import { GlobalSearchProvider } from '@/components/global-search/search-provider'
 import { MobileTopBar } from '@/components/MobileTopBar'
 import { ApicHostsProvider } from '@/components/ApicHostsProvider'
+import { ApicSelectionProvider } from '@/components/ApicSelectionProvider'
 import { NavigationScopeProvider } from '@/components/NavigationScopeProvider'
 import { cookies } from 'next/headers'
 import { APP_MAIN_CLS } from '@/lib/ui-classes'
@@ -31,15 +32,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <TooltipProvider>
       <SidebarProvider>
         <ApicHostsProvider hosts={apicHosts}>
-          <NavigationScopeProvider initialScope={initialScope}>
-            <GlobalSearchProvider role={role}>
-              <AppSidebar role={role} />
-              <main className={APP_MAIN_CLS}>
-                <MobileTopBar />
-                {children}
-              </main>
-            </GlobalSearchProvider>
-          </NavigationScopeProvider>
+          <ApicSelectionProvider key={session?.user.id} userId={session?.user.id ?? ''}>
+            <NavigationScopeProvider initialScope={initialScope}>
+              <GlobalSearchProvider role={role}>
+                <AppSidebar role={role} />
+                <main className={APP_MAIN_CLS}>
+                  <MobileTopBar />
+                  {children}
+                </main>
+              </GlobalSearchProvider>
+            </NavigationScopeProvider>
+          </ApicSelectionProvider>
         </ApicHostsProvider>
       </SidebarProvider>
     </TooltipProvider>

@@ -11,7 +11,7 @@ import {
   CommandGroup,
   CommandItem,
 } from '@/components/ui/command'
-import { useApicHosts } from '@/components/ApicHostsProvider'
+import { useApicSelection } from '@/components/ApicSelectionProvider'
 import { searchPages } from '@/lib/global-search/pages'
 import { documentationResults } from '@/lib/global-search/docs'
 import {
@@ -42,11 +42,11 @@ export function SearchDialog({
   const [docs, setDocs] = useState<RemoteState>({ key: '', groups: [], loading: false })
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
-  const hosts = useApicHosts()
+  const { activeId } = useApicSelection()
   const needle = query.trim()
   const recordKey = `${needle}:${history}`
   const docsKey = needle
-  const pages = searchPages(needle, role, hosts[0]?.id)
+  const pages = searchPages(needle, role, activeId ?? undefined)
 
   useEffect(() => {
     if (!open || needle.length < MIN_RECORD_QUERY) return

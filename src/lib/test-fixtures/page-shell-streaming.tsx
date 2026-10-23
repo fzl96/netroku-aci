@@ -136,6 +136,16 @@ mock.module(
         : 'EndpointRegionError']: () => createElement('span', null, 'host-error'),
   }),
 )
+mock.module(path.resolve('src/components/ApicSelectionProvider.tsx'), () => ({
+  RecordApicSelection: ({ hostId }: { hostId: string }) =>
+    createElement('span', null, `selected-apic:${hostId}`),
+}))
+mock.module(path.resolve('src/components/ApicSelectionRedirect.tsx'), () => ({
+  ApicSelectionRedirect: ({ hostIds }: { hostIds: string[] }) => {
+    assert.deepEqual(hostIds, ['h1'])
+    return createElement('span', null, 'resolve-browser-apic')
+  },
+}))
 const shellModule = await import(path.resolve(`src/components/${domain}/${config.file}.tsx`))
 const Shell = shellModule[config.shell] as ComponentType<{ paramsPromise: Promise<unknown> }>
 const controller = new AbortController()
@@ -176,7 +186,7 @@ try {
     host.reject(new ReadError('missing session'))
     await readUntil('host-error')
   } else if (scenario === 'redirect') {
-    host.resolve({ kind: 'redirect', location: `/${domain}?apic=h1` })
+    host.resolve({ kind: 'redirect', location: `/${domain}?apic=h1`, hosts: [{ id: 'h1' }] })
   } else {
     host.resolve({ kind: 'selected', host: { id: 'h1' }, hosts: [{ id: 'h1' }] })
     await readUntil(scenario === 'non-crc' ? 'Loading interface results' : config.viewLoading)
@@ -204,18 +214,10 @@ try {
   }
   if (scenario === 'non-crc') assert.ok(!html.includes('Loading CRC trend'))
   assert.equal(calls.host, 1)
-  if (scenario === 'redirect') {
-    assert.ok(
-      errors.some(
-        (error) =>
-          typeof error === 'object' &&
-          error !== null &&
-          'digest' in error &&
-          String(error.digest).includes(`NEXT_REDIRECT;replace;/${domain}?apic=h1;`),
-      ),
-    )
-  } else {
-    assert.deepEqual(errors, [])
+  assert.deepEqual(errors, [])
+  if (scenario === 'redirect') assert.ok(html.includes('resolve-browser-apic'))
+  if (!['empty', 'unauthorized', 'redirect'].includes(scenario)) {
+    assert.ok(html.includes('selected-apic:h1'), 'Validated APIC selection must reach the browser')
   }
   if (['empty', 'unauthorized', 'redirect'].includes(scenario)) {
     assert.equal(calls.overview, 0)

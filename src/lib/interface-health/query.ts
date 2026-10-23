@@ -450,6 +450,7 @@ export async function getInterfaceStatusDetails(
 
   return {
     id: snapshot.id,
+    apicHostId: snapshot.apicHostId,
     node: snapshot.node,
     ifName: snapshot.ifName,
     dn: snapshot.dn,

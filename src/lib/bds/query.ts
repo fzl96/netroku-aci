@@ -54,7 +54,7 @@ async function authorize() {
 export type BdHost = { id: string; name: string; host: string }
 export type BdHostResolution =
   | { kind: 'selected'; host: BdHost; hosts: BdHost[] }
-  | { kind: 'redirect'; location: string }
+  | { kind: 'redirect'; location: string; hosts: BdHost[] }
   | { kind: 'empty' }
 export const resolveBdHost = cache(async (requestedHostId: string): Promise<BdHostResolution> => {
   let hosts: BdHost[]
@@ -69,7 +69,7 @@ export const resolveBdHost = cache(async (requestedHostId: string): Promise<BdHo
   const host = hosts.find((h) => h.id === requestedHostId)
   return host
     ? { kind: 'selected', host, hosts }
-    : { kind: 'redirect', location: `/bds?apic=${encodeURIComponent(hosts[0].id)}` }
+    : { kind: 'redirect', location: `/bds?apic=${encodeURIComponent(hosts[0].id)}`, hosts }
 })
 
 export function buildBdWhere(hostId: string, filters: BdFilters = {}): Prisma.BdSnapshotWhereInput {

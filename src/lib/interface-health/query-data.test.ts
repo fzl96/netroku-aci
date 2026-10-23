@@ -108,6 +108,12 @@ const snapshots = [
   snapshot('i1', 'leaf-1', 'eth1/1', BigInt(2)),
   snapshot('i2', 'leaf-2', 'eth1/2', BigInt(5)),
 ]
+const interfaceSnapshotFindUnique = mock(async () => ({
+  ...snapshots[0],
+  apicHostId: 'h2',
+  firstSeenAt: new Date('2026-01-01T00:00:00Z'),
+  lastSeenAt: new Date('2026-01-05T00:00:00Z'),
+}))
 const interfaceSnapshotFindMany = mock(
   async (args: { distinct?: string[] }) =>
     (args.distinct ? [{ node: 'leaf-2' }, { node: '' }, { node: 'leaf-1' }] : snapshots) as never,
@@ -130,7 +136,10 @@ mock.module('@/lib/prisma', () => ({
   prisma: {
     apicHost: { findMany: apicHostFindMany, findFirst: apicHostFindFirst },
     interfaceSample: { findMany: interfaceSampleFindMany },
-    interfaceSnapshot: { findMany: interfaceSnapshotFindMany },
+    interfaceSnapshot: {
+      findMany: interfaceSnapshotFindMany,
+      findUnique: interfaceSnapshotFindUnique,
+    },
     $queryRaw: queryRaw,
   },
 }))
@@ -206,6 +215,14 @@ describe('resolveInterfaceHost', () => {
   it('reports emptiness when no hosts exist', async () => {
     hosts = []
     expect(await query.resolveInterfaceHost('h1')).toEqual({ kind: 'empty', hosts: [] })
+  })
+})
+
+describe('getInterfaceStatusDetails', () => {
+  it('exposes the record’s actual APIC for subsequent navigation', async () => {
+    const details = await query.getInterfaceStatusDetails('i1', 'all')
+    expect(details?.apicHostId).toBe('h2')
+    expect(details).not.toHaveProperty('secret')
   })
 })
 

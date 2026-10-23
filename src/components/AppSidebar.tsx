@@ -42,7 +42,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
-import { useApicHosts } from '@/components/ApicHostsProvider'
+import { useApicSelection } from '@/components/ApicSelectionProvider'
 import { useNavigationScope } from '@/components/NavigationScopeProvider'
 import { targetPathForScope } from '@/lib/navigation-scope'
 
@@ -63,8 +63,7 @@ export function AppSidebar({ role }: { role: 'admin' | 'member' }) {
   const [loggingOut, setLoggingOut] = useState(false)
   const [logoutOpen, setLogoutOpen] = useState(false)
   const { scope, setScope } = useNavigationScope()
-  const apicHosts = useApicHosts()
-  const defaultApicId = apicHosts[0]?.id
+  const { activeId } = useApicSelection()
   const sourceNav =
     scope === 'aci' ? ACI_NAV : [ACI_NAV[0], LEGACY_INFRASTRUCTURE, ACI_NAV[ACI_NAV.length - 1]]
   const nav = sourceNav
@@ -265,8 +264,8 @@ export function AppSidebar({ role }: { role: 'admin' | 'member' }) {
                       <SidebarMenuButton asChild isActive={groupActive}>
                         <Link
                           href={
-                            item.apicParam && defaultApicId
-                              ? `${item.href}?apic=${defaultApicId}`
+                            item.apicParam && activeId
+                              ? `${item.href}?apic=${encodeURIComponent(activeId)}`
                               : (item.href ?? '/')
                           }
                         >
