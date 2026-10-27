@@ -4,8 +4,13 @@ import type { EpgExportRow } from './export'
 
 mock.module('server-only', () => ({}))
 
-const { buildEpgWorkbook, expandNodeLeaves, filterEpgsByNode, sanitizeWorksheetName } =
-  await import('./export')
+const {
+  buildEpgWorkbook,
+  serializeEpgWorkbook,
+  expandNodeLeaves,
+  filterEpgsByNode,
+  sanitizeWorksheetName,
+} = await import('./export')
 
 type Binding = EpgExportRow['bindings'][number]
 
@@ -151,6 +156,41 @@ describe('buildEpgWorkbook — group by EPG', () => {
     expect(aoa(workbook.Sheets['EPGs'])).toEqual([
       ['EPG', 'Tenant', 'Bridge Domain', 'EPG Description', 'Consumed', 'Provided', 'Node', 'Port'],
       ['VLAN3192_EPG', 'T1', 'BD1', 'web servers', 'ctrct-C', 'ctrct-A, ctrct-B', '', ''],
+    ])
+  })
+})
+
+describe('buildEpgWorkbook — EPG details only', () => {
+  it('exports one row per EPG with all detail columns and no nodes or ports', () => {
+    const workbook = buildEpgWorkbook([epg()], 'epg-details')
+    // Check the downloaded workbook as well as the in-memory representation.
+    const downloaded = XLSX.read(serializeEpgWorkbook(workbook), { type: 'array' })
+
+    expect(downloaded.SheetNames).toEqual(['EPGs'])
+    const ws = downloaded.Sheets['EPGs']
+    expect(aoa(ws)).toEqual([
+      ['EPG', 'Tenant', 'Bridge Domain', 'EPG Description', 'Consumed', 'Provided'],
+      ['VLAN3192_EPG', 'T1', 'BD1', 'web servers', 'ctrct-C', 'ctrct-A, ctrct-B'],
+    ])
+    expect(ws['!ref']).toBe('A1:F2')
+    expect(ws['!merges'] ?? []).toEqual([])
+  })
+
+  it('includes unbound EPGs and keeps natural tenant/name ordering without combining names', () => {
+    const workbook = buildEpgWorkbook(
+      [
+        epg({ id: '3', name: 'EPG2', tenant: 'T2' }),
+        epg({ id: '2', name: 'EPG10', bindings: [] }),
+        epg({ id: '1', name: 'EPG2', bindings: [], consumedContracts: [], providedContracts: [] }),
+      ],
+      'epg-details',
+    )
+
+    expect(aoa(workbook.Sheets['EPGs'])).toEqual([
+      ['EPG', 'Tenant', 'Bridge Domain', 'EPG Description', 'Consumed', 'Provided'],
+      ['EPG2', 'T1', 'BD1', 'web servers', '', ''],
+      ['EPG10', 'T1', 'BD1', 'web servers', 'ctrct-C', 'ctrct-A, ctrct-B'],
+      ['EPG2', 'T2', 'BD1', 'web servers', 'ctrct-C', 'ctrct-A, ctrct-B'],
     ])
   })
 })

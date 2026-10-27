@@ -3,7 +3,7 @@ import { z } from 'zod'
 export const epgExportSchema = z.object({
   apicHostId: z.string().trim().min(1),
   scope: z.enum(['all', 'filtered']),
-  groupBy: z.enum(['epg', 'port']),
+  groupBy: z.enum(['epg', 'port', 'epg-details']),
   filters: z
     .object({
       query: z.string().optional(),

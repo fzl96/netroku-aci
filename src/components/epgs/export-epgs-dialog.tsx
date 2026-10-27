@@ -118,7 +118,7 @@ export function ExportEpgsDialog({ apicHostId, hostTotal, filteredTotal, filters
             <DialogDescription className="text-xs text-subtle">
               {step === 1
                 ? 'Choose which EPG set should be included.'
-                : 'Choose how the workbook should be grouped.'}
+                : 'Choose what to include and how to group the workbook.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -144,6 +144,12 @@ export function ExportEpgsDialog({ apicHostId, hostTotal, filteredTotal, filters
             </div>
           ) : (
             <div className="space-y-2">
+              <ChoiceCard
+                checked={groupBy === 'epg-details'}
+                title="EPG details only"
+                description="One row per EPG with its details and contracts, without nodes or ports"
+                onClick={() => setGroupBy('epg-details')}
+              />
               <ChoiceCard
                 checked={groupBy === 'epg'}
                 title="Group by EPG"

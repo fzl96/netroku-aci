@@ -1,8 +1,9 @@
 import 'server-only'
 
 import * as XLSX from 'xlsx-js-style'
+import type { EpgExportRequest } from '@/lib/schemas/epg-export'
 
-export type EpgExportGrouping = 'epg' | 'port'
+export type EpgExportGrouping = EpgExportRequest['groupBy']
 
 export type EpgExportBinding = {
   id: string
@@ -46,16 +47,16 @@ const NATURAL_COLLATOR = new Intl.Collator(undefined, {
   sensitivity: 'base',
 })
 
-const EPG_COLUMNS = [
+const EPG_DETAIL_COLUMNS = [
   'EPG',
   'Tenant',
   'Bridge Domain',
   'EPG Description',
   'Consumed',
   'Provided',
-  'Node',
-  'Port',
 ] as const
+
+const EPG_COLUMNS = [...EPG_DETAIL_COLUMNS, 'Node', 'Port'] as const
 
 const PORT_COLUMNS = ['Node', 'Port', 'EPG'] as const
 
@@ -169,12 +170,11 @@ function finalizeSheet(
   return worksheet
 }
 
-function buildEpgSheet(epgs: EpgExportRow[]): XLSX.WorkSheet {
-  const rows: unknown[][] = [[...EPG_COLUMNS]]
+function buildEpgSheet(epgs: EpgExportRow[], includePorts: boolean): XLSX.WorkSheet {
+  const rows: unknown[][] = [[...(includePorts ? EPG_COLUMNS : EPG_DETAIL_COLUMNS)]]
   const merges: MergeRange[] = []
 
   for (const epg of sortedEpgs(epgs)) {
-    const byNode = bindingsByLeafNode(epg.bindings)
     const epgStartRow = rows.length
     const detail = [
       epg.name,
@@ -185,6 +185,12 @@ function buildEpgSheet(epgs: EpgExportRow[]): XLSX.WorkSheet {
       epg.providedContracts.join(', '),
     ]
 
+    if (!includePorts) {
+      rows.push(detail)
+      continue
+    }
+
+    const byNode = bindingsByLeafNode(epg.bindings)
     if (byNode.size === 0) {
       rows.push([...detail, '', ''])
     } else {
@@ -216,7 +222,8 @@ function buildEpgSheet(epgs: EpgExportRow[]): XLSX.WorkSheet {
     }
   }
 
-  const worksheet = finalizeSheet(rows, merges, [28, 16, 18, 30, 24, 24, 12, 14])
+  const widths = [28, 16, 18, 30, 24, 24]
+  const worksheet = finalizeSheet(rows, merges, includePorts ? [...widths, 12, 14] : widths)
   // Header and detail columns centered; EPG (0) and Port (7) only vertically centered.
   applyCellStyles(worksheet, (r, c) =>
     r === 0 || (c !== 0 && c !== 7) ? CENTER_BOTH : VERTICAL_CENTER,
@@ -263,8 +270,8 @@ function buildPortSheet(node: string, ports: Map<string, Set<string>>): XLSX.Wor
 export function buildEpgWorkbook(epgs: EpgExportRow[], groupBy: EpgExportGrouping): XLSX.WorkBook {
   const workbook = XLSX.utils.book_new()
 
-  if (groupBy === 'epg') {
-    XLSX.utils.book_append_sheet(workbook, buildEpgSheet(epgs), 'EPGs')
+  if (groupBy === 'epg' || groupBy === 'epg-details') {
+    XLSX.utils.book_append_sheet(workbook, buildEpgSheet(epgs, groupBy === 'epg'), 'EPGs')
     return workbook
   }
 
