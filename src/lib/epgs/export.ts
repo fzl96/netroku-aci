@@ -50,6 +50,7 @@ const NATURAL_COLLATOR = new Intl.Collator(undefined, {
 const EPG_DETAIL_COLUMNS = [
   'EPG',
   'Tenant',
+  'App Profile',
   'Bridge Domain',
   'EPG Description',
   'Consumed',
@@ -179,6 +180,7 @@ function buildEpgSheet(epgs: EpgExportRow[], includePorts: boolean): XLSX.WorkSh
     const detail = [
       epg.name,
       epg.tenant,
+      epg.appProfile,
       epg.bridgeDomain,
       epg.description,
       epg.consumedContracts.join(', '),
@@ -199,15 +201,15 @@ function buildEpgSheet(epgs: EpgExportRow[], includePorts: boolean): XLSX.WorkSh
         const nodeStartRow = rows.length
         ports.forEach((port, i) => {
           rows.push([
-            ...(first && i === 0 ? detail : ['', '', '', '', '', '']),
+            ...(first && i === 0 ? detail : EPG_DETAIL_COLUMNS.map(() => '')),
             i === 0 ? node : '',
             port,
           ])
         })
         if (ports.length > 1) {
           merges.push({
-            s: { r: nodeStartRow, c: 6 },
-            e: { r: nodeStartRow + ports.length - 1, c: 6 },
+            s: { r: nodeStartRow, c: EPG_DETAIL_COLUMNS.length },
+            e: { r: nodeStartRow + ports.length - 1, c: EPG_DETAIL_COLUMNS.length },
           })
         }
         first = false
@@ -216,17 +218,17 @@ function buildEpgSheet(epgs: EpgExportRow[], includePorts: boolean): XLSX.WorkSh
 
     const epgEndRow = rows.length - 1
     if (epgEndRow > epgStartRow) {
-      for (let c = 0; c < 6; c += 1) {
+      for (let c = 0; c < EPG_DETAIL_COLUMNS.length; c += 1) {
         merges.push({ s: { r: epgStartRow, c }, e: { r: epgEndRow, c } })
       }
     }
   }
 
-  const widths = [28, 16, 18, 30, 24, 24]
+  const widths = [28, 16, 22, 18, 30, 24, 24]
   const worksheet = finalizeSheet(rows, merges, includePorts ? [...widths, 12, 14] : widths)
-  // Header and detail columns centered; EPG (0) and Port (7) only vertically centered.
+  // Header and detail columns centered; EPG and Port only vertically centered.
   applyCellStyles(worksheet, (r, c) =>
-    r === 0 || (c !== 0 && c !== 7) ? CENTER_BOTH : VERTICAL_CENTER,
+    r === 0 || (c !== 0 && c !== EPG_DETAIL_COLUMNS.length + 1) ? CENTER_BOTH : VERTICAL_CENTER,
   )
   return worksheet
 }

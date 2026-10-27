@@ -91,18 +91,40 @@ describe('buildEpgWorkbook — group by EPG', () => {
     const ws = workbook.Sheets['EPGs']
 
     expect(aoa(ws)).toEqual([
-      ['EPG', 'Tenant', 'Bridge Domain', 'EPG Description', 'Consumed', 'Provided', 'Node', 'Port'],
-      ['VLAN3192_EPG', 'T1', 'BD1', 'web servers', 'ctrct-C', 'ctrct-A, ctrct-B', '1103', 'Eth1/1'],
-      ['', '', '', '', '', '', '', 'Eth1/2'],
-      ['', '', '', '', '', '', '1104', 'Eth1/1'],
-      ['', '', '', '', '', '', '', 'Eth1/2'],
+      [
+        'EPG',
+        'Tenant',
+        'App Profile',
+        'Bridge Domain',
+        'EPG Description',
+        'Consumed',
+        'Provided',
+        'Node',
+        'Port',
+      ],
+      [
+        'VLAN3192_EPG',
+        'T1',
+        'app',
+        'BD1',
+        'web servers',
+        'ctrct-C',
+        'ctrct-A, ctrct-B',
+        '1103',
+        'Eth1/1',
+      ],
+      ['', '', '', '', '', '', '', '', 'Eth1/2'],
+      ['', '', '', '', '', '', '', '1104', 'Eth1/1'],
+      ['', '', '', '', '', '', '', '', 'Eth1/2'],
     ])
 
     // EPG-level column merged across all four data rows.
     expect(ws['!merges']).toContainEqual({ s: { r: 1, c: 0 }, e: { r: 4, c: 0 } })
+    // App Profile is merged across every binding, just like the other EPG details.
+    expect(ws['!merges']).toContainEqual({ s: { r: 1, c: 2 }, e: { r: 4, c: 2 } })
     // Node cells merged across their two ports.
-    expect(ws['!merges']).toContainEqual({ s: { r: 1, c: 6 }, e: { r: 2, c: 6 } })
-    expect(ws['!merges']).toContainEqual({ s: { r: 3, c: 6 }, e: { r: 4, c: 6 } })
+    expect(ws['!merges']).toContainEqual({ s: { r: 1, c: 7 }, e: { r: 2, c: 7 } })
+    expect(ws['!merges']).toContainEqual({ s: { r: 3, c: 7 }, e: { r: 4, c: 7 } })
   })
 
   it('centers the header row and detail columns, and vertically centers EPG and Port', () => {
@@ -110,15 +132,15 @@ describe('buildEpgWorkbook — group by EPG', () => {
 
     // Header row centered both ways.
     expect(align(ws, 'A1')).toEqual({ horizontal: 'center', vertical: 'center' })
-    expect(align(ws, 'H1')).toEqual({ horizontal: 'center', vertical: 'center' })
+    expect(align(ws, 'I1')).toEqual({ horizontal: 'center', vertical: 'center' })
 
     // Tenant / Node detail columns centered both ways.
     expect(align(ws, 'B2')).toEqual({ horizontal: 'center', vertical: 'center' })
-    expect(align(ws, 'G2')).toEqual({ horizontal: 'center', vertical: 'center' })
+    expect(align(ws, 'H2')).toEqual({ horizontal: 'center', vertical: 'center' })
 
     // EPG and Port only vertically centered.
     expect(align(ws, 'A2')).toEqual({ vertical: 'center' })
-    expect(align(ws, 'H2')).toEqual({ vertical: 'center' })
+    expect(align(ws, 'I2')).toEqual({ vertical: 'center' })
   })
 
   it('natural-sorts ports so Eth1/2 precedes Eth1/10', () => {
@@ -135,8 +157,8 @@ describe('buildEpgWorkbook — group by EPG', () => {
     )
 
     const rows = aoa(workbook.Sheets['EPGs'])
-    expect(rows[1][7]).toBe('Eth1/2')
-    expect(rows[2][7]).toBe('Eth1/10')
+    expect(rows[1][8]).toBe('Eth1/2')
+    expect(rows[2][8]).toBe('Eth1/10')
   })
 
   it('leaves Consumed and Provided empty when the EPG has no contracts', () => {
@@ -146,16 +168,26 @@ describe('buildEpgWorkbook — group by EPG', () => {
     )
 
     const rows = aoa(workbook.Sheets['EPGs'])
-    expect(rows[1][4]).toBe('')
     expect(rows[1][5]).toBe('')
+    expect(rows[1][6]).toBe('')
   })
 
   it('renders an EPG with no bindings as a single row with empty node/port', () => {
     const workbook = buildEpgWorkbook([epg({ bindings: [] })], 'epg')
 
     expect(aoa(workbook.Sheets['EPGs'])).toEqual([
-      ['EPG', 'Tenant', 'Bridge Domain', 'EPG Description', 'Consumed', 'Provided', 'Node', 'Port'],
-      ['VLAN3192_EPG', 'T1', 'BD1', 'web servers', 'ctrct-C', 'ctrct-A, ctrct-B', '', ''],
+      [
+        'EPG',
+        'Tenant',
+        'App Profile',
+        'Bridge Domain',
+        'EPG Description',
+        'Consumed',
+        'Provided',
+        'Node',
+        'Port',
+      ],
+      ['VLAN3192_EPG', 'T1', 'app', 'BD1', 'web servers', 'ctrct-C', 'ctrct-A, ctrct-B', '', ''],
     ])
   })
 })
@@ -169,10 +201,10 @@ describe('buildEpgWorkbook — EPG details only', () => {
     expect(downloaded.SheetNames).toEqual(['EPGs'])
     const ws = downloaded.Sheets['EPGs']
     expect(aoa(ws)).toEqual([
-      ['EPG', 'Tenant', 'Bridge Domain', 'EPG Description', 'Consumed', 'Provided'],
-      ['VLAN3192_EPG', 'T1', 'BD1', 'web servers', 'ctrct-C', 'ctrct-A, ctrct-B'],
+      ['EPG', 'Tenant', 'App Profile', 'Bridge Domain', 'EPG Description', 'Consumed', 'Provided'],
+      ['VLAN3192_EPG', 'T1', 'app', 'BD1', 'web servers', 'ctrct-C', 'ctrct-A, ctrct-B'],
     ])
-    expect(ws['!ref']).toBe('A1:F2')
+    expect(ws['!ref']).toBe('A1:G2')
     expect(ws['!merges'] ?? []).toEqual([])
   })
 
@@ -187,10 +219,10 @@ describe('buildEpgWorkbook — EPG details only', () => {
     )
 
     expect(aoa(workbook.Sheets['EPGs'])).toEqual([
-      ['EPG', 'Tenant', 'Bridge Domain', 'EPG Description', 'Consumed', 'Provided'],
-      ['EPG2', 'T1', 'BD1', 'web servers', '', ''],
-      ['EPG10', 'T1', 'BD1', 'web servers', 'ctrct-C', 'ctrct-A, ctrct-B'],
-      ['EPG2', 'T2', 'BD1', 'web servers', 'ctrct-C', 'ctrct-A, ctrct-B'],
+      ['EPG', 'Tenant', 'App Profile', 'Bridge Domain', 'EPG Description', 'Consumed', 'Provided'],
+      ['EPG2', 'T1', 'app', 'BD1', 'web servers', '', ''],
+      ['EPG10', 'T1', 'app', 'BD1', 'web servers', 'ctrct-C', 'ctrct-A, ctrct-B'],
+      ['EPG2', 'T2', 'app', 'BD1', 'web servers', 'ctrct-C', 'ctrct-A, ctrct-B'],
     ])
   })
 })
