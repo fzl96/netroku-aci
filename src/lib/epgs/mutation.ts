@@ -56,6 +56,8 @@ export function createEpgMutation(dependencies: EpgMutationDependencies) {
     dependencies.revalidateTag(`epgs:host:${hostId}`, { expire: 0 })
     dependencies.revalidateTag('bds:all', { expire: 0 })
     dependencies.revalidateTag(`bds:host:${hostId}`, { expire: 0 })
+    dependencies.revalidateTag('endpoints:all', { expire: 0 })
+    dependencies.revalidateTag(`endpoints:host:${hostId}`, { expire: 0 })
   }
   async function audit(input: AuditInput) {
     try {

@@ -10,6 +10,8 @@ import {
 import type { EpgRow } from '@/lib/epgs/query'
 import { sortBindingRows } from '@/lib/epgs/sort'
 import { MUTED_TABLE_HEAD_CLS } from '@/lib/ui-classes'
+import Link from 'next/link'
+import { ExportEpgsDialog } from './export-epgs-dialog'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -58,6 +60,21 @@ export function EpgDetailPanel({ epg, onClose }: { epg: EpgRow | null; onClose: 
             </SheetHeader>
 
             <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  href={`/endpoints?${new URLSearchParams({ apic: epg.apicHostId, epg: epg.dn, status: 'active' })}`}
+                  className="text-xs font-semibold text-primary hover:underline"
+                >
+                  View endpoints
+                </Link>
+                <ExportEpgsDialog
+                  apicHostId={epg.apicHostId}
+                  hostTotal={1}
+                  filteredTotal={1}
+                  filters={{ dn: epg.dn }}
+                  singleEpg
+                />
+              </div>
               {epg.description && <Field label="Description">{epg.description}</Field>}
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Bridge Domain">

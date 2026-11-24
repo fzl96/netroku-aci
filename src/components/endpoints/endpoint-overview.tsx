@@ -29,6 +29,7 @@ import { SEARCH_INPUT_CLS } from '@/lib/ui-classes'
 import { EndpointRegionError } from './endpoint-region-error'
 
 type UrlOverrides = {
+  epgDn?: string
   apic?: string
   view?: EndpointView
   query?: string
@@ -47,6 +48,7 @@ function endpointUrl(params: EndpointPageParams, overrides: UrlOverrides): strin
     view,
     query: overrides.query ?? params.query,
     mac: overrides.query !== undefined || overrides.apic !== undefined ? undefined : params.mac,
+    epgDn: overrides.apic !== undefined ? undefined : (overrides.epgDn ?? params.epgDn),
     page: overrides.page ?? params.page,
     pageSize: overrides.pageSize ?? params.pageSize,
     vlans: overrides.vlan ?? params.vlans,
@@ -228,6 +230,17 @@ function EndpointOverviewContent({
             />
           </DropdownMenuContent>
         </DropdownMenu>
+        {params.epgDn && (
+          <button
+            type="button"
+            title={params.epgDn}
+            onClick={() => navigate({ epgDn: '', page: 1 })}
+            disabled={isPending}
+            className="max-w-64 truncate rounded-lg border border-primary bg-primary/8 px-3 py-2 text-xs text-foreground"
+          >
+            EPG: {params.epgDn.split('/epg-').pop()} ×
+          </button>
+        )}
       </div>
       <div className="flex shrink-0 items-center gap-3 text-xs text-subtle">
         <span>

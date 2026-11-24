@@ -85,6 +85,7 @@ export function EndpointHeaderActions({
         filters={{
           query: params.query,
           mac: params.mac,
+          epgDn: params.epgDn,
           vlan: params.vlans,
           node: params.nodes,
           iface: params.interfaces,

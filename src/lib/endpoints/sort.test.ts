@@ -18,6 +18,8 @@ function endpoint(overrides: Partial<TestEndpoint> = {}): TestEndpoint {
     node: '101',
     interface: 'eth1/1',
     epgDescr: 'Web',
+    epgDn: 'uni/tn-test/ap-app/epg-web',
+    epgId: null,
     isActive: true,
     firstSeenAt: new Date('2026-01-01'),
     lastSeenAt: new Date('2026-01-01'),

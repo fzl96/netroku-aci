@@ -215,6 +215,11 @@ describe('reconcileFetchedEndpoints', () => {
     }
     const tx = {
       endpoint,
+      $executeRaw: async () => {
+        expect(inTransaction).toBe(true)
+        calls.push('link-epgs')
+        return 1
+      },
       $queryRaw: async () => {
         expect(inTransaction).toBe(true)
         calls.push('advisory-lock')
@@ -259,6 +264,7 @@ describe('reconcileFetchedEndpoints', () => {
       'advisory-lock',
       'findMany',
       'create',
+      'link-epgs',
       'count',
       'transaction:end',
     ])

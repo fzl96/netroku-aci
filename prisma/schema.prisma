@@ -268,19 +268,22 @@ model ResyncSchedule {
 }
 
 model Endpoint {
-  id          String    @id @default(cuid())
+  id          String       @id @default(cuid())
   apicHostId  String
-  apicHost    ApicHost  @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
+  apicHost    ApicHost     @relation(fields: [apicHostId], references: [id], onDelete: Cascade)
   mac         String
   ip          String
   vlan        String
   dn          String
   node        String
   interface   String
-  epgDescr    String    @default("")
-  isActive    Boolean   @default(true)
-  firstSeenAt DateTime  @default(now())
-  lastSeenAt  DateTime  @default(now())
+  epgDescr    String       @default("")
+  epgDn       String       @default("")
+  epgId       String?
+  epg         EpgSnapshot? @relation(fields: [apicHostId, epgId], references: [apicHostId, id], onDelete: NoAction)
+  isActive    Boolean      @default(true)
+  firstSeenAt DateTime     @default(now())
+  lastSeenAt  DateTime     @default(now())
   clearedAt   DateTime?
 
   @@index([apicHostId])
@@ -290,6 +293,8 @@ model Endpoint {
   @@index([apicHostId, vlan], name: "endpoint_host_vlan_idx")
   @@index([apicHostId, node], name: "endpoint_host_node_idx")
   @@index([apicHostId, interface], name: "endpoint_host_interface_idx")
+  @@index([apicHostId, epgDn, isActive])
+  @@index([apicHostId, epgId])
   @@map("endpoint")
 }
 
@@ -502,6 +507,7 @@ model EpgSnapshot {
   providedContracts String[]
   consumedContracts String[]
   bindings          EpgPathBinding[]
+  endpoints         Endpoint[]
 
   @@unique([apicHostId, dn])
   @@unique([apicHostId, id])

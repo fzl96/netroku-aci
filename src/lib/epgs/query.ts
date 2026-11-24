@@ -1,13 +1,13 @@
 import 'server-only'
 
-import type { Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import { unstable_cache } from 'next/cache'
 import { cache } from 'react'
 import { AuthenticationRequiredError, requireSession } from '@/lib/auth'
 import { ApicHostReadError, getApicHosts } from '@/lib/apic-hosts/query'
 import { prisma } from '@/lib/prisma'
 import { bdSubnetsSchema } from '@/lib/bds/types'
-import type { EpgExportRow } from './export'
+import type { EpgExportGrouping, EpgExportRow } from './export'
 import type { EpgFilters, EpgPageParams, EpgPageSize } from './params'
 import { groupBindingsByPort, type EpgPortSummary } from './sort'
 
@@ -142,7 +142,12 @@ export type EpgResultsPayload = {
   params: EpgPageParams
   results: EpgResultsData
 }
-export type EpgExportSelection = { hostId: string; scope: 'all' | 'filtered'; filters?: EpgFilters }
+export type EpgExportSelection = {
+  hostId: string
+  scope: 'all' | 'filtered'
+  filters?: EpgFilters
+  groupBy?: EpgExportGrouping
+}
 export type EpgExportData =
   | { kind: 'ready'; host: EpgHostOption; rows: EpgExportRow[] }
   | { kind: 'empty'; host: EpgHostOption }
@@ -528,28 +533,91 @@ export async function getEpgExportData(selection: EpgExportSelection): Promise<E
   })
   if (!host) return { kind: 'host-not-found' }
   const filters = selection.scope === 'filtered' ? normalize(selection.filters) : normalize()
+  const linked = selection.groupBy === 'detailed' || selection.groupBy === 'summary'
   const rows = await unstable_cache(
     async () => {
-      let records = await prisma.epgSnapshot.findMany({
-        where:
-          selection.scope === 'all'
-            ? { apicHostId: selection.hostId }
-            : buildEpgWhere(selection.hostId, filters),
-        select: EPG_SELECT,
-        orderBy: [{ tenant: 'asc' }, { name: 'asc' }],
-      })
-      if (selection.scope === 'filtered' && filters.node.length) {
-        records = records
-          .map((row) => ({
-            ...row,
-            bindings: row.bindings.filter((binding) => bindingMatchesNode(binding, filters.node)),
-          }))
-          .filter((row) => row.bindings.length)
+      const read = async (
+        client: Pick<Prisma.TransactionClient, 'epgSnapshot' | 'endpoint' | '$queryRaw'>,
+      ): Promise<EpgExportRow[]> => {
+        let records = await client.epgSnapshot.findMany({
+          where:
+            selection.scope === 'all'
+              ? { apicHostId: selection.hostId }
+              : buildEpgWhere(selection.hostId, filters),
+          select: EPG_SELECT,
+          orderBy: [{ tenant: 'asc' }, { name: 'asc' }],
+        })
+        // New inventory formats select whole EPGs, including all their logical bindings.
+        if (!linked && selection.scope === 'filtered' && filters.node.length) {
+          records = records
+            .map((row) => ({
+              ...row,
+              bindings: row.bindings.filter((binding) => bindingMatchesNode(binding, filters.node)),
+            }))
+            .filter((row) => row.bindings.length)
+        }
+        const epgs: EpgExportRow[] = records.map(serializeEpg)
+        if (!linked || !epgs.length) return epgs
+        const ids = epgs.map((epg) => epg.id)
+        if (selection.groupBy === 'summary') {
+          const counts = await client.$queryRaw<Array<{ epgId: string; total: number }>>(Prisma.sql`
+          SELECT "epgId", COUNT(DISTINCT lower(mac))::integer AS total FROM endpoint
+          WHERE "apicHostId" = ${selection.hostId} AND "isActive" = true
+            AND "epgId" IN (${Prisma.join(ids)}) GROUP BY "epgId"
+        `)
+          const byId = new Map(counts.map((row) => [row.epgId, row.total]))
+          return epgs.map((epg) => ({ ...epg, endpointCount: byId.get(epg.id) ?? 0 }))
+        }
+        const endpoints = await client.endpoint.findMany({
+          where: { apicHostId: selection.hostId, epgId: { in: ids }, isActive: true },
+          select: {
+            epgId: true,
+            mac: true,
+            ip: true,
+            vlan: true,
+            dn: true,
+            node: true,
+            interface: true,
+            epgDescr: true,
+            isActive: true,
+            firstSeenAt: true,
+            lastSeenAt: true,
+            clearedAt: true,
+          },
+          orderBy: [{ mac: 'asc' }, { ip: 'asc' }],
+        })
+        const byId = new Map<string, NonNullable<EpgExportRow['endpoints']>>()
+        for (const { epgId, ...endpoint } of endpoints) {
+          if (!epgId) continue
+          const entries = byId.get(epgId) ?? []
+          entries.push({
+            ...endpoint,
+            firstSeenAt: endpoint.firstSeenAt.toISOString(),
+            lastSeenAt: endpoint.lastSeenAt.toISOString(),
+            clearedAt: endpoint.clearedAt?.toISOString() ?? null,
+          })
+          byId.set(epgId, entries)
+        }
+        return epgs.map((epg) => ({ ...epg, endpoints: byId.get(epg.id) ?? [] }))
       }
-      return records.map(serializeEpg)
+      // Keep EPGs, bindings and learned endpoints from one database snapshot.
+      return linked ? prisma.$transaction(read, { isolationLevel: 'RepeatableRead' }) : read(prisma)
     },
-    ['epgs', 'export', selection.hostId, selection.scope, ...filterParts(filters)],
-    cacheOptions(selection.hostId),
+    [
+      'epgs',
+      'export',
+      selection.hostId,
+      selection.scope,
+      ...(linked ? [selection.groupBy!] : []),
+      ...filterParts(filters),
+    ],
+    {
+      ...cacheOptions(selection.hostId),
+      tags: [
+        ...cacheOptions(selection.hostId).tags,
+        ...(linked ? [`endpoints:host:${selection.hostId}`] : []),
+      ],
+    },
   )()
   return rows.length ? { kind: 'ready', host, rows } : { kind: 'empty', host }
 }

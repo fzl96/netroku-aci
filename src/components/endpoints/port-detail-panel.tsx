@@ -10,6 +10,7 @@ import {
 import type { EndpointPortSummary } from '@/lib/endpoints/sort'
 import type { EndpointRow } from '@/lib/endpoints/query'
 import { DENSE_TABLE_HEAD_CLS } from '@/lib/ui-classes'
+import { EndpointEpgLink } from './endpoint-epg-link'
 
 function fmt(date: string | Date | null) {
   if (!date) return '—'
@@ -37,9 +38,11 @@ function Badge({ active }: { active: boolean }) {
 
 export function PortDetailPanel({
   port,
+  hostId,
   onClose,
 }: {
   port: EndpointPortSummary<EndpointRow> | null
+  hostId: string
   onClose: () => void
 }) {
   const activeEndpoints = port ? port.endpoints.filter((ep) => ep.isActive) : []
@@ -153,7 +156,7 @@ export function PortDetailPanel({
                               className="max-w-[180px] truncate px-4 py-2.5 text-subtle"
                               title={ep.epgDescr}
                             >
-                              {ep.epgDescr || '—'}
+                              <EndpointEpgLink endpoint={ep} hostId={hostId} />
                             </td>
                             <td className="px-4 py-2.5 whitespace-nowrap text-faint tabular-nums">
                               {fmt(ep.firstSeenAt)}

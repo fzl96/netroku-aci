@@ -10,6 +10,7 @@ export const endpointExportSchema = z.object({
     .object({
       query: z.string().optional(),
       mac: z.string().trim().max(64).optional(),
+      epgDn: z.string().trim().max(1024).optional(),
       vlan: z.array(z.string()).optional(),
       node: z.array(z.string()).optional(),
       iface: z.array(z.string()).optional(),

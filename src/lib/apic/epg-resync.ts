@@ -7,6 +7,7 @@ import {
   pruneInventoryRows,
   snapshotIds,
   replaceBdEpgLinks,
+  reconcileEndpointEpgLinks,
   type InventoryWriteClient,
   type BdEpgLink,
 } from './inventory-relations'
@@ -78,6 +79,11 @@ export async function executeEpgResyncWrites(
       }
       // Clear obsolete references before deleting missing EPGs; the FK forbids dangling IDs.
       await replaceBdEpgLinks(tx, apicHostId, links)
+      await reconcileEndpointEpgLinks(
+        tx,
+        apicHostId,
+        epgs.map((epg) => epg.dn),
+      )
       await pruneInventoryRows(
         tx,
         'epg_snapshot',

@@ -13,13 +13,36 @@ export interface InventoryWriteClient {
   ): Promise<T>
 }
 
-// BD and EPG writes both change membership. Serialize them together per APIC host.
+// BD, EPG and Endpoint writes change membership. Serialize them together per APIC host.
 export const INVENTORY_RELATION_LOCK_NAMESPACE = 20_261_020
 export async function acquireInventoryLock(tx: InventoryTransaction, hostId: string) {
   const result = await tx.$queryRaw<Array<{ acquired: boolean }>>(Prisma.sql`
     SELECT pg_try_advisory_xact_lock(${INVENTORY_RELATION_LOCK_NAMESPACE}::integer, hashtext(${hostId})) AS acquired
   `)
   return result[0]?.acquired === true
+}
+
+/** Resolve both current and historical placements; missing snapshots leave identity intact. */
+export async function reconcileEndpointEpgLinks(
+  tx: Pick<InventoryTransaction, '$executeRaw'>,
+  hostId: string,
+  retainedDns?: readonly string[],
+) {
+  await tx.$executeRaw(Prisma.sql`
+    UPDATE endpoint e SET "epgId" = matched.id, "epgDn" = matched."epgDn"
+    FROM (
+      SELECT placement.id AS "endpointId", placement."epgDn", epg.id
+      FROM (
+        SELECT id, "apicHostId", regexp_replace(dn, '/cep-[^/]+$', '') AS "epgDn"
+        FROM endpoint WHERE "apicHostId" = ${hostId}
+      ) placement
+      LEFT JOIN epg_snapshot epg
+        ON epg."apicHostId" = placement."apicHostId" AND epg.dn = placement."epgDn"
+        ${retainedDns === undefined ? Prisma.empty : Prisma.sql`AND epg.dn IN (SELECT jsonb_array_elements_text(${JSON.stringify(retainedDns)}::jsonb))`}
+    ) matched
+    WHERE e.id = matched."endpointId"
+      AND (e."epgId" IS DISTINCT FROM matched.id OR e."epgDn" IS DISTINCT FROM matched."epgDn")
+  `)
 }
 
 type Column = readonly [name: string, type: 'text' | 'boolean' | 'jsonb', array?: boolean]

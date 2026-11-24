@@ -24,6 +24,8 @@ const ENDPOINT_ROW_SELECT = {
   node: true,
   interface: true,
   epgDescr: true,
+  epgDn: true,
+  epgId: true,
   isActive: true,
   firstSeenAt: true,
   lastSeenAt: true,
@@ -130,6 +132,8 @@ function serializeEndpoint(row: StoredEndpointRow): EndpointRow {
     node: row.node,
     interface: row.interface,
     epgDescr: row.epgDescr,
+    epgDn: row.epgDn,
+    epgId: row.epgId,
     isActive: row.isActive,
     firstSeenAt: row.firstSeenAt.toISOString(),
     lastSeenAt: row.lastSeenAt.toISOString(),
@@ -158,6 +162,7 @@ function normalizedFilters(filters: EndpointFilters = {}): EndpointFilters {
   return {
     query: filters.query?.trim() ?? '',
     ...(filters.mac ? { mac: filters.mac.trim() } : {}),
+    ...(filters.epgDn ? { epgDn: filters.epgDn.trim() } : {}),
     vlan: normalize(filters.vlan),
     node: normalize(filters.node),
     iface: normalize(filters.iface),
@@ -168,6 +173,7 @@ function normalizedFilters(filters: EndpointFilters = {}): EndpointFilters {
 function filterCacheParts(filters: EndpointFilters): string[] {
   return [
     ...(filters.mac ? [`mac:${filters.mac}`] : []),
+    ...(filters.epgDn ? [`epg:${filters.epgDn}`] : []),
     filters.query ?? '',
     JSON.stringify(filters.vlan ?? []),
     JSON.stringify(filters.node ?? []),
@@ -202,6 +208,7 @@ export function buildEndpointWhere(
 
   return {
     apicHostId,
+    ...(filters.epgDn ? { epgDn: filters.epgDn } : {}),
     ...(filters.vlan?.length ? { vlan: { in: filters.vlan } } : {}),
     ...(filters.node?.length || filters.mac
       ? {
@@ -320,6 +327,7 @@ export async function getEndpointResults(params: EndpointPageParams): Promise<En
   const filters = normalizedFilters({
     query: params.query,
     mac: params.mac,
+    epgDn: params.epgDn,
     vlan: params.vlans,
     node: params.nodes,
     iface: params.view === 'endpoint' ? params.interfaces : [],
@@ -365,10 +373,11 @@ export async function getEndpointResults(params: EndpointPageParams): Promise<En
     },
     [
       'endpoints',
-      'results',
+      'results-epg-link',
       params.hostId,
       params.view,
       ...(filters.mac ? [`mac:${filters.mac}`] : []),
+      ...(filters.epgDn ? [`epg:${filters.epgDn}`] : []),
       filters.query ?? '',
       String(params.page),
       String(params.pageSize),

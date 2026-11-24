@@ -9,6 +9,22 @@ import {
 } from './params'
 
 describe('parseEndpointPageParams', () => {
+  it('round-trips an exact EPG identity while changing views and pagination', () => {
+    const epgDn = 'uni/tn-T1/ap-app/epg-web'
+    const params = parseEndpointPageParams({ apic: 'host-1', epg: epgDn, status: 'active' })
+    const url = new URL(
+      buildEndpointPageUrl({ ...params, view: 'port', page: 2 }),
+      'http://localhost',
+    )
+    expect(parseEndpointPageParams(Object.fromEntries(url.searchParams))).toMatchObject({
+      epgDn,
+      hostId: 'host-1',
+      statuses: ['active'],
+      view: 'port',
+      page: 2,
+    })
+    expect(hasActiveEndpointFilters({ epgDn })).toBe(true)
+  })
   it('returns explicit defaults for an empty query', () => {
     expect(parseEndpointPageParams({})).toEqual({
       hostId: '',

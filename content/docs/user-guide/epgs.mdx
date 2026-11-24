@@ -45,9 +45,15 @@ Contract selections combine with the other filters and apply to both views and f
 
 Click **Export** to download an Excel file (`.xlsx`). Choose all EPGs for the selected APIC host or the current filtered result set, then choose a workbook layout:
 
+- **Full endpoints and static ports** — separate sheets for EPG summary, EPG details, every active MAC/IP record, and complete static port bindings, including encapsulation, mode, type, and path DN
+- **Endpoint and static port totals** — exactly three columns: `EPG`, `Total Endpoint`, and `Total Static Ports`, with one row per EPG, including EPGs with no endpoints or bindings
 - **EPG details only** — one sheet with one row per EPG, including its name, tenant, app profile, bridge domain, description, and consumed/provided contracts, without nodes or ports
 - **Group by EPG** — one sheet listing EPG details with their nodes and ports
 - **Group by Port** — one sheet per node, listing each port and its EPGs
+
+Endpoint totals count distinct active MAC addresses; multiple IPs on one MAC count once. Static port totals count configured logical bindings, so one vPC binding counts once. The two new layouts export complete EPGs selected by the filters, including all their static bindings, even when selected through a node filter. Exports include all matching EPGs across pages.
+
+Click an EPG row to open its details. **Export** in the details panel exports that EPG, with the full endpoints and static ports layout selected by default. **View endpoints** opens its exact endpoint list on the same APIC host, initially showing active endpoints; switch the Status filter to include history.
 
 ## Resync
 

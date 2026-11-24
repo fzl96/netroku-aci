@@ -5,6 +5,20 @@ import type { EpgExportRequest } from '@/lib/schemas/epg-export'
 
 export type EpgExportGrouping = EpgExportRequest['groupBy']
 
+export type EpgExportEndpoint = {
+  mac: string
+  ip: string
+  vlan: string
+  dn: string
+  node: string
+  interface: string
+  epgDescr: string
+  isActive: boolean
+  firstSeenAt: string
+  lastSeenAt: string
+  clearedAt: string | null
+}
+
 export type EpgExportBinding = {
   id: string
   apicHostId: string
@@ -35,6 +49,8 @@ export type EpgExportRow = {
   providedContracts: string[]
   consumedContracts: string[]
   bindings: EpgExportBinding[]
+  endpointCount?: number
+  endpoints?: EpgExportEndpoint[]
 }
 
 type Binding = EpgExportBinding
@@ -272,6 +288,120 @@ function buildPortSheet(node: string, ports: Map<string, Set<string>>): XLSX.Wor
 export function buildEpgWorkbook(epgs: EpgExportRow[], groupBy: EpgExportGrouping): XLSX.WorkBook {
   const workbook = XLSX.utils.book_new()
 
+  if (groupBy === 'summary' || groupBy === 'detailed') {
+    const ordered = sortedEpgs(epgs)
+    const total = (epg: EpgExportRow) =>
+      epg.endpointCount ??
+      new Set((epg.endpoints ?? []).filter((e) => e.isActive).map((e) => e.mac.toLowerCase())).size
+    const summary = [
+      ['EPG', 'Total Endpoint', 'Total Static Ports'],
+      ...ordered.map((epg) => [epg.name, total(epg), epg.bindings.length]),
+    ]
+    XLSX.utils.book_append_sheet(workbook, inventorySheet(summary, [36, 20, 22]), 'EPG Summary')
+    if (groupBy === 'summary') return workbook
+
+    const details: unknown[][] = [
+      [...EPG_DETAIL_COLUMNS, 'EPG DN', 'pcTag', 'Preferred Group', 'Isolation', 'Domains'],
+    ]
+    const endpoints: unknown[][] = [
+      [
+        'EPG',
+        'Tenant',
+        'App Profile',
+        'EPG DN',
+        'MAC',
+        'IP',
+        'VLAN',
+        'Node',
+        'Interface',
+        'EPG Description',
+        'Endpoint DN',
+        'Status',
+        'First Seen',
+        'Last Seen',
+        'Cleared At',
+      ],
+    ]
+    const bindings: unknown[][] = [
+      [
+        'EPG',
+        'Tenant',
+        'App Profile',
+        'EPG DN',
+        'Pod',
+        'Node',
+        'Port',
+        'Type',
+        'Encap',
+        'Mode',
+        'Path DN',
+        'Binding DN',
+      ],
+    ]
+    for (const epg of ordered) {
+      const identity = [epg.name, epg.tenant, epg.appProfile, epg.dn]
+      details.push([
+        epg.name,
+        epg.tenant,
+        epg.appProfile,
+        epg.bridgeDomain,
+        epg.description,
+        epg.consumedContracts.join(', '),
+        epg.providedContracts.join(', '),
+        epg.dn,
+        epg.pcTag,
+        epg.preferredGroup ? 'Yes' : 'No',
+        epg.isolation ? 'Yes' : 'No',
+        epg.domains.join(', '),
+      ])
+      for (const ep of epg.endpoints ?? []) {
+        if (!ep.isActive) continue
+        endpoints.push([
+          ...identity,
+          ep.mac,
+          ep.ip,
+          ep.vlan,
+          ep.node,
+          ep.interface,
+          ep.epgDescr,
+          ep.dn,
+          'Active',
+          ep.firstSeenAt,
+          ep.lastSeenAt,
+          ep.clearedAt ?? '',
+        ])
+      }
+      for (const binding of epg.bindings)
+        bindings.push([
+          ...identity,
+          binding.pod,
+          binding.node,
+          binding.port,
+          binding.pathType,
+          binding.encap,
+          binding.mode,
+          binding.pathTDn,
+          binding.dn,
+        ])
+    }
+    XLSX.utils.book_append_sheet(
+      workbook,
+      inventorySheet(details, [30, 20, 24, 24, 40, 32, 32, 60, 14, 20, 14, 40]),
+      'EPG Details',
+    )
+    XLSX.utils.book_append_sheet(
+      workbook,
+      inventorySheet(endpoints, [30, 20, 24, 60, 22, 40, 16, 16, 24, 40, 72, 14, 28, 28, 28]),
+      'Learned Endpoints',
+    )
+    XLSX.utils.book_append_sheet(
+      workbook,
+      inventorySheet(bindings, [30, 20, 24, 60, 10, 16, 30, 16, 18, 16, 72, 72]),
+      'Static Ports',
+    )
+    return workbook
+  }
+
   if (groupBy === 'epg' || groupBy === 'epg-details') {
     XLSX.utils.book_append_sheet(workbook, buildEpgSheet(epgs, groupBy === 'epg'), 'EPGs')
     return workbook
@@ -285,6 +415,23 @@ export function buildEpgWorkbook(epgs: EpgExportRow[], groupBy: EpgExportGroupin
   }
 
   return workbook
+}
+
+function inventorySheet(rows: unknown[][], widths: number[]): XLSX.WorkSheet {
+  const sheet = finalizeSheet(rows, [], widths)
+  if (rows.length > 1) sheet['!autofilter'] = { ref: sheet['!ref']! }
+  const range = XLSX.utils.decode_range(sheet['!ref'] ?? 'A1')
+  for (let c = 0; c <= range.e.c; c++) {
+    const cell = sheet[XLSX.utils.encode_cell({ r: 0, c })]
+    if (cell)
+      cell.s = {
+        font: { bold: true, color: { rgb: 'FFFFFF' } },
+        fill: { fgColor: { rgb: '243746' } },
+        alignment: { vertical: 'center', wrapText: true },
+      }
+  }
+  sheet['!rows'] = [{ hpt: 30 }]
+  return sheet
 }
 
 export function serializeEpgWorkbook(workbook: XLSX.WorkBook): Uint8Array {

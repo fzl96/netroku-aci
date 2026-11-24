@@ -59,6 +59,93 @@ function aoa(ws: XLSX.WorkSheet): unknown[][] {
   return XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false }) as unknown[][]
 }
 
+describe('EPG inventory exports', () => {
+  const learned = (overrides: Partial<NonNullable<EpgExportRow['endpoints']>[number]> = {}) => ({
+    mac: 'aa:bb:cc:dd:ee:ff',
+    ip: '10.0.0.1',
+    vlan: 'vlan-10',
+    dn: 'uni/tn-T1/ap-app/epg-web/cep-aa:bb:cc:dd:ee:ff',
+    node: '101-102',
+    interface: 'vpc-web',
+    epgDescr: 'Web',
+    isActive: true,
+    firstSeenAt: '2026-11-01T00:00:00.000Z',
+    lastSeenAt: '2026-11-24T00:00:00.000Z',
+    clearedAt: null,
+    ...overrides,
+  })
+
+  it('exports exactly three summary columns, counting active MACs and logical vPC bindings once', () => {
+    const workbook = buildEpgWorkbook(
+      [
+        epg({
+          name: 'EPG_A',
+          bindings: [binding({ node: '101-102', pathType: 'vpc' })],
+          endpoints: [
+            learned(),
+            learned({ ip: '10.0.0.2' }),
+            learned({ mac: 'AA:BB:CC:DD:EE:FF', ip: '' }),
+            learned({ mac: '00:11:22:33:44:55', isActive: false }),
+          ],
+        }),
+        epg({ id: 'empty', name: 'EPG_Empty', bindings: [], endpoints: [] }),
+      ],
+      'summary',
+    )
+    expect(workbook.SheetNames).toEqual(['EPG Summary'])
+    expect(aoa(workbook.Sheets['EPG Summary'])).toEqual([
+      ['EPG', 'Total Endpoint', 'Total Static Ports'],
+      ['EPG_A', 1, 1],
+      ['EPG_Empty', 0, 0],
+    ])
+  })
+
+  it('keeps full endpoint and binding records on separate sheets and round-trips through XLSX', () => {
+    const workbook = buildEpgWorkbook(
+      [epg({ endpoints: [learned(), learned({ ip: '10.0.0.2' }), learned({ isActive: false })] })],
+      'detailed',
+    )
+    expect(workbook.SheetNames).toEqual([
+      'EPG Summary',
+      'EPG Details',
+      'Learned Endpoints',
+      'Static Ports',
+    ])
+    const restored = XLSX.read(serializeEpgWorkbook(workbook), { type: 'array' })
+    const endpointRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
+      restored.Sheets['Learned Endpoints'],
+    )
+    const bindingRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
+      restored.Sheets['Static Ports'],
+    )
+    expect(endpointRows).toHaveLength(2)
+    expect(endpointRows[0]).toMatchObject({
+      MAC: 'aa:bb:cc:dd:ee:ff',
+      IP: '10.0.0.1',
+      Node: '101-102',
+      Interface: 'vpc-web',
+      Status: 'Active',
+      'First Seen': '2026-11-01T00:00:00.000Z',
+    })
+    expect(bindingRows).toHaveLength(2)
+    expect(bindingRows[0]).toMatchObject({
+      Node: '1103-1104',
+      Encap: 'vlan-3192',
+      Mode: 'trunk',
+      'Path DN': expect.any(String),
+      'Binding DN': expect.any(String),
+    })
+    expect(aoa(restored.Sheets['EPG Summary'])[1]).toEqual(['VLAN3192_EPG', 1, 2])
+  })
+
+  it('exports zero-data EPGs and header-only detail sheets', () => {
+    const workbook = buildEpgWorkbook([epg({ bindings: [], endpoints: [] })], 'detailed')
+    expect(aoa(workbook.Sheets['Learned Endpoints'])).toHaveLength(1)
+    expect(aoa(workbook.Sheets['Static Ports'])).toHaveLength(1)
+    expect(serializeEpgWorkbook(workbook).byteLength).toBeGreaterThan(0)
+  })
+})
+
 function align(ws: XLSX.WorkSheet, address: string): { horizontal?: string; vertical?: string } {
   const cell = ws[address] as
     { s?: { alignment?: { horizontal?: string; vertical?: string } } } | undefined

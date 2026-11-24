@@ -42,6 +42,10 @@ The page has two views, selectable from the toolbar:
 - **Interface filter** — (endpoint view only) multi-select; filters by physical interface
 - **Status filter** — show Active only, Historical only, or both
 
+Opening **View endpoints** from an EPG applies an exact EPG filter on the same APIC host. The EPG filter stays active when searching, changing views, paginating, or exporting filtered results. Click its toolbar chip to remove it.
+
+Click an endpoint's EPG description (or EPG name when the description is empty) to open the collected EPG's details. Uncollected EPGs show plain text. Either inventory sync reconnects matching EPGs automatically; deleting an EPG snapshot preserves endpoint history and its stored EPG identity.
+
 ## Export
 
 Click **Export** to download an Excel file (`.xlsx`) of the current filtered result set. The export dialog lets you choose how to group the data:

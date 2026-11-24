@@ -14,13 +14,14 @@ export function EpgResults({
 }: {
   dataPromise: Promise<EpgLoadState<EpgResultsPayload>>
 }) {
-  const [epgId, setEpgId] = useState<string | null>(null)
+  const [selection, setSelection] = useState<{ key: string; id: string | null } | null>(null)
   const [port, setPort] = useState<EpgPortSummary | null>(null)
   const state = use(dataPromise)
   if (state.kind === 'unauthorized') return <EpgRegionError region="results" />
   if (state.kind === 'inactive') return null
 
   const { params, results } = state.data
+  const selectionKey = JSON.stringify([params.hostId, params.view, params.selected])
   const noun = results.view === 'epg' ? 'EPGs' : 'ports'
   const filtered = Boolean(
     params.query ||
@@ -30,7 +31,11 @@ export function EpgResults({
     params.nodes.length,
   )
   const selectedEpg =
-    results.view === 'epg' ? (results.rows.find((row) => row.id === epgId) ?? null) : null
+    results.view === 'epg'
+      ? (results.rows.find((row) =>
+          selection?.key === selectionKey ? row.id === selection.id : row.dn === params.selected,
+        ) ?? null)
+      : null
 
   return (
     <section className="space-y-3">
@@ -49,9 +54,19 @@ export function EpgResults({
           </div>
         </div>
       ) : (
-        <EpgTable params={params} results={results} onEpgSelect={setEpgId} onPortSelect={setPort} />
+        <EpgTable
+          params={params}
+          results={results}
+          onEpgSelect={(id) => setSelection({ key: selectionKey, id })}
+          onPortSelect={setPort}
+        />
       )}
-      <EpgDetailPanel epg={selectedEpg} onClose={() => setEpgId(null)} />
+      <EpgDetailPanel
+        epg={selectedEpg}
+        onClose={() => {
+          setSelection({ key: selectionKey, id: null })
+        }}
+      />
       <EpgPortDetailPanel port={port} onClose={() => setPort(null)} />
     </section>
   )

@@ -40,6 +40,7 @@ import {
 import { DENSE_TABLE_HEAD_CLS, TABLE_SCROLL_CLS } from '@/lib/ui-classes'
 import { EndpointRegionError } from './endpoint-region-error'
 import { PortDetailPanel } from './port-detail-panel'
+import { EndpointEpgLink } from './endpoint-epg-link'
 
 const PAGE_SIZE_OPTIONS: { label: string; value: EndpointPageSize }[] = [
   { label: '10', value: 10 },
@@ -162,6 +163,7 @@ function EndpointResultsContent({
   const rangeStart = total === 0 ? 0 : (page - 1) * effectivePageSize + 1
   const rangeEnd = pageSize === 'all' ? total : Math.min(page * effectivePageSize, total)
   const filtered = Boolean(
+    params.epgDn ||
     params.query ||
     params.vlans.length ||
     params.nodes.length ||
@@ -263,7 +265,7 @@ function EndpointResultsContent({
                           className="max-w-[200px] truncate px-4 py-2.5 text-subtle"
                           title={endpoint.epgDescr}
                         >
-                          {endpoint.epgDescr || '—'}
+                          <EndpointEpgLink endpoint={endpoint} hostId={params.hostId} />
                         </td>
                         <td className="px-4 py-2.5 whitespace-nowrap text-faint tabular-nums">
                           {fmt(endpoint.firstSeenAt)}
@@ -348,7 +350,10 @@ function EndpointResultsContent({
                   label="Interface"
                   value={<span className="font-mono">{endpoint.interface || '—'}</span>}
                 />
-                <DataCardRow label="EPG" value={endpoint.epgDescr || '—'} />
+                <DataCardRow
+                  label="EPG"
+                  value={<EndpointEpgLink endpoint={endpoint} hostId={params.hostId} />}
+                />
                 <DataCardRow label="Last seen" value={fmt(endpoint.lastSeenAt)} />
               </DataCardBody>
             </DataCard>
@@ -471,7 +476,11 @@ function EndpointResultsContent({
         </div>
       )}
 
-      <PortDetailPanel port={selectedPort} onClose={() => setSelectedPort(null)} />
+      <PortDetailPanel
+        port={selectedPort}
+        hostId={params.hostId}
+        onClose={() => setSelectedPort(null)}
+      />
     </section>
   )
 }

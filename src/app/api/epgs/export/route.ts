@@ -17,6 +17,7 @@ export async function POST(request: Request) {
       hostId: parsed.data.apicHostId,
       scope: parsed.data.scope,
       filters: parsed.data.filters,
+      groupBy: parsed.data.groupBy,
     })
   } catch {
     return Response.json({ error: 'Failed to prepare EPG export' }, { status: 500 })

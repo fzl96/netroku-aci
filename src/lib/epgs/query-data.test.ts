@@ -56,6 +56,34 @@ const epgFindMany = mock(async (args: Record<string, unknown>) => {
   ]
 })
 const bindingFindMany = mock(async (): Promise<Array<Record<string, unknown>>> => [])
+const endpointFindMany = mock(async () => [
+  {
+    epgId: 'e1',
+    mac: 'aa',
+    ip: '10.0.0.1',
+    vlan: 'vlan-1',
+    dn: 'dn/cep-aa',
+    node: '101',
+    interface: 'eth1/1',
+    epgDescr: 'web',
+    isActive: true,
+    firstSeenAt: new Date('2026-11-01T00:00:00Z'),
+    lastSeenAt: new Date('2026-11-24T00:00:00Z'),
+    clearedAt: null,
+  },
+])
+const endpointCounts = mock(async () => [{ epgId: 'e1', total: 3 }])
+const exportClient = {
+  epgSnapshot: { count: epgCount, findMany: epgFindMany },
+  endpoint: { findMany: endpointFindMany },
+  $queryRaw: endpointCounts,
+}
+const exportTransaction = mock(
+  async (fn: (client: typeof exportClient) => Promise<unknown>, options: unknown) => {
+    expect(options).toEqual({ isolationLevel: 'RepeatableRead' })
+    return fn(exportClient)
+  },
+)
 const cacheCalls: Array<{ key: string[]; options: { tags: string[]; revalidate: number } }> = []
 
 mock.module('server-only', () => ({}))
@@ -66,6 +94,8 @@ mock.module('@/lib/auth', () => ({
 }))
 mock.module('@/lib/prisma', () => ({
   prisma: {
+    ...exportClient,
+    $transaction: exportTransaction,
     apicHost: { findMany: hostFindMany, findFirst: hostFindFirst },
     epgSnapshot: { count: epgCount, findMany: epgFindMany },
     epgPathBinding: { findMany: bindingFindMany },
@@ -120,10 +150,46 @@ beforeEach(() => {
   epgCount.mockClear()
   epgFindMany.mockClear()
   bindingFindMany.mockClear()
+  endpointFindMany.mockClear()
+  endpointCounts.mockClear()
+  exportTransaction.mockClear()
   cacheCalls.length = 0
 })
 
 describe('EPG data interface', () => {
+  it('loads full active endpoint records and whole static binding sets for detailed exports', async () => {
+    const result = await query.getEpgExportData({
+      hostId: 'h1',
+      scope: 'filtered',
+      groupBy: 'detailed',
+      filters: { node: ['101'] },
+    })
+    expect(exportTransaction.mock.calls[0][1]).toEqual({ isolationLevel: 'RepeatableRead' })
+    expect(endpointFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { apicHostId: 'h1', epgId: { in: ['e1'] }, isActive: true },
+      }),
+    )
+    expect(result.kind).toBe('ready')
+    if (result.kind === 'ready') {
+      expect(result.rows[0].endpoints?.[0]).toMatchObject({
+        mac: 'aa',
+        firstSeenAt: '2026-11-01T00:00:00.000Z',
+      })
+      expect(result.rows[0].endpoints?.[0]).not.toHaveProperty('epgId')
+    }
+    expect(cacheCalls.at(-1)?.options.tags).toContain('endpoints:host:h1')
+  })
+
+  it('uses aggregate counts for summaries without fetching all learned records and separates format caches', async () => {
+    const summary = await query.getEpgExportData({ hostId: 'h1', scope: 'all', groupBy: 'summary' })
+    expect(endpointFindMany).not.toHaveBeenCalled()
+    expect(endpointCounts).toHaveBeenCalledTimes(1)
+    if (summary.kind === 'ready') expect(summary.rows[0].endpointCount).toBe(3)
+    const summaryKey = cacheCalls.at(-1)?.key
+    await query.getEpgExportData({ hostId: 'h1', scope: 'all', groupBy: 'detailed' })
+    expect(cacheCalls.at(-1)?.key).not.toEqual(summaryKey)
+  })
   it('reads the linked BD when available and retains the observed name for unlinked EPGs', async () => {
     const rows = await epgFindMany({})
     epgFindMany.mockResolvedValueOnce([

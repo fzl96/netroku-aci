@@ -1,6 +1,13 @@
 import { apicFetch, apicLogin } from './client'
 import { prisma } from '@/lib/prisma'
-import { planEndpointResync, type ActiveEndpoint, type EndpointResyncPlan } from './endpoint-resync'
+import {
+  epgKeyFromDn,
+  planEndpointResync,
+  type ActiveEndpoint,
+  type EndpointResyncPlan,
+} from './endpoint-resync'
+import { INVENTORY_RELATION_LOCK_NAMESPACE, reconcileEndpointEpgLinks } from './inventory-relations'
+import type { Prisma } from '@prisma/client'
 
 export interface ApicEndpointRow {
   mac: string
@@ -178,6 +185,7 @@ interface EndpointMutationClient {
 
 interface EndpointResyncMutationClient {
   endpoint: EndpointResyncDelegate
+  $executeRaw(query: Prisma.Sql): Promise<number>
   $queryRaw<T = unknown>(query: TemplateStringsArray, ...values: unknown[]): Promise<T>
 }
 
@@ -264,6 +272,8 @@ export async function reconcileFetchedEndpoints(
       const plan = planEndpointResync(activeRows, uniqueRows)
       await executeEndpointResyncPlanInTransaction(tx, apicHostId, plan, now)
 
+      await reconcileEndpointEpgLinks(tx, apicHostId)
+
       const total = await tx.endpoint.count({ where: { apicHostId } })
       return { total }
     },
@@ -290,7 +300,8 @@ async function tryAcquireEndpointResyncAdvisoryLock(
   apicHostId: string,
 ): Promise<boolean> {
   const rows = await tx.$queryRaw<Array<{ acquired: boolean }>>`
-    SELECT pg_try_advisory_xact_lock(${ENDPOINT_ADVISORY_LOCK_NAMESPACE}::integer, hashtext(${apicHostId})) AS acquired
+    SELECT pg_try_advisory_xact_lock(${ENDPOINT_ADVISORY_LOCK_NAMESPACE}::integer, hashtext(${apicHostId}))
+      AND pg_try_advisory_xact_lock(${INVENTORY_RELATION_LOCK_NAMESPACE}::integer, hashtext(${apicHostId})) AS acquired
   `
   return rows[0]?.acquired === true
 }
@@ -347,6 +358,7 @@ async function executeEndpointResyncPlanInTransaction(
             node: row.node,
             interface: row.interface,
             epgDescr: row.epgDescr,
+            epgDn: epgKeyFromDn(row.dn),
             isActive: true,
             firstSeenAt: now,
             lastSeenAt: now,

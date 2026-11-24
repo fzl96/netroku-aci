@@ -25,9 +25,16 @@ interface Props {
   hostTotal: number
   filteredTotal: number
   filters: EpgFilters
+  singleEpg?: boolean
 }
 
-export function ExportEpgsDialog({ apicHostId, hostTotal, filteredTotal, filters }: Props) {
+export function ExportEpgsDialog({
+  apicHostId,
+  hostTotal,
+  filteredTotal,
+  filters,
+  singleEpg = false,
+}: Props) {
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<1 | 2>(1)
   const [scope, setScope] = useState<ExportScope>('all')
@@ -39,9 +46,9 @@ export function ExportEpgsDialog({ apicHostId, hostTotal, filteredTotal, filters
   const disabled = !apicHostId || hostTotal === 0
 
   function openDialog() {
-    setStep(1)
-    setScope(getDefaultExportScope(hasFilters, filteredTotal))
-    setGroupBy(null)
+    setStep(singleEpg ? 2 : 1)
+    setScope(singleEpg ? 'filtered' : getDefaultExportScope(hasFilters, filteredTotal))
+    setGroupBy(singleEpg ? 'detailed' : null)
     setOpen(true)
   }
 
@@ -113,7 +120,7 @@ export function ExportEpgsDialog({ apicHostId, hostTotal, filteredTotal, filters
         <DialogContent className="border-border bg-card text-foreground sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-serif text-base font-semibold text-foreground">
-              Export EPGs
+              {singleEpg ? 'Export EPG' : 'Export EPGs'}
             </DialogTitle>
             <DialogDescription className="text-xs text-subtle">
               {step === 1
@@ -145,6 +152,18 @@ export function ExportEpgsDialog({ apicHostId, hostTotal, filteredTotal, filters
           ) : (
             <div className="space-y-2">
               <ChoiceCard
+                checked={groupBy === 'detailed'}
+                title="Full endpoints and static ports"
+                description="Separate sheets for EPG details, active MAC/IP records, and complete static bindings"
+                onClick={() => setGroupBy('detailed')}
+              />
+              <ChoiceCard
+                checked={groupBy === 'summary'}
+                title="Endpoint and static port totals"
+                description="One row per EPG: distinct active MACs and configured bindings (vPC counts once)"
+                onClick={() => setGroupBy('summary')}
+              />
+              <ChoiceCard
                 checked={groupBy === 'epg-details'}
                 title="EPG details only"
                 description="One row per EPG with its details and contracts, without nodes or ports"
@@ -166,7 +185,7 @@ export function ExportEpgsDialog({ apicHostId, hostTotal, filteredTotal, filters
           )}
 
           <DialogFooter className="-mx-4 -mb-4 flex flex-row items-center justify-between gap-2 rounded-b-xl border-t border-subtle bg-muted px-4 py-3">
-            {step === 2 ? (
+            {step === 2 && !singleEpg ? (
               <button
                 type="button"
                 onClick={() => setStep(1)}

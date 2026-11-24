@@ -5,6 +5,20 @@ mock.module('server-only', () => ({}))
 const { buildEndpointWhere } = await import('./query')
 
 describe('buildEndpointWhere', () => {
+  it('combines exact EPG identity with the host, active status and text search', () => {
+    expect(
+      buildEndpointWhere('host-1', {
+        epgDn: 'uni/tn-t/ap-a/epg-web',
+        status: ['active'],
+        query: 'needle',
+      }),
+    ).toMatchObject({
+      apicHostId: 'host-1',
+      epgDn: 'uni/tn-t/ap-a/epg-web',
+      isActive: true,
+      OR: expect.any(Array),
+    })
+  })
   it('scopes unfiltered queries to the selected APIC host', () => {
     expect(buildEndpointWhere('host-1', {})).toEqual({ apicHostId: 'host-1' })
   })
