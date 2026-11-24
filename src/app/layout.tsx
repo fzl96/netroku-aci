@@ -1,17 +1,10 @@
 // src/app/layout.tsx
 import type { Metadata } from 'next'
-import { Inter, Lora } from 'next/font/google'
+import { inter, lora } from '@/lib/fonts'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import './globals.css'
-
-const inter = Inter({ variable: '--font-inter', subsets: ['latin'] })
-const lora = Lora({
-  variable: '--font-lora',
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-})
 
 export const metadata: Metadata = {
   title: {

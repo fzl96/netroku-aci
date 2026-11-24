@@ -503,6 +503,10 @@ The stack uses:
 
 `next.config.ts` enables the React Compiler and standalone output. It does not enable Cache Components.
 
+Application typography uses checked-in Inter and Lora assets through `src/lib/fonts.ts`
+and `next/font/local`. Production builds must not fetch Google Fonts. Run
+`bun run test:fonts` to exercise the production font definitions in an isolated build.
+
 Docker Compose runs four services:
 
 - `db`: PostgreSQL
